@@ -1,0 +1,555 @@
+{
+    "@@locale": "fr",
+    "settingsTitle": "Paramètres",
+    "profileTitle": "Mon Profil",
+    "profileSubtitle": "Voir et modifier les informations personnelles",
+    "manageUsersTitle": "Gérer les Utilisateurs",
+    "manageUsersSubtitle": "Créer, valider et gérer l'accès",
+    "changePasswordTitle": "Changer le Mot de Passe",
+    "changePasswordSubtitle": "Mettre à jour vos identifiants de connexion",
+    "languageTitle": "Langue de l'Application",
+    "helpAndSupportTitle": "Aide et Support",
+    "logoutButton": "Déconnexion",
+    "currentLanguageLabel": "Actuelle :",
+    "chooseLanguageDialogTitle": "Choisir la Langue 🌐",
+    "applyButton": "Appliquer",
+    "cancelButton": "Annuler",
+    "adminSectionTitle": "Outils d'Administration",
+    "manageCategories": "Gérer les Catégories",
+    "manageCategoriesSubtitle": "Ajouter, modifier ou supprimer des catégories de produits",
+    "statStockStatus": "Statut du Stock",
+    "statStockLowCount": "{count, plural, =0{Tout est OK} one{1 Produit en Stock Faible} other{{count} Produits en Stock Faible}}",
+    "@@statStockLowCount": {
+        "description": "Displays the number of products with low stock.",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "errorLoadingStats": "Une erreur s'est produite lors du chargement des statistiques. Affichage des données générales.",
+    "statDailySales": "Ventes du Jour",
+    "statTotalSalesOverall": "Total des Ventes Globales",
+    "user": "Utilisateur",
+    "statisticsTitle": "Statistiques",
+    "statTotalSales": "Total des Ventes",
+    "statSalesCount": "Nombre de Ventes",
+    "statProductsCount": "Produits",
+    "statClientsCount": "Clients",
+    "buttonAddProduct": "Ajouter Produit",
+    "productUnitDefault": "unité",
+    "buttonManageStock": "Gérer le Stock",
+    "buttonNewSale": "Nouvelle Vente",
+    "buttonReports": "Rapports",
+    "navHome": "Accueil",
+    "navStock": "Stock",
+    "navReports": "Rapports",
+    "navSettings": "Paramètres",
+    "homeWelcomeMessage": "Bienvenue {name} — Bonnes ventes!",
+    "@@homeWelcomeMessage": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "homeSummaryGreeting": "Bonjour {name}",
+    "@@homeSummaryGreeting": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "homeSummaryProductsSales": "Vous avez {productCount, plural, =0{aucun produit} one{un seul produit} other{{productCount} produits}} et {salesCount, plural, =0{aucune vente} one{une seule vente} other{{salesCount} ventes}}.",
+    "@@homeSummaryProductsSales": {
+        "placeholders": {
+            "productCount": {},
+            "salesCount": {}
+        }
+    },
+    "themeTitle": "Thème de l'Application",
+    "currentThemeLabel": "Actuel :",
+    "chooseThemeDialogTitle": "Choisir le Thème 🎨",
+    "themeSystem": "Défaut Système",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "notificationsTitle": "Notifications et Alertes",
+    "@notificationsTitle": {
+        "description": "Titre de la section notifications sur la page d'accueil"
+    },
+    "lowStockAlert": "Alerte Stock Faible : {lowStockCount, plural, one{1 produit} other{{lowStockCount} produits}} ont besoin d'être réapprovisionnés.",
+    "@lowStockAlert": {
+        "description": "Alerte affichée lorsque le stock est faible",
+        "placeholders": {
+            "lowStockCount": {
+                "type": "int",
+                "example": "3"
+            }
+        }
+    },
+    "lowStockAlertSubtitle": "Cliquez ici pour voir la liste et commander à nouveau.",
+    "@lowStockAlertSubtitle": {
+        "description": "Sous-titre de l'alerte stock faible"
+    },
+    "addProductTitle": "Nouveau Produit",
+    "categoryOther": "Autre",
+    "categoryRequired": "Veuillez sélectionner une catégorie.",
+    "priceValidation": "Les prix d'achat et de vente doivent être supérieurs à zéro.",
+    "priceMarkupValidation": "Le prix de vente doit être supérieur au prix d'achat.",
+    "productSaved": "Produit sauvegardé avec succès!",
+    "saving": "Sauvegarde en cours...",
+    "saveError": "Erreur lors de la sauvegarde",
+    "productNameLabel": "Nom du Produit",
+    "productCategoryLabel": "Catégorie",
+    "productPriceCost": "Prix d'Achat",
+    "productPriceSell": "Prix de Vente",
+    "productQuantityLabel": "Quantité en Stock",
+    "nameRequired": "Le nom est requis",
+    "priceRequired": "Le prix est requis",
+    "quantityRequired": "La quantité est requise",
+    "saveButton": "Sauvegarder Produit",
+    "photoOptionTitle": "Ajouter Photo",
+    "photoOptionGallery": "Choisir depuis la Galerie",
+    "photoOptionCamera": "Prendre une Photo",
+    "photoOptionDelete": "Supprimer la photo actuelle",
+    "changePhoto": "Changer Photo",
+    "addPhoto": "Ajouter Photo",
+    "errorGallery": "Erreur de Galerie : {error}",
+    "@@errorGallery": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "errorCamera": "Erreur de Caméra : {error}",
+    "@@errorCamera": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "loadingError": "Erreur de chargement : {error}",
+    "@@loadingError": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "internalLoadingError": "Erreur de chargement interne.",
+    "loginWelcome": "Bienvenue",
+    "loginEmailLabel": "Email",
+    "loginPinLabel": "PIN",
+    "loginButton": "Connexion",
+    "loginCreateStore": "Créer un Magasin",
+    "emailRequired": "L'email est requis.",
+    "pinRequired": "Le code PIN est requis.",
+    "pinInvalid": "Code PIN invalide (min 4 chiffres, pas 0000/1234).",
+    "loginErrorCredentials": "Email ou PIN incorrect",
+    "loginErrorPending": "Compte en attente de validation par l'administrateur",
+    "loginErrorGeneric": "Erreur lors de la connexion",
+    "loginBiometricButton": "Se connecter avec Empreinte / Face ID",
+    "biometricPrompt": "Veuillez vous authentifier pour vous connecter à Mon Commerce.",
+    "biometricLoginFailed": "Échec de la connexion. Veuillez utiliser Email/PIN.",
+    "biometricNoUser": "Veuillez vous connecter d'abord avec Email/PIN.",
+    "biometricError": "Erreur d'authentification biométrique. Veuillez réessayer.",
+    "productAdded": "Produit ajouté avec succès",
+    "setupTitleNewStore": "Créer un Nouveau Magasin",
+    "setupTitleNewUser": "Créer un Nouvel Utilisateur",
+    "setupTitleEdit": "Modifier Utilisateur",
+    "setupLabelName": "Nom Complet",
+    "setupLabelEmail": "Email (Identifiant)",
+    "setupLabelPin": "PIN de connexion (4+ chiffres)",
+    "setupLabelRole": "Rôle",
+    "roleVendor": "Vendeur",
+    "roleAdmin": "Administrateur",
+    "setupButtonCreate": "Créer le Compte",
+    "setupNoticeValidation": "Note : Les comptes créés seront en attente de validation par un administrateur.",
+    "setupInitialSuccess": "Compte créé. Veuillez vous connecter après validation.",
+    "userCreatedSuccess": "Utilisateur créé avec succès.",
+    "userUpdatedSuccess": "Utilisateur mis à jour avec succès.",
+    "setupErrorGeneric": "Erreur lors de la sauvegarde",
+    "unitLabel": "Unité",
+    "unitRequired": "L'unité est requise.",
+    "unitUnity": "unité",
+    "unitKg": "kg",
+    "unitDozen": "douzaine",
+    "unitLiter": "litre",
+    "unitMeter": "mètre",
+    "errorLoadingData": "Échec du chargement des données. Veuillez réessayer ou vérifier votre connexion.",
+    "newSaleTitle": "Nouvelle Vente",
+    "errorUserNotLoggedIn": "Erreur : La session utilisateur est perdue. Veuillez vous reconnecter.",
+    "clientNewTitle": "Nouveau Client",
+    "clientAddedSuccess": "Client ajouté avec succès.",
+    "errorSavingClient": "Erreur lors de la sauvegarde du client",
+    "errorSavingClientGeneric": "Erreur inattendue lors de la sauvegarde.",
+    "fieldName": "Nom Complet",
+    "fieldPhone": "Téléphone",
+    "fieldEmail": "Email",
+    "validationNameRequired": "Le nom est requis.",
+    "validationEmailInvalid": "Veuillez entrer une adresse email valide.",
+    "buttonSaveClient": "Sauvegarder Client",
+    "productSubtitle": "Prix : {price} • Stock : {stock} {unit}",
+    "@@productSubtitle": {
+        "placeholders": {
+            "price": {},
+            "stock": {},
+            "unit": {}
+        }
+    },
+    "addToCartTitle": "Ajouter {productName}",
+    "@@addToCartTitle": {
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "dialogQuantityLabel": "Quantité ({unit})",
+    "@@dialogQuantityLabel": {
+        "placeholders": {
+            "unit": {}
+        }
+    },
+    "invalidQuantity": "Quantité invalide (doit être > 0)",
+    "insufficientStock": "Stock insuffisant. Max : {maxStock} {unit}",
+    "@@insufficientStock": {
+        "placeholders": {
+            "maxStock": {},
+            "unit": {}
+        }
+    },
+    "outOfStock": "Produit épuisé.",
+    "totalAmount": "Total : {amount} {currencyUnit}",
+    "@@totalAmount": {
+        "placeholders": {
+            "amount": {}
+        }
+    },
+    "paymentModeHint": "Mode de Paiement",
+    "paymentMode": "{mode}",
+    "@@paymentMode": {
+        "placeholders": {
+            "mode": {}
+        }
+    },
+    "recordSaleButton": "Enregistrer Vente",
+    "saleRecorded": "Vente enregistrée avec succès.",
+    "saleError": "Erreur lors de l'enregistrement de la vente",
+    "permissionDenied": "Permission refusée.",
+    "addButton": "Ajouter",
+    "stockManagementTitle": "Stock & Prix",
+    "searchProductHint": "Rechercher produit ou catégorie...",
+    "addedToSale": "Produit {produitName} ajouté à la vente",
+    "@@addedToSale": {
+        "placeholders": {
+            "produitName": {}
+        }
+    },
+    "updateButton": "Mettre à Jour Produit",
+    "productUpdated": "Informations produit mises à jour avec succès.",
+    "headerAddStock": "Ajouter du Stock (Réapprovisionner)",
+    "labelQuantityToAdd": "Quantité à Ajouter",
+    "labelNewPurchasePrice": "Nouveau Prix d'Achat (par unité)",
+    "buttonAddToStock": "Réapprovisionner",
+    "msgInvalidStockInput": "Veuillez entrer une quantité et un prix d'achat valides et positifs.",
+    "msgStockAddedSuccess": "Stock ajouté avec succès et historique enregistré.",
+    "msgStockAddFailure": "Échec de l'ajout du stock",
+    "headerStockHistory": "Historique de Réapprovisionnement",
+    "msgNoHistoryFound": "Aucun historique de réapprovisionnement trouvé pour ce produit.",
+    "labelAdded": "Ajouté",
+    "labelPurchasePrice": "Prix d'Achat",
+    "labelUnknownDate": "Date Inconnue",
+    "validationInvalidNumber": "Veuillez entrer un nombre valide.",
+    "loadingHistoryError": "Erreur de chargement de l'historique : {error}",
+    "@@loadingHistoryError": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "currencyUnit": "CDF",
+    "@@currencyUnit": {
+        "description": "The primary currency unit (e.g., CDF, USD, FCFA)."
+    },
+    "reportsTitle": "Rapports d'Activité",
+    "reportsTitleUser": "Rapport - {name}",
+    "@@reportsTitleUser": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "reportsSelectPeriod": "Sélectionner la Période",
+    "reportsDateRange": "Période : Du {startDate} au {endDate}",
+    "@@reportsDateRange": {
+        "description": "The exact date range covered by the current report.",
+        "placeholders": {
+            "startDate": {},
+            "endDate": {}
+        }
+    },
+    "reportsPeriodDay": "Jour (7 Derniers Jours)",
+    "reportsPeriodWeek": "Semaine (12 Dernières Semaines)",
+    "reportsPeriodMonth": "Mois (6 Derniers Mois)",
+    "reportsPeriodYear": "Année (5 Dernières Années)",
+    "reportsDetailTitle": "Détails par Période",
+    "reportsDetailSubtitle": "Revenu : {total} {currencyUnit} • Quantité : {qty}",
+    "@@reportsDetailSubtitle": {
+        "description": "Subtitle showing total revenue and quantity for a period.",
+        "placeholders": {
+            "total": {},
+            "currencyUnit": {},
+            "qty": {}
+        }
+    },
+    "reportsTopProductsTitle": "Top 10 des Produits (Période Complète)",
+    "reportsTopProductSubtitle": "Quantité vendue : {qty} • Revenu : {revenue} {currencyUnit}",
+    "@@reportsTopProductSubtitle": {
+        "description": "Subtitle for a top selling product.",
+        "placeholders": {
+            "qty": {},
+            "revenue": {},
+            "currencyUnit": {}
+        }
+    },
+    "reportsNoData": "Aucune donnée de vente trouvée pour la période et l'utilisateur sélectionnés.",
+    "@@reportsNoData": {
+        "description": "Message displayed when no data is available in the reports list."
+    },
+    "reportsNoCategoryData": "Aucune vente enregistrée pour aucune catégorie dans cette période.",
+    "@@reportsNoCategoryData": {
+        "description": "Message displayed when no category data is found in the daily report."
+    },
+    "noPeriodLabel": "Non/Applicable - Période",
+    "@@noPeriodLabel": {
+        "description": "Label for an undefined or unparsable period."
+    },
+    "reportTitleForDate": "Rapport du {date}",
+    "@@reportTitleForDate": {
+        "placeholders": {
+            "date": {}
+        }
+    },
+    "buttonPrintReport": "Imprimer le Rapport",
+    "reportStoreName": "Magasin : {name}",
+    "@@reportStoreName": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "reportSummaryTitle": "Résumé du Jour",
+    "reportTotalRevenue": "Revenu Total des Ventes (TR)",
+    "reportTotalProfit": "Profit du Jour",
+    "reportTotalQty": "Quantité Totale Vendue",
+    "reportQtyByCategory": "Quantité de Produits Vendus par Catégorie",
+    "reportDetailedSales": "Détails des Ventes par Produit",
+    "reportProduct": "Produit",
+    "reportQty": "Quantité",
+    "reportAmount": "Montant",
+    "reportUnitsLabel": "unités",
+    "errorPrinting": "Erreur lors de l'impression",
+    "reportTopProductsTitle": "Produits les Plus Vendus du Jour",
+    "pdfReportTitle": "Rapport Quotidien des Ventes",
+    "pdfStore": "Magasin",
+    "pdfReportDate": "Date du Rapport",
+    "pdfSummaryTitle": "Résumé Quotidien",
+    "pdfTotalRevenue": "Revenu Total des Ventes (TR)",
+    "pdfTotalQty": "Quantité Totale Vendue",
+    "pdfTotalProfit": "Profit du Jour",
+    "pdfSalesByCategory": "Ventes par Catégorie",
+    "pdfDetailedSales": "Détails des Ventes par Produit",
+    "pdfProduct": "Produit",
+    "pdfQuantity": "Quantité",
+    "pdfAmountSold": "Montant Vendu",
+    "pdfTopProductsTitle": "Produits les Plus Vendus du Jour",
+    "pdfTopProductQty": "{qty} Unités",
+    "@@pdfTopProductQty": {
+        "placeholders": {
+            "qty": {}
+        }
+    },
+    "pdfCategory": "Catégorie",
+    "saleRecordedAndInvoiceGenerated": "Vente enregistrée. Facture générée pour traçabilité.",
+    "@saleRecordedAndInvoiceGenerated": {
+        "description": "Success message when sale is recorded and invoice is generated."
+    },
+    "sessionError": "Erreur de session. Veuillez vous reconnecter.",
+    "@sessionError": {
+        "description": "Error when user session is lost."
+    },
+    "invoiceTitle": "FACTURE DE VENTE",
+    "@invoiceTitle": {
+        "description": "Title of the sales invoice document."
+    },
+    "invoiceName": "Facture",
+    "@invoiceName": {
+        "description": "Used for file naming and general reference."
+    },
+    "invoiceTotal": "MONTANT TOTAL DÛ",
+    "@invoiceTotal": {
+        "description": "Label for the total amount on the invoice."
+    },
+    "pdfItem": "Article",
+    "@pdfItem": {
+        "description": "Column header for product name on PDF."
+    },
+    "pdfQty": "Qté",
+    "@pdfQty": {
+        "description": "Column header for quantity on PDF."
+    },
+    "pdfUnit": "Unité",
+    "@pdfUnit": {
+        "description": "Column header for unit of measure on PDF."
+    },
+    "pdfPrice": "Prix Unitaire",
+    "@pdfPrice": {
+        "description": "Column header for price per unit on PDF."
+    },
+    "pdfTotal": "Total",
+    "@pdfTotal": {
+        "description": "Column header for total amount per item on PDF."
+    },
+    "pdfStoreInfo": "Vendu par",
+    "@pdfStoreInfo": {
+        "description": "Label for seller/store information on PDF."
+    },
+    "pdfDate": "Date et Heure",
+    "@pdfDate": {
+        "description": "Label for sale date and time on PDF."
+    },
+    "pdfPaymentMode": "Mode de Paiement",
+    "@pdfPaymentMode": {
+        "description": "Label for payment method on PDF."
+    },
+    "invoiceThankYou": "Merci pour votre achat effectué le {date}",
+    "@invoiceThankYou": {
+      "description": "Closing message on the invoice.",
+      "placeholders": {
+        "date": {}
+      }
+    },
+    "invoiceTraceability": "ID Unique de Transaction (Traçabilité) : {id}",
+    "@invoiceTraceability": {
+      "description": "Traceability ID displayed on the invoice.",
+      "placeholders": {
+        "id": {}
+      }
+    },
+    "defaultStoreName": "Mon Commerce",
+    "searchProductLabel": "Rechercher Produit",
+    "@searchProductLabel": {
+        "description": "Lebo kwa ajili ya upau wa kutafutia bidhaa kwenye ukurasa wa mauzo mapya."
+    },
+    "searchHint": "Nom ou Catégorie...",
+    "@searchHint": {
+        "description": "Maandishi ya dokezo kwa ajili ya upau wa kutafutia bidhaa."
+    },
+    "noResultsFound": "Aucun produit ne correspond à votre recherche.",
+    "@noResultsFound": {
+        "description": "Ujumbe wakati utafutaji haupati matokeo yoyote."
+    },
+    "noProductsAvailable": "Aucun produit disponible. Ajoutez-en au Stock.",
+    "@noProductsAvailable": {
+        "description": "Ujumbe wakati orodha ya bidhaa ni tupu."
+    },
+    "deleteButton": "Supprimer",
+    "@deleteButton": {
+        "description": "Label for the delete button in a confirmation dialog."
+    },
+    "confirmDeleteProductTitle": "Confirmer la Suppression",
+    "@confirmDeleteProductTitle": {
+        "description": "Title of the dialog asking for product deletion confirmation."
+    },
+    "confirmDeleteProductMessage": "Êtes-vous sûr de vouloir supprimer le produit {productName} ? Cette action est irréversible.",
+    "@@confirmDeleteProductMessage": {
+        "description": "Message body for product deletion confirmation.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "productDeletedSuccess": "Produit {productName} supprimé avec succès.",
+    "@@productDeletedSuccess": {
+        "description": "Success message after a product is deleted.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "productDeleteError": "Erreur lors de la suppression du produit.",
+    "@productDeleteError": {
+        "description": "Error message when product deletion fails."
+    },
+    "supplyProductTitle": "Réapprovisionner {productName}",
+    "@@supplyProductTitle": {
+        "description": "Kichwa cha kisanduku cha mazungumzo ya urejeshaji akiba wa haraka.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "supplyQuantityHint": "Quantité à ajouter",
+    "@supplyQuantityHint": {
+        "description": "Dokezo kwa ajili ya sehemu ya kuweka kiasi katika kisanduku cha mazungumzo ya urejeshaji akiba."
+    },
+    "supplyPriceHint": "Prix d'achat par unité",
+    "@supplyPriceHint": {
+        "description": "Dokezo kwa ajili ya bei ya ununuzi kwa kitengo katika kisanduku cha mazungumzo ya urejeshaji akiba."
+    },
+    "supplySuccess": "Stock mis à jour. Ajout de {qty} {unit}.",
+    "@@supplySuccess": {
+        "description": "Ujumbe wa mafanikio baada ya urejeshaji akiba.",
+        "placeholders": {
+            "qty": {},
+            "unit": {}
+        }
+    },
+    "supplyError": "Erreur lors du réapprovisionnement.",
+    "@supplyError": {
+        "description": "Ujumbe wa hitilafu ya jumla kwa kushindwa kwa urejeshaji akiba."
+    },
+    "invalidQuantityError": "Veuillez entrer une quantité positive et valide.",
+    "@invalidQuantityError": {
+        "description": "Hitilafu ya uthibitishaji kwa kuingiza kiasi katika kisanduku cha mazungumzo ya urejeshaji akiba."
+    },
+    "priceValidationRestock": "Veuillez entrer un prix d'achat par unité positif et valide.",
+    "@priceValidationRestock": {
+        "description": "Erreur de validation pour le prix d'achat dans la boîte de dialogue de réapprovisionnement."
+    },
+    "traceabilityHistoryTitle": "Historique de Réapprovisionnement : {productName}",
+    "@@traceabilityHistoryTitle": {
+        "description": "Kichwa cha kisanduku cha mazungumzo ya historia ya urejeshaji akiba wa bidhaa.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "traceabilityEmpty": "Aucun historique de réapprovisionnement enregistré pour ce produit.",
+    "@traceabilityEmpty": {
+        "description": "Ujumbe unaoonyeshwa wakati historia ya urejeshaji akiba haina kitu."
+    },
+    "atDate": "Date",
+    "@atDate": {
+        "description": "Lebo kwa ajili ya tarehe ya kuingiza akiba."
+    },
+    "atPrice": "Prix Unitaire",
+    "@atPrice": {
+        "description": "Lebo kwa ajili ya bei ya ununuzi kwa kitengo katika kuingiza akiba."
+    },
+    "dateUnknown": "Date Inconnue",
+    "@dateUnknown": {
+        "description": "Kibadilishaji nafasi wakati tarehe ya urejeshaji akiba haipatikani."
+    },
+    "closeButton": "Fermer",
+    "@closeButton": {
+        "description": "Lebo kwa ajili ya kitufe cha kufunga kisanduku cha mazungumzo."
+    },
+    "formatDate": "{date}",
+    "@@formatDate": {
+      "description": "Formate un objet DateTime en une chaîne lisible par l'utilisateur.",
+      "placeholders": {
+        "date": {
+          "type": "DateTime",
+          "format": "yMMMd"
+        }
+      }
+    },
+      "okButton": "OK",
+      "cancelButton": "Annuler",
+      "categoryNone": "Aucune",
+      "invalidQuantity": "Quantité invalide",
+        "invalidPrice": "Prix invalide",
+        "sessionExpired": "Session expirée",
+        "genericError": "Une erreur est survenue",
+       "optionalLabel": "Optionnel",
+       "settingsAboutTitle": "À propos",
+       "aboutAppDescription": "Cette application permet de gérer vos ventes et votre stock de manière efficace et sécurisée.",
+         "aboutAppPolicy": "Nous respectons votre vie privée et vos données personnelles conformément à notre politique.",
+         "aboutAppContact": "Contactez-nous : +243974084668, Andrelukengu67@gmail.com, Lubumbashi, Haut-Katanga"
+    }

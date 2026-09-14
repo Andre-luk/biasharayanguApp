@@ -1,0 +1,555 @@
+{
+    "@@locale": "sw",
+    "settingsTitle": "Mipangilio",
+    "profileTitle": "Wasifu Wangu",
+    "profileSubtitle": "Angalia na ubadilishe maelezo ya kibinafsi",
+    "manageUsersTitle": "Dhibiti Watumiaji",
+    "manageUsersSubtitle": "Unda, thibitisha na udhibiti ufikiaji",
+    "changePasswordTitle": "Badilisha Nenosiri",
+    "changePasswordSubtitle": "Sasisha vitambulisho vyako vya kuingia",
+    "languageTitle": "Lugha ya Programu",
+    "helpAndSupportTitle": "Msaada na Usaidizi",
+    "logoutButton": "Ondoka",
+    "currentLanguageLabel": "Sasa:",
+    "chooseLanguageDialogTitle": "Chagua Lugha 🌐",
+    "applyButton": "Tuma",
+    "cancelButton": "Ghairi",
+    "adminSectionTitle": "Zana za Utawala",
+    "manageCategories": "Dhibiti Kategoria",
+    "manageCategoriesSubtitle": "Ongeza, hariri, au futa kategoria za bidhaa",
+    "statStockStatus": "Hali ya Akiba",
+    "statStockLowCount": "{count, plural, =0{Kila kitu Sawa} =1{Bidhaa 1 Iko Chini} other{Bidhaa {count} Ziko Chini}}",
+    "@@statStockLowCount": {
+        "description": "Displays the number of products with low stock.",
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
+        }
+    },
+    "errorLoadingStats": "Hitilafu imetokea wakati wa kupakia takwimu. Inaonyesha data ya jumla.",
+    "statDailySales": "Mauzo ya Leo",
+    "statTotalSalesOverall": "Jumla ya Mauzo Yote",
+    "user": "Mtumiaji",
+    "statisticsTitle": "Takwimu",
+    "statTotalSales": "Jumla ya Mauzo",
+    "statSalesCount": "Mauzo (idadi)",
+    "statProductsCount": "Bidhaa",
+    "statClientsCount": "Wateja",
+    "buttonAddProduct": "Ongeza Bidhaa",
+    "productUnitDefault": "kitengo",
+    "buttonManageStock": "Dhibiti Hisa",
+    "buttonNewSale": "Mauzo Mapya",
+    "buttonReports": "Ripoti",
+    "navHome": "Nyumbani",
+    "navStock": "Hisa",
+    "navReports": "Ripoti",
+    "navSettings": "Mipangilio",
+    "homeWelcomeMessage": "Karibu {name} — Furahia mauzo mema!",
+    "@@homeWelcomeMessage": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "homeSummaryGreeting": "Jambo {name}",
+    "@@homeSummaryGreeting": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "homeSummaryProductsSales": "Una {productCount, plural, =0{hakuna bidhaa} one{bidhaa moja} other{bidhaa {productCount}}} na {salesCount, plural, =0{hakuna mauzo} one{mauzo moja} other{mauzo {salesCount}}}.",
+    "@@homeSummaryProductsSales": {
+        "placeholders": {
+            "productCount": {},
+            "salesCount": {}
+        }
+    },
+    "themeTitle": "Mandhari ya Programu",
+    "currentThemeLabel": "Sasa:",
+    "chooseThemeDialogTitle": "Chagua Mandhari 🎨",
+    "themeSystem": "Mfumo Chaguomsingi",
+    "themeLight": "Mweupe",
+    "themeDark": "Mweusi",
+    "notificationsTitle": "Arifa na Maonyo",
+    "@notificationsTitle": {
+        "description": "Titre de la section notifications sur la page d'accueil"
+    },
+    "lowStockAlert": "Onyo Akiba Chini: Bidhaa {lowStockCount, plural, one{1} other{{lowStockCount}}} zinahitaji kuongezwa.",
+    "@lowStockAlert": {
+        "description": "Alerte affichée lorsque le stock est faible",
+        "placeholders": {
+            "lowStockCount": {
+                "type": "int",
+                "example": "3"
+            }
+        }
+    },
+    "lowStockAlertSubtitle": "Bonyeza hapa kuona orodha na kuagiza tena.",
+    "@lowStockAlertSubtitle": {
+        "description": "Sous-titre de l'alerte stock faible"
+    },
+    "addProductTitle": "Bidhaa Mpya",
+    "categoryOther": "Nyingine",
+    "categoryRequired": "Tafadhali chagua kategoria.",
+    "priceValidation": "Bei ya kununua na kuuza lazima ziwe kubwa kuliko sifuri.",
+    "priceMarkupValidation": "Bei ya kuuza lazima iwe kubwa zaidi kuliko bei ya kununua.",
+    "productSaved": "Bidhaa imehifadhiwa kwa mafanikio!",
+    "saving": "Inahifadhi...",
+    "saveError": "Hitilafu wakati wa kuhifadhi",
+    "productNameLabel": "Jina la Bidhaa",
+    "productCategoryLabel": "Kategoria",
+    "productPriceCost": "Bei ya Kununua",
+    "productPriceSell": "Bei ya Kuuza",
+    "productQuantityLabel": "Kiasi cha Akiba",
+    "nameRequired": "Jina linahitajika",
+    "priceRequired": "Bei inahitajika",
+    "quantityRequired": "Kiasi kinahitajika",
+    "saveButton": "Hifadhi Bidhaa",
+    "photoOptionTitle": "Ongeza Picha",
+    "photoOptionGallery": "Chagua kutoka kwenye Ghala",
+    "photoOptionCamera": "Piga Picha",
+    "photoOptionDelete": "Futa picha ya sasa",
+    "changePhoto": "Badilisha Picha",
+    "addPhoto": "Ongeza Picha",
+    "errorGallery": "Hitilafu ya Ghala: {error}",
+    "@@errorGallery": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "errorCamera": "Hitilafu ya Kamera: {error}",
+    "@@errorCamera": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "loadingError": "Hitilafu ya kupakia: {error}",
+    "@@loadingError": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "internalLoadingError": "Hitilafu ya ndani ya kupakia.",
+    "loginWelcome": "Karibu",
+    "loginEmailLabel": "Barua pepe",
+    "loginPinLabel": "PIN",
+    "loginButton": "Ingia",
+    "loginCreateStore": "Unda Duka",
+    "emailRequired": "Barua pepe inahitajika.",
+    "pinRequired": "PIN inahitajika.",
+    "pinInvalid": "PIN si sahihi (min namba 4, si 0000/1234).",
+    "loginErrorCredentials": "Barua pepe au PIN si sahihi",
+    "loginErrorPending": "Akaunti inasubiri uthibitisho wa msimamizi",
+    "loginErrorGeneric": "Hitilafu wakati wa kuingia",
+    "loginBiometricButton": "Ingia kwa Alama ya Vidole / Kitambulisho cha Uso",
+    "biometricPrompt": "Tafadhali thibitisha ili kuingia kwenye Biashara Yangu.",
+    "biometricLoginFailed": "Kuingia kumeshindwa. Tafadhali tumia Barua pepe/PIN.",
+    "biometricNoUser": "Tafadhali ingia kwanza kwa kutumia Barua pepe/PIN.",
+    "biometricError": "Hitilafu ya uthibitishaji wa kibayometriki. Tafadhali jaribu tena.",
+    "productAdded": "Bidhaa imeongezwa kwa mafanikio",
+    "setupTitleNewStore": "Unda Duka Jipya",
+    "setupTitleNewUser": "Unda Mtumiaji Mpya",
+    "setupTitleEdit": "Hariri Mtumiaji",
+    "setupLabelName": "Jina Kamili",
+    "setupLabelEmail": "Barua pepe (Kitambulisho)",
+    "setupLabelPin": "PIN ya kuingia (namba 4+)",
+    "setupLabelRole": "Jukumu",
+    "roleVendor": "Muuzaji",
+    "roleAdmin": "Msimamizi",
+    "setupButtonCreate": "Unda Akaunti",
+    "setupNoticeValidation": "Kumbuka: Akaunti zilizoundwa zitasubiri uthibitisho wa msimamizi.",
+    "setupInitialSuccess": "Akaunti imeundwa. Tafadhali ingia baada ya uthibitisho.",
+    "userCreatedSuccess": "Mtumiaji ameundwa kwa mafanikio.",
+    "userUpdatedSuccess": "Mtumiaji amesasishwa kwa mafanikio.",
+    "setupErrorGeneric": "Hitilafu wakati wa kuhifadhi",
+    "unitLabel": "Kitengo",
+    "unitRequired": "Kitengo kinahitajika.",
+    "unitUnity": "kitengo",
+    "unitKg": "kg",
+    "unitDozen": "dosari",
+    "unitLiter": "lita",
+    "unitMeter": "mita",
+    "errorLoadingData": "Imeshindwa kupakia data. Jaribu tena au angalia muunganisho wako.",
+    "newSaleTitle": "Mauzo Mapya",
+    "errorUserNotLoggedIn": "Hitilafu: Kipindi cha mtumiaji kimepotea. Tafadhali ingia tena.",
+    "clientNewTitle": "Mteja Mpya",
+    "clientAddedSuccess": "Mteja ameongezwa kwa mafanikio.",
+    "errorSavingClient": "Hitilafu wakati wa kuhifadhi mteja",
+    "errorSavingClientGeneric": "Hitilafu isiyotarajiwa wakati wa kuhifadhi.",
+    "fieldName": "Jina Kamili",
+    "fieldPhone": "Simu",
+    "fieldEmail": "Barua pepe",
+    "validationNameRequired": "Jina linahitajika.",
+    "validationEmailInvalid": "Tafadhali ingiza anwani ya barua pepe halali.",
+    "buttonSaveClient": "Hifadhi Mteja",
+    "productSubtitle": "Bei: {price} • Akiba: {stock} {unit}",
+    "@@productSubtitle": {
+        "placeholders": {
+            "price": {},
+            "stock": {},
+            "unit": {}
+        }
+    },
+    "addToCartTitle": "Ongeza {productName}",
+    "@@addToCartTitle": {
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "dialogQuantityLabel": "Kiasi ({unit})",
+    "@@dialogQuantityLabel": {
+        "placeholders": {
+            "unit": {}
+        }
+    },
+    "invalidQuantity": "Kiasi si sahihi (lazima kiwe > 0)",
+    "insufficientStock": "Akiba haitoshi. Max: {maxStock} {unit}",
+    "@@insufficientStock": {
+        "placeholders": {
+            "maxStock": {},
+            "unit": {}
+        }
+    },
+    "outOfStock": "Bidhaa imeisha.",
+    "totalAmount": "Jumla: {amount} {currencyUnit}",
+    "@@totalAmount": {
+        "placeholders": {
+            "amount": {}
+        }
+    },
+    "paymentModeHint": "Njia ya Malipo",
+    "paymentMode": "{mode}",
+    "@@paymentMode": {
+        "placeholders": {
+            "mode": {}
+        }
+    },
+    "recordSaleButton": "Rekodi Mauzo",
+    "saleRecorded": "Mauzo yamerekodiwa kwa mafanikio.",
+    "saleError": "Hitilafu wakati wa kurekodi mauzo",
+    "permissionDenied": "Ruhusa imekataliwa.",
+    "addButton": "Ongeza",
+    "stockManagementTitle": "Akiba & Bei",
+    "searchProductHint": "Tafuta bidhaa au kategoria...",
+    "addedToSale": "Bidhaa {produitName} imeongezwa kwenye mauzo",
+    "@@addedToSale": {
+        "placeholders": {
+            "produitName": {}
+        }
+    },
+    "updateButton": "Sasisha Taarifa ya Bidhaa",
+    "productUpdated": "Taarifa ya bidhaa imesasishwa kwa mafanikio.",
+    "headerAddStock": "Ongeza Akiba (Rejesha)",
+    "labelQuantityToAdd": "Kiasi cha Kuongeza",
+    "labelNewPurchasePrice": "Bei Mpya ya Kununua (kwa kitengo)",
+    "buttonAddToStock": "Rejesha Akiba",
+    "msgInvalidStockInput": "Tafadhali ingiza kiasi sahihi na chanya na bei ya kununua.",
+    "msgStockAddedSuccess": "Akiba imeongezwa kwa mafanikio na historia kurekodiwa.",
+    "msgStockAddFailure": "Imeshindwa kuongeza akiba",
+    "headerStockHistory": "Historia ya Urejeshaji Akiba",
+    "msgNoHistoryFound": "Hakuna historia ya urejeshaji akiba iliyopatikana kwa bidhaa hii.",
+    "labelAdded": "Imeongezwa",
+    "labelPurchasePrice": "Bei ya Kununua",
+    "labelUnknownDate": "Tarehe Isiyojulikana",
+    "validationInvalidNumber": "Tafadhali ingiza namba halali.",
+    "loadingHistoryError": "Hitilafu ya kupakia historia: {error}",
+    "@@loadingHistoryError": {
+        "placeholders": {
+            "error": {}
+        }
+    },
+    "currencyUnit": "CDF",
+    "@@currencyUnit": {
+        "description": "The primary currency unit (e.g., CDF, USD, FCFA)."
+    },
+    "reportsTitle": "Ripoti za Shughuli",
+    "reportsTitleUser": "Ripoti - {name}",
+    "@@reportsTitleUser": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "reportsSelectPeriod": "Chagua Kipindi",
+    "reportsDateRange": "Kipindi: Kutoka {startDate} hadi {endDate}",
+    "@@reportsDateRange": {
+        "description": "The exact date range covered by the current report.",
+        "placeholders": {
+            "startDate": {},
+            "endDate": {}
+        }
+    },
+    "reportsPeriodDay": "Siku (Siku 7 Zilizopita)",
+    "reportsPeriodWeek": "Wiki (Wiki 12 Zilizopita)",
+    "reportsPeriodMonth": "Mwezi (Miezi 6 Iliyopita)",
+    "reportsPeriodYear": "Mwaka (Miaka 5 Iliyopita)",
+    "reportsDetailTitle": "Maelezo kwa Kipindi",
+    "reportsDetailSubtitle": "Mapato: {total} {currencyUnit} • Kiasi: {qty}",
+    "@@reportsDetailSubtitle": {
+        "description": "Subtitle showing total revenue and quantity for a period.",
+        "placeholders": {
+            "total": {},
+            "currencyUnit": {},
+            "qty": {}
+        }
+    },
+    "reportsTopProductsTitle": "Bidhaa 10 Bora (Kipindi Kamili)",
+    "reportsTopProductSubtitle": "Kiasi kilichouzwa: {qty} • Mapato: {revenue} {currencyUnit}",
+    "@@reportsTopProductSubtitle": {
+        "description": "Subtitle for a top selling product.",
+        "placeholders": {
+            "qty": {},
+            "revenue": {},
+            "currencyUnit": {}
+        }
+    },
+    "reportsNoData": "Hakuna data ya mauzo iliyopatikana kwa kipindi na mtumiaji aliyechaguliwa.",
+    "@@reportsNoData": {
+        "description": "Message displayed when no data is available in the reports list."
+    },
+    "reportsNoCategoryData": "Hakuna mauzo yaliyorekodiwa kwa kategoria yoyote katika kipindi hiki.",
+    "@@reportsNoCategoryData": {
+        "description": "Message displayed when no category data is found in the daily report."
+    },
+    "noPeriodLabel": "Haina/A - Kipindi",
+    "@@noPeriodLabel": {
+        "description": "Label for an undefined or unparsable period."
+    },
+    "reportTitleForDate": "Ripoti ya {date}",
+    "@@reportTitleForDate": {
+        "placeholders": {
+            "date": {}
+        }
+    },
+    "buttonPrintReport": "Chapisha Ripoti",
+    "reportStoreName": "Duka: {name}",
+    "@@reportStoreName": {
+        "placeholders": {
+            "name": {}
+        }
+    },
+    "reportSummaryTitle": "Muhtasari wa Siku",
+    "reportTotalRevenue": "Jumla ya Mapato ya Mauzo (TR)",
+    "reportTotalProfit": "Faida ya Siku",
+    "reportTotalQty": "Jumla ya Kiasi Kilichouzwa",
+    "reportQtyByCategory": "Kiasi cha Bidhaa Zilizouzwa kwa Kategoria",
+    "reportDetailedSales": "Maelezo ya Mauzo kwa Bidhaa",
+    "reportProduct": "Bidhaa",
+    "reportQty": "Kiasi",
+    "reportAmount": "Kiasi",
+    "reportUnitsLabel": "vitengo",
+    "errorPrinting": "Hitilafu wakati wa kuchapisha",
+    "reportTopProductsTitle": "Bidhaa Zinazouza Zaidi kwa Siku",
+    "pdfReportTitle": "Ripoti ya Mauzo ya Kila Siku",
+    "pdfStore": "Duka",
+    "pdfReportDate": "Tarehe ya Ripoti",
+    "pdfSummaryTitle": "Muhtasari wa Siku",
+    "pdfTotalRevenue": "Jumla ya Mapato ya Mauzo (TR)",
+    "pdfTotalQty": "Jumla ya Kiasi Kilichouzwa",
+    "pdfTotalProfit": "Faida ya Siku",
+    "pdfSalesByCategory": "Mauzo kwa Kategoria",
+    "pdfDetailedSales": "Maelezo ya Mauzo kwa Bidhaa",
+    "pdfProduct": "Bidhaa",
+    "pdfQuantity": "Kiasi",
+    "pdfAmountSold": "Kiasi Kilichouzwa",
+    "pdfTopProductsTitle": "Bidhaa Zinazouza Zaidi kwa Siku",
+    "pdfTopProductQty": "Vitengo {qty}",
+    "@@pdfTopProductQty": {
+        "placeholders": {
+            "qty": {}
+        }
+    },
+    "pdfCategory": "Kategoria",
+    "saleRecordedAndInvoiceGenerated": "Mauzo yamerekodiwa. Ankara imetolewa kwa ajili ya ufuatiliaji.",
+    "@saleRecordedAndInvoiceGenerated": {
+        "description": "Success message when sale is recorded and invoice is generated."
+    },
+    "sessionError": "Hitilafu ya kipindi. Tafadhali ingia tena.",
+    "@sessionError": {
+        "description": "Error when user session is lost."
+    },
+    "invoiceTitle": "ANKARA YA MAUZO",
+    "@invoiceTitle": {
+        "description": "Title of the sales invoice document."
+    },
+    "invoiceName": "Ankara",
+    "@invoiceName": {
+        "description": "Used for file naming and general reference."
+    },
+    "invoiceTotal": "JUMLA YA KIASI KINACHOTAKIWA",
+    "@invoiceTotal": {
+        "description": "Label for the total amount on the invoice."
+    },
+    "pdfItem": "Bidhaa",
+    "@pdfItem": {
+        "description": "Column header for product name on PDF."
+    },
+    "pdfQty": "Kiasi",
+    "@pdfQty": {
+        "description": "Column header for quantity on PDF."
+    },
+    "pdfUnit": "Kitengo",
+    "@pdfUnit": {
+        "description": "Column header for unit of measure on PDF."
+    },
+    "pdfPrice": "Bei ya Kitengo",
+    "@pdfPrice": {
+        "description": "Column header for price per unit on PDF."
+    },
+    "pdfTotal": "Jumla",
+    "@pdfTotal": {
+        "description": "Column header for total amount per item on PDF."
+    },
+    "pdfStoreInfo": "Imeuzwa na",
+    "@pdfStoreInfo": {
+        "description": "Label for seller/store information on PDF."
+    },
+    "pdfDate": "Tarehe na Saa",
+    "@pdfDate": {
+        "description": "Label for sale date and time on PDF."
+    },
+    "pdfPaymentMode": "Njia ya Malipo",
+    "@pdfPaymentMode": {
+        "description": "Label for payment method on PDF."
+    },
+    "invoiceThankYou": "Asante kwa ununuzi wako uliofanywa mnamo {date}",
+    "@invoiceThankYou": {
+      "description": "Closing message on the invoice.",
+      "placeholders": {
+        "date": {}
+      }
+    },
+    "invoiceTraceability": "Kitambulisho cha kipekee cha Muamala (Ufuatiliaji): {id}",
+    "@invoiceTraceability": {
+      "description": "Traceability ID displayed on the invoice.",
+      "placeholders": {
+        "id": {}
+      }
+    },
+    "defaultStoreName": "Duka la Biashara",
+    "searchProductLabel": "Tafuta Bidhaa",
+    "@searchProductLabel": {
+        "description": "Lebo kwa ajili ya upau wa kutafutia bidhaa kwenye ukurasa wa mauzo mapya."
+    },
+    "searchHint": "Jina au Kitengo...",
+    "@searchHint": {
+        "description": "Maandishi ya dokezo kwa ajili ya upau wa kutafutia bidhaa."
+    },
+    "noResultsFound": "Hakuna bidhaa inayolingana na utafutaji wako.",
+    "@noResultsFound": {
+        "description": "Ujumbe wakati utafutaji haupati matokeo yoyote."
+    },
+    "noProductsAvailable": "Hakuna bidhaa zinazopatikana. Ongeza zingine kwenye Hisa.",
+    "@noProductsAvailable": {
+        "description": "Ujumbe wakati orodha ya bidhaa ni tupu."
+    },
+    "deleteButton": "Futa",
+    "@deleteButton": {
+        "description": "Label for the delete button in a confirmation dialog."
+    },
+    "confirmDeleteProductTitle": "Thibitisha Kufuta",
+    "@confirmDeleteProductTitle": {
+        "description": "Title of the dialog asking for product deletion confirmation."
+    },
+    "confirmDeleteProductMessage": "Una uhakika unataka kufuta bidhaa {productName}? Kitendo hiki hakiwezi kutenduliwa.",
+    "@@confirmDeleteProductMessage": {
+        "description": "Message body for product deletion confirmation.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "productDeletedSuccess": "Bidhaa {productName} imefutwa kwa mafanikio.",
+    "@@productDeletedSuccess": {
+        "description": "Success message after a product is deleted.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "productDeleteError": "Hitilafu wakati wa kufuta bidhaa.",
+    "@productDeleteError": {
+        "description": "Error message when product deletion fails."
+    },
+    "supplyProductTitle": "Rejesha Akiba {productName}",
+    "@@supplyProductTitle": {
+        "description": "Kichwa cha kisanduku cha mazungumzo ya urejeshaji akiba wa haraka.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "supplyQuantityHint": "Kiasi cha kuongeza",
+    "@supplyQuantityHint": {
+        "description": "Dokezo kwa ajili ya sehemu ya kuweka kiasi katika kisanduku cha mazungumzo ya urejeshaji akiba."
+    },
+    "supplyPriceHint": "Bei ya ununuzi kwa kitengo",
+    "@supplyPriceHint": {
+        "description": "Dokezo kwa ajili ya bei ya ununuzi kwa kitengo katika kisanduku cha mazungumzo ya urejeshaji akiba."
+    },
+    "supplySuccess": "Akiba imesasishwa. Imeongeza {qty} {unit}.",
+    "@@supplySuccess": {
+        "description": "Ujumbe wa mafanikio baada ya urejeshaji akiba.",
+        "placeholders": {
+            "qty": {},
+            "unit": {}
+        }
+    },
+    "supplyError": "Hitilafu wakati wa kurejesha akiba.",
+    "@supplyError": {
+        "description": "Ujumbe wa hitilafu ya jumla kwa kushindwa kwa urejeshaji akiba."
+    },
+    "invalidQuantityError": "Tafadhali ingiza kiasi chanya na halali.",
+    "@invalidQuantityError": {
+        "description": "Hitilafu ya uthibitishaji kwa kuingiza kiasi katika kisanduku cha mazungumzo ya urejeshaji akiba."
+    },
+    "priceValidationRestock": "Tafadhali ingiza bei ya ununuzi kwa kitengo chanya na halali.",
+    "@priceValidationRestock": {
+        "description": "Hitilafu ya uthibitishaji kwa bei ya ununuzi katika kisanduku cha mazungumzo ya urejeshaji akiba."
+    },
+    "traceabilityHistoryTitle": "Historia ya Urejeshaji Akiba: {productName}",
+    "@@traceabilityHistoryTitle": {
+        "description": "Kichwa cha kisanduku cha mazungumzo ya historia ya urejeshaji akiba wa bidhaa.",
+        "placeholders": {
+            "productName": {}
+        }
+    },
+    "traceabilityEmpty": "Hakuna historia ya urejeshaji akiba iliyorekodiwa kwa bidhaa hii.",
+    "@traceabilityEmpty": {
+        "description": "Ujumbe unaoonyeshwa wakati historia ya urejeshaji akiba haina kitu."
+    },
+    "atDate": "Tarehe",
+    "@atDate": {
+        "description": "Lebo kwa ajili ya tarehe ya kuingiza akiba."
+    },
+    "atPrice": "Bei ya Kitengo",
+    "@atPrice": {
+        "description": "Lebo kwa ajili ya bei ya ununuzi kwa kitengo katika kuingiza akiba."
+    },
+    "dateUnknown": "Tarehe Isiyojulikana",
+    "@dateUnknown": {
+        "description": "Kibadilishaji nafasi wakati tarehe ya urejeshaji akiba haipatikani."
+    },
+    "closeButton": "Funga",
+    "@closeButton": {
+        "description": "Lebo kwa ajili ya kitufe cha kufunga kisanduku cha mazungumzo."
+    },
+    "formatDate": "{date}",
+    "@@formatDate": {
+      "description": "Formate un objet DateTime en une chaîne lisible par l'utilisateur.",
+      "placeholders": {
+        "date": {
+          "type": "DateTime",
+          "format": "yMMMd"
+        }
+      }
+    },
+      "okButton": "SAWA",
+      "cancelButton": "Ghairi",
+      "categoryNone": "Hakuna",
+      "optionalLabel": "Hiari",
+      "settingsAboutTitle": "Kuhusu",
+      "invalidQuantity": "Kiasi si sahihi",
+        "invalidPrice": "Bei si sahihi",
+        "sessionExpired": "Kipindi kimeisha",
+        "genericError": "Hitilafu imetokea",
+      "aboutAppDescription": "Programu hii inakuwezesha kusimamia mauzo na hesabu zako kwa ufanisi na usalama.",
+        "aboutAppPolicy": "Tunaheshimu faragha yako na data zako binafsi kulingana na sera yetu.",
+        "aboutAppContact": "Wasiliana nasi: +243974084668, Andrelukengu67@gmail.com, Lubumbashi, Haut-Katanga"
+    }
