@@ -8,7 +8,7 @@ import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
-import 'package:biashara_yangu/models/utilisateur.dart';
+import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/models/ville.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -385,13 +385,11 @@ class EntrepriseService {
   /// Best-effort : renvoie une table vide en cas d'échec.
   Future<Map<String, String>> _chargerNomsUtilisateurs() async {
     try {
-      final List<dynamic> data =
-          await _client.from('utilisateurs').select('id, nom, prenom');
+      final List<UtilisateurEntreprise> utilisateurs = await getUtilisateurs();
 
       return <String, String>{
-        for (final Utilisateur utilisateur
-            in parseMapList(data).map(Utilisateur.fromMap))
-          if (utilisateur.id != null) utilisateur.id!: utilisateur.fullName,
+        for (final UtilisateurEntreprise utilisateur in utilisateurs)
+          if (utilisateur.id.isNotEmpty) utilisateur.id: utilisateur.nomComplet,
       };
     } catch (e) {
       debugPrint('EntrepriseService._chargerNomsUtilisateurs (ignoré): $e');
@@ -405,19 +403,18 @@ class EntrepriseService {
 
   /// Identifiants des utilisateurs rattachés à une entreprise.
   ///
-  /// Best-effort : si la table `entreprise_utilisateurs` n'est pas encore
-  /// installée, l'écran de détail doit continuer à s'afficher.
+  /// Best-effort : en cas d'échec, l'écran de détail doit continuer à
+  /// s'afficher (le rattachement est un confort, pas une donnée vitale).
   Future<Set<String>> getUtilisateursRattaches(String entrepriseId) async {
     try {
       final List<dynamic> data = await _client
-          .from('entreprise_utilisateurs')
-          .select('user_id')
+          .from('utilisateurs')
+          .select('id')
           .eq('entreprise_id', entrepriseId);
 
       return <String>{
         for (final Map<String, dynamic> ligne in parseMapList(data))
-          if (parseStringOrNull(ligne['user_id']) != null)
-            parseString(ligne['user_id']),
+          if (parseStringOrNull(ligne['id']) != null) parseString(ligne['id']),
       };
     } catch (e) {
       debugPrint('EntrepriseService.getUtilisateursRattaches (ignoré): $e');
@@ -425,35 +422,53 @@ class EntrepriseService {
     }
   }
 
-  /// Rattache un utilisateur à une entreprise (sans effet s'il l'est déjà).
+  /// Tous les utilisateurs, avec leur éventuel rattachement à une entreprise.
+  ///
+  /// Utilisé par la feuille de rattachement : une seule requête, puis la mise
+  /// en correspondance se fait en mémoire.
+  Future<List<UtilisateurEntreprise>> getUtilisateurs() {
+    return _executer(
+      () async {
+        final List<dynamic> data = await _client
+            .from('utilisateurs')
+            .select('id, prenom, nom, email, role, parent_id, entreprise_id')
+            .order('nom', ascending: true);
+
+        return parseMapList(data).map(UtilisateurEntreprise.fromMap).toList();
+      },
+      actionLibelle: 'le chargement des utilisateurs',
+      messageEchec:
+          'Impossible de charger la liste des utilisateurs. Vérifiez votre connexion internet.',
+    );
+  }
+
+  /// Rattache un utilisateur à une entreprise.
+  ///
+  /// S'appuie sur la colonne existante `public.utilisateurs.entreprise_id`.
+  /// Un utilisateur n'appartient qu'à une seule entreprise : le rattachement
+  /// remplace donc un éventuel rattachement précédent.
   Future<void> rattacherUtilisateur({
     required String entrepriseId,
     required String userId,
   }) {
     return _executer(
       () async {
-        await _client.from('entreprise_utilisateurs').upsert({
-          'entreprise_id': entrepriseId,
-          'user_id': userId,
-        });
+        await _client
+            .from('utilisateurs')
+            .update({'entreprise_id': entrepriseId}).eq('id', userId);
       },
       actionLibelle: "le rattachement de l'utilisateur",
       messageEchec: "Impossible de rattacher cet utilisateur à l'entreprise.",
     );
   }
 
-  /// Détache un utilisateur d'une entreprise.
-  Future<void> detacherUtilisateur({
-    required String entrepriseId,
-    required String userId,
-  }) {
+  /// Détache un utilisateur de son entreprise.
+  Future<void> detacherUtilisateur({required String userId}) {
     return _executer(
       () async {
         await _client
-            .from('entreprise_utilisateurs')
-            .delete()
-            .eq('entreprise_id', entrepriseId)
-            .eq('user_id', userId);
+            .from('utilisateurs')
+            .update({'entreprise_id': null}).eq('id', userId);
       },
       actionLibelle: "le détachement de l'utilisateur",
       messageEchec: "Impossible de détacher cet utilisateur de l'entreprise.",

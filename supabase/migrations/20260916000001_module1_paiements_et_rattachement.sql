@@ -9,9 +9,6 @@
 --
 --  PRÉREQUIS
 --    Exécuter d'abord 20260916000000_module1_entreprises.sql
---
---  ⚠️ Ce fichier CRÉE deux tables. C'est une décision explicite de votre part
---     (historique des encaissements + rattachement utilisateurs/entreprises).
 -- ============================================================================
 
 
@@ -40,31 +37,37 @@ create table if not exists public.paiements_abonnement (
 create index if not exists idx_paiements_abonnement_entreprise
   on public.paiements_abonnement (entreprise_id, created_at desc);
 
+-- Clé étrangère vers l'auteur de l'encaissement (idempotent).
+do $$
+begin
+  alter table public.paiements_abonnement
+    add constraint fk_paiements_enregistre_par
+    foreign key (enregistre_par) references public.utilisateurs (id)
+    on delete set null;
+exception
+  when duplicate_object then null;
+  when undefined_table then null;
+end $$;
+
 -- ============================================================================
 --  2. RATTACHEMENT DES UTILISATEURS AUX ENTREPRISES
 -- ============================================================================
---  Un entreprise peut avoir plusieurs utilisateurs, et un utilisateur peut
---  intervenir sur plusieurs entreprises : d'où une table de liaison.
+--  `public.utilisateurs` contient DÉJÀ une colonne `entreprise_id`, inutilisée
+--  jusqu'ici : c'est manifestement le mécanisme prévu par le schéma d'origine.
+--  On l'utilise donc telle quelle, plutôt que d'introduire une seconde source
+--  de vérité.
 --
---  ⚠️ La colonne `user_id` n'a volontairement PAS de clé étrangère : je ne
---     connais pas la structure exacte de `public.utilisateurs`. Pour l'ajouter
---     (recommandé si `utilisateurs.id` est bien une clé primaire), décommentez
---     la contrainte ci-dessous et relancez le script :
---
--- alter table public.entreprise_utilisateurs
---   add constraint fk_entreprise_utilisateurs_user
---   foreign key (user_id) references public.utilisateurs (id) on delete cascade;
+--  Un utilisateur appartient au plus à UNE entreprise. Les collaborateurs dont
+--  la colonne est vide héritent de l'entreprise de leur « patron »
+--  (`parent_id`) : c'est la convention déjà utilisée par l'application.
 
-create table if not exists public.entreprise_utilisateurs (
-  entreprise_id uuid not null
-                references public.entreprises (id) on delete cascade,
-  user_id       uuid not null,
-  created_at    timestamptz not null default now(),
-  primary key (entreprise_id, user_id)
-);
+create index if not exists idx_utilisateurs_entreprise
+  on public.utilisateurs (entreprise_id);
 
-create index if not exists idx_entreprise_utilisateurs_user
-  on public.entreprise_utilisateurs (user_id);
+-- Nettoyage : une version antérieure de ce script créait une table de liaison
+-- `entreprise_utilisateurs`. Elle est désormais inutile. Si vous ne l'avez
+-- jamais exécutée, cette instruction ne fait rien.
+drop table if exists public.entreprise_utilisateurs;
 
 
 -- ============================================================================
@@ -186,7 +189,7 @@ grant execute on function public.rpc_enregistrer_paiement(uuid, numeric, boolean
 
 
 -- ============================================================================
---  4. LECTURE DES ENTREPRISES D'UN UTILISATEUR
+--  4. LECTURE DE L'ENTREPRISE D'UN UTILISATEUR
 -- ============================================================================
 --  Utilisée à la connexion pour savoir si l'accès doit être bloqué.
 --  En `security definer` : un utilisateur n'a pas forcément le droit de lire
@@ -208,7 +211,8 @@ set search_path = public
 stable
 as $$
 declare
-  v_cible uuid;
+  v_cible      uuid;
+  v_entreprise uuid;
 begin
   if auth.uid() is null then
     raise exception 'ACCES_REFUSE';
@@ -216,7 +220,7 @@ begin
 
   v_cible := coalesce(p_user_id, auth.uid());
 
-  -- Consulter les entreprises d'un autre utilisateur est réservé aux admins.
+  -- Consulter l'entreprise d'un autre utilisateur est réservé aux admins.
   if v_cible <> auth.uid() then
     if not exists (
       select 1 from public.utilisateurs u
@@ -226,6 +230,21 @@ begin
     end if;
   end if;
 
+  -- Entreprise de l'utilisateur. Un collaborateur dont la colonne
+  -- `entreprise_id` est vide hérite de celle de son patron (`parent_id`).
+  select coalesce(utilisateur.entreprise_id, patron.entreprise_id)
+    into v_entreprise
+    from public.utilisateurs utilisateur
+    left join public.utilisateurs patron
+           on patron.id = utilisateur.parent_id
+   where utilisateur.id = v_cible;
+
+  -- Aucune entreprise rattachée : on ne renvoie rien (l'application laisse
+  -- alors l'accès ouvert).
+  if v_entreprise is null then
+    return;
+  end if;
+
   return query
     select e.id,
            e.nom,
@@ -233,8 +252,7 @@ begin
            e.date_expiration,
            e.solde_restant
       from public.entreprises e
-      join public.entreprise_utilisateurs eu on eu.entreprise_id = e.id
-     where eu.user_id = v_cible;
+     where e.id = v_entreprise;
 end;
 $$;
 
@@ -243,10 +261,14 @@ grant execute on function public.rpc_entreprises_de_utilisateur(uuid)
 
 
 -- ============================================================================
---  5. POLICIES DES NOUVELLES TABLES
+--  5. POLICIES DE LA NOUVELLE TABLE
 -- ============================================================================
 --  Comme dans le premier script : aucune n'a d'effet tant que la RLS n'est pas
 --  activée sur la table concernée.
+
+-- NOTE : l'écriture sur `utilisateurs.entreprise_id` passe par une mise à jour
+-- directe de la table `utilisateurs`, déjà autorisée aux admins par la policy
+-- existante (celle qui permet aujourd'hui de modifier `valide`).
 
 drop policy if exists "paiements_lecture" on public.paiements_abonnement;
 create policy "paiements_lecture" on public.paiements_abonnement
@@ -262,38 +284,16 @@ create policy "paiements_insertion_admin" on public.paiements_abonnement
     )
   );
 
-drop policy if exists "entreprise_utilisateurs_lecture"
-  on public.entreprise_utilisateurs;
-create policy "entreprise_utilisateurs_lecture"
-  on public.entreprise_utilisateurs
-  for select to authenticated using (true);
-
-drop policy if exists "entreprise_utilisateurs_admin"
-  on public.entreprise_utilisateurs;
-create policy "entreprise_utilisateurs_admin"
-  on public.entreprise_utilisateurs
-  for all to authenticated
-  using (
-    exists (
-      select 1 from public.utilisateurs u
-      where u.id = auth.uid() and u.role = 'admin'
-    )
-  )
-  with check (
-    exists (
-      select 1 from public.utilisateurs u
-      where u.id = auth.uid() and u.role = 'admin'
-    )
-  );
-
 
 -- ============================================================================
 --  6. VÉRIFICATION
 -- ============================================================================
 
 select
-  to_regclass('public.paiements_abonnement')      as table_paiements,
-  to_regclass('public.entreprise_utilisateurs')   as table_rattachement;
+  to_regclass('public.paiements_abonnement')   as table_paiements,
+  to_regclass('public.entreprise_utilisateurs') as table_liaison_supprimee,
+  (select count(*) from public.utilisateurs where entreprise_id is not null)
+    as utilisateurs_deja_rattaches;
 
 select proname, pronargs
   from pg_proc

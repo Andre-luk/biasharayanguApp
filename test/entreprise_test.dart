@@ -22,6 +22,7 @@ import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
+import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -567,6 +568,82 @@ void main() {
       );
 
       expect(message, contains('suspendu'));
+    });
+  });
+
+  // =========================================================================
+  // Utilisateurs (rattachement à une entreprise)
+  // =========================================================================
+
+  group('UtilisateurEntreprise.fromMap', () {
+    test('lit les colonnes utiles de public.utilisateurs', () {
+      final UtilisateurEntreprise utilisateur =
+          UtilisateurEntreprise.fromMap(<String, dynamic>{
+        'id': 'u1',
+        'prenom': 'Andre',
+        'nom': 'Lukengu',
+        'email': 'lukengu@biashara.com',
+        'role': 'vendor',
+        'parent_id': null,
+        'entreprise_id': 'e1',
+      });
+
+      expect(utilisateur.nomComplet, 'Andre Lukengu');
+      expect(utilisateur.entrepriseId, 'e1');
+      expect(utilisateur.roleLibelle, 'Patron / Vendeur');
+      expect(utilisateur.estCollaborateur, isFalse);
+    });
+
+    test('rattache un collaborateur à son patron', () {
+      final UtilisateurEntreprise collaborateur =
+          UtilisateurEntreprise.fromMap(<String, dynamic>{
+        'id': 'u2',
+        'nom': 'Collaborateur',
+        'email': 'collaborateur@biashara.com',
+        'role': 'collaborator',
+        'parent_id': 'u1',
+        'entreprise_id': null,
+      });
+
+      expect(collaborateur.estCollaborateur, isTrue);
+      expect(collaborateur.parentId, 'u1');
+      expect(collaborateur.entrepriseId, isNull);
+      expect(collaborateur.roleLibelle, 'Collaborateur');
+    });
+
+    test("retombe sur l'e-mail quand le nom est vide", () {
+      final UtilisateurEntreprise utilisateur =
+          UtilisateurEntreprise.fromMap(<String, dynamic>{
+        'id': 'u3',
+        'nom': '',
+        'prenom': '',
+        'email': 'josue@biashara.com',
+      });
+
+      expect(utilisateur.nomComplet, 'josue@biashara.com');
+    });
+
+    test('détecte un administrateur', () {
+      final UtilisateurEntreprise admin =
+          UtilisateurEntreprise.fromMap(<String, dynamic>{
+        'id': 'u4',
+        'nom': 'Andre',
+        'email': 'andrelukengu67@gmail.com',
+        'role': 'admin',
+      });
+
+      expect(admin.estAdministrateur, isTrue);
+      expect(admin.roleLibelle, 'Administrateur');
+    });
+
+    test('tolère une réponse minimale', () {
+      final UtilisateurEntreprise utilisateur =
+          UtilisateurEntreprise.fromMap(const <String, dynamic>{});
+
+      expect(utilisateur.id, '');
+      expect(utilisateur.role, 'vendor');
+      expect(utilisateur.parentId, isNull);
+      expect(utilisateur.entrepriseId, isNull);
     });
   });
 }

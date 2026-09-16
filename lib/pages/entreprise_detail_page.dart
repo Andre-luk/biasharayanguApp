@@ -5,9 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
-import 'package:biashara_yangu/models/utilisateur.dart';
+import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
-import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/statut_abonnement_chip.dart';
 
@@ -1172,10 +1171,9 @@ class _FeuilleRattachement extends StatefulWidget {
 
 class _FeuilleRattachementState extends State<_FeuilleRattachement> {
   final EntrepriseService _service = EntrepriseService.instance;
-  final SupabaseService _supabase = SupabaseService.instance;
 
   late Set<String> _rattaches;
-  List<Utilisateur> _utilisateurs = const <Utilisateur>[];
+  List<UtilisateurEntreprise> _utilisateurs = const <UtilisateurEntreprise>[];
   bool _chargement = true;
   String? _erreur;
   bool _modifie = false;
@@ -1189,11 +1187,13 @@ class _FeuilleRattachementState extends State<_FeuilleRattachement> {
   }
 
   Future<void> _charger() async {
-    List<Utilisateur> utilisateurs = const <Utilisateur>[];
+    List<UtilisateurEntreprise> utilisateurs = const <UtilisateurEntreprise>[];
     String? erreur;
 
     try {
-      utilisateurs = await _supabase.getAllUtilisateurs();
+      utilisateurs = await _service.getUtilisateurs();
+    } on EntrepriseServiceException catch (e) {
+      erreur = e.message;
     } catch (e, st) {
       debugPrint('_FeuilleRattachement._charger: $e\n$st');
       erreur = 'Impossible de charger la liste des utilisateurs.';
@@ -1207,21 +1207,32 @@ class _FeuilleRattachementState extends State<_FeuilleRattachement> {
     });
   }
 
-  List<Utilisateur> get _utilisateursFiltres {
+  List<UtilisateurEntreprise> get _utilisateursFiltres {
     final String recherche = _recherche.trim().toLowerCase();
     if (recherche.isEmpty) {
       return _utilisateurs;
     }
 
-    return _utilisateurs.where((Utilisateur utilisateur) {
-      return utilisateur.fullName.toLowerCase().contains(recherche) ||
+    return _utilisateurs.where((UtilisateurEntreprise utilisateur) {
+      return utilisateur.nomComplet.toLowerCase().contains(recherche) ||
           utilisateur.email.toLowerCase().contains(recherche);
     }).toList(growable: false);
   }
 
-  Future<void> _basculer(Utilisateur utilisateur, bool rattacher) async {
-    final String? userId = utilisateur.id;
-    if (userId == null || userId.isEmpty) return;
+  /// Nom du patron d'un collaborateur, s'il fait partie de la liste chargée.
+  String? _nomDuPatron(String? parentId) {
+    if (parentId == null) return null;
+
+    for (final UtilisateurEntreprise utilisateur in _utilisateurs) {
+      if (utilisateur.id == parentId) return utilisateur.nomComplet;
+    }
+    return null;
+  }
+
+  Future<void> _basculer(
+      UtilisateurEntreprise utilisateur, bool rattacher) async {
+    final String userId = utilisateur.id;
+    if (userId.isEmpty) return;
 
     _appliquer(userId, rattacher);
 
@@ -1232,10 +1243,7 @@ class _FeuilleRattachementState extends State<_FeuilleRattachement> {
           userId: userId,
         );
       } else {
-        await _service.detacherUtilisateur(
-          entrepriseId: widget.entreprise.id,
-          userId: userId,
-        );
+        await _service.detacherUtilisateur(userId: userId);
       }
       _modifie = true;
     } on EntrepriseServiceException catch (e) {
@@ -1273,7 +1281,7 @@ class _FeuilleRattachementState extends State<_FeuilleRattachement> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final List<Utilisateur> filtres = _utilisateursFiltres;
+    final List<UtilisateurEntreprise> filtres = _utilisateursFiltres;
 
     return Padding(
       padding:
@@ -1349,7 +1357,7 @@ class _FeuilleRattachementState extends State<_FeuilleRattachement> {
     );
   }
 
-  Widget _corpsListe(ThemeData theme, List<Utilisateur> filtres) {
+  Widget _corpsListe(ThemeData theme, List<UtilisateurEntreprise> filtres) {
     if (_chargement) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -1399,28 +1407,88 @@ class _FeuilleRattachementState extends State<_FeuilleRattachement> {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       itemCount: filtres.length,
       itemBuilder: (BuildContext context, int index) {
-        final Utilisateur utilisateur = filtres[index];
-        final String? userId = utilisateur.id;
-        final bool rattache = userId != null && _rattaches.contains(userId);
+        final UtilisateurEntreprise utilisateur = filtres[index];
+        // `_rattaches` porte l'état optimiste : l'interface réagit
+        // immédiatement, puis l'appel réseau confirme ou annule.
+        final bool rattache = _rattaches.contains(utilisateur.id);
+        final bool rattacheAilleurs =
+            utilisateur.entrepriseId != null && !rattache;
+        final String? nomPatron =
+            rattacheAilleurs ? null : _nomDuPatron(utilisateur.parentId);
 
-        return CheckboxListTile(
-          value: rattache,
-          onChanged: userId == null
+        // Tuile personnalisée plutôt que CheckboxListTile : le sous-titre peut
+        // comporter jusqu'à trois lignes, ce que ListTile ne garantit pas.
+        return InkWell(
+          onTap: utilisateur.id.isEmpty
               ? null
-              : (bool? valeur) => _basculer(utilisateur, valeur ?? false),
-          title: Text(
-            utilisateur.fullName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+              : () => _basculer(utilisateur, !rattache),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: rattache,
+                  onChanged: utilisateur.id.isEmpty
+                      ? null
+                      : (bool? valeur) =>
+                          _basculer(utilisateur, valeur ?? false),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          utilisateur.nomComplet,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${utilisateur.email} • ${utilisateur.roleLibelle}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (rattacheAilleurs)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Déjà rattaché à une autre entreprise',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.orange.shade800,
+                              ),
+                            ),
+                          ),
+                        if (nomPatron != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Collaborateur de $nomPatron — hérite de son '
+                              'entreprise',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          subtitle: Text(
-            '${utilisateur.email} • ${utilisateur.role}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11.5),
-          ),
-          controlAffinity: ListTileControlAffinity.leading,
-          dense: true,
         );
       },
     );
