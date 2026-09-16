@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
+import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// SupabaseService
 /// Singleton centralisant l'accès à Supabase (Auth, PostgREST, Realtime, RPC)
@@ -42,44 +43,47 @@ class SupabaseService {
 
       final channel = _client.channel('public:$table');
 
-      channel.onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: table,
-        callback: (payload) {
-          try {
-            debugPrint('Realtime Event sur $table: ${payload.eventType}');
+      channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: table,
+            callback: (payload) {
+              try {
+                debugPrint('Realtime Event sur $table: ${payload.eventType}');
 
-            final currentUserId = auth.currentUser?.id;
-            if (currentUserId == null) return;
+                final currentUserId = auth.currentUser?.id;
+                if (currentUserId == null) return;
 
-            switch (payload.eventType) {
-              case PostgresChangeEvent.insert:
-                syncService.handleRealtimeInsert(
-                  table,
-                  Map<String, dynamic>.from(payload.newRecord ?? {}),
-                );
-                break;
-              case PostgresChangeEvent.update:
-                syncService.handleRealtimeUpdate(
-                  table,
-                  Map<String, dynamic>.from(payload.newRecord ?? {}),
-                );
-                break;
-              case PostgresChangeEvent.delete:
-                syncService.handleRealtimeDelete(
-                  table,
-                  Map<String, dynamic>.from(payload.oldRecord ?? {}),
-                );
-                break;
-              default:
-                break;
-            }
-          } catch (e, st) {
-            debugPrint('Erreur dans le callback Realtime pour $table: $e\n$st');
-          }
-        },
-      ).subscribe();
+                switch (payload.eventType) {
+                  case PostgresChangeEvent.insert:
+                    syncService.handleRealtimeInsert(
+                      table,
+                      Map<String, dynamic>.from(payload.newRecord ?? {}),
+                    );
+                    break;
+                  case PostgresChangeEvent.update:
+                    syncService.handleRealtimeUpdate(
+                      table,
+                      Map<String, dynamic>.from(payload.newRecord ?? {}),
+                    );
+                    break;
+                  case PostgresChangeEvent.delete:
+                    syncService.handleRealtimeDelete(
+                      table,
+                      Map<String, dynamic>.from(payload.oldRecord ?? {}),
+                    );
+                    break;
+                  default:
+                    break;
+                }
+              } catch (e, st) {
+                debugPrint(
+                    'Erreur dans le callback Realtime pour $table: $e\n$st');
+              }
+            },
+          )
+          .subscribe();
 
       _channels[table] = channel;
     }
@@ -100,10 +104,10 @@ class SupabaseService {
   // HELPERS: attendre le profil distant (utilisateurs) — utilisé par signUp/signIn
   // ---------------------------------------------------------------------------
   Future<Map<String, dynamic>?> _waitForRemoteUtilisateur(
-      String userId, {
-        int maxAttempts = 8,
-        int delayMs = 400,
-      }) async {
+    String userId, {
+    int maxAttempts = 8,
+    int delayMs = 400,
+  }) async {
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         final data = await _client
@@ -152,11 +156,13 @@ class SupabaseService {
         // Try newer/older SDK signatures with metadata where supported
         // 1) try data parameter (Supabase SDK v2+)
         try {
-          res = await authDynamic.signUp(email: email, password: password, data: metadata);
+          res = await authDynamic.signUp(
+              email: email, password: password, data: metadata);
         } catch (_) {
           // 2) try userMetadata param (older versions)
           try {
-            res = await authDynamic.signUp(email: email, password: password, userMetadata: metadata);
+            res = await authDynamic.signUp(
+                email: email, password: password, userMetadata: metadata);
           } catch (_) {
             // 3) fallback: plain signUp without metadata (trigger won't get metadata)
             res = await authDynamic.signUp(email: email, password: password);
@@ -173,19 +179,27 @@ class SupabaseService {
       }
 
       // Normalize user object from response (various sdk shapes)
-      final dynamic authUser = (res is Map) ? (res['user'] ?? res['data']?['user']) : (res?.user ?? (res as dynamic)?['user']);
+      final dynamic authUser = (res is Map)
+          ? (res['user'] ?? res['data']?['user'])
+          : (res?.user ?? (res as dynamic)?['user']);
 
       if (authUser == null) {
-        throw Exception('Échec création compte : réponse inattendue de Supabase.');
+        throw Exception(
+            'Échec création compte : réponse inattendue de Supabase.');
       }
 
       final String authUserId = authUser.id;
 
       // 1) Check if utilisateurs row already exists (to avoid duplicate key)
       try {
-        final existing = await _client.from('utilisateurs').select().eq('id', authUserId).maybeSingle();
+        final existing = await _client
+            .from('utilisateurs')
+            .select()
+            .eq('id', authUserId)
+            .maybeSingle();
         if (existing != null) {
-          return Utilisateur.fromMap(Map<String, dynamic>.from(existing as Map));
+          return Utilisateur.fromMap(
+              Map<String, dynamic>.from(existing as Map));
         }
       } catch (e) {
         // ignore and continue to insert attempt
@@ -210,22 +224,30 @@ class SupabaseService {
         final table = _client.from('utilisateurs') as dynamic;
         try {
           final upsertRes = await table.upsert(newUserData).select();
-          if (upsertRes != null && (upsertRes is List) && upsertRes.isNotEmpty) {
-            return Utilisateur.fromMap(Map<String, dynamic>.from(upsertRes.first as Map));
+          if (upsertRes != null &&
+              (upsertRes is List) &&
+              upsertRes.isNotEmpty) {
+            return Utilisateur.fromMap(
+                Map<String, dynamic>.from(upsertRes.first as Map));
           }
         } catch (eUpsert) {
           // upsert not supported or failed => try insert
           debugPrint('Upsert non supporté ou a échoué: $eUpsert');
           try {
-            final inserted = await _client.from('utilisateurs').insert(newUserData).select();
+            final inserted =
+                await _client.from('utilisateurs').insert(newUserData).select();
             if (inserted != null && (inserted is List) && inserted.isNotEmpty) {
-              return Utilisateur.fromMap(Map<String, dynamic>.from(inserted.first as Map));
+              return Utilisateur.fromMap(
+                  Map<String, dynamic>.from(inserted.first as Map));
             }
           } catch (eInsert) {
             final err = eInsert.toString().toLowerCase();
             // If duplicate key (race with trigger), ignore and fetch remote
-            if (err.contains('duplicate') || err.contains('23505') || err.contains('unique')) {
-              debugPrint('Insert ignored because duplicate (probable trigger insertion).');
+            if (err.contains('duplicate') ||
+                err.contains('23505') ||
+                err.contains('unique')) {
+              debugPrint(
+                  'Insert ignored because duplicate (probable trigger insertion).');
             } else {
               debugPrint('Erreur insert utilisateurs: $eInsert');
             }
@@ -267,7 +289,8 @@ class SupabaseService {
 
       // Try modern signInWithPassword first, fallback to older signIn signature
       try {
-        res = await authDynamic.signInWithPassword(email: email, password: password);
+        res = await authDynamic.signInWithPassword(
+            email: email, password: password);
       } catch (_) {
         try {
           res = await authDynamic.signIn(email: email, password: password);
@@ -277,7 +300,9 @@ class SupabaseService {
         }
       }
 
-      final dynamic authUser = (res is Map) ? (res['user'] ?? res['data']?['user']) : (res?.user ?? (res as dynamic)?['user']);
+      final dynamic authUser = (res is Map)
+          ? (res['user'] ?? res['data']?['user'])
+          : (res?.user ?? (res as dynamic)?['user']);
 
       if (authUser == null) {
         debugPrint('signInUser: auth returned null user');
@@ -294,7 +319,8 @@ class SupabaseService {
             .eq('id', authUserId)
             .limit(1);
         if (data.isNotEmpty) {
-          return Utilisateur.fromMap(Map<String, dynamic>.from(data.first as Map));
+          return Utilisateur.fromMap(
+              Map<String, dynamic>.from(data.first as Map));
         }
       } catch (e) {
         debugPrint('signInUser: lecture utilisateurs initiale failed: $e');
@@ -335,6 +361,33 @@ class SupabaseService {
   // UTILISATEURS (CRUD)
   // ---------------------------------------------------------------------------
 
+  /// Vrai si l'utilisateur est l'administration de la plateforme.
+  ///
+  /// Interroge `public.utilisateurs.role`, qui est la source de vérité : le
+  /// rôle conservé localement peut être obsolète si la synchronisation a
+  /// échoué, et l'administrateur se retrouverait alors enfermé hors de sa
+  /// propre plateforme.
+  ///
+  /// Renvoie `false` en cas d'erreur : on ne décide jamais d'un blocage à
+  /// partir d'une information incertaine.
+  Future<bool> estAdministrateurPlateforme(String userId) async {
+    if (userId.isEmpty) return false;
+
+    try {
+      final dynamic data = await _client
+          .from('utilisateurs')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final Map<String, dynamic>? ligne = parseMap(data);
+      return ligne != null && ligne['role'] == 'admin';
+    } catch (e) {
+      debugPrint('estAdministrateurPlateforme error: $e');
+      return false;
+    }
+  }
+
   Future<Utilisateur?> getUtilisateurData(String userId) async {
     try {
       final data = await _client
@@ -351,7 +404,8 @@ class SupabaseService {
     }
   }
 
-  Future<void> updateUtilisateurData(String userId, Map<String, dynamic> updatedData) async {
+  Future<void> updateUtilisateurData(
+      String userId, Map<String, dynamic> updatedData) async {
     if (userId.isEmpty) throw Exception('ID utilisateur requis.');
     await _client.from('utilisateurs').update(updatedData).eq('id', userId);
   }
@@ -409,7 +463,8 @@ class SupabaseService {
   // PRODUITS
   // ---------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> insertProduit(Map<String, dynamic> produitData) async {
+  Future<Map<String, dynamic>> insertProduit(
+      Map<String, dynamic> produitData) async {
     final List<dynamic> data = await _client
         .from('produits')
         .insert(produitData)
@@ -419,7 +474,8 @@ class SupabaseService {
     return Map<String, dynamic>.from(data.first as Map);
   }
 
-  Future<void> updateProduit(String supabaseId, Map<String, dynamic> updatedData) async {
+  Future<void> updateProduit(
+      String supabaseId, Map<String, dynamic> updatedData) async {
     await _client.from('produits').update(updatedData).eq('id', supabaseId);
   }
 
@@ -440,24 +496,26 @@ class SupabaseService {
         .eq('owner_id', ownerId)
         .order('nom', ascending: true);
 
-    return (data as List).map((m) => Map<String, dynamic>.from(m as Map)).toList();
+    return (data as List)
+        .map((m) => Map<String, dynamic>.from(m as Map))
+        .toList();
   }
 
   // ---------------------------------------------------------------------------
   // VENTES
   // ---------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> insertVente(Map<String, dynamic> venteData) async {
-    final List<dynamic> data = await _client
-        .from('ventes')
-        .insert(venteData)
-        .select('id, date');
+  Future<Map<String, dynamic>> insertVente(
+      Map<String, dynamic> venteData) async {
+    final List<dynamic> data =
+        await _client.from('ventes').insert(venteData).select('id, date');
 
     if (data.isEmpty) throw Exception("Échec de l'insertion de la vente.");
     return Map<String, dynamic>.from(data.first as Map);
   }
 
-  Future<void> updateVente(String supabaseId, Map<String, dynamic> updatedData) async {
+  Future<void> updateVente(
+      String supabaseId, Map<String, dynamic> updatedData) async {
     await _client.from('ventes').update(updatedData).eq('id', supabaseId);
   }
 
@@ -475,7 +533,9 @@ class SupabaseService {
         .eq('owner_id', ownerId)
         .order('date', ascending: false);
 
-    return (data as List).map((m) => Map<String, dynamic>.from(m as Map)).toList();
+    return (data as List)
+        .map((m) => Map<String, dynamic>.from(m as Map))
+        .toList();
   }
 
   Future<List<Map<String, dynamic>>> getVentesByOwner(String ownerId) async {
@@ -485,20 +545,25 @@ class SupabaseService {
         .eq('owner_id', ownerId)
         .order('date', ascending: false);
 
-    return (data as List).map((m) => Map<String, dynamic>.from(m as Map)).toList();
+    return (data as List)
+        .map((m) => Map<String, dynamic>.from(m as Map))
+        .toList();
   }
 
   // ---------------------------------------------------------------------------
   // CLIENTS
   // ---------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> insertClient(Map<String, dynamic> clientData) async {
-    final List<dynamic> data = await _client.from('clients').insert(clientData).select('id');
+  Future<Map<String, dynamic>> insertClient(
+      Map<String, dynamic> clientData) async {
+    final List<dynamic> data =
+        await _client.from('clients').insert(clientData).select('id');
     if (data.isEmpty) throw Exception("Échec de l'insertion du client.");
     return Map<String, dynamic>.from(data.first as Map);
   }
 
-  Future<void> updateClient(String supabaseId, Map<String, dynamic> updatedData) async {
+  Future<void> updateClient(
+      String supabaseId, Map<String, dynamic> updatedData) async {
     await _client.from('clients').update(updatedData).eq('id', supabaseId);
   }
 
@@ -519,9 +584,10 @@ class SupabaseService {
         .eq('owner_id', ownerId)
         .order('nom', ascending: true);
 
-    return (data as List).map((m) => Map<String, dynamic>.from(m as Map)).toList();
+    return (data as List)
+        .map((m) => Map<String, dynamic>.from(m as Map))
+        .toList();
   }
-
 
   // ---------------------------------------------------------------------------
   // RPC / REPORTS HELPERS
@@ -595,9 +661,11 @@ class SupabaseService {
     try {
       // Utilisation du format YYYY-MM-DD strict pour forcer Postgres à lire la date correcte
       // indépendamment du fuseau horaire du serveur.
-      final dateString = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      final dateString =
+          "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
 
-      final response = await _client.rpc('rpc_get_daily_report_details', params: {
+      final response =
+          await _client.rpc('rpc_get_daily_report_details', params: {
         'owner_id_param': ownerId,
         'date_param': dateString,
       });

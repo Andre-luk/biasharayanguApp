@@ -140,9 +140,27 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _navigateAfterLogin(String userId) async {
     final db = await _dbHelper.database;
-    final role = await SessionManager.getUserRole() ?? 'vendor';
+    final String role = await SessionManager.getUserRole() ?? 'vendor';
 
-    if (role == 'admin') {
+    // -------------------------------------------------------------------------
+    // EXEMPTION DE L'ADMINISTRATION PLATEFORME
+    // -------------------------------------------------------------------------
+    // Le compte d'administration de la plateforme n'est soumis à AUCUN contrôle
+    // d'accès : ni celui de l'entreprise, ni celui de l'abonnement.
+    //
+    // Le rôle est revérifié côté Supabase, et pas seulement dans la session
+    // locale : si la synchronisation locale a échoué, `role` retombe sur
+    // 'vendor' et l'administrateur se retrouverait enfermé hors de sa propre
+    // plateforme, sans aucun moyen de se débloquer lui-même.
+    final bool estAdminPlateforme = role == 'admin' ||
+        await SupabaseService.instance.estAdministrateurPlateforme(userId);
+
+    if (estAdminPlateforme) {
+      if (role != 'admin') {
+        // Session locale corrigée pour les prochains démarrages.
+        await SessionManager.setUserRole('admin');
+      }
+      if (!mounted) return;
       context.go('/admin');
       return;
     }
