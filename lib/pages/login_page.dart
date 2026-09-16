@@ -184,7 +184,11 @@ class _LoginPageState extends State<LoginPage> {
 
     final hasActiveSubscription = await isUserSubscribed(db, userId);
 
-    if (hasActiveSubscription) {
+    // ⚠️ CORRECTION : la condition était inversée. Un abonnement ACTIF envoyait
+    // l'utilisateur sur la page « abonnement expiré », tandis qu'un abonnement
+    // absent ou échu le laissait entrer. Le bogue restait invisible tant que la
+    // table locale `subscriptions` était vide.
+    if (!hasActiveSubscription) {
       context.go('/subscription-expired');
     } else {
       if (role == 'vendor') {
