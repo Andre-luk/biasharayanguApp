@@ -1,12 +1,19 @@
+// ⚠️ FICHIER LEGACY — PLUS RELIÉ À LA NAVIGATION.
+// L'écran Stock officiel est `stock_gestion_page.dart` (Module 9, Supabase) :
+// route `/main/stock`. Fichier conservé pour référence uniquement.
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
+import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 class StockManagementPage extends StatefulWidget {
   const StockManagementPage({super.key});
@@ -513,21 +520,29 @@ class _StockManagementPageState extends State<StockManagementPage> {
                               if (val == 'history') _showTraceabilityHistory(p);
                               if (val == 'delete') _deleteProduct(p);
                             },
+                            // 🔐 MODULE 4 — « modifier » et « supprimer » un
+                            // article dépendent des permissions du rôle : un
+                            // magasinier ne verra que l'historique.
                             itemBuilder: (context) => [
                               const PopupMenuItem(
                                 value: 'history',
                                 child: Text("Historique"),
                               ),
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: Text(T.updateButton),
-                              ),
-                              const PopupMenuDivider(),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text(T.deleteButton),
-                                textStyle: const TextStyle(color: Colors.red),
-                              ),
+                              if (PermissionService.instance
+                                  .peutModifier(PageAccess.articles))
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text(T.updateButton),
+                                ),
+                              if (PermissionService.instance
+                                  .peutSupprimer(PageAccess.articles)) ...[
+                                const PopupMenuDivider(),
+                                PopupMenuItem(
+                                  value: 'delete',
+                                  textStyle: const TextStyle(color: Colors.red),
+                                  child: Text(T.deleteButton),
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -540,10 +555,15 @@ class _StockManagementPageState extends State<StockManagementPage> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        icon: const Icon(Icons.add),
-        label: Text(T.buttonAddProduct),
-        onPressed: _navigateToAddProduct,
+      // 🔐 MODULE 4 — créer un article exige la permission correspondante.
+      floatingActionButton: PermissionGate(
+        page: PageAccess.articles,
+        action: ActionAccess.creer,
+        child: FloatingActionButton.extended(
+          icon: const Icon(Icons.add),
+          label: Text(T.buttonAddProduct),
+          onPressed: _navigateToAddProduct,
+        ),
       ),
     );
   }

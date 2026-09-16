@@ -1,4 +1,8 @@
 // lib/pages/stock_page.dart
+//
+// ⚠️ FICHIER LEGACY — PLUS RELIÉ À LA NAVIGATION.
+// L'écran Stock officiel est `stock_gestion_page.dart` (Module 9, Supabase) :
+// route `/main/stock`. Fichier conservé pour référence uniquement.
 import 'dart:async';
 import 'dart:io';
 

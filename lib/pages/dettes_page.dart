@@ -1,4 +1,8 @@
 // lib/pages/dettes_page.dart
+//
+// ⚠️ FICHIER LEGACY — PLUS RELIÉ À LA NAVIGATION.
+// L'écran Dettes officiel est `dettes_clients_page.dart` (Module 10,
+// Supabase) : route `/main/dettes`. Fichier conservé pour référence.
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

@@ -1,0 +1,250 @@
+# ============================================================================
+#  PUBLICATION DE L'APPLICATION — APK + Linux + Windows (MODULE 12)
+#
+#  POURQUOI CE WORKFLOW
+#    La machine de développement est trop lente pour compiler l'application.
+#    GitHub compile à ta place (serveurs gratuits) et publie les TROIS paquets
+#    prêts à installer dans l'onglet « Releases » du dépôt.
+#
+#  COMMENT LANCER UNE PUBLICATION
+#    1. automatique — pousser un tag de version :
+#         git tag v1.0.1
+#         git push origin v1.0.1
+#    2. manuel — GitHub → onglet « Actions » → « Publier l'application
+#       (APK + Linux + Windows) » → bouton « Run workflow ».
+#       (le champ tag peut rester vide : un nom de build de test est généré)
+#
+#  OÙ RÉCUPÉRER LES FICHIERS
+#    1. github.com/Andre-luk/biasharayanguApp/releases → dernier release :
+#         • biashara-yangu.apk           (téléphone Android)
+#         • biashara-yangu-linux.tar.gz  (ordinateur Linux)
+#         • biashara-yangu-windows.zip   (ordinateur Windows)
+#    2. ou onglet « Actions » → le run → section « Artifacts »
+#       (conservés 30 jours, parfait pour un simple test).
+#
+#  SIGNATURE ANDROID
+#    • Sans secrets configurés, l'APK release est signé avec la clé DEBUG :
+#      il s'installe et fonctionne, mais ne pourra pas remplacer un APK déjà
+#      distribué avec une autre signature.
+#    • Pour signer officiellement : voir docs/publication_app.md (§ keystore),
+#      puis cloner ce fichier en version « avec keystore » si tu ajoutes les
+#      secrets — la structure est prévue pour (étape commentée en bas).
+# ============================================================================
+
+name: Publier l'application (APK + Linux + Windows)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag de version (ex. v1.0.1) — laisser vide pour un build de test'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  # ==========================================================================
+  #  ÉTAPE 1 — LA QUALITÉ D'ABORD : analyse + tous les tests.
+  #  Si le code ne passe pas, rien n'est publié.
+  # ==========================================================================
+  qualite:
+    name: Analyse & tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      - name: Analyse statique
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Tests
+        run: flutter test
+
+  # ==========================================================================
+  #  ÉTAPE 2a — APK Android (release).
+  # ==========================================================================
+  apk:
+    name: APK Android
+    needs: qualite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      # Sans keystore, le build.gradle.kts retombe sur la clé debug :
+      # la compilation ne casse jamais (voir docs/publication_app.md).
+      - name: Compiler l'APK release
+        run: flutter build apk --release
+
+      - name: Renommer l'APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk biashara-yangu.apk
+
+      - name: Publier le paquet APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: biashara-yangu-apk
+          path: biashara-yangu.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  # ==========================================================================
+  #  ÉTAPE 2b — Linux (archive tar.gz de l'exécutable + ressources).
+  # ==========================================================================
+  linux:
+    name: Linux
+    needs: qualite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer les dépendances Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      - name: Compiler le binaire Linux
+        run: flutter build linux --release
+
+      - name: Créer l'archive
+        run: tar -czf biashara-yangu-linux.tar.gz -C build/linux/x64/release/bundle .
+
+      - name: Publier le paquet Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: biashara-yangu-linux
+          path: biashara-yangu-linux.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  # ==========================================================================
+  #  ÉTAPE 2c — Windows (archive zip du dossier Release).
+  # ==========================================================================
+  windows:
+    name: Windows
+    needs: qualite
+    runs-on: windows-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      - name: Compiler le binaire Windows
+        run: flutter build windows --release
+
+      - name: Créer l'archive
+        shell: pwsh
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath biashara-yangu-windows.zip
+
+      - name: Publier le paquet Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: biashara-yangu-windows
+          path: biashara-yangu-windows.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  # ==========================================================================
+  #  ÉTAPE 3 — Release GitHub : les trois paquets réunis, prêts à télécharger.
+  # ==========================================================================
+  release:
+    name: Publier la release
+    needs: [apk, linux, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Télécharger les trois paquets
+        uses: actions/download-artifact@v4
+        with:
+          path: paquets
+          merge-multiple: true
+
+      - name: Déterminer le tag
+        id: tag
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag }}"
+          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          if [ -z "$TAG" ] || [ "$TAG" = "main" ]; then
+            TAG="biashara-build-${{ github.run_number }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Créer la release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Biashara Yangu ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            paquets/biashara-yangu.apk
+            paquets/biashara-yangu-linux.tar.gz
+            paquets/biashara-yangu-windows.zip
+
+  # ==========================================================================
+  #  VARIANTE « SIGNATURE OFFICIELLE » (optionnelle, plus tard)
+  # --------------------------------------------------------------------------
+  #  Si tu veux signer l'APK avec ton keystore, ajoute ces deux étapes dans le
+  #  job « apk », AVANT « Compiler l'APK release », et crée les secrets
+  #  GitHub (Settings → Secrets and variables → Actions) :
+  #    • ANDROID_KEYSTORE_BASE64  → le .jks encodé en base64 :
+  #        base64 -w0 upload-keystore.jks
+  #    • ANDROID_STORE_PASSWORD, ANDROID_KEY_PASSWORD, ANDROID_KEY_ALIAS
+  #
+  #      - name: Restaurer le keystore
+  #        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/upload-keystore.jks
+  #
+  #      - name: Créer key.properties
+  #        run: |
+  #          cat > android/key.properties <<EOF
+  #          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+  #          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+  #          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+  #          storeFile=upload-keystore.jks
+  #          EOF
+  # ==========================================================================

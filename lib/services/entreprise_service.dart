@@ -431,7 +431,7 @@ class EntrepriseService {
       () async {
         final List<dynamic> data = await _client
             .from('utilisateurs')
-            .select('id, prenom, nom, email, role, parent_id, entreprise_id')
+            .select('id, prenom, nom, email, role, new_role, parent_id, entreprise_id')
             .order('nom', ascending: true);
 
         return parseMapList(data).map(UtilisateurEntreprise.fromMap).toList();

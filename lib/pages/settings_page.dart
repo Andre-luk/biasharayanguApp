@@ -5,6 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/services/audit_service.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/panier_service.dart';
+import 'package:biashara_yangu/services/scanner_service.dart';
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
+import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/language_manager.dart';
 import 'package:biashara_yangu/utils/theme_manager.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
@@ -91,7 +98,13 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _logout() async {
+    // 🔐 MODULE 12 — déconnexion tracée (best-effort, AVANT de fermer la session).
+    await AuditService.instance.deconnexion();
     await SessionManager.clearSession();
+    // 🔳 MODULE 7 — fin de la session de vente : on vide le panier partagé
+    // et l'historique du scanner.
+    PanierService.instance.vider();
+    ScannerService.instance.viderHistorique();
     if (!mounted) return;
     context.go('/login');
   }
@@ -211,100 +224,359 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_loading) {
       return Scaffold(
         appBar: AppBar(title: Text(T.settingsTitle)),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const Center(
+          child: ModernLoader(
+            taille: 46,
+            legende: 'Chargement des paramètres…',
+          ),
+        ),
       );
     }
 
     final bool isPatron = _currentUser?.parentId == null;
-    final bool isAdmin = _currentUser?.role == 'admin';
+
+    // 🔐 MODULE 4 — les entrées « équipe » et « administration » dépendent des
+    // permissions du rôle : un vendeur ou un magasinier ne les voit plus.
+    final PermissionService permissions = PermissionService.instance;
+    final bool peutGererEquipe =
+        isPatron && permissions.peutVoir(PageAccess.collaborateurs);
+    final bool isAdmin = permissions.peutModifier(PageAccess.parametres);
 
     return Scaffold(
-      appBar: AppBar(title: Text(T.settingsTitle), elevation: 0),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            ListTile(
-              title: Text(T.profileTitle),
-              subtitle: Text(T.profileSubtitle),
-              leading: const Icon(Icons.person),
-              onTap: () => context.pushNamed('profile-edit'),
-            ),
-            ListTile(
-              title: Text(T.changePasswordTitle),
-              subtitle: Text(T.changePasswordSubtitle),
-              leading: const Icon(Icons.lock),
-              onTap: () => context.pushNamed('password-change'),
-            ),
-            const Divider(),
+      appBar: AppBar(title: Text(T.settingsTitle)),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 36),
+        children: <Widget>[
+          // — Carte de profil (identité + rôle effectif) —
+          _EnteteProfil(utilisateur: _currentUser),
+          const SizedBox(height: 22),
 
-            if (isPatron) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Gestion d'équipe",
-                      style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
-                ),
+          _SectionParametres(
+            titre: 'Compte',
+            tuiles: <Widget>[
+              _TuileParametre(
+                icone: Icons.person_rounded,
+                titre: T.profileTitle,
+                sousTitre: T.profileSubtitle,
+                onTap: () => context.pushNamed('profile-edit'),
               ),
-              ListTile(
-                title: const Text("Mes vendeurs"),
-                subtitle: const Text("Ajouter ou supprimer des collaborateurs"),
-                leading: const Icon(Icons.badge_outlined),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => context.pushNamed('manage-users'),
+              _TuileParametre(
+                icone: Icons.lock_rounded,
+                titre: T.changePasswordTitle,
+                sousTitre: T.changePasswordSubtitle,
+                onTap: () => context.pushNamed('password-change'),
               ),
-              const Divider(),
             ],
+          ),
 
-            ListTile(
-              leading: const Icon(Icons.category_outlined),
-              title: Text(T.manageCategories),
-              subtitle: Text(T.manageCategoriesSubtitle),
-              onTap: () => context.pushNamed('manage-categories'),
-            ),
-            const Divider(),
-
-            ListTile(
-              title: Text(T.themeTitle),
-              subtitle: Text(themeManager.themeMode == ThemeMode.light
-                  ? T.themeLight : (themeManager.themeMode == ThemeMode.dark ? T.themeDark : T.themeSystem)),
-              leading: const Icon(Icons.palette),
-              onTap: _showThemeDialog,
+          if (peutGererEquipe)
+            _SectionParametres(
+              titre: "Gestion d'équipe",
+              tuiles: <Widget>[
+                _TuileParametre(
+                  icone: Icons.badge_rounded,
+                  titre: 'Mes vendeurs',
+                  sousTitre: 'Ajouter ou supprimer des collaborateurs',
+                  onTap: () => context.pushNamed('manage-users'),
+                ),
+              ],
             ),
 
-            ListTile(
-              title: Text(T.languageTitle),
-              subtitle: Text(languageManager.appLocale.languageCode.toUpperCase()),
-              leading: const Icon(Icons.language),
-              onTap: _showLanguageDialog,
-            ),
-            const Divider(),
-
-            // ✅ SECTION CORRIGÉE : Utilise maintenant GoRouter
-            ListTile(
-              title: Text(T.settingsAboutTitle),
-              subtitle: Text(T.aboutAppDescription),
-              leading: const Icon(Icons.info_outline),
-              onTap: () => context.pushNamed('about'),
-            ),
-            const Divider(),
-
-            if (isAdmin)
-              ListTile(
-                title: Text(T.manageUsersTitle),
-                leading: const Icon(Icons.admin_panel_settings),
-                onTap: () {},
+          _SectionParametres(
+            titre: 'Application',
+            tuiles: <Widget>[
+              _TuileParametre(
+                icone: Icons.palette_rounded,
+                titre: T.themeTitle,
+                sousTitre: themeManager.themeMode == ThemeMode.light
+                    ? T.themeLight
+                    : (themeManager.themeMode == ThemeMode.dark
+                        ? T.themeDark
+                        : T.themeSystem),
+                onTap: _showThemeDialog,
               ),
+              _TuileParametre(
+                icone: Icons.language_rounded,
+                titre: T.languageTitle,
+                sousTitre:
+                    languageManager.appLocale.languageCode.toUpperCase(),
+                onTap: _showLanguageDialog,
+              ),
+              _TuileParametre(
+                icone: Icons.category_rounded,
+                titre: T.manageCategories,
+                sousTitre: T.manageCategoriesSubtitle,
+                onTap: () => context.pushNamed('manage-categories'),
+              ),
+              _TuileParametre(
+                icone: Icons.info_outline_rounded,
+                titre: T.settingsAboutTitle,
+                sousTitre: T.aboutAppDescription,
+                onTap: () => context.pushNamed('about'),
+              ),
+            ],
+          ),
 
-            const SizedBox(height: 20),
-            ListTile(
-              title: Text(T.logoutButton, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-              leading: const Icon(Icons.logout, color: Colors.red),
-              onTap: () => _logout(),
+          if (isAdmin)
+            _SectionParametres(
+              titre: 'Administration',
+              tuiles: <Widget>[
+                _TuileParametre(
+                  icone: Icons.admin_panel_settings_rounded,
+                  titre: T.manageUsersTitle,
+                  onTap: () {},
+                ),
+              ],
             ),
-            const SizedBox(height: 40),
-          ],
+
+          // 🔐 MODULE 12 — traçabilité & données (selon permissions :
+          // journal d'audit pour le propriétaire, import d'articles pour
+          // les rôles autorisés à créer des articles).
+          if (permissions.peutVoir(PageAccess.audit) ||
+              permissions.peut(PageAccess.articles, ActionAccess.creer))
+            _SectionParametres(
+              titre: 'Traçabilité & données',
+              tuiles: <Widget>[
+                if (permissions.peutVoir(PageAccess.audit))
+                  _TuileParametre(
+                    icone: Icons.history_edu_rounded,
+                    titre: 'Journal d\'audit',
+                    sousTitre:
+                        'Qui a fait quoi, quand — filtres, détail et export PDF signé',
+                    onTap: () => context.pushNamed('journal-audit'),
+                  ),
+                if (permissions.peut(PageAccess.articles, ActionAccess.creer))
+                  _TuileParametre(
+                    icone: Icons.upload_file_rounded,
+                    titre: 'Importer des articles',
+                    sousTitre:
+                        'Coller un contenu CSV ou choisir un fichier — tracé (IMPORT_PRODUITS)',
+                    onTap: () => context.pushNamed('import-produits'),
+                  ),
+              ],
+            ),
+
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout_rounded),
+            label: Text(T.logoutButton),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppCouleurs.danger,
+              side: BorderSide(
+                color: AppCouleurs.danger.withValues(alpha: 0.45),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Carte d'identité affichée en tête des paramètres.
+class _EnteteProfil extends StatelessWidget {
+  const _EnteteProfil({required this.utilisateur});
+
+  final Utilisateur? utilisateur;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final RoleUtilisateur role =
+        PermissionService.roleDepuisUtilisateur(utilisateur);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: AppDegrades.hero,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppCouleurs.marine.withValues(alpha: 0.24),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.85),
+                width: 2,
+              ),
+            ),
+            child: const CircleAvatar(
+              radius: 26,
+              backgroundImage: AssetImage('assets/utilisateur.jpg'),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  utilisateur?.fullName ?? 'Utilisateur',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  utilisateur?.email ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.24),
+                    ),
+                  ),
+                  child: Text(
+                    role.libelle,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Groupe de réglages : titre + carte contenant les tuiles.
+class _SectionParametres extends StatelessWidget {
+  const _SectionParametres({required this.titre, required this.tuiles});
+
+  final String titre;
+  final List<Widget> tuiles;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+
+    final List<Widget> contenu = <Widget>[];
+    for (int i = 0; i < tuiles.length; i++) {
+      contenu.add(tuiles[i]);
+      if (i < tuiles.length - 1) {
+        contenu.add(Divider(height: 1, color: scheme.outlineVariant));
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 4,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    gradient: AppDegrades.accent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  titre,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: scheme.outlineVariant),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Column(children: contenu),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tuile de réglage : icône teintée, titre, sous-titre, chevron.
+class _TuileParametre extends StatelessWidget {
+  const _TuileParametre({
+    required this.icone,
+    required this.titre,
+    required this.onTap,
+    this.sousTitre,
+  });
+
+  final IconData icone;
+  final String titre;
+  final String? sousTitre;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+
+    return ListTile(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(9),
+        decoration: BoxDecoration(
+          color: scheme.primaryContainer.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(12),
         ),
+        child: Icon(icone, size: 20, color: scheme.primary),
+      ),
+      title: Text(
+        titre,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+      ),
+      subtitle: sousTitre == null
+          ? null
+          : Text(
+              sousTitre!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant),
+            ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.8),
       ),
     );
   }

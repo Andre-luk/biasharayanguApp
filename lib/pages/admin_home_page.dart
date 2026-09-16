@@ -4,17 +4,51 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 
+// 🔐 MODULE 4 — Permissions
+import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/widgets/permission_gate.dart';
+
+// 🔐 MODULE 12 — Journal d'audit & sécurité (journalisation des sessions)
+import 'package:biashara_yangu/services/audit_service.dart';
+
 // Importation des pages enfants (assurez-vous que ces imports sont valides)
 import 'package:biashara_yangu/pages/admin_users_page.dart';
 import 'package:biashara_yangu/pages/admin_categories_page.dart';
 import 'package:biashara_yangu/pages/admin_maintenance_page.dart';
+import 'package:biashara_yangu/pages/abonnements_laperle_page.dart';
 import 'package:biashara_yangu/pages/entreprise_list_page.dart';
+import 'package:biashara_yangu/pages/permissions_role_page.dart';
 import 'package:biashara_yangu/pages/referentiels_hub_page.dart';
+// 📊 MODULE 11 — rapports de la plateforme (exports PDF/Excel tracés).
+import 'package:biashara_yangu/pages/rapports_page.dart';
 
 
 // ====================================================================
 // ADMIN HOME PAGE (Conteneur avec BottomNavigationBar)
 // ====================================================================
+
+/// Onglet de l'espace d'administration.
+///
+/// `pages` liste les permissions qui rendent l'onglet visible : l'onglet
+/// apparaît dès que le rôle possède l'une d'elles en lecture.
+class _OngletAdmin {
+  const _OngletAdmin({
+    required this.label,
+    required this.icone,
+    required this.pages,
+    required this.builder,
+  });
+
+  final String label;
+  final IconData icone;
+  final List<PageAccess> pages;
+  final WidgetBuilder builder;
+
+  bool estVisible(PermissionService permissions) => pages.any(
+        (PageAccess page) => permissions.peutVoir(page),
+      );
+}
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -26,18 +60,67 @@ class AdminHomePage extends StatefulWidget {
 class _AdminHomePageState extends State<AdminHomePage> {
   int _selectedIndex = 0;
 
-  // Pages spécifiques à l'administrateur
-  final List<Widget> _adminPages = const [
-    AdminDashboardPage(),
-    AdminUsersWrapper(),
-    // 🏢 Module « Gestion des entreprises » : la page fournit son propre
-    // Scaffold (FAB, rafraîchissement) mais pas sa barre de titre.
-    EntrepriseListPage(showAppBar: false),
-    // 📚 Module « Activités & groupes tarifaires » (Module 2) : hub d'accès
-    // aux référentiels, sans AppBar propre (fournie par AdminHomePage).
-    ReferentielsHubPage(),
-    AdminSettingsPage(),
+  /// Tous les onglets possibles, dans l'ordre d'affichage. Le filtre par
+  /// permissions est appliqué dans `_onglets`.
+  static final List<_OngletAdmin> _tousLesOnglets = <_OngletAdmin>[
+    _OngletAdmin(
+      label: 'Tableau',
+      icone: Icons.dashboard_customize,
+      pages: const <PageAccess>[PageAccess.dashboard],
+      builder: (_) => const AdminDashboardPage(),
+    ),
+    _OngletAdmin(
+      label: 'Utilisateurs',
+      icone: Icons.people_alt,
+      pages: const <PageAccess>[PageAccess.utilisateurs],
+      builder: (_) => const AdminUsersWrapper(),
+    ),
+    _OngletAdmin(
+      label: 'Entreprises',
+      icone: Icons.business_rounded,
+      pages: const <PageAccess>[PageAccess.entreprises],
+      // 🏢 Module « Gestion des entreprises » : la page fournit son propre
+      // Scaffold (FAB, rafraîchissement) mais pas sa barre de titre.
+      builder: (_) => const EntrepriseListPage(showAppBar: false),
+    ),
+    _OngletAdmin(
+      label: 'Abonnements',
+      icone: Icons.card_membership_rounded,
+      pages: const <PageAccess>[PageAccess.abonnements, PageAccess.paiements],
+      builder: (_) => const AbonnementsLaperlePage(),
+    ),
+    _OngletAdmin(
+      label: 'Référentiels',
+      icone: Icons.category_rounded,
+      // 📚 Module « Activités & groupes tarifaires » (Module 2) : hub d'accès
+      // aux référentiels, sans AppBar propre (fournie par AdminHomePage).
+      pages: const <PageAccess>[
+        PageAccess.activites,
+        PageAccess.groupesTarifaires,
+        PageAccess.villes,
+      ],
+      builder: (_) => const ReferentielsHubPage(),
+    ),
+    _OngletAdmin(
+      label: 'Rapports',
+      icone: Icons.insert_chart_rounded,
+      // 📊 MODULE 11 — rapports plateforme : revenus globaux, abonnements,
+      // impayés, revenus par ville / activité, nouveaux comptes.
+      // (AppBar fournie par AdminHomePage → showAppBar: false.)
+      pages: const <PageAccess>[PageAccess.rapports],
+      builder: (_) => const RapportsPage(showAppBar: false),
+    ),
+    _OngletAdmin(
+      label: 'Système',
+      icone: Icons.settings_applications,
+      pages: const <PageAccess>[PageAccess.parametres],
+      builder: (_) => const AdminSettingsPage(),
+    ),
   ];
+
+  late final List<_OngletAdmin> _onglets = _tousLesOnglets
+      .where((_OngletAdmin o) => o.estVisible(PermissionService.instance))
+      .toList(growable: false);
 
   void _onItemTapped(int index) {
     setState(() {
@@ -46,42 +129,66 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Future<void> _logout() async {
+    // 🔐 MODULE 12 — déconnexion tracée (best-effort, AVANT de fermer la session).
+    await AuditService.instance.deconnexion();
     await SessionManager.clearSession();
+    PermissionService.instance.reinitialiser();
     if (mounted) GoRouter.of(context).go('/login');
-  }
-
-  String _getAppBarTitle(int index) {
-    switch (index) {
-      case 0:
-        return 'Tableau de Bord Global';
-      case 1:
-        return 'Gestion des Utilisateurs';
-      case 2:
-        return 'Gestion des Entreprises';
-      case 3:
-        return 'Activités & Groupes tarifaires';
-      case 4:
-        return 'Paramètres & Maintenance';
-      default:
-        return 'Administration Système';
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    if (_onglets.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Administration',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+          ),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.logout, color: colorScheme.error),
+              onPressed: _logout,
+              tooltip: 'Déconnexion',
+            ),
+          ],
+        ),
+        body: const AccesRefuse(
+          message: 'Votre rôle ne donne accès à aucun écran de la plateforme.',
+        ),
+      );
+    }
+
+    final int index = _selectedIndex.clamp(0, _onglets.length - 1);
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text(
-          _getAppBarTitle(_selectedIndex),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        elevation: 2,
+        title: Text(_onglets[index].label),
         actions: [
+          // 🔐 MODULE 4 — nom du rôle connecté, visible en permanence :
+          // l'administrateur sait immédiatement avec quels droits il agit.
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                PermissionService.instance.roleCourant.libelle,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+          ),
           IconButton(
-            icon: Icon(Icons.logout, color: colorScheme.error),
+            icon: Icon(Icons.logout_rounded, color: colorScheme.error),
             onPressed: _logout,
             tooltip: 'Déconnexion du panneau Administrateur',
           ),
@@ -89,23 +196,37 @@ class _AdminHomePageState extends State<AdminHomePage> {
         ],
       ),
       // Le IndexedStack gère la transition entre les pages sans les reconstruire
-      body: IndexedStack(index: _selectedIndex, children: _adminPages),
+      body: IndexedStack(
+        index: index,
+        children: _onglets
+            .map((_OngletAdmin onglet) => onglet.builder(context))
+            .toList(growable: false),
+      ),
 
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: colorScheme.primary,
-        unselectedItemColor: Colors.grey[600],
-        backgroundColor: colorScheme.surface,
-        elevation: 10,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_customize), label: 'Tableau'),
-          BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Utilisateurs'),
-          BottomNavigationBarItem(icon: Icon(Icons.business_rounded), label: 'Entreprises'),
-          BottomNavigationBarItem(icon: Icon(Icons.category_rounded), label: 'Référentiels'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_applications), label: 'Système'),
-        ],
+      // — Barre de navigation Material 3 (identique à l'espace entreprise). —
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: _onItemTapped,
+          destinations: _onglets
+              .map((_OngletAdmin onglet) => NavigationDestination(
+                    icon: Icon(onglet.icone),
+                    label: onglet.label,
+                  ))
+              .toList(growable: false),
+        ),
       ),
     );
   }
@@ -173,7 +294,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
+            color: color.withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 30, color: color),
@@ -253,7 +374,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     spreadRadius: 1,
                     blurRadius: 5,
                     offset: const Offset(0, 3),
@@ -306,8 +427,11 @@ class AdminSettingsPage extends StatelessWidget {
   const AdminSettingsPage({super.key});
 
   Future<void> _logout(BuildContext context) async {
+    // 🔐 MODULE 12 — déconnexion tracée (best-effort, AVANT de fermer la session).
+    await AuditService.instance.deconnexion();
     await SessionManager.clearSession();
-    GoRouter.of(context).go('/login');
+    PermissionService.instance.reinitialiser();
+    if (context.mounted) GoRouter.of(context).go('/login');
   }
 
   void _openCategories(BuildContext context) {
@@ -316,6 +440,16 @@ class AdminSettingsPage extends StatelessWidget {
 
   void _openMaintenance(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminMaintenancePage()));
+  }
+
+  /// 🔐 MODULE 4 — écran « Modifier les permissions d'un rôle ».
+  ///
+  /// Réservé au SUPER_ADMIN : le middleware de navigation exige
+  /// `parametres / modifier`, et l'écran lui-même vérifie le rôle.
+  void _openPermissions(BuildContext context, {RoleUtilisateur? role}) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => PermissionsRolePage(roleInitial: role),
+    ));
   }
 
   // Helper pour l'en-tête de section
@@ -410,11 +544,44 @@ class AdminSettingsPage extends StatelessWidget {
 
           _buildSettingsTile(
             context: context,
-            icon: Icons.history_toggle_off_rounded,
+            icon: Icons.history_edu_rounded,
             color: Colors.green.shade700,
-            title: 'Journal des Activités (Logs)',
-            subtitle: 'Consulter l\'historique des actions importantes du système.',
-            onTap: () => _openMaintenance(context),
+            title: 'Journal d\'audit',
+            subtitle:
+                'Actions tracées (CRITIQUE → INFO), filtres, détail JSON et export PDF signé.',
+            onTap: () => GoRouter.of(context).push('/audit'),
+          ),
+
+          // 🔐 MODULE 12 — écran Sécurité, réservé au personnel plateforme.
+          PermissionGate(
+            page: PageAccess.securite,
+            action: ActionAccess.voir,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.security_rounded,
+              color: Colors.indigo.shade400,
+              title: 'Sécurité',
+              subtitle:
+                  'Connexions, tentatives échouées, IP suspectes, réinitialisation des permissions.',
+              onTap: () => GoRouter.of(context).push('/securite'),
+            ),
+          ),
+
+          // 🔐 MODULE 4 — Permissions des rôles (Super Admin uniquement).
+          PermissionGate(
+            page: PageAccess.parametres,
+            action: ActionAccess.modifier,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.admin_panel_settings_rounded,
+              color: Colors.deepPurple.shade400,
+              title: 'Permissions des rôles',
+              subtitle:
+                  'Autoriser ou interdire chaque page et chaque action pour les 8 rôles.',
+              onTap: () => _openPermissions(context),
+            ),
           ),
 
           const SizedBox(height: 32),

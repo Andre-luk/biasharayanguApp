@@ -8,14 +8,22 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/article_scanne.dart';
 import 'package:biashara_yangu/models/client.dart';
 import 'package:biashara_yangu/models/dette.dart';
+import 'package:biashara_yangu/models/ligne_panier.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/models/vente.dart';
 import 'package:biashara_yangu/services/invoice_service.dart';
+import 'package:biashara_yangu/services/panier_service.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
+import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
+import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
 import '../ui/widgets/primary_loader.dart';
 
 class NewSalePage extends StatefulWidget {
@@ -36,7 +44,10 @@ class _NewSalePageState extends State<NewSalePage> {
   Client? selectedClient;
   bool isModeDette = false;
 
-  final Map<int, double> panier = {};
+  /// 🔳 MODULE 7 — panier partagé de la boutique : la caisse et le scanner
+  /// vendeur y ajoutent leurs lignes (articles et conditionnements).
+  final PanierService _panier = PanierService.instance;
+
   String modePaiement = 'cash';
   bool _loading = true;
   String _searchQuery = '';
@@ -58,11 +69,15 @@ class _NewSalePageState extends State<NewSalePage> {
   void initState() {
     super.initState();
     _searchController.addListener(_onSearchChanged);
+    // Le scanner vendeur remplit le même panier : on se rafraîchit à chaque
+    // modification (badge, total, quantités…).
+    _panier.revision.addListener(_onPanierModifie);
     _initializeData();
   }
 
   @override
   void dispose() {
+    _panier.revision.removeListener(_onPanierModifie);
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _quantityController.dispose();
@@ -80,6 +95,11 @@ class _NewSalePageState extends State<NewSalePage> {
     setState(() {
       _searchQuery = _searchController.text.trim().toLowerCase();
     });
+  }
+
+  /// 🔳 MODULE 7 — le panier partagé a changé (scan, retrait, vidage…).
+  void _onPanierModifie() {
+    if (mounted) setState(() {});
   }
 
   void _startRealtimeListener() {
@@ -173,8 +193,9 @@ class _NewSalePageState extends State<NewSalePage> {
   void _updateQuantity(Produit p, double qty) {
     if (p.id == null) return;
 
+    // Quantité nulle : la ligne quitte le panier.
     if (qty <= 0) {
-      setState(() => panier.remove(p.id));
+      _panier.retirer('PROD:${p.id}');
       return;
     }
 
@@ -183,25 +204,19 @@ class _NewSalePageState extends State<NewSalePage> {
       return;
     }
 
-    setState(() => panier[p.id!] = qty);
+    _panier.definirQuantite(ArticleScanne.depuisProduit(p), qty);
   }
 
   void _setProductQuantity(Produit p, double qty) => _updateQuantity(p, qty);
 
   void _incrementProductQuantity(Produit p, {double step = 1.0}) {
     if (p.id == null) return;
-    final current = panier[p.id] ?? 0.0;
+    final double current = _panier.quantiteProduit(p.id!);
     _updateQuantity(p, current + step);
   }
 
-  double get total {
-    double sum = 0;
-    for (var item in panier.entries) {
-      final p = produits.firstWhere((prod) => prod.id == item.key);
-      sum += p.prixVente * item.value;
-    }
-    return sum;
-  }
+  /// Total du panier partagé (lignes scannées ET lignes ajoutées à la main).
+  double get total => _panier.total();
 
   Future<void> _confirmCancelSale() async {
     final confirm = await showDialog<bool>(
@@ -226,8 +241,8 @@ class _NewSalePageState extends State<NewSalePage> {
     );
 
     if (confirm == true) {
+      _panier.vider();
       setState(() {
-        panier.clear();
         selectedClient = null;
         isModeDette = false;
         _searchController.clear();
@@ -237,8 +252,15 @@ class _NewSalePageState extends State<NewSalePage> {
   }
 
   Future<void> _save() async {
+    // 🔒 MODULE 3 — Abonnement échu : les ventes sont bloquées (lecture seule).
+    // Filet de sécurité en plus du garde-fou de l'accueil et de la bannière.
+    if (AbonnementService.instance.lectureSeule) {
+      afficherDialogueLectureSeule(context);
+      return;
+    }
+
     final T = AppLocalizations.of(context)!;
-    if (panier.isEmpty) return;
+    if (_panier.estVide) return;
 
     if (isModeDette && selectedClient == null) {
       _showSnackBar(
@@ -260,14 +282,17 @@ class _NewSalePageState extends State<NewSalePage> {
       final invoiceItems = <InvoiceItem>[];
       final double currentTotal = total;
 
-      for (var e in panier.entries) {
-        final p = produits.firstWhere((pr) => pr.id == e.key);
-        final totalAmount = p.prixVente * e.value;
+      // 🔳 MODULE 7 — lignes du panier partagé :
+      //   • `quantite` de la vente = unités de BASE retirées du stock
+      //     (une farde de 12 = 12 bouteilles) ;
+      //   • `prix` = TOTAL de la ligne (prix du conditionnement × quantité).
+      for (final LignePanier ligne in _panier.lignes) {
+        final double totalAmount = ligne.total;
 
         ventes.add(
           Vente(
-            produitId: p.id!,
-            quantite: e.value,
+            produitId: ligne.produitId,
+            quantite: ligne.unitesBase,
             prix: totalAmount,
             modePaiement: isModeDette ? 'dette' : modePaiement,
             createdAt: nowIso,
@@ -279,15 +304,17 @@ class _NewSalePageState extends State<NewSalePage> {
 
         invoiceItems.add(
           InvoiceItem(
-            name: p.nom,
-            quantity: e.value,
-            unit: p.uniteMesure,
-            pricePerUnit: p.prixVente,
+            name: ligne.libelle,
+            quantity: ligne.quantite,
+            unit: ligne.vendu.uniteVente,
+            pricePerUnit: ligne.prixUnitaire,
             total: totalAmount,
           ),
         );
 
-        p.quantite -= e.value;
+        final int index =
+            produits.indexWhere((Produit pr) => pr.id == ligne.produitId);
+        if (index >= 0) produits[index].quantite -= ligne.unitesBase;
       }
 
       final invoiceId =
@@ -306,8 +333,8 @@ class _NewSalePageState extends State<NewSalePage> {
       }
 
       if (mounted) {
+        _panier.vider();
         setState(() {
-          panier.clear();
           selectedClient = null;
           isModeDette = false;
           _loading = false;
@@ -345,9 +372,16 @@ class _NewSalePageState extends State<NewSalePage> {
     });
   }
 
+  /// 🔳 MODULE 7 — ouvre le scanner plein écran. Les articles scannés
+  /// rejoignent le panier partagé et apparaissent ici au retour.
+  Future<void> _ouvrirScanner() async {
+    await context.push('/scanner');
+  }
+
   void _showSetQuantityDialog(Produit p) {
     final T = AppLocalizations.of(context)!;
-    final currentQty = panier[p.id] ?? 1.0;
+    final double enPanier = p.id == null ? 0 : _panier.quantiteProduit(p.id!);
+    final double currentQty = enPanier > 0 ? enPanier : 1.0;
     _quantityController.text = currentQty.toStringAsFixed(
       currentQty.truncateToDouble() == currentQty ? 0 : 2,
     );
@@ -407,7 +441,7 @@ class _NewSalePageState extends State<NewSalePage> {
               }
 
               Navigator.pop(dialogContext);
-              setState(() => _setProductQuantity(p, qty));
+              _setProductQuantity(p, qty);
             },
             child: Text(T.addButton),
           ),
@@ -472,7 +506,16 @@ class _NewSalePageState extends State<NewSalePage> {
         title: Text(T.newSaleTitle),
         elevation: 0,
         actions: [
-          if (panier.isNotEmpty)
+          IconButton(
+            tooltip: 'Voir le panier',
+            onPressed: () => context.push('/main/panier'),
+            icon: Badge.count(
+              count: _panier.nombreLignes,
+              isLabelVisible: !_panier.estVide,
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
+          ),
+          if (!_panier.estVide)
             IconButton(
               icon: const Icon(Icons.delete_sweep, color: Colors.red),
               tooltip: "Annuler la vente",
@@ -507,6 +550,32 @@ class _NewSalePageState extends State<NewSalePage> {
               ),
             ),
           ),
+
+          // 🔳 MODULE 7 — accès rapide au scanner vendeur (plein écran).
+          if (PermissionService.instance.peutVoir(PageAccess.scanner))
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: SizedBox(
+                width: double.infinity,
+                height: 58,
+                child: FilledButton.icon(
+                  onPressed: _ouvrirScanner,
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 26),
+                  label: const Text('SCANNER UN ARTICLE'),
+                ),
+              ),
+            ),
+
           Expanded(
             child: StreamBuilder<List<Produit>>(
               stream: _productsController.stream,
@@ -542,20 +611,20 @@ class _NewSalePageState extends State<NewSalePage> {
 
   Widget _buildProductCard(Produit p, AppLocalizations T) {
     final theme = Theme.of(context);
-    final q = panier[p.id] ?? 0.0;
+    final double q = p.id == null ? 0.0 : _panier.quantiteProduit(p.id!);
     final isSelected = q > 0;
 
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       color: isSelected
-          ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.35)
           : theme.colorScheme.surfaceContainer,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: isSelected
             ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
-            : BorderSide.none,
+            : BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -667,10 +736,14 @@ class _NewSalePageState extends State<NewSalePage> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -776,7 +849,7 @@ class _NewSalePageState extends State<NewSalePage> {
                   child: SizedBox(
                     height: 54,
                     child: FilledButton.icon(
-                      onPressed: panier.isNotEmpty ? _save : null,
+                      onPressed: !_panier.estVide ? _save : null,
                       style: FilledButton.styleFrom(
                         backgroundColor:
                         isModeDette ? Colors.orange : null,
@@ -859,8 +932,7 @@ class _NewSalePageState extends State<NewSalePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : null,
-        behavior: SnackBarBehavior.floating,
+        backgroundColor: isError ? AppCouleurs.danger : null,
       ),
     );
   }

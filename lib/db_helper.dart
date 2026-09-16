@@ -32,7 +32,7 @@ class DBHelper {
   static Database? _db;
 
   // 1. On définit la version à 2
-  static const int _dbVersion = 11;
+  static const int _dbVersion = 12;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -126,6 +126,8 @@ CREATE TABLE ajustements (
   email TEXT UNIQUE,
   avatar TEXT,
   role TEXT DEFAULT 'vendor',
+  new_role TEXT,
+  entreprise_id TEXT,
   valide INTEGER DEFAULT 1,
   parent_id TEXT,
   password_hash TEXT -- 🔐 AJOUTÉ
@@ -259,6 +261,17 @@ CREATE TABLE approvisionnements (
         await _safeAddColumn(db, table, 'updated_at', 'TEXT');
       }
       debugPrint('✅ Migration V11 terminée.');
+    }
+
+    if (oldVersion < 12) {
+      // 🔐 MODULE 4 — Système de permissions.
+      // `new_role` est la colonne officielle (miroir de Supabase
+      // `utilisateurs.new_role`) et `entreprise_id` permet de savoir à quelle
+      // boutique un collaborateur se rattache, même hors ligne.
+      debugPrint('🚀 Migration V12 : permissions (new_role, entreprise_id)...');
+      await _safeAddColumn(db, 'utilisateurs', 'new_role', 'TEXT');
+      await _safeAddColumn(db, 'utilisateurs', 'entreprise_id', 'TEXT');
+      debugPrint('✅ Migration V12 terminée.');
     }
   }
 
@@ -978,6 +991,35 @@ CREATE TABLE approvisionnements (
 
     if (maps.isEmpty) return null;
     return Produit.fromMap(maps.first);
+  }
+
+  /// 🧾 MODULE 8 — applique localement une sortie de stock décidée par le
+  /// serveur (vente encaissée en ligne via `rpc_vente_valider`).
+  ///
+  /// Le stock de référence est décrémenté par le trigger du serveur ; cette
+  /// méthode ne fait qu'aligner la copie locale pour que la caisse classique
+  /// affiche immédiatement le bon stock, sans attendre la synchronisation.
+  /// `is_synced` n'est PAS touché : le serveur reste maître de la quantité.
+  Future<void> appliquerSortieStockParSupabaseId(
+    String supabaseId,
+    double quantiteBase,
+  ) async {
+    if (supabaseId.isEmpty || quantiteBase <= 0) return;
+
+    final Produit? produit = await getProduitBySupabaseId(supabaseId);
+    if (produit == null || produit.id == null) return;
+
+    final db = await database;
+    final double nouvelle = produit.quantite - quantiteBase;
+    await db.update(
+      'produits',
+      {
+        'quantite': nouvelle > 0 ? nouvelle : 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [produit.id],
+    );
   }
 
   Future<void> updateProduitQuantity({
@@ -1737,7 +1779,7 @@ CREATE TABLE approvisionnements (
     return await db.delete('utilisateurs', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Supprime un utilisateur en protégeant le dernier admin
+  /// Supprime un utilisateur en protégeant le dernier administrateur
   Future<int> deleteUtilisateurSafely(String id) async {
     final db = await database;
     final target = await db.query(
@@ -1747,11 +1789,24 @@ CREATE TABLE approvisionnements (
       limit: 1,
     );
 
-    if (target.isNotEmpty && (target.first['role'] as String?) == 'admin') {
+    // 🔐 MODULE 4 — un SUPER_ADMIN (nouvelle colonne `new_role`) est protégé
+    // au même titre qu'un ancien compte `admin` : sans lui, plus personne ne
+    // peut administrer la plateforme.
+    final String? ancienRole = target.isNotEmpty
+        ? target.first['role'] as String?
+        : null;
+    final String? nouveauRole = target.isNotEmpty
+        ? target.first['new_role'] as String?
+        : null;
+
+    final bool estAdministrateur = ancienRole == 'admin' ||
+        (nouveauRole ?? '').toUpperCase() == 'SUPER_ADMIN';
+
+    if (estAdministrateur) {
       final adminsCountRes = await db.rawQuery(
-          "SELECT COUNT(*) as c FROM utilisateurs WHERE role = ?",
-          ['admin']
-      );
+          "SELECT COUNT(*) as c FROM utilisateurs "
+          "WHERE role = ? OR upper(coalesce(new_role, '')) = ?",
+          ['admin', 'SUPER_ADMIN']);
       final adminsCount = (adminsCountRes.first['c'] as int?) ?? 0;
       if (adminsCount <= 1) {
         throw Exception('Impossible de supprimer le dernier administrateur.');

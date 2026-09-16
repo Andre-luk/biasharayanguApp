@@ -50,3 +50,20 @@ String formatDateHeure(DateTime? date, {String valeurAbsente = '—'}) {
 
   return '${formatDate(date)} à $heures:$minutes';
 }
+
+/// Formate une quantité de stock : entier sans décimale, sinon 2 décimales
+/// significatives (ex. `85`, `10.5`).
+String formatQuantite(double quantite, {String valeurAbsente = '—'}) {
+  if (quantite.isNaN) return valeurAbsente;
+  if (quantite == quantite.roundToDouble()) return quantite.toStringAsFixed(0);
+  return quantite
+      .toStringAsFixed(2)
+      .replaceAll(RegExp(r'0+$'), '')
+      .replaceAll(RegExp(r'\.$'), '');
+}
+
+/// Formate une quantité signée d'écart de stock : `+8`, `-3`, `0`.
+String formatQuantiteSignee(double quantite) {
+  if (quantite > 0) return '+${formatQuantite(quantite)}';
+  return formatQuantite(quantite);
+}

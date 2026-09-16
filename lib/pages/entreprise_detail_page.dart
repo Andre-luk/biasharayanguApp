@@ -141,6 +141,23 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
     await _charger(silencieux: true);
   }
 
+  /// 💳 MODULE 3 — Ouvre le détail d'abonnement du moteur d'abonnement
+  /// (paiements typés, renouvellement, historique de la table La Perle).
+  Future<void> _ouvrirAbonnement() async {
+    final Entreprise? entreprise = _entreprise;
+    if (entreprise == null) return;
+
+    final GoRouter router = GoRouter.of(context);
+    await router.push<void>(
+      '/admin/abonnements/${entreprise.id}',
+      extra: entreprise,
+    );
+
+    // Un paiement a pu changer le statut : on rafraîchit la fiche.
+    if (!mounted) return;
+    await _charger(silencieux: true);
+  }
+
   Future<void> _basculerStatut() async {
     final Entreprise? entreprise = _entreprise;
     if (entreprise == null) return;
@@ -260,6 +277,14 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: [
+          // 💳 MODULE 3 — Accès au détail d'abonnement du moteur (paiements
+          // typés, renouvellement, historique du moteur).
+          IconButton(
+            onPressed:
+                _entreprise == null ? null : () => _ouvrirAbonnement(),
+            icon: const Icon(Icons.card_membership_rounded),
+            tooltip: "Détail de l'abonnement",
+          ),
           IconButton(
             onPressed: () => _charger(silencieux: true),
             icon: const Icon(Icons.refresh),

@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -361,12 +362,16 @@ class SupabaseService {
   // UTILISATEURS (CRUD)
   // ---------------------------------------------------------------------------
 
-  /// Vrai si l'utilisateur est l'administration de la plateforme.
+  /// Vrai si l'utilisateur est l'administration de la plateforme (La Perle).
   ///
-  /// Interroge `public.utilisateurs.role`, qui est la source de vérité : le
+  /// Interroge `public.utilisateurs` — la base est la source de vérité : le
   /// rôle conservé localement peut être obsolète si la synchronisation a
   /// échoué, et l'administrateur se retrouverait alors enfermé hors de sa
   /// propre plateforme.
+  ///
+  /// 🔐 MODULE 4 — la colonne officielle est `new_role` (huit rôles). Les
+  /// quatre rôles de la plateforme (SUPER_ADMIN, GESTIONNAIRE_COMPTES,
+  /// FINANCE_LAPERLE, SUPPORT) sont reconnus, ainsi que l'ancien `admin`.
   ///
   /// Renvoie `false` en cas d'erreur : on ne décide jamais d'un blocage à
   /// partir d'une information incertaine.
@@ -376,12 +381,20 @@ class SupabaseService {
     try {
       final dynamic data = await _client
           .from('utilisateurs')
-          .select('role')
+          .select('role,new_role')
           .eq('id', userId)
           .maybeSingle();
 
       final Map<String, dynamic>? ligne = parseMap(data);
-      return ligne != null && ligne['role'] == 'admin';
+      if (ligne == null) return false;
+
+      final String? nouveauRole = ligne['new_role']?.toString();
+      final String? ancienRole = ligne['role']?.toString();
+
+      final RoleUtilisateur depuisNouveau = RoleUtilisateur.fromCode(nouveauRole);
+      final RoleUtilisateur depuisAncien = RoleUtilisateur.fromCode(ancienRole);
+
+      return depuisNouveau.estPlateforme || depuisAncien.estPlateforme;
     } catch (e) {
       debugPrint('estAdministrateurPlateforme error: $e');
       return false;

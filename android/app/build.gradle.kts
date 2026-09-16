@@ -30,13 +30,21 @@ android {
     namespace = "com.example.biashara_yangu"
     compileSdk = compileSdkVersionUsed
 
-    // Configuration de la signature
+    // Configuration de la signature :
+    //   • si `android/key.properties` existe, il désigne le keystore officiel
+    //     (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`) ;
+    //   • sinon (CI GitHub sans secrets), les valeurs restent vides et le
+    //     buildType « release » retombe sur la signature DEBUG — l'APK reste
+    //     installable et la compilation ne casse jamais.
+    //   Voir docs/publication_app.md (§ signature) pour la mise en place.
     signingConfigs {
         create("release") {
-            keyAlias = "upload" // Utilisation de l'alias correct
-            keyPassword = "andre2025"
-            storeFile = file("C:\\Users\\Eddy\\upload-keystore.jks")
-            storePassword = "andre2025"
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String?
+            }
         }
     }
 
@@ -71,8 +79,13 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             isShrinkResources = false
-            // On utilise ici la config "release" définie plus haut
-            signingConfig = signingConfigs.getByName("release")
+            // Signé avec le keystore officiel s'il est fourni, sinon avec la
+            // clé debug (CI de test) — jamais d'échec de build.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

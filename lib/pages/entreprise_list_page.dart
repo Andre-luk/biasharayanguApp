@@ -6,10 +6,12 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
+import 'package:biashara_yangu/widgets/permission_gate.dart';
 import 'package:biashara_yangu/widgets/statut_abonnement_chip.dart';
 
 /// Liste des entreprises avec recherche par nom et filtres
@@ -327,10 +329,14 @@ class _EntrepriseListPageState extends State<EntrepriseListPage> {
               ],
             )
           : null,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _ouvrirCreation,
-        icon: const Icon(Icons.add_business_rounded),
-        label: const Text('Nouvelle entreprise'),
+      floatingActionButton: PermissionGate(
+        page: PageAccess.entreprises,
+        action: ActionAccess.creer,
+        child: FloatingActionButton.extended(
+          onPressed: _ouvrirCreation,
+          icon: const Icon(Icons.add_business_rounded),
+          label: const Text('Nouvelle entreprise'),
+        ),
       ),
       body: _construireCorps(theme),
     );

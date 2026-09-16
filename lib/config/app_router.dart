@@ -3,19 +3,27 @@ import 'package:go_router/go_router.dart';
 
 // ================== MODÈLES ==================
 import 'package:biashara_yangu/models/activite.dart';
+import 'package:biashara_yangu/models/article.dart';
+import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/etiquette_qr.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
+import 'package:biashara_yangu/models/vente_enregistree.dart';
+
+// ================== SERVICES ==================
+import 'package:biashara_yangu/services/permission_service.dart';
 
 // ================== PAGES ==================
 import 'package:biashara_yangu/pages/login_page.dart';
 import 'package:biashara_yangu/pages/setup_page.dart';
 import 'package:biashara_yangu/pages/home_page.dart';
-import 'package:biashara_yangu/pages/reports_page.dart';
-import 'package:biashara_yangu/pages/stock_management_page.dart';
+// 📊 MODULE 11 — RAPPORTS & EXPORTS. L'ancien écran `reports_page.dart`
+// (SQLite) est débranché ; le fichier est conservé comme pour les Modules 9/10.
+import 'package:biashara_yangu/pages/rapports_page.dart';
 import 'package:biashara_yangu/pages/settings_page.dart'; // Contient SettingsPage et AboutPage
 import 'package:biashara_yangu/pages/add_product_page.dart';
-import 'package:biashara_yangu/pages/stock_page.dart';
 import 'package:biashara_yangu/pages/new_sale_page.dart';
 import 'package:biashara_yangu/pages/admin_home_page.dart';
 import 'package:biashara_yangu/pages/scaffold_with_nav_bar.dart';
@@ -25,11 +33,23 @@ import 'package:biashara_yangu/pages/manage_categories_page.dart';
 import 'package:biashara_yangu/pages/subscription_expired_page.dart';
 
 // 👇 NOUVELLES PAGES DE SUIVI
-import 'package:biashara_yangu/pages/depenses_page.dart';
-import 'package:biashara_yangu/pages/dettes_page.dart';
 import 'package:biashara_yangu/pages/inventaires_page.dart';
 import 'package:biashara_yangu/pages/commercial_hub_page.dart';
 import 'package:biashara_yangu/pages/clients_page.dart';
+
+// 💰 MODULE 10 — FINANCE DE L'ENTREPRISE (caisse, dépenses, dettes, rapports)
+//
+// Les anciens écrans SQLite `DepensesPage` / `DettesPage` sont débranchés
+// (fichiers conservés, comme le stock du Module 9) : ces écrans écrivent
+// désormais dans Supabase via les RPC du Module 10.
+import 'package:biashara_yangu/pages/caisse_page.dart';
+import 'package:biashara_yangu/pages/cloture_caisse_page.dart';
+import 'package:biashara_yangu/pages/finance_dashboard_page.dart';
+import 'package:biashara_yangu/pages/rapports_finance_page.dart';
+import 'package:biashara_yangu/pages/depenses_finance_page.dart';
+import 'package:biashara_yangu/pages/depense_finance_form_page.dart';
+import 'package:biashara_yangu/pages/dettes_clients_page.dart';
+import 'package:biashara_yangu/pages/dette_form_page.dart';
 
 // ================== UTILISATEURS ==================
 import 'package:biashara_yangu/pages/manage_users_page.dart';
@@ -46,6 +66,49 @@ import 'package:biashara_yangu/pages/activites_page.dart';
 import 'package:biashara_yangu/pages/groupe_tarifaire_form_page.dart';
 import 'package:biashara_yangu/pages/groupes_tarifaires_page.dart';
 
+// ================== MODULE 3 : MOTEUR D'ABONNEMENT ==================
+import 'package:biashara_yangu/pages/abonnement_detail_page.dart';
+import 'package:biashara_yangu/pages/paiement_abonnement_page.dart';
+
+// ============= MODULE 4 : PERMISSIONS (RÔLES & ACCÈS) =============
+import 'package:biashara_yangu/pages/permissions_role_page.dart';
+
+// ========== MODULE 5 : ARTICLES & CATALOGUE (CONDITIONNEMENTS) ==========
+import 'package:biashara_yangu/pages/article_detail_page.dart';
+import 'package:biashara_yangu/pages/article_form_page.dart';
+import 'package:biashara_yangu/pages/articles_page.dart';
+import 'package:biashara_yangu/pages/categories_page.dart';
+import 'package:biashara_yangu/pages/conditionnement_form_page.dart';
+
+// ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
+import 'package:biashara_yangu/pages/qr_apercu_page.dart';
+import 'package:biashara_yangu/pages/qr_codes_page.dart';
+
+// ============== MODULE 7 : INTERFACE VENDEUR (SCANNER) ==============
+import 'package:biashara_yangu/pages/scanner_page.dart';
+
+// ========== MODULE 12 : AUDIT, SÉCURITÉ & IMPORT DE PRODUITS ==========
+import 'package:biashara_yangu/pages/import_produits_page.dart';
+import 'package:biashara_yangu/pages/journal_audit_page.dart';
+import 'package:biashara_yangu/pages/securite_page.dart';
+
+// ========== MODULE 8 : PANIER & VALIDATION DE VENTE ==========
+import 'package:biashara_yangu/pages/panier_page.dart';
+import 'package:biashara_yangu/pages/encaissement_page.dart';
+import 'package:biashara_yangu/pages/vente_confirmation_page.dart';
+import 'package:biashara_yangu/pages/mes_ventes_page.dart';
+
+// ========== MODULE 9 : GESTION DU STOCK (CONVERSIONS MULTI-UNITÉS) ==========
+//
+// L'écran « Stock » remplace les anciens écrans locaux (SQLite) : le module 9
+// lit/écrit Supabase (le stock est mis à jour par les triggers serveur des
+// mouvements : ventes, approvisionnements, ajustements).
+import 'package:biashara_yangu/pages/stock_gestion_page.dart';
+import 'package:biashara_yangu/pages/stock_detail_page.dart';
+import 'package:biashara_yangu/pages/approvisionnement_form_page.dart';
+import 'package:biashara_yangu/pages/ajustement_form_page.dart';
+import 'package:biashara_yangu/pages/inventaire_cloture_page.dart';
+
 // ================== NAV KEYS ==================
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -55,6 +118,42 @@ final GlobalKey<NavigatorState> settingsBranchKey = GlobalKey<NavigatorState>();
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/login',
+
+  // ==========================================================================
+  //  🔐 MODULE 4 — MIDDLEWARE DE PERMISSIONS
+  // ==========================================================================
+  //  Vérifie les droits AVANT chaque navigation.
+  //
+  //  Ordre des contrôles (imposé par le cahier des charges) :
+  //    1. l'abonnement (Module 3) — un abonnement suspendu bloque l'accès,
+  //       un abonnement échu met l'application en lecture seule. Ce contrôle
+  //       a lieu à la connexion, avant que cette fonction ne s'exécute ;
+  //    2. les permissions du rôle — ce redirect.
+  //
+  //  Comportement :
+  //    • tant que les permissions ne sont pas chargées (`pret == false`) ou
+  //      que le rôle est inconnu (écran de connexion, session restaurée en
+  //      cours d'initialisation), on ne bloque RIEN : il vaut mieux laisser
+  //      passer que verrouiller l'application sur un état transitoire ;
+  //    • une URL sans règle (connexion, inscription, pages libres) est
+  //      toujours autorisée ;
+  //    • en cas de refus, l'utilisateur est ramené sur la première page de
+  //      son rôle, jamais sur une page interdite.
+  redirect: (BuildContext context, GoRouterState state) {
+    final PermissionService permissions = PermissionService.instance;
+    final RoleUtilisateur role = permissions.roleCourant;
+
+    if (!permissions.pret || role == RoleUtilisateur.inconnu) return null;
+
+    final String location = state.uri.path;
+    if (permissions.routeAutorisee(location)) return null;
+
+    final String? accueil = permissions.accueilPour(role);
+    if (accueil == null) return '/login';
+    if (accueil == location) return null;
+
+    return accueil;
+  },
 
   routes: [
     // ================== AUTHENTIFICATION ==================
@@ -73,6 +172,65 @@ final GoRouter appRouter = GoRouter(
       path: '/subscription-expired',
       name: 'subscription-expired',
       builder: (context, state) => const SubscriptionExpiredPage(),
+    ),
+
+    // ================== MODULE 7 : SCANNER VENDEUR ==================
+    // Écran plein écran (caméra) : volontairement placé HORS de la coquille
+    // de navigation pour que la barre d'onglets ne recouvre pas la caméra.
+    // Le contrôle du rôle et de l'abonnement est fait par la page elle-même,
+    // en plus du middleware de permissions (`/scanner` → page `scanner`).
+    GoRoute(
+      path: '/scanner',
+      name: 'scanner',
+      builder: (context, state) => const ScannerPage(),
+    ),
+
+    // ========== MODULE 12 : AUDIT, SÉCURITÉ & IMPORT DE PRODUITS ==========
+    //
+    // Routes plein écran de premier niveau (comme `/scanner`) : l'accès est
+    // contrôlé par le middleware de permissions (`/audit` → page `audit`,
+    // `/securite` → page `securite`, `/import-produits` → `articles/créer`)
+    // ET revérifié côté serveur par les RPC du module.
+    GoRoute(
+      path: '/audit',
+      name: 'journal-audit',
+      builder: (context, state) => const JournalAuditPage(),
+    ),
+    GoRoute(
+      path: '/securite',
+      name: 'securite',
+      builder: (context, state) => const SecuritePage(),
+    ),
+    GoRoute(
+      path: '/import-produits',
+      name: 'import-produits',
+      builder: (context, state) => const ImportProduitsPage(),
+    ),
+
+    // ============== MODULE 8 : CONFIRMATION DE VENTE ==============
+    // Reçu affiché après l'encaissement (le panier est déjà vidé). Hors
+    // coquille : l'écran occupe toute la place.
+    GoRoute(
+      path: '/confirmation-vente',
+      name: 'vente-confirmation',
+      builder: (context, state) {
+        final Object? extra = state.extra;
+        if (extra is VenteEnregistree) {
+          return VenteConfirmationPage(vente: extra);
+        }
+        return const Scaffold(
+          body: Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Aucune vente à afficher.\n'
+                'Encaissez d\'abord un panier.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        );
+      },
     ),
 
     // ================== ADMINISTRATION ==================
@@ -163,6 +321,48 @@ final GoRouter appRouter = GoRouter(
             ),
           ],
         ),
+
+        // 💳 MODULE 3 — MOTEUR D'ABONNEMENT
+        //
+        // Accessible depuis la fiche entreprise (action de la barre de titre).
+        // `:id` est l'identifiant de l'entreprise.
+        GoRoute(
+          path: 'abonnements/:id',
+          name: 'abonnement-detail',
+          builder: (context, state) => AbonnementDetailPage(
+            entreprise:
+                state.extra is Entreprise ? state.extra as Entreprise : null,
+            entrepriseId: state.pathParameters['id'],
+          ),
+          routes: [
+            GoRoute(
+              path: 'paiement',
+              name: 'abonnement-paiement',
+              builder: (context, state) => PaiementAbonnementPage(
+                entreprise: state.extra is Entreprise
+                    ? state.extra as Entreprise
+                    : null,
+                entrepriseId: state.pathParameters['id'],
+              ),
+            ),
+          ],
+        ),
+
+        // 🔐 MODULE 4 — PERMISSIONS DES RÔLES (Super Admin uniquement)
+        //
+        // Également accessible depuis l'onglet « Système ». La permission
+        // exigée est `parametres` + `modifier` ; l'écran vérifie en plus que
+        // le rôle est SUPER_ADMIN, et la RPC `rpc_permissions_set` le vérifie
+        // une troisième fois côté serveur.
+        GoRoute(
+          path: 'permissions',
+          name: 'permissions-roles',
+          builder: (context, state) => PermissionsRolePage(
+            roleInitial: state.extra is RoleUtilisateur
+                ? state.extra as RoleUtilisateur
+                : null,
+          ),
+        ),
       ],
     ),
 
@@ -186,10 +386,54 @@ final GoRouter appRouter = GoRouter(
                   name: 'new-sale',
                   builder: (context, state) => const NewSalePage(),
                 ),
+
+                // 🏬 MODULE 9 — GESTION DU STOCK (conversions multi-unités)
+                //
+                // `/main/stock` = écran principal (liste, alertes, filtres) ;
+                // sous-routes : clôture d'inventaire, entrée de stock,
+                // ajustement (raison obligatoire) et fiche stock d'un article.
+                // Les routes statiques sont déclarées AVANT `:id` pour être
+                // résolues en priorité.
                 GoRoute(
                   path: 'stock',
                   name: 'stock',
-                  builder: (context, state) => const StockPage(),
+                  builder: (context, state) => const StockGestionPage(),
+                  routes: [
+                    GoRoute(
+                      path: 'inventaire',
+                      name: 'stock-inventaire',
+                      builder: (context, state) => const InventaireCloturePage(),
+                    ),
+                    GoRoute(
+                      path: 'approvisionnement',
+                      name: 'stock-approvisionnement',
+                      builder: (context, state) => ApprovisionnementFormPage(
+                        article: state.extra is Article
+                            ? state.extra as Article
+                            : null,
+                      ),
+                    ),
+                    GoRoute(
+                      path: 'ajustement',
+                      name: 'stock-ajustement',
+                      builder: (context, state) => AjustementFormPage(
+                        article: state.extra is Article
+                            ? state.extra as Article
+                            : null,
+                      ),
+                    ),
+                    GoRoute(
+                      path: ':id',
+                      name: 'stock-article',
+                      builder: (context, state) => StockDetailPage(
+                        articleId:
+                            int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+                        article: state.extra is Article
+                            ? state.extra as Article
+                            : null,
+                      ),
+                    ),
+                  ],
                 ),
                 GoRoute(
                   path: 'add-product',
@@ -210,15 +454,71 @@ final GoRouter appRouter = GoRouter(
                   name: 'commercial',
                   builder: (context, state) => const CommercialHubPage(),
                 ),
+
+                // 💰 MODULE 10 — FINANCE DE L'ENTREPRISE
+                //
+                // Caisse (solde calculé + historique + clôture), tableau de
+                // bord et rapports. Les écritures passent par les RPC du
+                // Module 10 : la finance reste STRICTEMENT dans l'entreprise
+                // (la plateforme n'y a aucun accès).
+                GoRoute(
+                  path: 'caisse',
+                  name: 'caisse',
+                  builder: (context, state) => const CaissePage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'cloture',
+                      name: 'caisse-cloture',
+                      builder: (context, state) => const ClotureCaissePage(),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'finance',
+                  name: 'finance',
+                  builder: (context, state) => const FinanceDashboardPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'rapports',
+                      name: 'finance-rapports',
+                      builder: (context, state) => const RapportsFinancePage(),
+                    ),
+                  ],
+                ),
+                // MODULE 10 — l'écran Dépenses (Supabase) remplace l'écran
+                // SQLite ; même chemin et même nom de route qu'avant.
                 GoRoute(
                   path: 'depenses',
                   name: 'depenses',
-                  builder: (context, state) => const DepensesPage(),
+                  builder: (context, state) => const DepensesFinancePage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'depense-new',
+                      builder: (context, state) =>
+                          const DepenseFinanceFormPage(),
+                    ),
+                  ],
                 ),
+                // MODULE 10 — dettes clients (Supabase), mêmes chemin/nom.
                 GoRoute(
                   path: 'dettes',
                   name: 'dettes',
-                  builder: (context, state) => const DettesPage(),
+                  builder: (context, state) => const DettesClientsPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'dette-new',
+                      builder: (context, state) => const DetteFormPage(),
+                    ),
+                  ],
+                ),
+                // 📊 MODULE 11 — RAPPORTS & EXPORTS (boutique) : aperçu de
+                // tous les rapports + exports PDF/Excel signés et tracés.
+                GoRoute(
+                  path: 'rapports',
+                  name: 'rapports',
+                  builder: (context, state) => const RapportsPage(),
                 ),
                 GoRoute(
                   path: 'clients',
@@ -230,29 +530,162 @@ final GoRouter appRouter = GoRouter(
                   name: 'inventaires',
                   builder: (context, state) => const InventairesPage(),
                 ),
+
+                // 🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)
+                //
+                // Liste, création / modification, détail (QR codes +
+                // historique des mouvements) et gestion des catégories.
+                // Les emballages vendables (farde, carton…) vivent dans des
+                // sous-routes du détail : ils ont besoin d'un article existant.
+                GoRoute(
+                  path: 'articles',
+                  name: 'articles',
+                  builder: (context, state) => const ArticlesPage(),
+                  routes: [
+                    GoRoute(
+                      path: 'categories',
+                      name: 'article-categories',
+                      builder: (context, state) => const CategoriesPage(),
+                    ),
+                    GoRoute(
+                      path: 'new',
+                      name: 'article-new',
+                      builder: (context, state) => const ArticleFormPage(),
+                    ),
+                    GoRoute(
+                      path: ':id',
+                      name: 'article-detail',
+                      builder: (context, state) => ArticleDetailPage(
+                        articleId:
+                            int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+                        article: state.extra is Article
+                            ? state.extra as Article
+                            : null,
+                      ),
+                      routes: [
+                        GoRoute(
+                          path: 'edit',
+                          name: 'article-edit',
+                          builder: (context, state) => ArticleFormPage(
+                            article: state.extra is Article
+                                ? state.extra as Article
+                                : null,
+                            articleId: state.pathParameters['id'],
+                          ),
+                        ),
+                        GoRoute(
+                          path: 'conditionnements/new',
+                          name: 'conditionnement-new',
+                          builder: (context, state) => ConditionnementFormPage(
+                            articleId:
+                                int.tryParse(state.pathParameters['id'] ?? '') ??
+                                    -1,
+                          ),
+                        ),
+                        GoRoute(
+                          path: 'conditionnements/:conditionnementId/edit',
+                          name: 'conditionnement-edit',
+                          builder: (context, state) => ConditionnementFormPage(
+                            articleId:
+                                int.tryParse(state.pathParameters['id'] ?? '') ??
+                                    -1,
+                            conditionnement: state.extra is Conditionnement
+                                ? state.extra as Conditionnement
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                // 🔳 MODULE 6 — GESTION & IMPRESSION DES QR CODES
+                //
+                // Liste de sélection (articles + conditionnements), génération
+                // en masse, téléchargement PNG/SVG et planche d'étiquettes PDF.
+                GoRoute(
+                  path: 'qr-codes',
+                  name: 'qr-codes',
+                  builder: (context, state) => const QrCodesPage(),
+                  routes: [
+                    GoRoute(
+                      path: 'apercu',
+                      name: 'qr-apercu',
+                      builder: (context, state) {
+                        final Object? extra = state.extra;
+                        if (extra is EtiquetteQr) {
+                          return QrApercuPage(etiquette: extra);
+                        }
+                        return const Scaffold(
+                          body: Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text(
+                                'Aucune étiquette sélectionnée.\n'
+                                'Ouvrez cet aperçu depuis la gestion des QR codes.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+
+                // ========== MODULE 8 — PANIER & VALIDATION DE VENTE ==========
+                //
+                // `/main/panier` liste les lignes du panier partagé (rempli par
+                // le scanner du Module 7) et mène à `/main/panier/encaissement`
+                // (transaction serveur `rpc_vente_valider`). `/main/ventes` est
+                // l'historique du vendeur (filtres jour / mode de paiement).
+                GoRoute(
+                  path: 'panier',
+                  name: 'panier',
+                  builder: (context, state) => const PanierPage(),
+                  routes: [
+                    GoRoute(
+                      path: 'encaissement',
+                      name: 'panier-encaissement',
+                      builder: (context, state) => const EncaissementPage(),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'ventes',
+                  name: 'mes-ventes',
+                  builder: (context, state) => const MesVentesPage(),
+                ),
               ],
             ),
           ],
         ),
 
         // 📊 BRANCHE 2 : RAPPORTS
+        //
+        // 📊 MODULE 11 — l'onglet « Rapports » ouvre le nouvel écran
+        // (données Supabase + exports PDF/Excel). Le chemin `/reports` est
+        // conservé : toutes les navigations existantes continuent d'aboutir.
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/reports',
               name: 'reports',
-              builder: (context, state) => const ReportsPage(),
+              builder: (context, state) => const RapportsPage(),
             ),
           ],
         ),
 
         // 📦 BRANCHE 3 : GESTION DE STOCK
+        //
+        // 🏬 MODULE 9 — l'onglet ouvre le nouvel écran de gestion du stock
+        // (Supabase) : le même écran que `/main/stock`.
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/stock-management',
               name: 'stock-management',
-              builder: (context, state) => const StockManagementPage(),
+              builder: (context, state) => const StockGestionPage(),
             ),
           ],
         ),

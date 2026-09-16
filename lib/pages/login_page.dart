@@ -4,15 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase_auth;
 
-import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
+import 'package:biashara_yangu/services/audit_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/services/subscription_sync_service.dart';
-import 'package:biashara_yangu/services/subscription_service.dart';
+import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/panier_service.dart';
+import 'package:biashara_yangu/services/scanner_service.dart';
+import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/pages/password_recovery_page.dart';
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
+import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -42,10 +48,9 @@ class _LoginPageState extends State<LoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : Colors.blueGrey[800],
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: isError
+            ? AppCouleurs.danger
+            : AppCouleurs.marine,
       ),
     );
   }
@@ -66,6 +71,10 @@ class _LoginPageState extends State<LoginPage> {
         if (user != null && user.id != null) {
           final userId = user.id!;
           await SessionManager.setUserId(userId);
+
+          // 🔐 MODULE 12 — connexion tracée (best-effort : le journal ne doit
+          // jamais empêcher une connexion réussie).
+          await AuditService.instance.connexion(email: email);
 
           try {
             await _syncService.syncUserProfile(userId);
@@ -107,6 +116,10 @@ class _LoginPageState extends State<LoginPage> {
         }
       } on supabase_auth.AuthException catch (e) {
         if (e.message.contains('Invalid login credentials')) {
+          // 🔐 MODULE 12 — échec de connexion tracé (session anonyme autorisée
+          // uniquement pour cette action).
+          await AuditService.instance
+              .echecConnexion(email, 'Email ou mot de passe incorrect.');
           _showSnackBar('Email ou mot de passe incorrect.', isError: true);
           setState(() => _isLoading = false);
           return;
@@ -126,12 +139,17 @@ class _LoginPageState extends State<LoginPage> {
 
       if (localUser != null) {
         await SessionManager.setUserId(localUser.id!);
-        await SessionManager.setUserRole(localUser.role ?? 'collaborator');
+        await SessionManager.setUserRole(
+          localUser.role.isNotEmpty ? localUser.role : 'collaborator',
+        );
         if (!mounted) return;
         await _navigateAfterLogin(localUser.id!);
         return;
       }
 
+      // 🔐 MODULE 12 — échec tracé aussi pour le repli local (compte inconnu).
+      await AuditService.instance
+          .echecConnexion(email, 'Identifiants incorrects (repli local).');
       _showSnackBar("Identifiants incorrects.", isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -139,41 +157,71 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _navigateAfterLogin(String userId) async {
-    final db = await _dbHelper.database;
-    final String role = await SessionManager.getUserRole() ?? 'vendor';
-
     // -------------------------------------------------------------------------
-    // EXEMPTION DE L'ADMINISTRATION PLATEFORME
+    //  🔐 MODULE 4 — RÉSOLUTION DU RÔLE
     // -------------------------------------------------------------------------
-    // Le compte d'administration de la plateforme n'est soumis à AUCUN contrôle
-    // d'accès : ni celui de l'entreprise, ni celui de l'abonnement.
+    //  Le rôle est relu à trois sources, de la plus fiable à la plus récente :
+    //    1. `new_role` du profil local (colonne officielle du Module 4) ;
+    //    2. l'ancien rôle texte (`admin`, `vendor`, `collaborator`) ;
+    //    3. la base Supabase, consultée juste après : si la synchronisation
+    //       locale a échoué, un administrateur de plateforme se retrouverait
+    //       sinon enfermé hors de sa propre plateforme.
     //
-    // Le rôle est revérifié côté Supabase, et pas seulement dans la session
-    // locale : si la synchronisation locale a échoué, `role` retombe sur
-    // 'vendor' et l'administrateur se retrouverait enfermé hors de sa propre
-    // plateforme, sans aucun moyen de se débloquer lui-même.
-    final bool estAdminPlateforme = role == 'admin' ||
-        await SupabaseService.instance.estAdministrateurPlateforme(userId);
+    //  Les permissions sont ensuite chargées AVANT toute navigation : le
+    //  middleware du routeur s'appuie sur elles dès le premier écran.
+    RoleUtilisateur role = RoleUtilisateur.fromCode(
+      await SessionManager.getUserRole(),
+    );
 
-    if (estAdminPlateforme) {
-      if (role != 'admin') {
-        // Session locale corrigée pour les prochains démarrages.
-        await SessionManager.setUserRole('admin');
-      }
+    final Utilisateur? profilLocal = await _dbHelper.getUtilisateurById(userId);
+    final RoleUtilisateur roleProfil =
+        PermissionService.roleDepuisUtilisateur(profilLocal);
+    if (roleProfil != RoleUtilisateur.inconnu) role = roleProfil;
+
+    if (!role.estPlateforme &&
+        await SupabaseService.instance.estAdministrateurPlateforme(userId)) {
+      role = RoleUtilisateur.superAdmin;
+    }
+
+    // Session locale alignée sur le rôle effectif (les prochains démarrages
+    // n'auront plus besoin d'interroger la base).
+    await SessionManager.setUserRole(role.code);
+
+    // Best-effort : hors ligne, la matrice par défaut du Module 4 s'applique.
+    await PermissionService.instance.initialiser(
+      role.code,
+      forcerRechargement: true,
+    );
+
+    // -------------------------------------------------------------------------
+    //  EXEMPTION DE L'ADMINISTRATION PLATEFORME
+    // -------------------------------------------------------------------------
+    //  Les quatre rôles de la plateforme ne sont soumis à AUCUN contrôle
+    //  d'accès : ni celui de l'entreprise, ni celui de l'abonnement.
+    if (role.estPlateforme) {
       if (!mounted) return;
       context.go('/admin');
       return;
     }
 
-    // 🏢 Contrôle d'accès lié à l'entreprise rattachée.
+    // 🔒 MODULE 3 — Middleware d'abonnement.
     //
-    // `verifierAccesUtilisateur` est fail-open : si la fonction SQL n'est pas
-    // installée, si le réseau échoue ou si l'utilisateur n'est rattaché à
-    // aucune entreprise, l'accès reste ouvert.
-    final String? blocageEntreprise =
-        await EntrepriseService.instance.verifierAccesUtilisateur(userId);
+    // 1. Best-effort : la base normalise d'abord les abonnements échus
+    //    (EXPIRE / EN_ATTENTE_COMPLEMENT).
+    // 2. Le statut de l'entreprise rattachée est ensuite évalué :
+    //    - suspendue → accès bloqué (décision de l'administrateur) ;
+    //    - échue     → accès en LECTURE SEULE : la consultation reste possible,
+    //                  les fonctionnalités commerciales sont bloquées ;
+    //    - valide    → accès complet.
+    //
+    // `verifierAccesUtilisateur` est fail-open : un incident réseau ou une
+    // fonction absente laisse l'accès complet.
+    await AbonnementService.instance.executerVerificationGlobaleSilencieuse();
 
-    if (blocageEntreprise != null) {
+    final EtatAccesAbonnement etatAbonnement =
+        await AbonnementService.instance.verifierAccesUtilisateur(userId);
+
+    if (etatAbonnement.bloque) {
       if (!mounted) return;
 
       await showDialog<void>(
@@ -181,13 +229,23 @@ class _LoginPageState extends State<LoginPage> {
         barrierDismissible: false,
         builder: (BuildContext ctx) => AlertDialog(
           title: const Text('Accès bloqué'),
-          content: Text(blocageEntreprise),
+          content: Text(
+            etatAbonnement.message ?? "L'accès à l'application est bloqué.",
+          ),
           actions: [
             TextButton(
               onPressed: () async {
                 Navigator.of(ctx).pop();
+                // 🔐 MODULE 12 — session bloquée : déconnexion tracée.
+                await AuditService.instance.deconnexion(
+                  email: _emailController.text.trim().toLowerCase(),
+                );
                 await SupabaseService.instance.signOut();
                 await SessionManager.clearSession();
+                AbonnementService.instance.reinitialiserAcces();
+                // 🔳 MODULE 7 — session terminée : panier et historique vidés.
+                PanierService.instance.vider();
+                ScannerService.instance.viderHistorique();
               },
               child: const Text('Se déconnecter'),
             ),
@@ -200,21 +258,26 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    final hasActiveSubscription = await isUserSubscribed(db, userId);
+    if (!mounted) return;
 
-    // ⚠️ CORRECTION : la condition était inversée. Un abonnement ACTIF envoyait
-    // l'utilisateur sur la page « abonnement expiré », tandis qu'un abonnement
-    // absent ou échu le laissait entrer. Le bogue restait invisible tant que la
-    // table locale `subscriptions` était vide.
-    if (!hasActiveSubscription) {
-      context.go('/subscription-expired');
-    } else {
-      if (role == 'vendor') {
-        context.go('/main');
-      } else {
-        context.go('/main/new-sale');
-      }
+    // L'état d'abonnement est désormais calculé par le moteur (Module 3) :
+    // l'ancien contrôle local SQLite `subscriptions` n'est plus consulté.
+    //
+    // 🔐 MODULE 4 — la destination dépend des permissions du rôle. Le contrôle
+    // d'abonnement reste PRIORITAIRE : un abonnement échu (`lectureSeule`)
+    // ramène sur l'accueil consultable plutôt que sur l'écran de vente —
+    // uniquement si le rôle a le droit d'ouvrir cet accueil, faute de quoi on
+    // provoquerait un aller-retour de redirections inutile.
+    final String? accueil = PermissionService.instance.accueilPour(role);
+
+    if (etatAbonnement.lectureSeule &&
+        accueil == '/main/new-sale' &&
+        PermissionService.instance.peutVoir(PageAccess.dashboard)) {
+      context.go('/main');
+      return;
     }
+
+    context.go(accueil ?? '/main');
   }
 
   @override
@@ -226,72 +289,111 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final size = MediaQuery.of(context).size;
-    final isWide = size.width > 700;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colorScheme = theme.colorScheme;
+    final bool sombre = theme.brightness == Brightness.dark;
+    final Size size = MediaQuery.of(context).size;
+    final bool isWide = size.width > 760;
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: isWide ? 900 : 450),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 25,
-                      offset: const Offset(0, 12))
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: Row(
-                  children: [
-                    if (isWide) _buildBanner(colorScheme),
-                    Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.all(isWide ? 40 : 25),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (!isWide) ...[
-                                Center(
-                                    child: Image.asset(
-                                        'assets/Biashara_app_off-.png',
-                                        height: 70)),
-                                const SizedBox(height: 20),
-                              ],
-                              const Text('Connexion',
-                                  style: TextStyle(
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.w800),
-                                  textAlign: TextAlign.center),
-                              const SizedBox(height: 35),
-                              _buildTextField(_emailController, 'Email',
-                                  Icons.alternate_email_rounded),
-                              const SizedBox(height: 16),
-                              _buildTextField(_passwordController,
-                                  'Mot de passe', Icons.lock_outline_rounded,
-                                  isPassword: true),
-                              _buildForgotButton(colorScheme),
-                              const SizedBox(height: 20),
-                              _buildLoginButton(colorScheme),
-                              const SizedBox(height: 24),
-                              _buildFooter(),
-                            ],
-                          ),
-                        ),
-                      ),
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: sombre ? AppDegrades.fondSombre : AppDegrades.fondClair,
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: isWide ? 920 : 440),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: AppCouleurs.marine.withValues(alpha: 0.10),
+                      blurRadius: 40,
+                      offset: const Offset(0, 20),
                     ),
                   ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (isWide) Expanded(child: _buildBanner(colorScheme)),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.all(isWide ? 40 : 26),
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (!isWide) ...[
+                                    Center(
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: colorScheme.surface,
+                                          borderRadius:
+                                              BorderRadius.circular(22),
+                                          border: Border.all(
+                                            color: colorScheme.outlineVariant,
+                                          ),
+                                        ),
+                                        child: Image.asset(
+                                          'assets/Biashara_app_off-.png',
+                                          height: 64,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 22),
+                                  ],
+                                  Text(
+                                    'Connexion',
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.headlineSmall
+                                        ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Accédez à votre espace de gestion.',
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodyMedium
+                                        ?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 30),
+                                  _buildTextField(_emailController, 'Email',
+                                      Icons.alternate_email_rounded),
+                                  const SizedBox(height: 16),
+                                  _buildTextField(
+                                    _passwordController,
+                                    'Mot de passe',
+                                    Icons.lock_outline_rounded,
+                                    isPassword: true,
+                                  ),
+                                  _buildForgotButton(colorScheme),
+                                  const SizedBox(height: 18),
+                                  _buildLoginButton(colorScheme),
+                                  const SizedBox(height: 22),
+                                  _buildFooter(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -302,33 +404,83 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildBanner(ColorScheme colorScheme) {
-    return Expanded(
-      child: Container(
-        height: 600,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-              colors: [colorScheme.primary, colorScheme.primary.withBlue(200)]),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Image.asset('assets/Biashara_app_off-.png', height: 100),
-              const SizedBox(height: 30),
-              const Text('Biashara Yangu',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 15),
-              Text('Gérez votre commerce avec simplicité.',
-                  style: TextStyle(
-                      color: Colors.white.withOpacity(0.8), fontSize: 16)),
-            ],
+    return Container(
+      decoration: const BoxDecoration(gradient: AppDegrades.hero),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -60,
+            right: -50,
+            child: _CercleDeco(
+              taille: 180,
+              couleur: Colors.white.withValues(alpha: 0.07),
+            ),
           ),
-        ),
+          Positioned(
+            bottom: -70,
+            left: -40,
+            child: _CercleDeco(
+              taille: 200,
+              couleur: AppCouleurs.orange.withValues(alpha: 0.15),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(40),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.asset(
+                      'assets/Biashara_app_off-.png',
+                      height: 84,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                const Text(
+                  'Biashara Yangu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Gérez votre commerce avec simplicité.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.82),
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 34),
+                const _PointCle(
+                  icone: Icons.qr_code_scanner_rounded,
+                  texte: 'Scannez et encaissez en quelques secondes',
+                ),
+                const SizedBox(height: 14),
+                const _PointCle(
+                  icone: Icons.inventory_2_rounded,
+                  texte: 'Stock, caisse et dettes toujours à jour',
+                ),
+                const SizedBox(height: 14),
+                const _PointCle(
+                  icone: Icons.insights_rounded,
+                  texte: 'Rapports PDF & Excel signés et traçables',
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -351,11 +503,6 @@ class _LoginPageState extends State<LoginPage> {
                     setState(() => _obscurePassword = !_obscurePassword),
               )
             : null,
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none),
       ),
       validator: (v) => (v == null || v.isEmpty) ? 'Champ requis' : null,
     );
@@ -377,22 +524,23 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildLoginButton(ColorScheme colorScheme) {
-    return ElevatedButton(
+    return FilledButton(
       onPressed: _isLoading ? null : _signIn,
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        backgroundColor: colorScheme.primary,
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      ),
       child: _isLoading
           ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white))
-          : const Text('SE CONNECTER',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+              height: 22,
+              width: 22,
+              child: ModernLoader(
+                taille: 22,
+                epaisseur: 2.6,
+                couleur: Colors.white,
+                couleurSecondaire: Colors.white70,
+              ),
+            )
+          : const Text(
+              'SE CONNECTER',
+              style: TextStyle(letterSpacing: 0.8),
+            ),
     );
   }
 
@@ -407,6 +555,63 @@ class _LoginPageState extends State<LoginPage> {
             child: const Text('S\'inscrire',
                 style: TextStyle(fontWeight: FontWeight.bold))),
       ],
+    );
+  }
+}
+
+/// Point clé affiché dans la bannière (côté large de l'écran de connexion).
+class _PointCle extends StatelessWidget {
+  const _PointCle({required this.icone, required this.texte});
+
+  final IconData icone;
+  final String texte;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icone, size: 18, color: Colors.white),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              texte,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Disque translucide décoratif.
+class _CercleDeco extends StatelessWidget {
+  const _CercleDeco({required this.taille, required this.couleur});
+
+  final double taille;
+  final Color couleur;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: taille,
+      height: taille,
+      decoration: BoxDecoration(color: couleur, shape: BoxShape.circle),
     );
   }
 }

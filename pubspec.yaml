@@ -59,6 +59,11 @@ dependencies:
   uuid: ^4.5.2
   sqflite_common_ffi: ^2.3.0+2
   window_manager: ^0.2.5
+  qr_flutter: ^4.1.0
+  qr: ^3.0.2
+  mobile_scanner: ^7.4.2
+  excel: ^4.0.6
+  file_selector: ^1.1.0
 
 dev_dependencies:
   flutter_test:

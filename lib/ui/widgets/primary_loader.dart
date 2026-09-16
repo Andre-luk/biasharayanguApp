@@ -1,5 +1,12 @@
 // lib/ui/widgets/primary_loader.dart
+//
+// Ancien indicateur de chargement — conservé pour compatibilité avec les
+// écrans existants (`new_sale_page`, …). Il délègue désormais au loader
+// moderne commun : anneau dégradé animé (voir `modern_loader.dart`).
+
 import 'package:flutter/material.dart';
+
+import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 
 class PrimaryLoader extends StatelessWidget {
   final double size;
@@ -7,14 +14,9 @@ class PrimaryLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Theme.of(context).colorScheme.primary;
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CircularProgressIndicator(
-        strokeWidth: 2.4,
-        valueColor: AlwaysStoppedAnimation(color),
-      ),
+    return ModernLoader(
+      taille: size,
+      epaisseur: size <= 28 ? 2.6 : 3.4,
     );
   }
 }

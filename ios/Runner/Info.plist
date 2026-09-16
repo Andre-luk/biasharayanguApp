@@ -49,5 +49,7 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSCameraUsageDescription</key>
+		<string>La caméra permet de scanner les QR codes des articles et des conditionnements pour les ajouter au panier de vente.</string>
 	</dict>
 </plist>

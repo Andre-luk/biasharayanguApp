@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/services.dart';
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
+import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 class ManageUsersPage extends StatefulWidget {
   const ManageUsersPage({super.key});
@@ -191,15 +193,21 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final patronId = await SessionManager.getUserId();
-          if (patronId != null && mounted) {
-            _showInviteCodeDialog(patronId);
-          }
-        },
-        label: const Text("Inviter Vendeur"),
-        icon: const Icon(Icons.share),
+      // 🔐 MODULE 4 — inviter un vendeur crée un compte : il faut la
+      // permission « créer » sur les collaborateurs.
+      floatingActionButton: PermissionGate(
+        page: PageAccess.collaborateurs,
+        action: ActionAccess.creer,
+        child: FloatingActionButton.extended(
+          onPressed: () async {
+            final patronId = await SessionManager.getUserId();
+            if (patronId != null && mounted) {
+              _showInviteCodeDialog(patronId);
+            }
+          },
+          label: const Text("Inviter Vendeur"),
+          icon: const Icon(Icons.share),
+        ),
       ),
     );
   }

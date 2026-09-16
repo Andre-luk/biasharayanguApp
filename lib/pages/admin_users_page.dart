@@ -1,5 +1,8 @@
 // lib/pages/admin_users_page.dart
 import 'package:flutter/material.dart';
+import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/pages/setup_page.dart';
@@ -47,8 +50,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   }
 
   // 1) Activation / Désactivation compte (valide)
-  Future<void> _toggleAccountActivation(Utilisateur u) async {
-    final newValidState = (u.valide == 1) ? 0 : 1;
+  Future<void> _toggleAccountActivation(Utilisateur u) async {    final newValidState = (u.valide == 1) ? 0 : 1;
     final action = newValidState == 0 ? 'Désactivé' : 'Activé';
 
     try {
@@ -97,6 +99,164 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       ),
     );
     if (res == true) await _loadUsers();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🔐 MODULE 4 — ATTRIBUTION DU RÔLE
+  // ---------------------------------------------------------------------------
+  //  Un utilisateur ne peut avoir qu'UN rôle : il est écrit dans la colonne
+  //  `new_role` (type `role_utilisateur_enum`). L'ancienne colonne `role`
+  //  n'est plus modifiée : elle n'est conservée que pour la lecture de repli.
+  //
+  //  La copie locale est alignée dans la foulée, sinon le prochain démarrage
+  //  hors ligne de l'utilisateur repartirait sur son ancien rôle.
+
+  Future<void> _changerRole(Utilisateur u) async {
+    if (u.id == null || u.id!.isEmpty) return;
+
+    final RoleUtilisateur roleActuel = PermissionService.roleDepuisUtilisateur(u);
+    RoleUtilisateur choix = roleActuel == RoleUtilisateur.inconnu
+        ? RoleUtilisateur.vendeur
+        : roleActuel;
+
+    final bool? confirme = await showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return StatefulBuilder(
+          builder: (BuildContext ctx, StateSetter setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      'Rôle de ${u.fullName}',
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Rôle actuel : ${roleActuel.libelle}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<RoleUtilisateur>(
+                      initialValue: choix,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: RoleUtilisateur.rolesSelectionnables
+                          .map((RoleUtilisateur r) => DropdownMenuItem(
+                                value: r,
+                                child: Text(r.libelle),
+                              ))
+                          .toList(),
+                      onChanged: (RoleUtilisateur? r) {
+                        if (r != null) setSheetState(() => choix = r);
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Les droits de ce rôle sont configurables dans '
+                      '« Système → Permissions des rôles ».',
+                      style: const TextStyle(fontSize: 11.5, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(false),
+                            child: const Text('Annuler'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () =>
+                                Navigator.of(sheetContext).pop(true),
+                            child: const Text('Enregistrer'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (confirme != true) return;
+    if (choix == roleActuel) return;
+
+    try {
+      await supabase
+          .from('utilisateurs')
+          .update(<String, dynamic>{'new_role': choix.code})
+          .eq('id', u.id!);
+
+      // Copie locale : le rôle doit rester juste au prochain démarrage.
+      try {
+        final Utilisateur? local =
+            await DBHelper.instance.getUtilisateurById(u.id!);
+        if (local != null) {
+          await DBHelper.instance
+              .updateUtilisateur(local.copyWith(newRole: choix.code));
+        }
+      } catch (e) {
+        debugPrint('Rôle local non mis à jour: $e');
+      }
+
+      // Si l'administrateur change son propre rôle, la session courante doit
+      // suivre immédiatement (sinon les menus resteraient sur l'ancien rôle).
+      final String? moi = await SessionManager.getUserId();
+      if (moi == u.id) {
+        await SessionManager.setUserRole(choix.code);
+        await PermissionService.instance
+            .initialiser(choix.code, forcerRechargement: true);
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${u.fullName} est désormais « ${choix.libelle} ».'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+      await _loadUsers();
+    } on PostgrestException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Changement de rôle refusé : ${e.message}'),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Changement de rôle impossible : $e'),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ));
+    }
   }
 
   Future<void> _createUser() async {
@@ -451,7 +611,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     child: Text(u.nom.isNotEmpty ? u.nom[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white)),
                   ),
                   title: Text(u.nom, style: TextStyle(fontWeight: FontWeight.bold, color: u.valide == 0 ? Colors.grey : Colors.black)),
-                  subtitle: Text('${u.email ?? ''} • ${u.role ?? ''}\nStatut: ${u.valide == 1 ? 'Activé' : 'Désactivé'}'),
+                  subtitle: Text('${u.email ?? ''} • ${PermissionService.roleDepuisUtilisateur(u).libelle}\nStatut: ${u.valide == 1 ? 'Activé' : 'Désactivé'}'),
                   isThreeLine: true,
                   trailing: IconButton(
                     icon: const Icon(Icons.more_vert),
@@ -483,10 +643,22 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               ListTile(
                 leading: const Icon(Icons.edit_note, color: Colors.blue),
                 title: const Text('Modifier le profil et le rôle'),
-                subtitle: Text('Rôle actuel: ${user.role ?? ''}'),
+                subtitle: Text('Rôle actuel: ${PermissionService.roleDepuisUtilisateur(user).libelle}'),
                 onTap: () {
                   Navigator.pop(context);
                   _editUser(user);
+                },
+              ),
+              // 🔐 MODULE 4 — le rôle détermine les pages et les actions.
+              ListTile(
+                leading: const Icon(Icons.admin_panel_settings_rounded,
+                    color: Colors.deepPurple),
+                title: const Text('Changer le rôle (permissions)'),
+                subtitle: Text(
+                    'Actuel : ${PermissionService.roleDepuisUtilisateur(user).libelle}'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _changerRole(user);
                 },
               ),
               ListTile(

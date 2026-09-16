@@ -108,6 +108,10 @@ class SyncService {
         email: data['email']?.toString() ?? '',
         avatar: data['avatar']?.toString(),
         role: data['role']?.toString() ?? 'vendor',
+        // 🔐 MODULE 4 — le rôle officiel et le rattachement à une boutique
+        // descendent en local : les permissions restent correctes hors ligne.
+        newRole: data['new_role']?.toString(),
+        entrepriseId: data['entreprise_id']?.toString(),
         parentId: data['parent_id']?.toString(),
         valide: (data['valide'] is int)
             ? data['valide'] as int

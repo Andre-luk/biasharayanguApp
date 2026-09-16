@@ -9,13 +9,20 @@ import 'package:window_manager/window_manager.dart';
 // Config & Utils
 import 'config/app_router.dart';
 import 'l10n/app_localizations.dart';
+import 'models/permission.dart';
+import 'ui/theme/app_theme.dart';
 import 'utils/language_manager.dart';
 import 'utils/theme_manager.dart';
 import 'utils/session_manager.dart';
 
+// Pages
+import 'pages/splash_screen.dart';
+
 // Services
 import 'services/supabase_service.dart';
 import 'services/sync_service.dart';
+import 'services/abonnement_service.dart';
+import 'services/permission_service.dart';
 import 'db_helper.dart';
 
 import 'dart:io' show Platform;
@@ -23,19 +30,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 late final SupabaseClient supabase;
 
-void main() async {
-  // 1. Initialisation des bindings et Splash Screen
-  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-
-  // 2. Initialisation des formats de date (Fix crash PDF/Vivo Y93)
-  await Future.wait([
-    initializeDateFormatting('fr_FR', null),
-    initializeDateFormatting('en_US', null),
-    initializeDateFormatting('sw_KE', null),
-  ]);
-
-  // 3. Initialisation Supabase
+/// Initialise le backend Supabase (isolé pour être lancé EN PARALLÈLE des
+/// autres préparatifs du démarrage).
+Future<void> _initialiserSupabase() async {
   try {
     await Supabase.initialize(
       url: 'https://pqzcliibocndiyqbyddr.supabase.co',
@@ -45,9 +42,36 @@ void main() async {
   } catch (e) {
     debugPrint('Erreur Supabase Init: $e');
   }
+}
+
+void main() async {
+  // 1. Initialisation des bindings et Splash Screen
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // 2. 🚀 Préparatifs EN PARALLÈLE : formats de date (fix crash PDF/Vivo Y93)
+  //    et initialisation Supabase — le lancement est ainsi plus rapide.
+  await Future.wait<void>([
+    initializeDateFormatting('fr_FR', null),
+    initializeDateFormatting('en_US', null),
+    initializeDateFormatting('sw_KE', null),
+    _initialiserSupabase(),
+  ]);
 
   // Lancement du Realtime en arrière-plan
   SupabaseService.instance.initializeRealtime();
+
+  // 💳 MODULE 3 — Vérification globale des abonnements au démarrage.
+  // Best-effort : si une session est restaurée, on demande à la base de
+  // normaliser les abonnements échus (EXPIRE / EN_ATTENTE_COMPLEMENT).
+  // Aucun échec ne doit empêcher le lancement de l'application.
+  try {
+    if (supabase.auth.currentUser != null) {
+      AbonnementService.instance.executerVerificationGlobaleSilencieuse();
+    }
+  } catch (e) {
+    debugPrint('Vérification globale des abonnements ignorée: $e');
+  }
 
   // 4. Configuration Desktop
   if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
@@ -84,9 +108,28 @@ class BiasharaApp extends StatefulWidget {
 class _BiasharaAppState extends State<BiasharaApp> {
   bool _isInitialized = false;
 
+  /// L'application a terminé son démarrage : l'écran cible est routé.
+  bool _pret = false;
+
+  /// Le splash a fini son fondu : il est retiré de l'arbre (libère l'animation).
+  bool _splashDisparu = false;
+
+  // Thèmes construits UNE seule fois (performance : pas de reconstruction
+  // de `ThemeData` à chaque `build`).
+  final ThemeData _themeClair = AppTheme.clair();
+  final ThemeData _themeSombre = AppTheme.sombre();
+
   @override
   void initState() {
     super.initState();
+    // Dès le premier frame Flutter, le splash natif laisse la place au splash
+    // moderne (animé) : la transition est invisible pour l'utilisateur.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+      if (mounted && _pret && !_splashDisparu) {
+        setState(() => _splashDisparu = true);
+      }
+    });
     _handleStartup();
   }
 
@@ -115,18 +158,41 @@ class _BiasharaAppState extends State<BiasharaApp> {
       } else if (savedUserId != null || currentSession != null) {
         final uid = savedUserId ?? currentSession?.user.id;
 
-        if (role == 'admin') {
-          targetRoute = '/admin';
-        } else {
-          final localUser = uid != null ? await DBHelper.instance.getUtilisateurById(uid) : null;
-          _checkSubscriptionInBackground(localUser?.parentId ?? uid);
-          targetRoute = (localUser?.parentId != null) ? '/main/new-sale' : '/main';
-        }
+        // 🔐 MODULE 4 — rôle effectif + permissions, chargés AVANT le premier
+        // écran : le middleware du routeur s'appuie dessus dès la restauration
+        // de session (démarrage à froid de l'application).
+        RoleUtilisateur roleEffectif =
+            PermissionService.roleDepuisCodes(role: role);
+
+      if (roleEffectif.estPlateforme) {
+        await PermissionService.instance.initialiser(
+          roleEffectif.code,
+          forcerRechargement: true,
+        );
+        targetRoute = '/admin';
+      } else {
+        final localUser = uid != null ? await DBHelper.instance.getUtilisateurById(uid) : null;
+        _checkSubscriptionInBackground(localUser?.parentId ?? uid);
+
+        final RoleUtilisateur roleProfil =
+            PermissionService.roleDepuisUtilisateur(localUser);
+        if (roleProfil != RoleUtilisateur.inconnu) roleEffectif = roleProfil;
+
+        await PermissionService.instance.initialiser(
+          roleEffectif.code,
+          forcerRechargement: true,
+        );
+
+        targetRoute = PermissionService.instance.accueilPour(roleEffectif) ?? '/main';
+      }
 
         // 🚀 SYNCHRONISATION CRITIQUE (Pour Lukengu et après réinstallation)
         if (uid != null) {
-          // Sync du profil (Nom, Rôle)
-          await SyncService.instance.syncUserProfile(uid).catchError((e) => debugPrint('Sync Profile Error: $e'));
+          // ⚡️ Sync du profil (Nom, Rôle) EN ARRIÈRE-PLAN : l'écran d'accueil
+          // s'ouvre sans attendre le réseau (le profil local est déjà chargé).
+          SyncService.instance
+              .syncUserProfile(uid)
+              .catchError((e) => debugPrint('Sync Profile Error: $e'));
 
           // RÉCUPÉRATION DES DONNÉES (Produits/Ventes) depuis Supabase vers SQLite vide
           // On ne met pas 'await' ici pour que l'app s'ouvre sans attendre la fin du téléchargement
@@ -136,14 +202,20 @@ class _BiasharaAppState extends State<BiasharaApp> {
         }
       }
 
-      FlutterNativeSplash.remove();
-      appRouter.go(targetRoute);
+      _terminerDemarrage(targetRoute);
 
     } catch (e) {
       debugPrint('Erreur critique startup: $e');
-      FlutterNativeSplash.remove();
-      appRouter.go('/login');
+      _terminerDemarrage('/login');
     }
+  }
+
+  /// Navigue vers l'écran cible puis révèle l'application derrière le splash
+  /// (fondu de 420 ms : voir `build`).
+  void _terminerDemarrage(String route) {
+    appRouter.go(route);
+    if (!mounted) return;
+    setState(() => _pret = true);
   }
 
   Future<void> _checkSubscriptionInBackground(String? ownerId) async {
@@ -178,14 +250,8 @@ class _BiasharaAppState extends State<BiasharaApp> {
       debugShowCheckedModeBanner: false,
       title: 'Biashara Yangu',
       themeMode: themeManager.themeMode,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue, brightness: Brightness.dark),
-        useMaterial3: true,
-      ),
+      theme: _themeClair,
+      darkTheme: _themeSombre,
       locale: languageManager.appLocale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -195,6 +261,34 @@ class _BiasharaAppState extends State<BiasharaApp> {
       ],
       supportedLocales: const [Locale('fr'), Locale('en'), Locale('sw')],
       routerConfig: appRouter,
+      // ✨ Splash moderne : il recouvre l'application pendant le démarrage
+      // (session, base, permissions…) puis disparaît en fondu pour révéler
+      // l'écran cible — aucun clignotement, aucune attente inutile.
+      builder: (BuildContext context, Widget? child) {
+        if (_splashDisparu) return child ?? const SizedBox.shrink();
+
+        return Stack(
+          children: <Widget>[
+            if (child != null) child,
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: _pret,
+                child: AnimatedOpacity(
+                  opacity: _pret ? 0 : 1,
+                  duration: const Duration(milliseconds: 420),
+                  curve: Curves.easeOutCubic,
+                  onEnd: () {
+                    if (mounted && _pret && !_splashDisparu) {
+                      setState(() => _splashDisparu = true);
+                    }
+                  },
+                  child: const SplashScreen(),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

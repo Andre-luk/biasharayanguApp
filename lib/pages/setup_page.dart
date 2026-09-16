@@ -8,6 +8,8 @@ import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
+import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 
 class SetupPage extends StatefulWidget {
@@ -54,10 +56,7 @@ class _SetupPageState extends State<SetupPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.redAccent : Colors.green[700],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
+        backgroundColor: isError ? AppCouleurs.danger : AppCouleurs.succes,
       ),
     );
   }
@@ -187,36 +186,33 @@ class _SetupPageState extends State<SetupPage> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.editUser != null;
-    final colorScheme = Theme.of(context).colorScheme;
     final isWide = MediaQuery.of(context).size.width > 700;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
           isEdit ? 'Modifier profil' : (widget.adminCreating ? 'Nouvel utilisateur' : ''),
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: Colors.black,
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: isWide ? 500 : 400),
+            constraints: BoxConstraints(maxWidth: isWide ? 520 : 420),
             child: Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
+                    color: AppCouleurs.marine.withValues(alpha: 0.08),
+                    blurRadius: 30,
+                    offset: const Offset(0, 14),
                   )
                 ],
               ),
@@ -317,23 +313,29 @@ class _SetupPageState extends State<SetupPage> {
                       ),
                     ],
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 36),
 
-                    ElevatedButton(
+                    FilledButton(
                       onPressed: _saving ? null : _save,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
-                      ),
                       child: _saving
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: ModernLoader(
+                                taille: 22,
+                                epaisseur: 2.6,
+                                couleur: Colors.white,
+                                couleurSecondaire: Colors.white70,
+                              ),
+                            )
                           : Text(
-                        isEdit ? 'METTRE À JOUR' : (widget.adminCreating ? 'AJOUTER' : 'S\'INSCRIRE'),
-                        style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
-                      ),
+                              isEdit
+                                  ? 'METTRE À JOUR'
+                                  : (widget.adminCreating
+                                      ? 'AJOUTER'
+                                      : 'S\'INSCRIRE'),
+                              style: const TextStyle(letterSpacing: 1.0),
+                            ),
                     ),
 
                     if (!isEdit && !widget.adminCreating)
@@ -366,31 +368,26 @@ class _SetupPageState extends State<SetupPage> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+        style: TextStyle(
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }
 
   InputDecoration _buildInputDecoration(IconData icon, String hint, {Widget? suffix, bool isGreyed = false}) {
+    // Le style (fond, coins, état désactivé, focus) vient du thème global :
+    // ici, seuls le libellé, l'icône et la teinte « lecture seule » changent.
+    final ColorScheme scheme = Theme.of(context).colorScheme;
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, size: 22),
       suffixIcon: suffix,
-      filled: true,
-      fillColor: isGreyed ? Colors.grey[100] : Colors.grey[50],
-      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Colors.grey[200]!, width: 1),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(15),
-        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary.withOpacity(0.5), width: 2),
-      ),
+      fillColor: isGreyed
+          ? scheme.surfaceContainerHighest.withValues(alpha: 0.5)
+          : null,
     );
   }
 }

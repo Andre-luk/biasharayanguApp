@@ -1,3 +1,8 @@
+// lib/widgets/custom_button.dart
+//
+// Bouton principal réutilisable — aligné sur le design system
+// (`lib/ui/theme/app_theme.dart`) : hauteur 52, coins 16, texte gras.
+
 import 'package:flutter/material.dart';
 
 class CustomButton extends StatelessWidget {
@@ -5,18 +10,26 @@ class CustomButton extends StatelessWidget {
   final VoidCallback onPressed;
   final IconData? icon;
 
-  const CustomButton({super.key, required this.label, required this.onPressed, this.icon});
+  const CustomButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
+    if (icon == null) {
+      return FilledButton(
+        onPressed: onPressed,
+        child: Text(label),
+      );
+    }
+
+    return FilledButton.icon(
       onPressed: onPressed,
-      icon: icon != null ? Icon(icon) : const SizedBox.shrink(),
+      icon: Icon(icon),
       label: Text(label),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
     );
   }
 }

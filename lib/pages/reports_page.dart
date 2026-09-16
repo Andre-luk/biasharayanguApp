@@ -1,3 +1,7 @@
+// ⚠️ FICHIER LEGACY — PLUS RELIÉ À LA NAVIGATION.
+// L'écran Rapports officiel est `rapports_page.dart` (Module 11, Supabase) :
+// route `/main/rapports`. Fichier conservé pour référence uniquement.
+
 import 'package:flutter/material.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';

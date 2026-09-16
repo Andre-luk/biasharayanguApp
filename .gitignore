@@ -44,4 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# 🔐 Signature Android — NE JAMAIS COMMITTER les secrets du keystore.
+# (Le build release sait s'en passer : il retombe sur la clé debug, voir
+#  docs/publication_app.md.)
+android/key.properties
+*.jks
+*.keystore
+
 
