@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
+import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
+import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/statut_abonnement_chip.dart';
 
@@ -30,6 +33,9 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
   bool _chargement = false;
   bool _actionEnCours = false;
   String? _erreur;
+
+  List<PaiementAbonnement> _paiements = const <PaiementAbonnement>[];
+  Set<String> _utilisateursRattaches = <String>{};
 
   @override
   void initState() {
@@ -65,13 +71,26 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
     }
 
     Entreprise? resultat;
+    List<PaiementAbonnement> paiements = const <PaiementAbonnement>[];
+    Set<String> rattaches = <String>{};
     String? messageErreur;
 
     try {
       resultat = await _service.getEntrepriseById(id);
+
       if (resultat == null) {
         messageErreur =
             'Cette entreprise est introuvable. Elle a peut-être été supprimée.';
+      } else {
+        // Historique et rattachement : best-effort côté service, ces appels ne
+        // font jamais échouer l'affichage de la fiche.
+        final List<dynamic> complement = await Future.wait<dynamic>([
+          _service.getPaiements(id),
+          _service.getUtilisateursRattaches(id),
+        ]);
+
+        paiements = complement[0] as List<PaiementAbonnement>;
+        rattaches = complement[1] as Set<String>;
       }
     } on EntrepriseServiceException catch (e) {
       messageErreur = e.message;
@@ -96,6 +115,8 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
 
     setState(() {
       _entreprise = resultat;
+      _paiements = paiements;
+      _utilisateursRattaches = rattaches;
       _erreur = null;
       _chargement = false;
     });
@@ -269,6 +290,10 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           _carteInformations(theme, entreprise),
           const SizedBox(height: 16),
           _carteAbonnement(theme, entreprise),
+          const SizedBox(height: 16),
+          _cartePaiements(theme),
+          const SizedBox(height: 16),
+          _carteUtilisateurs(theme),
           const SizedBox(height: 20),
           _actions(entreprise),
           const SizedBox(height: 12),
@@ -516,6 +541,157 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
     await _charger(silencieux: true);
   }
 
+  /// Historique des encaissements, du plus récent au plus ancien.
+  Widget _cartePaiements(ThemeData theme) {
+    final List<PaiementAbonnement> paiements = _paiements;
+
+    return _carte(
+      theme: theme,
+      titre: 'Historique des paiements',
+      icone: Icons.history_rounded,
+      enfants: [
+        if (paiements.isEmpty)
+          Text(
+            'Aucun encaissement enregistré pour le moment.',
+            style: TextStyle(
+              fontSize: 13,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          )
+        else
+          ...paiements.map(
+            (PaiementAbonnement paiement) => _lignePaiement(theme, paiement),
+          ),
+      ],
+    );
+  }
+
+  Widget _lignePaiement(ThemeData theme, PaiementAbonnement paiement) {
+    final String auteur = paiement.enregistreParNom ?? 'Auteur inconnu';
+    final double? soldeApres = paiement.soldeApres;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle_rounded,
+              size: 18, color: Colors.green.shade700),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        formatMontant(paiement.montant),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (soldeApres != null)
+                      Text(
+                        'reste ${formatMontant(soldeApres)}',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatDateHeure(paiement.createdAt)} • $auteur',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (paiement.aProlonge)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      'Abonnement prolongé de ${paiement.prolongationJours} '
+                      'jour${paiement.prolongationJours > 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Utilisateurs rattachés : conditionne le blocage de l'accès à la connexion
+  /// lorsque l'entreprise est suspendue ou expirée.
+  Widget _carteUtilisateurs(ThemeData theme) {
+    final int nombre = _utilisateursRattaches.length;
+
+    return _carte(
+      theme: theme,
+      titre: 'Utilisateurs rattachés',
+      icone: Icons.people_alt_rounded,
+      enfants: [
+        Text(
+          nombre == 0
+              ? "Aucun utilisateur n'est rattaché à cette entreprise. Tant "
+                  "qu'aucun rattachement n'existe, les utilisateurs ne sont "
+                  'jamais bloqués.'
+              : '$nombre utilisateur${nombre > 1 ? 's' : ''} rattaché'
+                  "${nombre > 1 ? 's' : ''} à cette entreprise.",
+          style: TextStyle(
+            fontSize: 12.5,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _actionEnCours ? null : _ouvrirRattachement,
+          icon: const Icon(Icons.manage_accounts_rounded, size: 18),
+          label: const Text('Gérer les utilisateurs'),
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _ouvrirRattachement() async {
+    final Entreprise? entreprise = _entreprise;
+    if (entreprise == null) return;
+
+    final bool? modifie = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext ctx) => _FeuilleRattachement(
+        entreprise: entreprise,
+        rattachesInitiaux: _utilisateursRattaches,
+      ),
+    );
+
+    if (!mounted || modifie != true) return;
+
+    await _charger(silencieux: true);
+  }
+
   Widget _carte({
     required ThemeData theme,
     required String titre,
@@ -683,6 +859,7 @@ class _FeuilleEncaissementState extends State<_FeuilleEncaissement> {
   late final TextEditingController _montantController;
 
   bool _enregistrement = false;
+  late bool _prolonger;
 
   @override
   void initState() {
@@ -695,6 +872,10 @@ class _FeuilleEncaissementState extends State<_FeuilleEncaissement> {
       text: solde > 0 ? solde.toStringAsFixed(0) : '',
     );
     _montantController.addListener(_rafraichirApercu);
+
+    // La prolongation est proposée par défaut dès que la grille tarifaire
+    // indique une durée d'abonnement : c'est le cas nominal d'un encaissement.
+    _prolonger = (widget.entreprise.groupeTarifaireDureeJours ?? 0) > 0;
   }
 
   @override
@@ -735,6 +916,7 @@ class _FeuilleEncaissementState extends State<_FeuilleEncaissement> {
       await _service.enregistrerPaiement(
         entreprise: widget.entreprise,
         montant: _montantSaisi,
+        prolonger: _prolonger,
       );
     } on EntrepriseServiceException catch (e) {
       messageErreur = e.message;
@@ -768,6 +950,8 @@ class _FeuilleEncaissementState extends State<_FeuilleEncaissement> {
     final double montant = _montantSaisi;
     final double nouveauSolde = solde - montant;
     final bool montantValide = montant > 0 && montant <= solde + 0.001;
+    final int dureeProlongation =
+        widget.entreprise.groupeTarifaireDureeJours ?? 0;
 
     return Padding(
       padding:
@@ -868,6 +1052,34 @@ class _FeuilleEncaissementState extends State<_FeuilleEncaissement> {
                   ),
                 ),
               ],
+              if (dureeProlongation > 0)
+                CheckboxListTile(
+                  value: _prolonger,
+                  onChanged: _enregistrement
+                      ? null
+                      : (bool? valeur) =>
+                          setState(() => _prolonger = valeur ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  title: Text(
+                    "Prolonger l'abonnement de $dureeProlongation "
+                    "jour${dureeProlongation > 1 ? 's' : ''}",
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: Text(
+                    _prolonger
+                        ? "Le statut passera à « Actif » et la date d'expiration "
+                            'sera repoussée depuis aujourd\'hui (ou depuis la date '
+                            "d'expiration si elle est encore future)."
+                        : "L'abonnement ne sera pas prolongé : seul le solde est "
+                            'mis à jour.',
+                    style: const TextStyle(fontSize: 11.5),
+                  ),
+                ),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -936,6 +1148,281 @@ class _FeuilleEncaissementState extends State<_FeuilleEncaissement> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Feuille modale de gestion des utilisateurs rattachés à une entreprise.
+///
+/// Le rattachement est enregistré immédiatement (pas de bouton « Enregistrer ») :
+/// la liste est courte, l'action est réversible et l'interface reste réactive
+/// grâce à une mise à jour optimiste annulée en cas d'échec.
+class _FeuilleRattachement extends StatefulWidget {
+  const _FeuilleRattachement({
+    required this.entreprise,
+    required this.rattachesInitiaux,
+  });
+
+  final Entreprise entreprise;
+  final Set<String> rattachesInitiaux;
+
+  @override
+  State<_FeuilleRattachement> createState() => _FeuilleRattachementState();
+}
+
+class _FeuilleRattachementState extends State<_FeuilleRattachement> {
+  final EntrepriseService _service = EntrepriseService.instance;
+  final SupabaseService _supabase = SupabaseService.instance;
+
+  late Set<String> _rattaches;
+  List<Utilisateur> _utilisateurs = const <Utilisateur>[];
+  bool _chargement = true;
+  String? _erreur;
+  bool _modifie = false;
+  String _recherche = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _rattaches = <String>{...widget.rattachesInitiaux};
+    _charger();
+  }
+
+  Future<void> _charger() async {
+    List<Utilisateur> utilisateurs = const <Utilisateur>[];
+    String? erreur;
+
+    try {
+      utilisateurs = await _supabase.getAllUtilisateurs();
+    } catch (e, st) {
+      debugPrint('_FeuilleRattachement._charger: $e\n$st');
+      erreur = 'Impossible de charger la liste des utilisateurs.';
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _utilisateurs = utilisateurs;
+      _erreur = erreur;
+      _chargement = false;
+    });
+  }
+
+  List<Utilisateur> get _utilisateursFiltres {
+    final String recherche = _recherche.trim().toLowerCase();
+    if (recherche.isEmpty) {
+      return _utilisateurs;
+    }
+
+    return _utilisateurs.where((Utilisateur utilisateur) {
+      return utilisateur.fullName.toLowerCase().contains(recherche) ||
+          utilisateur.email.toLowerCase().contains(recherche);
+    }).toList(growable: false);
+  }
+
+  Future<void> _basculer(Utilisateur utilisateur, bool rattacher) async {
+    final String? userId = utilisateur.id;
+    if (userId == null || userId.isEmpty) return;
+
+    _appliquer(userId, rattacher);
+
+    try {
+      if (rattacher) {
+        await _service.rattacherUtilisateur(
+          entrepriseId: widget.entreprise.id,
+          userId: userId,
+        );
+      } else {
+        await _service.detacherUtilisateur(
+          entrepriseId: widget.entreprise.id,
+          userId: userId,
+        );
+      }
+      _modifie = true;
+    } on EntrepriseServiceException catch (e) {
+      if (!mounted) return;
+      _appliquer(userId, !rattacher);
+      _afficherErreur(e.message);
+    } catch (e, st) {
+      debugPrint('_FeuilleRattachement._basculer: $e\n$st');
+      if (!mounted) return;
+      _appliquer(userId, !rattacher);
+      _afficherErreur('Une erreur inattendue est survenue.');
+    }
+  }
+
+  /// Mise à jour optimiste de l'ensemble local (annulée si l'appel échoue).
+  void _appliquer(String userId, bool rattacher) {
+    if (!mounted) return;
+
+    setState(() {
+      if (rattacher) {
+        _rattaches.add(userId);
+      } else {
+        _rattaches.remove(userId);
+      }
+    });
+  }
+
+  void _afficherErreur(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final List<Utilisateur> filtres = _utilisateursFiltres;
+
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.75,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.people_alt_rounded,
+                          color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Utilisateurs rattachés',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.entreprise.nom,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    onChanged: (String valeur) =>
+                        setState(() => _recherche = valeur),
+                    decoration: InputDecoration(
+                      labelText: 'Rechercher un utilisateur',
+                      prefixIcon: const Icon(Icons.search),
+                      isDense: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+            Expanded(child: _corpsListe(theme, filtres)),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(_modifie),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Terminer'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _corpsListe(ThemeData theme, List<Utilisateur> filtres) {
+    if (_chargement) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_erreur != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off_rounded,
+                  size: 40, color: theme.colorScheme.error),
+              const SizedBox(height: 12),
+              Text(_erreur!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () {
+                  setState(() => _chargement = true);
+                  _charger();
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Réessayer'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (filtres.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _utilisateurs.isEmpty
+                ? 'Aucun utilisateur dans la base.'
+                : 'Aucun utilisateur ne correspond à la recherche.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      itemCount: filtres.length,
+      itemBuilder: (BuildContext context, int index) {
+        final Utilisateur utilisateur = filtres[index];
+        final String? userId = utilisateur.id;
+        final bool rattache = userId != null && _rattaches.contains(userId);
+
+        return CheckboxListTile(
+          value: rattache,
+          onChanged: userId == null
+              ? null
+              : (bool? valeur) => _basculer(utilisateur, valeur ?? false),
+          title: Text(
+            utilisateur.fullName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            '${utilisateur.email} • ${utilisateur.role}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11.5),
+          ),
+          controlAffinity: ListTileControlAffinity.leading,
+          dense: true,
+        );
+      },
     );
   }
 }

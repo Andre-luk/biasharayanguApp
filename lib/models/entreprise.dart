@@ -28,6 +28,12 @@ class Entreprise {
   final String? activiteNom;
   final String? groupeTarifaireNom;
 
+  /// Durée d'abonnement de la grille tarifaire, en jours.
+  ///
+  /// Sert à calculer la prolongation lors d'un encaissement
+  /// (voir `EntrepriseService.enregistrerPaiement`).
+  final int? groupeTarifaireDureeJours;
+
   const Entreprise({
     required this.id,
     required this.nom,
@@ -45,6 +51,7 @@ class Entreprise {
     this.villeNom,
     this.activiteNom,
     this.groupeTarifaireNom,
+    this.groupeTarifaireDureeJours,
   });
 
   factory Entreprise.fromMap(Map<String, dynamic> map) {
@@ -185,6 +192,7 @@ class Entreprise {
     String? villeNom,
     String? activiteNom,
     String? groupeTarifaireNom,
+    int? groupeTarifaireDureeJours,
   }) {
     return Entreprise(
       id: id ?? this.id,
@@ -203,6 +211,8 @@ class Entreprise {
       villeNom: villeNom ?? this.villeNom,
       activiteNom: activiteNom ?? this.activiteNom,
       groupeTarifaireNom: groupeTarifaireNom ?? this.groupeTarifaireNom,
+      groupeTarifaireDureeJours:
+          groupeTarifaireDureeJours ?? this.groupeTarifaireDureeJours,
     );
   }
 }

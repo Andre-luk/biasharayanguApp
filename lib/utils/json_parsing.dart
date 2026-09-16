@@ -14,6 +14,14 @@ double parseDouble(dynamic value, {double fallback = 0}) {
   return double.tryParse(value.toString()) ?? fallback;
 }
 
+/// Convertit [value] en `double`, en renvoyant `null` si la valeur est absente
+/// (utile pour les colonnes numériques optionnelles).
+double? parseDoubleOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
+}
+
 /// Convertit [value] en `int` sans jamais lever d'exception.
 int parseInt(dynamic value, {int fallback = 0}) {
   if (value == null) return fallback;

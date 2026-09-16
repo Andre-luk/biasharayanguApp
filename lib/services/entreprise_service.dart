@@ -6,7 +6,9 @@ import 'package:uuid/uuid.dart';
 import 'package:biashara_yangu/models/activite.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
+import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
+import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/models/ville.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -126,18 +128,21 @@ class EntrepriseService {
               in parseMapList(reponses[2]).map(Activite.fromMap))
             activite.id: activite.nom,
         };
-        final Map<String, String> groupes = {
+        final Map<String, GroupeTarifaire> groupes = {
           for (final GroupeTarifaire groupe
               in parseMapList(reponses[3]).map(GroupeTarifaire.fromMap))
-            groupe.id: groupe.nom,
+            groupe.id: groupe,
         };
 
         return parseMapList(reponses[0]).map((Map<String, dynamic> map) {
           final Entreprise entreprise = Entreprise.fromMap(map);
+          final GroupeTarifaire? groupe = groupes[entreprise.groupeTarifaireId];
+
           return entreprise.copyWith(
             villeNom: villes[entreprise.villeId],
             activiteNom: activites[entreprise.activiteId],
-            groupeTarifaireNom: groupes[entreprise.groupeTarifaireId],
+            groupeTarifaireNom: groupe?.nom,
+            groupeTarifaireDureeJours: groupe?.dureeAbonnementJours,
           );
         }).toList();
       },
@@ -279,27 +284,31 @@ class EntrepriseService {
 
   /// Montant total dû à la création d'une entreprise.
   ///
-  /// ⚠️ Règle métier du Module 1 : le total dû correspond au **montant de
-  /// l'abonnement**. Les frais d'ouverture sont affichés dans l'aperçu du
-  /// formulaire mais ne sont pas facturés.
+  /// Règle métier : **frais d'ouverture + montant de l'abonnement**.
   ///
-  /// Pour les facturer également, remplacer le corps de cette méthode par :
-  /// `return groupe.fraisOuverture + groupe.montantAbonnement;`
+  /// Pour ne facturer que l'abonnement, remplacer le corps de cette méthode
+  /// par : `return groupe.montantAbonnement;`
   double calculerMontantTotalDu(GroupeTarifaire groupe) {
-    return groupe.montantAbonnement;
+    return groupe.fraisOuverture + groupe.montantAbonnement;
   }
 
   /// Enregistre un encaissement sur l'abonnement d'une entreprise.
   ///
-  /// Impacte deux colonnes existantes de `public.entreprises` :
-  /// `montant_deja_paye` (augmenté) et `solde_restant` (diminué).
-  /// Le statut et les dates de l'abonnement ne sont **pas** modifiés.
+  /// Impacte `montant_deja_paye` (augmenté) et `solde_restant` (diminué), et
+  /// ajoute une ligne d'historique dans `paiements_abonnement`.
+  ///
+  /// Si [prolonger] vaut `true`, l'abonnement est en outre prolongé de
+  /// `duree_abonnement_jours` (durée de la grille tarifaire), son statut passe
+  /// à `ACTIF` et `date_activation` est renseignée si elle était vide. La
+  /// prolongation repart de la date d'expiration si elle est encore future,
+  /// de maintenant sinon : un abonnement échu ne cumule pas de retard.
   ///
   /// [montant] doit être strictement positif et ne peut pas dépasser le solde
   /// restant.
   Future<Entreprise> enregistrerPaiement({
     required Entreprise entreprise,
     required double montant,
+    bool prolonger = false,
   }) {
     return _executer(
       () async {
@@ -312,10 +321,15 @@ class EntrepriseService {
         final Entreprise? resultatRpc = await _tenterEncaissementRpc(
           entrepriseId: entreprise.id,
           montant: montant,
+          prolonger: prolonger,
         );
 
-        final Entreprise resultat =
-            resultatRpc ?? await _encaisserEnApplicatif(entreprise.id, montant);
+        final Entreprise resultat = resultatRpc ??
+            await _encaisserEnApplicatif(
+              entreprise: entreprise,
+              montant: montant,
+              prolonger: prolonger,
+            );
 
         // On conserve les libellés de jointure déjà chargés : ils ne sont pas
         // renvoyés par l'insertion / la mise à jour.
@@ -323,12 +337,220 @@ class EntrepriseService {
           villeNom: entreprise.villeNom,
           activiteNom: entreprise.activiteNom,
           groupeTarifaireNom: entreprise.groupeTarifaireNom,
+          groupeTarifaireDureeJours: entreprise.groupeTarifaireDureeJours,
         );
       },
       actionLibelle: "l'enregistrement du paiement",
       messageEchec:
           "Impossible d'enregistrer le paiement. Vérifiez votre connexion internet puis réessayez.",
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // HISTORIQUE DES PAIEMENTS
+  // ---------------------------------------------------------------------------
+
+  /// Historique des encaissements d'une entreprise, du plus récent au plus
+  /// ancien.
+  ///
+  /// Renvoie une liste vide si la table n'est pas encore installée : l'absence
+  /// d'historique ne doit pas empêcher l'affichage de la fiche entreprise.
+  Future<List<PaiementAbonnement>> getPaiements(String entrepriseId) async {
+    try {
+      final List<dynamic> data = await _client
+          .from('paiements_abonnement')
+          .select()
+          .eq('entreprise_id', entrepriseId)
+          .order('created_at', ascending: false);
+
+      final List<PaiementAbonnement> paiements =
+          parseMapList(data).map(PaiementAbonnement.fromMap).toList();
+
+      final Map<String, String> noms = await _chargerNomsUtilisateurs();
+
+      return paiements
+          .map(
+            (PaiementAbonnement paiement) => paiement.copyWith(
+              enregistreParNom: noms[paiement.enregistrePar],
+            ),
+          )
+          .toList();
+    } catch (e) {
+      debugPrint('EntrepriseService.getPaiements (ignoré): $e');
+      return const <PaiementAbonnement>[];
+    }
+  }
+
+  /// Noms des utilisateurs, pour afficher l'auteur d'un encaissement.
+  /// Best-effort : renvoie une table vide en cas d'échec.
+  Future<Map<String, String>> _chargerNomsUtilisateurs() async {
+    try {
+      final List<dynamic> data =
+          await _client.from('utilisateurs').select('id, nom, prenom');
+
+      return <String, String>{
+        for (final Utilisateur utilisateur
+            in parseMapList(data).map(Utilisateur.fromMap))
+          if (utilisateur.id != null) utilisateur.id!: utilisateur.fullName,
+      };
+    } catch (e) {
+      debugPrint('EntrepriseService._chargerNomsUtilisateurs (ignoré): $e');
+      return const <String, String>{};
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // RATTACHEMENT UTILISATEURS <-> ENTREPRISES
+  // ---------------------------------------------------------------------------
+
+  /// Identifiants des utilisateurs rattachés à une entreprise.
+  ///
+  /// Best-effort : si la table `entreprise_utilisateurs` n'est pas encore
+  /// installée, l'écran de détail doit continuer à s'afficher.
+  Future<Set<String>> getUtilisateursRattaches(String entrepriseId) async {
+    try {
+      final List<dynamic> data = await _client
+          .from('entreprise_utilisateurs')
+          .select('user_id')
+          .eq('entreprise_id', entrepriseId);
+
+      return <String>{
+        for (final Map<String, dynamic> ligne in parseMapList(data))
+          if (parseStringOrNull(ligne['user_id']) != null)
+            parseString(ligne['user_id']),
+      };
+    } catch (e) {
+      debugPrint('EntrepriseService.getUtilisateursRattaches (ignoré): $e');
+      return <String>{};
+    }
+  }
+
+  /// Rattache un utilisateur à une entreprise (sans effet s'il l'est déjà).
+  Future<void> rattacherUtilisateur({
+    required String entrepriseId,
+    required String userId,
+  }) {
+    return _executer(
+      () async {
+        await _client.from('entreprise_utilisateurs').upsert({
+          'entreprise_id': entrepriseId,
+          'user_id': userId,
+        });
+      },
+      actionLibelle: "le rattachement de l'utilisateur",
+      messageEchec: "Impossible de rattacher cet utilisateur à l'entreprise.",
+    );
+  }
+
+  /// Détache un utilisateur d'une entreprise.
+  Future<void> detacherUtilisateur({
+    required String entrepriseId,
+    required String userId,
+  }) {
+    return _executer(
+      () async {
+        await _client
+            .from('entreprise_utilisateurs')
+            .delete()
+            .eq('entreprise_id', entrepriseId)
+            .eq('user_id', userId);
+      },
+      actionLibelle: "le détachement de l'utilisateur",
+      messageEchec: "Impossible de détacher cet utilisateur de l'entreprise.",
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CONTRÔLE D'ACCÈS (CONNEXION)
+  // ---------------------------------------------------------------------------
+
+  /// Vérifie si un utilisateur peut accéder à l'application au regard des
+  /// entreprises auxquelles il est rattaché.
+  ///
+  /// Renvoie `null` si l'accès est autorisé, sinon le message à afficher.
+  ///
+  /// ⚠️ La méthode est **fail-open** : toute erreur (fonction SQL absente,
+  /// réseau, droits insuffisants) laisse l'accès ouvert. Il vaut mieux laisser
+  /// entrer un utilisateur dont l'entreprise est suspendue que bloquer toute
+  /// la base. De même, un utilisateur rattaché à **aucune** entreprise n'est
+  /// jamais bloqué — sinon tous les comptes existants seraient bloqués tant que
+  /// le rattachement n'a pas été fait.
+  Future<String?> verifierAccesUtilisateur(String userId) async {
+    try {
+      final List<Map<String, dynamic>> lignes = parseMapList(
+        await _client.rpc(
+          'rpc_entreprises_de_utilisateur',
+          params: {'p_user_id': userId},
+        ),
+      );
+
+      return evaluerAcces(lignes);
+    } catch (e) {
+      debugPrint('EntrepriseService.verifierAccesUtilisateur (fail-open): $e');
+      return null;
+    }
+  }
+
+  /// Décision d'accès à partir des entreprises rattachées à un utilisateur.
+  ///
+  /// Fonction **pure**, sans accès réseau : directement testable.
+  ///
+  /// Renvoie `null` si l'accès est autorisé, sinon le message à afficher.
+  static String? evaluerAcces(
+    List<Map<String, dynamic>> lignes, {
+    DateTime? maintenant,
+  }) {
+    // Aucune entreprise rattachée : on ne bloque pas (voir
+    // [verifierAccesUtilisateur]).
+    if (lignes.isEmpty) return null;
+
+    final DateTime reference = maintenant ?? DateTime.now();
+
+    bool auMoinsUneActive = false;
+    bool aSuspendu = false;
+    bool aExpire = false;
+
+    for (final Map<String, dynamic> ligne in lignes) {
+      final StatutAbonnement statut = StatutAbonnement.fromCode(
+        parseStringOrNull(ligne['statut']),
+      );
+      final DateTime? expiration =
+          parseDateTimeOrNull(ligne['date_expiration']);
+
+      if (statut == StatutAbonnement.suspendu) {
+        aSuspendu = true;
+        continue;
+      }
+
+      // La base peut ne pas avoir encore basculé un abonnement échu en
+      // EXPIRE : on applique la même règle que [Entreprise.statutEffectif].
+      final bool echu = statut == StatutAbonnement.expire ||
+          ((statut == StatutAbonnement.essai7j ||
+                  statut == StatutAbonnement.actif) &&
+              expiration != null &&
+              expiration.isBefore(reference));
+
+      if (!echu) {
+        auMoinsUneActive = true;
+        break;
+      }
+
+      aExpire = true;
+    }
+
+    if (auMoinsUneActive) return null;
+
+    if (aSuspendu) {
+      return "L'accès de votre entreprise a été suspendu par l'administrateur. "
+          'Contactez-le pour le réactiver.';
+    }
+
+    if (aExpire) {
+      return "L'abonnement de votre entreprise a expiré. "
+          'Contactez votre administrateur pour le renouveler.';
+    }
+
+    return 'Votre accès est bloqué. Contactez votre administrateur.';
   }
 
   // ---------------------------------------------------------------------------
@@ -388,6 +610,7 @@ class EntrepriseService {
   Future<Entreprise?> _tenterEncaissementRpc({
     required String entrepriseId,
     required double montant,
+    required bool prolonger,
   }) async {
     try {
       final dynamic reponse = await _client.rpc(
@@ -395,6 +618,7 @@ class EntrepriseService {
         params: {
           'p_entreprise_id': entrepriseId,
           'p_montant': montant,
+          'p_prolonger': prolonger,
         },
       );
 
@@ -419,12 +643,15 @@ class EntrepriseService {
   /// Suffisant pour un espace administrateur, mais deux encaissements
   /// strictement simultanés peuvent se chevaucher. Le RPC supprime ce risque :
   /// pensez à exécuter `supabase/migrations/20260916000000_module1_entreprises.sql`.
-  Future<Entreprise> _encaisserEnApplicatif(
-      String entrepriseId, double montant) async {
+  Future<Entreprise> _encaisserEnApplicatif({
+    required Entreprise entreprise,
+    required double montant,
+    required bool prolonger,
+  }) async {
     final dynamic ligneBrute = await _client
         .from('entreprises')
         .select('montant_total_du, montant_deja_paye')
-        .eq('id', entrepriseId)
+        .eq('id', entreprise.id)
         .maybeSingle();
 
     final Map<String, dynamic>? ligne = parseMap(ligneBrute);
@@ -434,19 +661,40 @@ class EntrepriseService {
       );
     }
 
+    final DateTime maintenant = DateTime.now();
     final double total = parseDouble(ligne['montant_total_du']);
     final double dejaPaye = parseDouble(ligne['montant_deja_paye']);
     final double nouveauPaye = dejaPaye + montant;
     final double reste = total - nouveauPaye;
 
+    int prolongationJours = 0;
+
+    final Map<String, dynamic> nouvellesValeurs = <String, dynamic>{
+      'montant_deja_paye': nouveauPaye,
+      'solde_restant': reste > 0 ? reste : 0.0,
+      'updated_at': maintenant.toUtc().toIso8601String(),
+    };
+
+    if (prolonger) {
+      prolongationJours = entreprise.groupeTarifaireDureeJours ?? 0;
+
+      final DateTime? expiration = entreprise.dateExpiration;
+      final DateTime base =
+          (expiration == null || expiration.isBefore(maintenant))
+              ? maintenant
+              : expiration;
+
+      nouvellesValeurs['date_expiration'] =
+          base.add(Duration(days: prolongationJours)).toUtc().toIso8601String();
+      nouvellesValeurs['date_activation'] =
+          (entreprise.dateActivation ?? maintenant).toUtc().toIso8601String();
+      nouvellesValeurs['statut'] = StatutAbonnement.actif.code;
+    }
+
     final dynamic misAJourBrut = await _client
         .from('entreprises')
-        .update({
-          'montant_deja_paye': nouveauPaye,
-          'solde_restant': reste > 0 ? reste : 0.0,
-          'updated_at': DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq('id', entrepriseId)
+        .update(nouvellesValeurs)
+        .eq('id', entreprise.id)
         .select()
         .single();
 
@@ -457,7 +705,23 @@ class EntrepriseService {
       );
     }
 
-    return Entreprise.fromMap(misAJour);
+    final Entreprise resultat = Entreprise.fromMap(misAJour);
+
+    // Historique : best-effort. Si la table n'est pas encore installée,
+    // l'encaissement lui-même reste valide.
+    try {
+      await _client.from('paiements_abonnement').insert({
+        'entreprise_id': entreprise.id,
+        'montant': montant,
+        'total_apres': resultat.montantDejaPaye,
+        'solde_apres': resultat.soldeRestant,
+        'prolongation_jours': prolongationJours,
+      });
+    } catch (e) {
+      debugPrint('Historique du paiement non enregistré (ignoré): $e');
+    }
+
+    return resultat;
   }
 
   /// Vrai si l'erreur PostgREST signifie « cette fonction n'existe pas ».

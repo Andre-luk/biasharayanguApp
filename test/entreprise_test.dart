@@ -20,6 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
+import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -419,7 +420,7 @@ void main() {
   // =========================================================================
 
   group('EntrepriseService.calculerMontantTotalDu', () {
-    test('ne facture que l\'abonnement, hors frais d\'ouverture', () {
+    test('additionne les frais d\'ouverture et l\'abonnement', () {
       const GroupeTarifaire groupe = GroupeTarifaire(
         id: 'g1',
         nom: 'Standard',
@@ -428,7 +429,144 @@ void main() {
       );
 
       expect(
-          EntrepriseService.instance.calculerMontantTotalDu(groupe), 25000.0);
+          EntrepriseService.instance.calculerMontantTotalDu(groupe), 35000.0);
+    });
+
+    test('vaut zéro quand la grille tarifaire ne définit aucun montant', () {
+      const GroupeTarifaire vide = GroupeTarifaire(id: 'g2', nom: 'Vide');
+
+      expect(EntrepriseService.instance.calculerMontantTotalDu(vide), 0.0);
+    });
+  });
+
+  // =========================================================================
+  // Historique des encaissements
+  // =========================================================================
+
+  group('PaiementAbonnement.fromMap', () {
+    test('lit les colonnes de public.paiements_abonnement', () {
+      final PaiementAbonnement paiement =
+          PaiementAbonnement.fromMap(<String, dynamic>{
+        'id': 'p1',
+        'entreprise_id': 'e1',
+        'montant': 15000,
+        'total_apres': 15000,
+        'solde_apres': 0,
+        'prolongation_jours': 30,
+        'enregistre_par': 'u1',
+        'created_at': '2026-09-16T10:00:00Z',
+      });
+
+      expect(paiement.entrepriseId, 'e1');
+      expect(paiement.montant, 15000.0);
+      expect(paiement.soldeApres, 0.0);
+      expect(paiement.prolongationJours, 30);
+      expect(paiement.aProlonge, isTrue);
+      expect(paiement.createdAt, isNotNull);
+    });
+
+    test('tolère une réponse minimale', () {
+      final PaiementAbonnement paiement =
+          PaiementAbonnement.fromMap(const <String, dynamic>{});
+
+      expect(paiement.montant, 0.0);
+      expect(paiement.totalApres, isNull);
+      expect(paiement.prolongationJours, 0);
+      expect(paiement.aProlonge, isFalse);
+    });
+  });
+
+  // =========================================================================
+  // Contrôle d'accès à la connexion
+  // =========================================================================
+
+  group('EntrepriseService.evaluerAcces', () {
+    final DateTime maintenant = DateTime(2026, 9, 16, 12);
+
+    Map<String, dynamic> ligne(String statut, DateTime? expiration) {
+      return <String, dynamic>{
+        'entreprise_id': 'e1',
+        'nom': 'Test',
+        'statut': statut,
+        'date_expiration': expiration?.toIso8601String(),
+      };
+    }
+
+    test("n'exige rien d'un utilisateur sans entreprise rattachée", () {
+      expect(
+        EntrepriseService.evaluerAcces(const <Map<String, dynamic>>[]),
+        isNull,
+      );
+    });
+
+    test('laisse passer tant qu\'une entreprise est active', () {
+      final String? message = EntrepriseService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne('SUSPENDU', maintenant.add(const Duration(days: 10))),
+          ligne('ACTIF', maintenant.add(const Duration(days: 20))),
+        ],
+        maintenant: maintenant,
+      );
+
+      expect(message, isNull);
+    });
+
+    test('laisse passer un essai en cours', () {
+      final String? message = EntrepriseService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne('ESSAI_7J', maintenant.add(const Duration(days: 3))),
+        ],
+        maintenant: maintenant,
+      );
+
+      expect(message, isNull);
+    });
+
+    test('bloque quand toutes les entreprises sont suspendues', () {
+      final String? message = EntrepriseService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne('SUSPENDU', maintenant.add(const Duration(days: 10))),
+        ],
+        maintenant: maintenant,
+      );
+
+      expect(message, isNotNull);
+      expect(message, contains('suspendu'));
+    });
+
+    test('bloque quand tous les abonnements ont expiré', () {
+      final String? message = EntrepriseService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne('EXPIRE', maintenant.subtract(const Duration(days: 1))),
+        ],
+        maintenant: maintenant,
+      );
+
+      expect(message, isNotNull);
+      expect(message, contains('expiré'));
+    });
+
+    test('bloque un essai dépassé même si la base affiche encore ESSAI_7J', () {
+      final String? message = EntrepriseService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne('ESSAI_7J', maintenant.subtract(const Duration(hours: 2))),
+        ],
+        maintenant: maintenant,
+      );
+
+      expect(message, isNotNull);
+    });
+
+    test('mentionne la suspension plutôt que l\'expiration', () {
+      final String? message = EntrepriseService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne('EXPIRE', maintenant.subtract(const Duration(days: 5))),
+          ligne('SUSPENDU', maintenant.add(const Duration(days: 5))),
+        ],
+        maintenant: maintenant,
+      );
+
+      expect(message, contains('suspendu'));
     });
   });
 }

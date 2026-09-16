@@ -597,8 +597,8 @@ class _EntrepriseFormPageState extends State<EntrepriseFormPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              "Le montant total dû correspond au montant de l'abonnement. "
-              "Les frais d'ouverture sont affichés à titre indicatif.",
+              "Le montant total dû correspond aux frais d'ouverture "
+              "plus le montant de l'abonnement.",
               style: TextStyle(
                 fontSize: 11,
                 color: theme.colorScheme.onSurfaceVariant,

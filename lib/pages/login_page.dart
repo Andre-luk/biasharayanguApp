@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase_auth;
 
+import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
@@ -60,7 +61,8 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // 1. CONNEXION SUPABASE
       try {
-        final user = await _supabaseService.signInUser(email: email, password: password);
+        final user =
+            await _supabaseService.signInUser(email: email, password: password);
         if (user != null && user.id != null) {
           final userId = user.id!;
           await SessionManager.setUserId(userId);
@@ -71,7 +73,8 @@ class _LoginPageState extends State<LoginPage> {
 
             // Extraction sécurisée du ownerId (Patron)
             final String? pId = localUser?.parentId;
-            final String ownerId = (pId != null && pId.isNotEmpty) ? pId : userId;
+            final String ownerId =
+                (pId != null && pId.isNotEmpty) ? pId : userId;
 
             final role = localUser?.role ?? 'vendor';
             await SessionManager.setUserRole(role);
@@ -88,7 +91,8 @@ class _LoginPageState extends State<LoginPage> {
               // 2. Par sécurité, s'il y avait des données locales créées hors ligne, on les pousse vers Supabase
               await _syncService.syncAll();
             } catch (syncError) {
-              debugPrint('⚠️ Erreur lors de la synchronisation initiale des données: $syncError');
+              debugPrint(
+                  '⚠️ Erreur lors de la synchronisation initiale des données: $syncError');
             }
             // 👆 FIN DE L'AJOUT
 
@@ -111,9 +115,13 @@ class _LoginPageState extends State<LoginPage> {
 
       // 2. CONNEXION LOCALE (Hors ligne)
       final hash = _hashPassword(password);
-      Utilisateur? localUser = await _dbHelper.getUtilisateurByEmailAndPassword(email, password);
+      Utilisateur? localUser =
+          await _dbHelper.getUtilisateurByEmailAndPassword(email, password);
       if (localUser == null) {
-        try { localUser = await _dbHelper.getUtilisateurByEmailAndPasswordHash(email, hash); } catch (_) {}
+        try {
+          localUser =
+              await _dbHelper.getUtilisateurByEmailAndPasswordHash(email, hash);
+        } catch (_) {}
       }
 
       if (localUser != null) {
@@ -136,6 +144,41 @@ class _LoginPageState extends State<LoginPage> {
 
     if (role == 'admin') {
       context.go('/admin');
+      return;
+    }
+
+    // 🏢 Contrôle d'accès lié à l'entreprise rattachée.
+    //
+    // `verifierAccesUtilisateur` est fail-open : si la fonction SQL n'est pas
+    // installée, si le réseau échoue ou si l'utilisateur n'est rattaché à
+    // aucune entreprise, l'accès reste ouvert.
+    final String? blocageEntreprise =
+        await EntrepriseService.instance.verifierAccesUtilisateur(userId);
+
+    if (blocageEntreprise != null) {
+      if (!mounted) return;
+
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext ctx) => AlertDialog(
+          title: const Text('Accès bloqué'),
+          content: Text(blocageEntreprise),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                await SupabaseService.instance.signOut();
+                await SessionManager.clearSession();
+              },
+              child: const Text('Se déconnecter'),
+            ),
+          ],
+        ),
+      );
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
       return;
     }
 
@@ -177,7 +220,10 @@ class _LoginPageState extends State<LoginPage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 25, offset: const Offset(0, 12))
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 25,
+                      offset: const Offset(0, 12))
                 ],
               ),
               child: ClipRRect(
@@ -195,14 +241,24 @@ class _LoginPageState extends State<LoginPage> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               if (!isWide) ...[
-                                Center(child: Image.asset('assets/Biashara_app_off-.png', height: 70)),
+                                Center(
+                                    child: Image.asset(
+                                        'assets/Biashara_app_off-.png',
+                                        height: 70)),
                                 const SizedBox(height: 20),
                               ],
-                              const Text('Connexion', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800), textAlign: TextAlign.center),
+                              const Text('Connexion',
+                                  style: TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800),
+                                  textAlign: TextAlign.center),
                               const SizedBox(height: 35),
-                              _buildTextField(_emailController, 'Email', Icons.alternate_email_rounded),
+                              _buildTextField(_emailController, 'Email',
+                                  Icons.alternate_email_rounded),
                               const SizedBox(height: 16),
-                              _buildTextField(_passwordController, 'Mot de passe', Icons.lock_outline_rounded, isPassword: true),
+                              _buildTextField(_passwordController,
+                                  'Mot de passe', Icons.lock_outline_rounded,
+                                  isPassword: true),
                               _buildForgotButton(colorScheme),
                               const SizedBox(height: 20),
                               _buildLoginButton(colorScheme),
@@ -228,7 +284,8 @@ class _LoginPageState extends State<LoginPage> {
       child: Container(
         height: 600,
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [colorScheme.primary, colorScheme.primary.withBlue(200)]),
+          gradient: LinearGradient(
+              colors: [colorScheme.primary, colorScheme.primary.withBlue(200)]),
         ),
         child: Padding(
           padding: const EdgeInsets.all(40),
@@ -238,9 +295,15 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               Image.asset('assets/Biashara_app_off-.png', height: 100),
               const SizedBox(height: 30),
-              const Text('Biashara Yangu', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+              const Text('Biashara Yangu',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 15),
-              Text('Gérez votre commerce avec simplicité.', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 16)),
+              Text('Gérez votre commerce avec simplicité.',
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(0.8), fontSize: 16)),
             ],
           ),
         ),
@@ -248,20 +311,29 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, IconData icon, {bool isPassword = false}) {
+  Widget _buildTextField(
+      TextEditingController controller, String label, IconData icon,
+      {bool isPassword = false}) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword ? _obscurePassword : false,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        suffixIcon: isPassword ? IconButton(
-          icon: Icon(_obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-        ) : null,
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(_obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              )
+            : null,
         filled: true,
         fillColor: Colors.grey[50],
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none),
       ),
       validator: (v) => (v == null || v.isEmpty) ? 'Champ requis' : null,
     );
@@ -271,8 +343,13 @@ class _LoginPageState extends State<LoginPage> {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PasswordRecoveryPage())),
-        child: Text('Mot de passe oublié ?', style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold)),
+        onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const PasswordRecoveryPage())),
+        child: Text('Mot de passe oublié ?',
+            style: TextStyle(
+                color: colorScheme.primary, fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -287,8 +364,13 @@ class _LoginPageState extends State<LoginPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
       child: _isLoading
-          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-          : const Text('SE CONNECTER', style: TextStyle(fontWeight: FontWeight.bold)),
+          ? const SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white))
+          : const Text('SE CONNECTER',
+              style: TextStyle(fontWeight: FontWeight.bold)),
     );
   }
 
@@ -298,7 +380,10 @@ class _LoginPageState extends State<LoginPage> {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         const Text("Pas encore de compte ?"),
-        TextButton(onPressed: () => context.go('/setup'), child: const Text('S\'inscrire', style: TextStyle(fontWeight: FontWeight.bold))),
+        TextButton(
+            onPressed: () => context.go('/setup'),
+            child: const Text('S\'inscrire',
+                style: TextStyle(fontWeight: FontWeight.bold))),
       ],
     );
   }
