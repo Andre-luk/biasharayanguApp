@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // ================== MODÈLES ==================
+import 'package:biashara_yangu/models/activite.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/groupe_tarifaire.dart';
 import 'package:biashara_yangu/models/produit.dart';
 
 // ================== PAGES ==================
@@ -37,6 +39,12 @@ import 'package:biashara_yangu/pages/collaborateurs_stats_page.dart';
 // ================== MODULE 1 : ENTREPRISES ==================
 import 'package:biashara_yangu/pages/entreprise_detail_page.dart';
 import 'package:biashara_yangu/pages/entreprise_form_page.dart';
+
+// ============ MODULE 2 : ACTIVITÉS & GROUPES TARIFAIRES ============
+import 'package:biashara_yangu/pages/activite_form_page.dart';
+import 'package:biashara_yangu/pages/activites_page.dart';
+import 'package:biashara_yangu/pages/groupe_tarifaire_form_page.dart';
+import 'package:biashara_yangu/pages/groupes_tarifaires_page.dart';
 
 // ================== NAV KEYS ==================
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -97,6 +105,60 @@ final GoRouter appRouter = GoRouter(
               builder: (context, state) => EntrepriseFormPage(
                 entreprise: state.extra is Entreprise ? state.extra as Entreprise : null,
                 entrepriseId: state.pathParameters['id'],
+              ),
+            ),
+          ],
+        ),
+
+        // 📚 MODULE 2 — ACTIVITÉS & GROUPES TARIFAIRES
+        //
+        // Le hub (onglet « Référentiels » de AdminHomePage) ouvre ces listes ;
+        // les formulaires s'empilent au-dessus de l'espace admin et
+        // bénéficient du retour natif.
+        GoRoute(
+          path: 'activites',
+          name: 'activites',
+          builder: (context, state) => const ActivitesPage(),
+          routes: [
+            GoRoute(
+              path: 'new',
+              name: 'activite-new',
+              builder: (context, state) => const ActiviteFormPage(),
+            ),
+            GoRoute(
+              path: ':id',
+              name: 'activite-edit',
+              builder: (context, state) => ActiviteFormPage(
+                activite: state.extra is Activite ? state.extra as Activite : null,
+                activiteId: state.pathParameters['id'],
+              ),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: 'groupes-tarifaires',
+          name: 'groupes-tarifaires',
+          builder: (context, state) => GroupesTarifairesPage(
+            activiteIdInitial:
+                state.extra is String ? state.extra as String : null,
+          ),
+          routes: [
+            GoRoute(
+              path: 'new',
+              name: 'groupe-tarifaire-new',
+              builder: (context, state) => GroupeTarifaireFormPage(
+                activiteIdInitial:
+                    state.extra is String ? state.extra as String : null,
+              ),
+            ),
+            GoRoute(
+              path: ':id',
+              name: 'groupe-tarifaire-edit',
+              builder: (context, state) => GroupeTarifaireFormPage(
+                groupe: state.extra is GroupeTarifaire
+                    ? state.extra as GroupeTarifaire
+                    : null,
+                groupeId: state.pathParameters['id'],
               ),
             ),
           ],

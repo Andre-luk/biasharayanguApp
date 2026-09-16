@@ -9,6 +9,7 @@ import 'package:biashara_yangu/pages/admin_users_page.dart';
 import 'package:biashara_yangu/pages/admin_categories_page.dart';
 import 'package:biashara_yangu/pages/admin_maintenance_page.dart';
 import 'package:biashara_yangu/pages/entreprise_list_page.dart';
+import 'package:biashara_yangu/pages/referentiels_hub_page.dart';
 
 
 // ====================================================================
@@ -32,6 +33,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
     // 🏢 Module « Gestion des entreprises » : la page fournit son propre
     // Scaffold (FAB, rafraîchissement) mais pas sa barre de titre.
     EntrepriseListPage(showAppBar: false),
+    // 📚 Module « Activités & groupes tarifaires » (Module 2) : hub d'accès
+    // aux référentiels, sans AppBar propre (fournie par AdminHomePage).
+    ReferentielsHubPage(),
     AdminSettingsPage(),
   ];
 
@@ -55,6 +59,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 2:
         return 'Gestion des Entreprises';
       case 3:
+        return 'Activités & Groupes tarifaires';
+      case 4:
         return 'Paramètres & Maintenance';
       default:
         return 'Administration Système';
@@ -97,6 +103,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_customize), label: 'Tableau'),
           BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Utilisateurs'),
           BottomNavigationBarItem(icon: Icon(Icons.business_rounded), label: 'Entreprises'),
+          BottomNavigationBarItem(icon: Icon(Icons.category_rounded), label: 'Référentiels'),
           BottomNavigationBarItem(icon: Icon(Icons.settings_applications), label: 'Système'),
         ],
       ),

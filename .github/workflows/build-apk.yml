@@ -1,0 +1,79 @@
+# ============================================================================
+#  Compilation de l'APK de test sur les serveurs de GitHub
+#
+#  Pourquoi : la machine de développement est trop lente pour compiler l'app.
+#  Ici, GitHub compile à ta place et te donne un APK à télécharger.
+#
+#  COMMENT RÉCUPÉRER L'APK
+#    1. Va sur github.com/Andre-luk/biasharayanguApp/actions
+#    2. Clique sur le dernier « Compiler l'APK de test » (coche verte)
+#    3. Section « Artifacts » en bas de page → télécharge
+#       « biashara-yangu-debug »
+#    4. Décompresse le .zip récupéré : il contient app-debug.apk
+#    5. Transfère-le sur ton téléphone et installe-le
+#       (autorise « Installer des applications inconnues »)
+#
+#  POURQUOI UN APK « DEBUG » ET PAS « RELEASE »
+#    android/app/build.gradle.kts référence un keystore situé sur un chemin
+#    Windows (C:\Users\Eddy\...) qui n'existe pas sur les serveurs Linux de
+#    GitHub. Un APK release ne peut donc pas être signé en CI en l'état.
+#    L'APK debug contient EXACTEMENT le même code : il est parfait pour tester
+#    le module. Voir le message d'accompagnement pour la suite.
+#
+#  ⚠️ Désinstalle d'abord l'application déjà présente sur le téléphone :
+#     la signature étant différente, Android refusera la mise à jour.
+# ============================================================================
+
+name: Compiler l'APK de test
+
+on:
+  push:
+    branches: [main]
+  # Permet de lancer la compilation à la main depuis l'onglet « Actions ».
+  workflow_dispatch:
+
+jobs:
+  apk:
+    name: APK de test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      # Version épinglée pour être identique à la machine de développement.
+      # Si cette version devenait indisponible, remplacer par :
+      #   channel: stable
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      # N'échoue que sur les vraies erreurs : le projet comporte des
+      # avertissements et remarques pré-existants (déprécations, etc.).
+      - name: Analyse statique
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Tests
+        run: flutter test
+
+      - name: Compiler l'APK
+        run: flutter build apk --debug
+
+      - name: Publier l'APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: biashara-yangu-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
