@@ -8,6 +8,7 @@ import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/pages/admin_users_page.dart';
 import 'package:biashara_yangu/pages/admin_categories_page.dart';
 import 'package:biashara_yangu/pages/admin_maintenance_page.dart';
+import 'package:biashara_yangu/pages/entreprise_list_page.dart';
 
 
 // ====================================================================
@@ -28,6 +29,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
   final List<Widget> _adminPages = const [
     AdminDashboardPage(),
     AdminUsersWrapper(),
+    // 🏢 Module « Gestion des entreprises » : la page fournit son propre
+    // Scaffold (FAB, rafraîchissement) mais pas sa barre de titre.
+    EntrepriseListPage(showAppBar: false),
     AdminSettingsPage(),
   ];
 
@@ -49,6 +53,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 1:
         return 'Gestion des Utilisateurs';
       case 2:
+        return 'Gestion des Entreprises';
+      case 3:
         return 'Paramètres & Maintenance';
       default:
         return 'Administration Système';
@@ -88,8 +94,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
         backgroundColor: colorScheme.surface,
         elevation: 10,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_customize), label: 'Tableau de Bord'),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_customize), label: 'Tableau'),
           BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Utilisateurs'),
+          BottomNavigationBarItem(icon: Icon(Icons.business_rounded), label: 'Entreprises'),
           BottomNavigationBarItem(icon: Icon(Icons.settings_applications), label: 'Système'),
         ],
       ),

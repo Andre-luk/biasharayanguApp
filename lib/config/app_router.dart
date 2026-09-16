@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // ================== MODÈLES ==================
+import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/produit.dart';
 
 // ================== PAGES ==================
@@ -32,6 +33,10 @@ import 'package:biashara_yangu/pages/clients_page.dart';
 import 'package:biashara_yangu/pages/manage_users_page.dart';
 import 'package:biashara_yangu/pages/add_user_page.dart';
 import 'package:biashara_yangu/pages/collaborateurs_stats_page.dart';
+
+// ================== MODULE 1 : ENTREPRISES ==================
+import 'package:biashara_yangu/pages/entreprise_detail_page.dart';
+import 'package:biashara_yangu/pages/entreprise_form_page.dart';
 
 // ================== NAV KEYS ==================
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -67,6 +72,36 @@ final GoRouter appRouter = GoRouter(
       path: '/admin',
       name: 'admin',
       builder: (context, state) => const AdminHomePage(),
+      routes: [
+        // 🏢 MODULE 1 — GESTION DES ENTREPRISES
+        //
+        // La liste est affichée dans un onglet de `AdminHomePage` (pas besoin
+        // de route) ; seules les sous-pages en ont une : elles s'empilent
+        // au-dessus de l'espace admin et bénéficient du retour natif.
+        GoRoute(
+          path: 'entreprises/new',
+          name: 'entreprise-new',
+          builder: (context, state) => const EntrepriseFormPage(),
+        ),
+        GoRoute(
+          path: 'entreprises/:id',
+          name: 'entreprise-detail',
+          builder: (context, state) => EntrepriseDetailPage(
+            entreprise: state.extra is Entreprise ? state.extra as Entreprise : null,
+            entrepriseId: state.pathParameters['id'],
+          ),
+          routes: [
+            GoRoute(
+              path: 'edit',
+              name: 'entreprise-edit',
+              builder: (context, state) => EntrepriseFormPage(
+                entreprise: state.extra is Entreprise ? state.extra as Entreprise : null,
+                entrepriseId: state.pathParameters['id'],
+              ),
+            ),
+          ],
+        ),
+      ],
     ),
 
     // ================== APPLICATION PRINCIPALE ==================

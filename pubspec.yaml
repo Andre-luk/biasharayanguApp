@@ -47,6 +47,11 @@ dependencies:
   # Backend
   supabase_flutter: ^2.10.3
 
+  # Liens externes (WhatsApp / support depuis subscription_expired_page.dart)
+  # Était utilisé mais non déclaré : l'appel compilait grâce à la dépendance
+  # transitive de supabase_flutter, ce qui est fragile.
+  url_launcher: ^6.3.2
+
   # Localisation
   flutter_localizations:
     sdk: flutter
