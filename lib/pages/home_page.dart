@@ -505,24 +505,29 @@ class _HomePageState extends State<HomePage> {
           crossAxisSpacing: 12,
           childAspectRatio: 1.28,
           children: [
-            _CarteStat(
-              titre: T.statProductsCount,
-              valeur: '$produitsCount',
-              icone: Icons.inventory_2_rounded,
-              couleur: const Color(0xFF2563EB),
-              // 🗂️ MODULE 5 — la carte « Produits » ouvre la liste des
-              // articles (catalogue + conditionnements), qui gère aussi la
-              // création.
-              onTap: () => _navTo('/main/articles'),
-            ),
-            _CarteStat(
-              titre: T.statStockStatus,
-              valeur: '$_lowStockCount',
-              icone: Icons.warning_amber_rounded,
-              couleur: const Color(0xFFF59E0B),
-              alerte: _lowStockCount > 0,
-              onTap: () => _navTo('/main/stock'),
-            ),
+            // 🔐 MODULE 4 — chaque carte suit les permissions du rôle : un
+            // caissier (vendeur) ne voit ni le catalogue ni le stock (sinon
+            // le middleware le renverrait sur son écran de vente).
+            if (permissions.peutVoir(PageAccess.articles))
+              _CarteStat(
+                titre: T.statProductsCount,
+                valeur: '$produitsCount',
+                icone: Icons.inventory_2_rounded,
+                couleur: const Color(0xFF2563EB),
+                // 🗂️ MODULE 5 — la carte « Produits » ouvre la liste des
+                // articles (catalogue + conditionnements), qui gère aussi la
+                // création.
+                onTap: () => _navTo('/main/articles'),
+              ),
+            if (permissions.peutVoir(PageAccess.stock))
+              _CarteStat(
+                titre: T.statStockStatus,
+                valeur: '$_lowStockCount',
+                icone: Icons.warning_amber_rounded,
+                couleur: const Color(0xFFF59E0B),
+                alerte: _lowStockCount > 0,
+                onTap: () => _navTo('/main/stock'),
+              ),
             // 💰 MODULE 10 — caisse et tableau de bord financier.
             if (permissions.peutVoir(PageAccess.caisse))
               _CarteStat(
@@ -556,23 +561,41 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildActionsSecondaires(AppLocalizations T) {
+    final PermissionService permissions = PermissionService.instance;
+
+    // 🔐 MODULE 4 — « Ajouter un produit » exige la création d'articles ;
+    // « Collaborateurs » est réservé aux rôles qui gèrent l'équipe (patron).
+    // Sans ces droits, les boutons disparaissent (fini les clics qui
+    // renvoyaient silencieusement vers l'écran de vente).
+    final bool peutAjouterProduit =
+        permissions.peut(PageAccess.articles, ActionAccess.creer);
+    final bool peutGererCollaborateurs =
+        permissions.peutVoir(PageAccess.collaborateurs);
+
+    if (!peutAjouterProduit && !peutGererCollaborateurs) {
+      return const SizedBox.shrink();
+    }
+
     return Row(
       children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _navTo('/main/add-product'),
-            icon: const Icon(Icons.add_circle_outline_rounded),
-            label: Text(T.buttonAddProduct),
+        if (peutAjouterProduit)
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _navTo('/main/add-product'),
+              icon: const Icon(Icons.add_circle_outline_rounded),
+              label: Text(T.buttonAddProduct),
+            ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => _navTo('/settings/manage-users'),
-            icon: const Icon(Icons.group_outlined),
-            label: const Text('Collaborateurs'),
+        if (peutAjouterProduit && peutGererCollaborateurs)
+          const SizedBox(width: 12),
+        if (peutGererCollaborateurs)
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _navTo('/settings/manage-users'),
+              icon: const Icon(Icons.group_outlined),
+              label: const Text('Collaborateurs'),
+            ),
           ),
-        ),
       ],
     );
   }

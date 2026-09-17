@@ -105,7 +105,11 @@ class _SetupPageState extends State<SetupPage> {
 
       // LOGIQUE DE PARENTÉ ET RÔLE
       String? parentId;
-      String roleFinal = widget.adminCreating ? _role : 'vendor';
+      // ⚠️ Inscription autonome (sans code) : on envoie directement le code
+      // du Module 4 « PROPRIETAIRE ». L'ancien « vendor » est traduit en
+      // « VENDEUR » par le trigger de la base (alors que l'application le
+      // réserve au patron) — d'où le mauvais rôle des anciens comptes.
+      String roleFinal = widget.adminCreating ? _role : 'PROPRIETAIRE';
 
       if (widget.adminCreating) {
         // Le patron crée lui-même le collaborateur
