@@ -1,9 +1,11 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:io';
+import 'dart:ffi';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqlite3/open.dart' as sqlite_open;
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import 'models/ajustement.dart';
@@ -42,6 +44,7 @@ class DBHelper {
 
   Future<Database> _initDB() async {
     if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      _chargerSqlite3Embrique();
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
     }
@@ -55,6 +58,35 @@ class DBHelper {
       onCreate: _onCreate,
       onUpgrade: _onUpgrade, // 2. AJOUTE CETTE LIGNE
     );
+  }
+
+  /// 🐧🪟 SQLite EMBARQUÉ — le paquet Linux/Windows fournit sa propre
+  /// bibliothèque (`lib/libsqlite3.so` sur Linux, `sqlite3.dll` à côté du
+  /// programme sur Windows). On la charge en PRIORITÉ : l'application
+  /// fonctionne donc sans rien installer sur l'ordinateur (sans quoi :
+  /// « Failed to load dynamic library 'libsqlite3.so' »).
+  /// Si elle est absente, on retombe sur la bibliothèque du système.
+  static void _chargerSqlite3Embrique() {
+    if (kIsWeb) return;
+    try {
+      final String dossier = File(Platform.resolvedExecutable).parent.path;
+      final String? candidat = Platform.isLinux
+          ? join(dossier, 'lib', 'libsqlite3.so')
+          : Platform.isWindows
+              ? join(dossier, 'sqlite3.dll')
+              : null;
+      if (candidat == null || !File(candidat).existsSync()) return;
+
+      sqlite_open.open.overrideFor(
+        Platform.isLinux
+            ? sqlite_open.OperatingSystem.linux
+            : sqlite_open.OperatingSystem.windows,
+        () => DynamicLibrary.open(candidat),
+      );
+      debugPrint('SQLite embarqué chargé : $candidat');
+    } catch (e) {
+      debugPrint('SQLite embarqué non chargé (bibliothèque système utilisée) : $e');
+    }
   }
 
 

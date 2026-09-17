@@ -148,6 +148,17 @@ jobs:
       - name: Compiler le binaire Linux
         run: flutter build linux --release
 
+      # 🐧 SQLite est EMBARQUÉE dans le paquet : la bibliothèque système
+      # s'appelle `libsqlite3.so.0` (le lien `.so` n'existe pas sans le
+      # paquet -dev) — les utilisateurs n'ont donc rien à installer.
+      - name: Embarquer SQLite (paquet autonome)
+        run: |
+          SQLITE_LIB="$(ldconfig -p | awk '/libsqlite3\.so\.0 /{print $NF; exit}')"
+          test -n "$SQLITE_LIB"
+          echo "SQLite trouvée : $SQLITE_LIB"
+          cp -L "$SQLITE_LIB" build/linux/x64/release/bundle/lib/libsqlite3.so
+          ls -lh build/linux/x64/release/bundle/lib/libsqlite3.so
+
       - name: Créer l'archive
         run: tar -czf biashara-yangu-linux.tar.gz -C build/linux/x64/release/bundle .
 
@@ -186,6 +197,15 @@ jobs:
         run: flutter build windows --release
         env:
           CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
+
+      # 🪟 Même logique : sqlite3.dll voyage AVEC l'application.
+      - name: Ajouter SQLite (DLL) au paquet
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://www.sqlite.org/2024/sqlite-dll-win-x64-3460100.zip" -OutFile sqlite.zip
+          Expand-Archive -Path sqlite.zip -DestinationPath sqlite
+          Copy-Item sqlite\sqlite3.dll build\windows\x64\runner\Release\
+          dir build\windows\x64\runner\Release\sqlite3.dll
 
       - name: Créer l'archive
         shell: pwsh
