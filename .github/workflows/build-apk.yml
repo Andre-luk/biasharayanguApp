@@ -41,6 +41,15 @@ jobs:
       - name: Récupérer le code
         uses: actions/checkout@v4
 
+      # Les serveurs GitHub n'ont que ~14 Go utiles : on retire les outils
+      # préinstallés inutiles ici (dotnet, ghc, boost…) pour éviter le
+      # « No space left on device » pendant la compilation Android.
+      - name: Libérer de l'espace disque
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
+                      /usr/share/swift /opt/hostedtoolcache/CodeQL || true
+          df -h / | tail -1
+
       - name: Installer Java
         uses: actions/setup-java@v4
         with:
