@@ -27,6 +27,7 @@ class _SetupPageState extends State<SetupPage> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _codeBoutiqueCtrl = TextEditingController(); // AJOUT : Contrôleur pour le code d'invitation
+  final _boutiqueCtrl = TextEditingController(); // 🏪 Nom de la boutique (entreprise)
 
   String _role = 'vendor';
   bool _saving = false;
@@ -48,6 +49,7 @@ class _SetupPageState extends State<SetupPage> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _codeBoutiqueCtrl.dispose(); // AJOUT : Libération du contrôleur
+    _boutiqueCtrl.dispose(); // 🏪 Libération du contrôleur
     super.dispose();
   }
 
@@ -84,6 +86,7 @@ class _SetupPageState extends State<SetupPage> {
     final email = _emailCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text.trim();
     final codeSaisi = _codeBoutiqueCtrl.text.trim(); // AJOUT
+    final nomBoutique = _boutiqueCtrl.text.trim(); // 🏪 nom de l'entreprise
 
     try {
       if (widget.editUser != null) {
@@ -168,6 +171,26 @@ class _SetupPageState extends State<SetupPage> {
         } catch (e) {
           debugPrint('Erreur démarrage sync après signup: $e');
         }
+
+        // 🏪 Créer l'ENTREPRISE de la boutique (c'est elle qui porte
+        // l'abonnement — essai de 7 jours) et la rattacher au compte.
+        // Uniquement pour le PATRON (sans code boutique) et en
+        // « best-effort » : si l'appel échoue, la connexion continue
+        // (l'entreprise sera créée au premier accès aux quotas IA).
+        if (parentId == null) {
+          try {
+            await SupabaseService.instance.client.rpc(
+              'rpc_entreprise_creer',
+              params: <String, dynamic>{
+                if (nomBoutique.isNotEmpty) 'p_nom': nomBoutique,
+              },
+            );
+          } catch (e) {
+            debugPrint('rpc_entreprise_creer ignoré : $e');
+          }
+        }
+
+        if (!mounted) return;
         context.go('/main');
       } else {
         // Administrateur : collaborateur créé
@@ -281,6 +304,26 @@ class _SetupPageState extends State<SetupPage> {
                         validator: (v) => v!.length < 6 ? 'Min 6 caractères' : null,
                       ),
                       const SizedBox(height: 20), // AJOUT : Espacement
+
+                      // 🏪 Nom de la boutique (entreprise) — pour le patron.
+                      if (!widget.adminCreating) ...[
+                        const SizedBox(height: 20),
+                        _buildFieldTitle("Nom de la boutique (Optionnel)"),
+                        TextFormField(
+                          controller: _boutiqueCtrl,
+                          decoration: _buildInputDecoration(
+                            Icons.storefront_outlined,
+                            "ex : Boutique Étoile",
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8.0, left: 4.0),
+                          child: Text(
+                            "C'est le nom de votre entreprise (essai de 7 jours). Laissez vide pour « Boutique <votre nom> ».",
+                            style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                      ],
 
                       // AJOUT : Champ Code Boutique pour les nouveaux utilisateurs
                       if (!widget.adminCreating) ...[

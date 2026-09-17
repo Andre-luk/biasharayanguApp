@@ -59,6 +59,13 @@ Dans **Supabase → SQL Editor**, exécute dans l'ordre (si pas déjà fait) :
    `rpc_agent_ia_demander_achat`, `rpc_agent_ia_valider_achat`,
    `rpc_agent_ia_marquer_paye`, `rpc_agent_ia_attribuer`,
    `rpc_agent_ia_config_maj` + page `assistant_ia` dans les permissions.
+4. `supabase/migrations/20260916000017_module13_entreprise_fix.sql`
+   → **CORRECTIF « entreprise »** : retire les 4 clés étrangères mal posées
+   sur `entreprise_id` (elles bloquaient l'ouverture des écrans IA avec
+   « violates foreign key constraint agent_ia_quotas_entreprise_id_fkey »),
+   ajoute `rpc_entreprise_creer` (entreprise de la boutique + essai 7 jours),
+   et crée automatiquement l'entreprise des comptes existants (patrons sans
+   entreprise) en rattachant les collaborateurs à celle de leur patron.
 
 > Si le Module 12 n'est pas encore passé : exécute d'abord
 > `20260916000013_module12_audit_securite.sql` (journal d'audit renforcé —
