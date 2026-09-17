@@ -36,6 +36,8 @@ IconData iconePourPage(PageAccess page) {
       return Icons.history_edu_rounded;
     case PageAccess.securite:
       return Icons.security_rounded;
+    case PageAccess.assistantIa:
+      return Icons.smart_toy_rounded;
     case PageAccess.notifications:
       return Icons.notifications_active_rounded;
     case PageAccess.assistance:

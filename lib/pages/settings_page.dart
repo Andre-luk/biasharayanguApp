@@ -308,6 +308,23 @@ class _SettingsPageState extends State<SettingsPage> {
                 sousTitre: T.manageCategoriesSubtitle,
                 onTap: () => context.pushNamed('manage-categories'),
               ),
+              // 🤖 MODULE 13 — assistant IA & quotas (selon permissions du rôle).
+              if (permissions.peutVoir(PageAccess.assistantIa))
+                _TuileParametre(
+                  icone: Icons.smart_toy_rounded,
+                  titre: 'Assistant IA',
+                  sousTitre:
+                      'Posez vos questions, l\'assistant agit selon vos droits',
+                  onTap: () => context.pushNamed('assistant-ia'),
+                ),
+              if (permissions.peutVoir(PageAccess.assistantIa))
+                _TuileParametre(
+                  icone: Icons.shopping_cart_checkout_rounded,
+                  titre: 'Quotas IA',
+                  sousTitre:
+                      'Packs, paiements suivis et attributions (patron)',
+                  onTap: () => context.pushNamed('achat-quotas'),
+                ),
               _TuileParametre(
                 icone: Icons.info_outline_rounded,
                 titre: T.settingsAboutTitle,

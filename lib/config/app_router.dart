@@ -92,6 +92,11 @@ import 'package:biashara_yangu/pages/import_produits_page.dart';
 import 'package:biashara_yangu/pages/journal_audit_page.dart';
 import 'package:biashara_yangu/pages/securite_page.dart';
 
+// ========== MODULE 13 : ASSISTANT IA (DEEPSEEK) ==========
+import 'package:biashara_yangu/pages/achat_quotas_page.dart';
+import 'package:biashara_yangu/pages/agent_ia_config_page.dart';
+import 'package:biashara_yangu/pages/assistant_ia_page.dart';
+
 // ========== MODULE 8 : PANIER & VALIDATION DE VENTE ==========
 import 'package:biashara_yangu/pages/panier_page.dart';
 import 'package:biashara_yangu/pages/encaissement_page.dart';
@@ -205,6 +210,27 @@ final GoRouter appRouter = GoRouter(
       path: '/import-produits',
       name: 'import-produits',
       builder: (context, state) => const ImportProduitsPage(),
+    ),
+
+    // ========== MODULE 13 : ASSISTANT IA (DEEPSEEK) ==========
+    //
+    // Le chat (et la gestion des quotas) passe par l'Edge Function « agent-ia »
+    // — jamais directement à DeepSeek. La configuration IA est réservée au
+    // Super Admin (règle `parametres/modifier` + revérification serveur).
+    GoRoute(
+      path: '/assistant-ia',
+      name: 'assistant-ia',
+      builder: (context, state) => const AssistantIaPage(),
+    ),
+    GoRoute(
+      path: '/achat-quotas',
+      name: 'achat-quotas',
+      builder: (context, state) => const AchatQuotasPage(),
+    ),
+    GoRoute(
+      path: '/agent-ia-config',
+      name: 'agent-ia-config',
+      builder: (context, state) => const AgentIaConfigPage(),
     ),
 
     // ============== MODULE 8 : CONFIRMATION DE VENTE ==============

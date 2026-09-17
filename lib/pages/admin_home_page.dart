@@ -528,6 +528,22 @@ class AdminSettingsPage extends StatelessWidget {
             onTap: () => GoRouter.of(context).push('/setup?adminCreating=true'),
           ),
 
+          // 🤖 MODULE 13 — configuration de l'assistant IA (Super Admin).
+          PermissionGate(
+            page: PageAccess.parametres,
+            action: ActionAccess.modifier,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.smart_toy_rounded,
+              color: Colors.teal.shade600,
+              title: 'Configuration IA',
+              subtitle:
+                  'Tarifs (CDF/quota), pack de 10, quotas offerts et activation de l\'assistant.',
+              onTap: () => GoRouter.of(context).push('/agent-ia-config'),
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           // 🛡️ Section Maintenance

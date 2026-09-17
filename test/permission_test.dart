@@ -245,6 +245,9 @@ void main() {
         // 🔐 MODULE 12 — le propriétaire consulte le journal de SA boutique
         // (RLS serveur : cloisonné à son entreprise).
         PageAccess.audit,
+        // 🤖 MODULE 13 — assistant IA (le patron règle les quotas, attribue
+        // des quotas à son équipe et achète des packs).
+        PageAccess.assistantIa,
         PageAccess.parametres,
       ]) {
         expect(
@@ -285,7 +288,7 @@ void main() {
   });
 
   group('VENDEUR — vendre, jamais modifier un prix', () {
-    test('pages : ventes, caisse, scanner, panier', () {
+    test('pages : ventes, caisse, scanner, panier, assistant IA', () {
       expect(
         service.getPagesAccessibles(RoleUtilisateur.vendeur),
         <PageAccess>[
@@ -293,6 +296,9 @@ void main() {
           PageAccess.caisse,
           PageAccess.scanner,
           PageAccess.panier,
+          // 🤖 MODULE 13 — il peut interroger l'assistant, mais les outils
+          // sensibles (prix, suppression…) restent refusés CÔTÉ SERVEUR.
+          PageAccess.assistantIa,
         ],
       );
     });
@@ -358,12 +364,24 @@ void main() {
   });
 
   group('MAGASINIER — mouvements de stock', () {
-    test('pages : stock, articles (lecture), qr_codes, rapports', () {
+    test('pages : stock, articles (lecture), qr_codes, rapports, assistant IA', () {
       final List<PageAccess> pages =
           service.getPagesAccessibles(RoleUtilisateur.magasinier);
       expect(pages, contains(PageAccess.stock));
       expect(pages, contains(PageAccess.articles));
       expect(pages, contains(PageAccess.qrCodes));
+      // 🤖 MODULE 13 — l'assistant est utilisable, sans droit de modification.
+      expect(pages, contains(PageAccess.assistantIa));
+      expect(
+        service.aAcces(RoleUtilisateur.magasinier, PageAccess.assistantIa,
+            ActionAccess.creer),
+        isTrue,
+      );
+      expect(
+        service.aAcces(RoleUtilisateur.magasinier, PageAccess.assistantIa,
+            ActionAccess.modifier),
+        isFalse,
+      );
     });
 
     test('peut créer un mouvement mais pas modifier un article', () {
@@ -426,6 +444,23 @@ void main() {
       expect(
         service.aAcces(RoleUtilisateur.comptableEntreprise,
             PageAccess.articles, ActionAccess.modifier),
+        isFalse,
+      );
+      // 🤖 MODULE 13 — assistant IA : consultation et questions, jamais de
+      // modification.
+      expect(
+        service.aAcces(RoleUtilisateur.comptableEntreprise,
+            PageAccess.assistantIa, ActionAccess.voir),
+        isTrue,
+      );
+      expect(
+        service.aAcces(RoleUtilisateur.comptableEntreprise,
+            PageAccess.assistantIa, ActionAccess.creer),
+        isTrue,
+      );
+      expect(
+        service.aAcces(RoleUtilisateur.comptableEntreprise,
+            PageAccess.assistantIa, ActionAccess.modifier),
         isFalse,
       );
     });
@@ -543,7 +578,7 @@ void main() {
   // =========================================================================
 
   group('Menu dynamique', () {
-    test('le menu d\'un vendeur ne contient que ses quatre pages', () {
+    test('le menu d\'un vendeur ne contient que ses cinq pages', () {
       final List<EntreeMenu> menu =
           service.menuPour(RoleUtilisateur.vendeur, EspaceApplication.entreprise);
 
@@ -554,6 +589,7 @@ void main() {
           PageAccess.caisse,
           PageAccess.scanner,
           PageAccess.panier,
+          PageAccess.assistantIa, // 🤖 MODULE 13
         ],
       );
     });
@@ -606,6 +642,10 @@ void main() {
       expect(PermissionService.pageRequisePour('/admin/abonnements/123/paiement'), PageAccess.paiements);
       expect(PermissionService.pageRequisePour('/settings/manage-users'), PageAccess.collaborateurs);
       expect(PermissionService.pageRequisePour('/login'), isNull);
+      // 🤖 MODULE 13 — chat, quotas et configuration IA.
+      expect(PermissionService.pageRequisePour('/assistant-ia'), PageAccess.assistantIa);
+      expect(PermissionService.pageRequisePour('/achat-quotas'), PageAccess.assistantIa);
+      expect(PermissionService.pageRequisePour('/agent-ia-config'), PageAccess.parametres);
     });
 
     test('routeAutorisee respecte le rôle connecté', () {
@@ -613,6 +653,10 @@ void main() {
       expect(service.routeAutorisee('/main/new-sale'), isTrue);
       expect(service.routeAutorisee('/admin/entreprises'), isFalse);
       expect(service.routeAutorisee('/settings'), isFalse);
+      // 🤖 MODULE 13 — le vendeur a le droit de dialoguer avec l'assistant,
+      // mais jamais d'ouvrir la configuration IA (Super Admin).
+      expect(service.routeAutorisee('/assistant-ia'), isTrue);
+      expect(service.routeAutorisee('/agent-ia-config'), isFalse);
 
       service.definirRoleCourant(RoleUtilisateur.financeLaperle);
       expect(service.routeAutorisee('/admin/abonnements/42'), isTrue);
@@ -623,6 +667,10 @@ void main() {
       service.definirRoleCourant(RoleUtilisateur.superAdmin);
       expect(service.routeAutorisee('/admin/permissions'), isTrue);
       expect(service.routeAutorisee('/main/stock'), isTrue);
+      // 🤖 MODULE 13 — le Super Admin règle la configuration et valide les
+      // demandes de packs (y compris depuis l'espace plateforme).
+      expect(service.routeAutorisee('/agent-ia-config'), isTrue);
+      expect(service.routeAutorisee('/achat-quotas'), isTrue);
     });
 
     test('page d\'accueil de repli cohérente pour chaque rôle', () {

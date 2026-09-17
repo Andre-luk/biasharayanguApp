@@ -191,7 +191,11 @@ enum PageAccess {
       alias: ['equipe']),
   qrCodes('qr_codes', 'QR codes', [EspaceApplication.plateforme, EspaceApplication.entreprise]),
   rapports('rapports', 'Rapports', [EspaceApplication.plateforme, EspaceApplication.entreprise],
-      alias: ['resultats', 'statistiques']);
+      alias: ['resultats', 'statistiques']),
+  // 🤖 MODULE 13 — assistant IA (espace entreprise ; les outils accessibles
+  // dépendent du rôle, revérifié par le serveur à chaque action).
+  assistantIa('assistant_ia', 'Assistant IA', [EspaceApplication.entreprise],
+      alias: ['agent_ia', 'ia']);
 
   const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
 

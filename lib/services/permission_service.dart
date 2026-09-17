@@ -189,6 +189,7 @@ class PermissionService {
         PageAccess.rapports,
         PageAccess.abonnements, // suivi de son propre abonnement
         PageAccess.audit, // 🔐 MODULE 12 — journal de SA boutique
+        PageAccess.assistantIa, // 🤖 MODULE 13 — assistant IA
         PageAccess.parametres,
       ],
       ActionAccess.values, // tout, sauf l'administration de la plateforme
@@ -199,6 +200,7 @@ class PermissionService {
         PageAccess.caisse, // nouvelle vente + encaissement
         PageAccess.scanner,
         PageAccess.panier,
+        PageAccess.assistantIa, // 🤖 MODULE 13 — assistant IA (outils du rôle)
       ],
       const <ActionAccess>[
         ActionAccess.voir,
@@ -218,6 +220,10 @@ class PermissionService {
           ActionAccess.creer,
         },
         PageAccess.rapports: const <ActionAccess>{ActionAccess.voir},
+        PageAccess.assistantIa: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
       },
     ),
     RoleUtilisateur.comptableEntreprise: RolePermission.personnalise(
@@ -235,6 +241,10 @@ class PermissionService {
           ActionAccess.valider,
         },
         PageAccess.finance: const <ActionAccess>{ActionAccess.voir},
+        PageAccess.assistantIa: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
         PageAccess.parametres: const <ActionAccess>{ActionAccess.voir},
       },
     ),
@@ -264,6 +274,12 @@ class PermissionService {
     _RegleRoute('/audit', PageAccess.audit),
     _RegleRoute('/securite', PageAccess.securite),
     _RegleRoute('/import-produits', PageAccess.articles, ActionAccess.creer),
+
+    // 🤖 MODULE 13 — assistant IA (chat + quotas) et configuration IA
+    // (réservée au Super Admin via `parametres/modifier`, revérifié serveur).
+    _RegleRoute('/assistant-ia', PageAccess.assistantIa),
+    _RegleRoute('/achat-quotas', PageAccess.assistantIa),
+    _RegleRoute('/agent-ia-config', PageAccess.parametres, ActionAccess.modifier),
 
     // ---------------------------------------------------------- entreprise
     _RegleRoute('/main/new-sale', PageAccess.caisse, ActionAccess.creer),
@@ -670,6 +686,8 @@ class PermissionService {
     // (l'import d'articles n'est pas une page de menu : bouton dédié).
     PageAccess.audit: '/audit',
     PageAccess.securite: '/securite',
+    // 🤖 MODULE 13 — écran principal de l'assistant (le chat).
+    PageAccess.assistantIa: '/assistant-ia',
     PageAccess.assistance: '/admin',
     PageAccess.notifications: '/admin',
     PageAccess.qrCodes: '/admin',
