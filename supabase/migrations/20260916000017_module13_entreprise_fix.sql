@@ -63,6 +63,18 @@ alter table public.agent_ia_actions
 comment on column public.agent_ia_quotas.entreprise_id is
   'Clé boutique = identifiant du PATRON (mon_proprietaire()) — PAS une ligne de public.entreprises (voir correctif 17).';
 
+-- 1.b La clé étrangère héritée du journal (`journal_audit`) vers `entreprises`
+--     posait le même genre de problème : l'audit (Modules 3 et 12) journalise
+--     la création d'une entreprise avec son identifiant RÉEL, et le journal
+--     est APPEND-ONLY (aucune suppression possible) — une entreprise ainsi
+--     journalisée devenait donc DÉFINITIVEMENT indestructible (« update or
+--     delete on table "entreprises" violates foreign key constraint
+--     "journal_audit_entreprise_id_fkey" »). Le journal garde l'identifiant
+--     dans `details` ; sa colonne `entreprise_id` reste purement informative
+--     (les événements boutique y écrivent NULL depuis le Module 8).
+alter table public.journal_audit
+  drop constraint if exists journal_audit_entreprise_id_fkey;
+
 
 -- ============================================================================
 --  2. `rpc_entreprise_creer` — CRÉER L'ENTREPRISE DE SA BOUTIQUE
@@ -294,6 +306,10 @@ update public.utilisateurs c
  where c.parent_id = p.id
    and c.entreprise_id is null
    and p.entreprise_id is not null;
+
+-- 4.c Ménage : supprimer la ligne d'essai technique si elle existe
+--     (possible depuis le retrait de la FK du journal, cf. 1.b).
+delete from public.entreprises where nom = '__TEST_SUPPRIMER__';
 
 
 -- ============================================================================
