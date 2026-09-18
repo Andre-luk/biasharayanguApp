@@ -65,6 +65,11 @@ android {
     }
 
     compileOptions {
+        // 🔔 flutter_local_notifications (v22) exige la « core library
+        // desugaring » côté application Android (erreur CI : « Dependency
+        // ':flutter_local_notifications' requires core library desugaring
+        // to be enabled »).
+        isCoreLibraryDesugaringEnabled = true
         // Java 11 : cible du modèle Flutter 3.47 (8 étant marqué « obsolète »
         // par les outils Android récents).
         sourceCompatibility = JavaVersion.VERSION_11
@@ -106,4 +111,6 @@ flutter {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.10.1")
+    // 🔔 flutter_local_notifications (v22) — même version que le greffon.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
