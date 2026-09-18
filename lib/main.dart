@@ -13,6 +13,7 @@ import 'models/permission.dart';
 import 'ui/theme/app_theme.dart';
 import 'utils/language_manager.dart';
 import 'utils/theme_manager.dart';
+import 'utils/accessibilite_manager.dart';
 import 'utils/session_manager.dart';
 
 // Pages
@@ -25,7 +26,7 @@ import 'services/abonnement_service.dart';
 import 'services/permission_service.dart';
 import 'db_helper.dart';
 
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, Directory, File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 late final SupabaseClient supabase;
@@ -85,6 +86,20 @@ void main() async {
     windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
       await windowManager.focus();
+
+      // 🖼️ Icône de la fenêtre — Linux : le logo est chargé depuis le paquet
+      // (Windows utilise directement l'icône .ico du .exe).
+      if (Platform.isLinux) {
+        try {
+          final String icone = '${Directory(Platform.resolvedExecutable).parent.path}'
+              '/data/flutter_assets/assets/Biashara_app_off-.png';
+          if (File(icone).existsSync()) {
+            await windowManager.setIcon(icone);
+          }
+        } catch (e) {
+          debugPrint('Icône de fenêtre ignorée : $e');
+        }
+      }
     });
   }
 
@@ -93,6 +108,8 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => LanguageManager()),
         ChangeNotifierProvider(create: (_) => ThemeManager()),
+        // ♿ Accessibilité — taille du texte de l'application.
+        ChangeNotifierProvider(create: (_) => AccessibiliteManager()),
       ],
       child: const BiasharaApp(),
     ),
@@ -265,11 +282,26 @@ class _BiasharaAppState extends State<BiasharaApp> {
       // (session, base, permissions…) puis disparaît en fondu pour révéler
       // l'écran cible — aucun clignotement, aucune attente inutile.
       builder: (BuildContext context, Widget? child) {
-        if (_splashDisparu) return child ?? const SizedBox.shrink();
+        // ♿ Accessibilité — échelle de texte choisie par l'utilisateur
+        // (réglage appliqué à toute l'application, y compris les dialogues).
+        final double echelleTexte =
+            Provider.of<AccessibiliteManager>(context).echelle;
+        final Widget? enfantAccessible = child == null
+            ? null
+            : MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: TextScaler.linear(echelleTexte),
+                ),
+                child: child,
+              );
+
+        if (_splashDisparu) {
+          return enfantAccessible ?? const SizedBox.shrink();
+        }
 
         return Stack(
           children: <Widget>[
-            if (child != null) child,
+            if (enfantAccessible != null) enfantAccessible,
             Positioned.fill(
               child: IgnorePointer(
                 ignoring: _pret,

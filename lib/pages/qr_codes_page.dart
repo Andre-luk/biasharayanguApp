@@ -44,6 +44,10 @@ class _QrCodesPageState extends State<QrCodesPage> {
   QrFormatFichier _format = QrFormatFichier.png;
   bool _avecTexte = true;
 
+  /// 🖨️ Nombre d'exemplaires du MÊME QR sur la planche imprimée (utile pour
+  /// coller plusieurs étiquettes du même produit : cartons, présentoirs…).
+  int _copiesParEtiquette = 1;
+
   RealtimeChannel? _canalTempsReel;
   Timer? _antiRebondTempsReel;
 
@@ -140,6 +144,23 @@ class _QrCodesPageState extends State<QrCodesPage> {
   List<EtiquetteQr> get _etiquettesSelectionnees => _toutesLesEtiquettes
       .where((EtiquetteQr etiquette) => _selection.contains(etiquette.code))
       .toList(growable: false);
+
+  /// 🖨️ Étiquettes prêtes pour l'IMPRESSION : chaque produit sélectionné est
+  /// répété `_copiesParEtiquette` fois pour remplir la planche (ex. 12 QR du
+  /// même article sur une seule feuille A4).
+  List<EtiquetteQr> get _etiquettesPourImpression {
+    final List<EtiquetteQr> selection
+        = _etiquettesSelectionnees;
+    if (_copiesParEtiquette <= 1) return selection;
+
+    final List<EtiquetteQr> resultat = <EtiquetteQr>[];
+    for (final EtiquetteQr etiquette in selection) {
+      for (int i = 0; i < _copiesParEtiquette; i++) {
+        resultat.add(etiquette);
+      }
+    }
+    return resultat;
+  }
 
   void _basculer(EtiquetteQr etiquette) {
     setState(() {
@@ -286,13 +307,15 @@ class _QrCodesPageState extends State<QrCodesPage> {
       return;
     }
 
+    final List<EtiquetteQr> planche = _etiquettesPourImpression;
     final bool? ok = await _avecProgression<bool>(
       'Préparation de la planche PDF '
-      '(${etiquettes.length} étiquettes)…',
+      '(${planche.length} étiquettes'
+      '${_copiesParEtiquette > 1 ? ' — $_copiesParEtiquette copies par produit' : ''})…',
       (void Function(double) onProgression) async {
         onProgression(0.3);
         await _qr.imprimerEtiquettes(
-          etiquettes,
+          planche,
           avecTexte: _avecTexte,
           nomTravail: 'Etiquettes_QR',
         );
@@ -462,6 +485,35 @@ class _QrCodesPageState extends State<QrCodesPage> {
               title: const Text(
                 'Texte sous le QR (nom, article, code)',
                 style: TextStyle(fontSize: 13.5),
+              ),
+            ),
+            // 🖨️ Plusieurs QR du MÊME produit sur une seule planche.
+            Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 4),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Copies par étiquette (impression)',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 120,
+                    child: AppDropdownField<int>(
+                      label: 'Copies',
+                      value: _copiesParEtiquette,
+                      items: const <int>[1, 2, 3, 4, 6, 8, 12, 24]
+                          .map((int n) => DropdownMenuItem<int>(
+                                value: n,
+                                child: Text(n == 1 ? '1 ×' : '$n ×'),
+                              ))
+                          .toList(),
+                      onChanged: (int? valeur) => setState(
+                          () => _copiesParEtiquette = valeur ?? 1),
+                    ),
+                  ),
+                ],
               ),
             ),
             Text(

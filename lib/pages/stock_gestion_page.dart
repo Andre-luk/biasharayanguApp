@@ -472,9 +472,12 @@ class _StockGestionPageState extends State<StockGestionPage> {
                   labelStyle: TextStyle(
                     fontSize: 12.5,
                     fontWeight: selectionne ? FontWeight.w700 : FontWeight.w500,
+                    // Sélectionné : couleur du thème (lisible sur le fond
+                    // marine) ; sinon : couleur du statut, avec repli lisible.
                     color: selectionne
-                        ? (couleur ?? Theme.of(context).colorScheme.primary)
-                        : null,
+                        ? Theme.of(context).colorScheme.onPrimary
+                        : (couleur ??
+                            Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                   onSelected: (_) => setState(() => _filtreStatut = filtre),
                 );

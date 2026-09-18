@@ -326,6 +326,24 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: () => context.pushNamed('achat-quotas'),
                 ),
               _TuileParametre(
+                icone: Icons.accessibility_new_rounded,
+                titre: 'Accessibilité',
+                sousTitre: 'Taille du texte et confort de lecture',
+                onTap: () => context.pushNamed('accessibilite'),
+              ),
+              _TuileParametre(
+                icone: Icons.menu_book_rounded,
+                titre: 'Guide d\'utilisation',
+                sousTitre: 'Apprendre à utiliser Biashara Yangu pas à pas',
+                onTap: () => context.pushNamed('guide-utilisation'),
+              ),
+              _TuileParametre(
+                icone: Icons.privacy_tip_outlined,
+                titre: 'Politique & conditions',
+                sousTitre: 'Confidentialité et conditions d\'utilisation',
+                onTap: () => context.pushNamed('politique-confidentialite'),
+              ),
+              _TuileParametre(
                 icone: Icons.info_outline_rounded,
                 titre: T.settingsAboutTitle,
                 sousTitre: T.aboutAppDescription,

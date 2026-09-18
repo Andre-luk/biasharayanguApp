@@ -320,14 +320,33 @@ class AppTheme {
       ),
 
       // — Divers composants. —
+      //  🎨 PUCES / FILTRES : couleurs EXPLICITES pour les deux états —
+      //  sans elles, le texte des filtres perdait sa couleur (noir sur fond
+      //  sombre = illisible en thème sombre).
+      //    • non sélectionné : fond doux + texte normal ;
+      //    • sélectionné     : fond marine (bleu clair en sombre) + texte
+      //      onPrimary (blanc en clair, marine profond en sombre).
       chipTheme: base.chipTheme.copyWith(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: scheme.outlineVariant),
         ),
-        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        backgroundColor: sombre ? const Color(0xFF1E2531) : const Color(0xFFF3F5FA),
+        selectedColor: scheme.primary,
+        secondarySelectedColor: scheme.primary,
+        checkmarkColor: scheme.onPrimary,
+        labelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 12.5,
+          color: scheme.onSurface,
+        ),
+        secondaryLabelStyle: TextStyle(
+          fontWeight: FontWeight.w800,
+          fontSize: 12.5,
+          color: scheme.onPrimary,
+        ),
         side: BorderSide(color: scheme.outlineVariant),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       dividerTheme: DividerThemeData(
         color: scheme.outlineVariant,

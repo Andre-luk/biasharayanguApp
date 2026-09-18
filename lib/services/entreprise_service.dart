@@ -203,7 +203,8 @@ class EntrepriseService {
               'statut': StatutAbonnement.essai7j.code,
               'montant_total_du': montantTotalDu,
               'montant_deja_paye': 0,
-              'solde_restant': montantTotalDu,
+              // ⚠️ `solde_restant` est une colonne GÉNÉRÉE en base : jamais
+              // dans un insert/update (« can only be updated to default »).
               'date_activation': maintenant.toIso8601String(),
               'date_expiration': dateExpiration.toIso8601String(),
               'created_at': maintenant.toIso8601String(),
@@ -243,11 +244,11 @@ class EntrepriseService {
         };
 
         if (entreprise.groupeTarifaireId != groupeTarifaire.id) {
-          final double nouveauTotal = calculerMontantTotalDu(groupeTarifaire);
-          final double reste = nouveauTotal - entreprise.montantDejaPaye;
-
-          payload['montant_total_du'] = nouveauTotal;
-          payload['solde_restant'] = reste > 0 ? reste : 0.0;
+          // ⚠️ Le solde est recalculé par la BASE (colonne générée) : on ne
+          // met à jour que le montant total dû — sinon erreur
+          // « column "solde_restant" can only be updated to default ».
+          payload['montant_total_du'] =
+              calculerMontantTotalDu(groupeTarifaire);
         }
 
         await _client
@@ -677,16 +678,14 @@ class EntrepriseService {
     }
 
     final DateTime maintenant = DateTime.now();
-    final double total = parseDouble(ligne['montant_total_du']);
     final double dejaPaye = parseDouble(ligne['montant_deja_paye']);
     final double nouveauPaye = dejaPaye + montant;
-    final double reste = total - nouveauPaye;
 
     int prolongationJours = 0;
 
     final Map<String, dynamic> nouvellesValeurs = <String, dynamic>{
+      // ⚠️ `solde_restant` est généré par la base : jamais écrasé ici.
       'montant_deja_paye': nouveauPaye,
-      'solde_restant': reste > 0 ? reste : 0.0,
       'updated_at': maintenant.toUtc().toIso8601String(),
     };
 

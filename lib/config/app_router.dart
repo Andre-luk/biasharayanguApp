@@ -97,6 +97,11 @@ import 'package:biashara_yangu/pages/achat_quotas_page.dart';
 import 'package:biashara_yangu/pages/agent_ia_config_page.dart';
 import 'package:biashara_yangu/pages/assistant_ia_page.dart';
 
+// ========== AIDE, ACCESSIBILITÉ & INFORMATIONS LÉGALES ==========
+import 'package:biashara_yangu/pages/accessibilite_page.dart';
+import 'package:biashara_yangu/pages/guide_utilisation_page.dart';
+import 'package:biashara_yangu/pages/politique_confidentialite_page.dart';
+
 // ========== MODULE 8 : PANIER & VALIDATION DE VENTE ==========
 import 'package:biashara_yangu/pages/panier_page.dart';
 import 'package:biashara_yangu/pages/encaissement_page.dart';
@@ -231,6 +236,23 @@ final GoRouter appRouter = GoRouter(
       path: '/agent-ia-config',
       name: 'agent-ia-config',
       builder: (context, state) => const AgentIaConfigPage(),
+    ),
+
+    // ========== AIDE, ACCESSIBILITÉ & INFORMATIONS LÉGALES ==========
+    GoRoute(
+      path: '/accessibilite',
+      name: 'accessibilite',
+      builder: (context, state) => const AccessibilitePage(),
+    ),
+    GoRoute(
+      path: '/guide-utilisation',
+      name: 'guide-utilisation',
+      builder: (context, state) => const GuideUtilisationPage(),
+    ),
+    GoRoute(
+      path: '/politique-confidentialite',
+      name: 'politique-confidentialite',
+      builder: (context, state) => const PolitiqueConfidentialitePage(),
     ),
 
     // ============== MODULE 8 : CONFIRMATION DE VENTE ==============

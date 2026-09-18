@@ -63,6 +63,10 @@ class _LoginPageState extends State<LoginPage> {
     final email = _emailController.text.trim().toLowerCase();
     final password = _passwordController.text.trim();
 
+    // Retiendra le vrai problème RÉSEAU pour un message honnête (ne pas
+    // annoncer « identifiants incorrects » quand le serveur est injoignable).
+    String? erreurReseau;
+
     try {
       // 1. CONNEXION SUPABASE
       try {
@@ -124,6 +128,11 @@ class _LoginPageState extends State<LoginPage> {
           setState(() => _isLoading = false);
           return;
         }
+      } catch (e) {
+        // Réseau / DNS / TLS / base locale indisponible… : on garde le repli
+        // local (mode hors ligne), mais on retiendra le vrai problème.
+        erreurReseau = e.toString();
+        debugPrint('Connexion Supabase impossible : $e');
       }
 
       // 2. CONNEXION LOCALE (Hors ligne)
@@ -148,9 +157,18 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       // 🔐 MODULE 12 — échec tracé aussi pour le repli local (compte inconnu).
-      await AuditService.instance
-          .echecConnexion(email, 'Identifiants incorrects (repli local).');
-      _showSnackBar("Identifiants incorrects.", isError: true);
+      await AuditService.instance.echecConnexion(
+        email,
+        erreurReseau == null
+            ? 'Identifiants incorrects (repli local).'
+            : 'Serveur injoignable : $erreurReseau',
+      );
+      _showSnackBar(
+        erreurReseau == null
+            ? 'Identifiants incorrects. Vérifiez l\'email et le mot de passe.'
+            : 'Serveur injoignable (connexion Internet ?). Réessayez quand le réseau revient.',
+        isError: true,
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
