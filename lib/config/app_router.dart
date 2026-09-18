@@ -217,6 +217,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ImportProduitsPage(),
     ),
 
+    // 🏢 MODE PLATEFORME — production des étiquettes QR des boutiques
+    // (service de l'administration : le patron n'a plus cet écran).
+    GoRoute(
+      path: '/admin/qr-codes',
+      name: 'admin-qr-codes',
+      builder: (context, state) => const QrCodesPage(modePlateforme: true),
+    ),
+
     // ========== MODULE 13 : ASSISTANT IA (DEEPSEEK) ==========
     //
     // Le chat (et la gestion des quotas) passe par l'Edge Function « agent-ia »

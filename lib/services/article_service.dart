@@ -135,11 +135,16 @@ class ArticleService {
   /// d'une boutique tiennent en mémoire, et la recherche « code » couvre
   /// aussi les codes-barres des conditionnements, hors de portée d'un simple
   /// `ilike` sur `produits`.
-  Future<List<Article>> getArticles() {
+  Future<List<Article>> getArticles() async {
+    final String proprietaire = await _requireProprietaire();
+    return getArticlesPourProprietaire(proprietaire);
+  }
+
+  /// 🏢 MODE PLATEFORME — articles d'une boutique DONNÉE (production des
+  /// étiquettes QR par l'administration : elle lit tous les catalogues).
+  Future<List<Article>> getArticlesPourProprietaire(String proprietaire) {
     return _executer(
       () async {
-        final String proprietaire = await _requireProprietaire();
-
         final List<dynamic> reponse = await _client
             .from('produits')
             .select()

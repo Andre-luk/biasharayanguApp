@@ -14,15 +14,23 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/article.dart';
+import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/etiquette_qr.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/qr_code_service.dart';
+import 'package:biashara_yangu/services/supabase_service.dart';
+import 'package:biashara_yangu/utils/json_parsing.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 class QrCodesPage extends StatefulWidget {
-  const QrCodesPage({super.key});
+  const QrCodesPage({super.key, this.modePlateforme = false});
+
+  /// 🏢 MODE PLATEFORME — la production des étiquettes QR est un service de
+  /// l'administration : un sélecteur d'entreprise charge les articles de la
+  /// boutique choisie (le patron n'a plus cet écran).
+  final bool modePlateforme;
 
   @override
   State<QrCodesPage> createState() => _QrCodesPageState();
@@ -48,13 +56,21 @@ class _QrCodesPageState extends State<QrCodesPage> {
   /// coller plusieurs étiquettes du même produit : cartons, présentoirs…).
   int _copiesParEtiquette = 1;
 
+  /// 🏢 Mode plateforme : entreprises proposées et boutique sélectionnée.
+  List<Entreprise> _entreprises = const <Entreprise>[];
+  String? _entrepriseId;
+
   RealtimeChannel? _canalTempsReel;
   Timer? _antiRebondTempsReel;
 
   @override
   void initState() {
     super.initState();
-    _demarrerEcouteTempsReel();
+    // 🏢 En mode plateforme, les articles changent selon la boutique choisie :
+    // l'écoute temps réel du patron n'a pas de sens ici.
+    if (!widget.modePlateforme) {
+      _demarrerEcouteTempsReel();
+    }
     _charger();
   }
 
@@ -71,6 +87,23 @@ class _QrCodesPageState extends State<QrCodesPage> {
   // ---------------------------------------------------------------------------
   // DONNÉES
   // ---------------------------------------------------------------------------
+
+  /// 🏢 Mode plateforme — patron d'une entreprise (utilisateur sans parent),
+  /// son identifiant sert à charger les articles de SA boutique.
+  Future<String?> _proprietaireDeEntreprise(String entrepriseId) async {
+    final dynamic donnees = await SupabaseService.instance.client
+        .from('utilisateurs')
+        .select('id, parent_id')
+        .eq('entreprise_id', entrepriseId);
+    final List<Map<String, dynamic>> lignes = parseMapList(donnees);
+    if (lignes.isEmpty) return null;
+    for (final Map<String, dynamic> ligne in lignes) {
+      if (parseStringOrNull(ligne['parent_id']) == null) {
+        return parseString(ligne['id']);
+      }
+    }
+    return parseString(lignes.first['id']);
+  }
 
   void _demarrerEcouteTempsReel() {
     try {
@@ -102,7 +135,29 @@ class _QrCodesPageState extends State<QrCodesPage> {
     String? messageErreur;
 
     try {
-      articles = await _articles.getArticles();
+      if (widget.modePlateforme) {
+        // 🏢 Plateforme : liste des boutiques puis articles de celle choisie.
+        if (_entreprises.isEmpty) {
+          final dynamic donnees = await SupabaseService.instance.client
+              .from('entreprises')
+              .select('id, nom, statut')
+              .order('nom', ascending: true);
+          _entreprises = parseMapList(donnees)
+              .map(Entreprise.fromMap)
+              .toList(growable: false);
+        }
+        final String? entrepriseId = _entrepriseId;
+        if (entrepriseId != null) {
+          final String? proprietaire =
+              await _proprietaireDeEntreprise(entrepriseId);
+          if (proprietaire != null) {
+            articles =
+                await _articles.getArticlesPourProprietaire(proprietaire);
+          }
+        }
+      } else {
+        articles = await _articles.getArticles();
+      }
     } on ArticleServiceException catch (e) {
       messageErreur = e.message;
     } catch (e, st) {
@@ -418,6 +473,55 @@ class _QrCodesPageState extends State<QrCodesPage> {
     );
   }
 
+  /// 🏢 Mode plateforme — choix de la boutique à équiper.
+  Widget _carteEntreprise() {
+    final ThemeData theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.primary.withValues(alpha: 0.05),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.storefront_rounded,
+                    size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Boutique à équiper',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            AppDropdownField<String?>(
+              label: 'Entreprise',
+              value: _entrepriseId,
+              prefixIcon: Icons.business_rounded,
+              items: _entreprises
+                  .map((Entreprise e) => DropdownMenuItem<String?>(
+                        value: e.id,
+                        child: Text(e.nom, overflow: TextOverflow.ellipsis),
+                      ))
+                  .toList(growable: false),
+              onChanged: (String? valeur) {
+                setState(() {
+                  _entrepriseId = valeur;
+                  _selection.clear();
+                });
+                _charger();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _carteOptions() {
     return Card(
       elevation: 0,
@@ -664,6 +768,10 @@ class _QrCodesPageState extends State<QrCodesPage> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                     children: [
+                      if (widget.modePlateforme) ...[
+                        _carteEntreprise(),
+                        const SizedBox(height: 12),
+                      ],
                       _carteOptions(),
                       const SizedBox(height: 12),
                       if (_listeArticles.isEmpty)
@@ -675,8 +783,15 @@ class _QrCodesPageState extends State<QrCodesPage> {
                                   size: 72, color: Colors.grey),
                               const SizedBox(height: 12),
                               Text(
-                                'Aucun article à équiper.\n'
-                                "Créez d'abord des articles dans l'écran Articles.",
+                                widget.modePlateforme
+                                    ? (_entrepriseId == null
+                                        ? 'Choisissez une boutique pour '
+                                            'afficher ses articles.'
+                                        : 'Cette boutique n\'a pas encore '
+                                            'd\'articles.')
+                                    : 'Aucun article à équiper.\n'
+                                        "Créez d'abord des articles dans "
+                                        "l'écran Articles.",
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                     fontSize: 15, color: Colors.grey.shade600),

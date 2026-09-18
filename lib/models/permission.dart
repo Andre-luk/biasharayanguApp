@@ -189,7 +189,10 @@ enum PageAccess {
   depenses('depenses', 'Dépenses', [EspaceApplication.entreprise]),
   collaborateurs('collaborateurs', 'Collaborateurs', [EspaceApplication.entreprise],
       alias: ['equipe']),
-  qrCodes('qr_codes', 'QR codes', [EspaceApplication.plateforme, EspaceApplication.entreprise]),
+  // 🏢 MODE PLATEFORME — la production des étiquettes QR est un service de
+  // l'administration (elle seule génère les codes produits) : les boutiques
+  // n'ont plus accès à cet écran.
+  qrCodes('qr_codes', 'QR codes', [EspaceApplication.plateforme]),
   rapports('rapports', 'Rapports', [EspaceApplication.plateforme, EspaceApplication.entreprise],
       alias: ['resultats', 'statistiques']),
   // 🤖 MODULE 13 — assistant IA (espace entreprise ; les outils accessibles

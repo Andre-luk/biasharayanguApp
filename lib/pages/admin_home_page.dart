@@ -568,6 +568,22 @@ class AdminSettingsPage extends StatelessWidget {
             onTap: () => GoRouter.of(context).push('/audit'),
           ),
 
+          // 🏢 MODE PLATEFORME — production des étiquettes QR des boutiques.
+          PermissionGate(
+            page: PageAccess.qrCodes,
+            action: ActionAccess.voir,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.qr_code_2_rounded,
+              color: Colors.brown.shade600,
+              title: 'QR codes produits',
+              subtitle:
+                  'Produire et imprimer les étiquettes QR des articles d\'une boutique.',
+              onTap: () => GoRouter.of(context).push('/admin/qr-codes'),
+            ),
+          ),
+
           // 🔐 MODULE 12 — écran Sécurité, réservé au personnel plateforme.
           PermissionGate(
             page: PageAccess.securite,

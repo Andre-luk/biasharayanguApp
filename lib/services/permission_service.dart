@@ -128,6 +128,8 @@ class PermissionService {
         PageAccess.activites,
         PageAccess.groupesTarifaires,
         PageAccess.abonnements,
+        // 🏢 production des étiquettes QR des boutiques (service plateforme).
+        PageAccess.qrCodes,
         PageAccess.assistance,
         PageAccess.notifications,
       ],
@@ -179,7 +181,6 @@ class PermissionService {
         PageAccess.scanner,
         PageAccess.panier,
         PageAccess.articles,
-        PageAccess.qrCodes,
         PageAccess.stock,
         PageAccess.clients,
         PageAccess.fournisseurs,
@@ -215,10 +216,6 @@ class PermissionService {
           ActionAccess.modifier, // entrées / sorties / inventaire
         },
         PageAccess.articles: const <ActionAccess>{ActionAccess.voir},
-        PageAccess.qrCodes: const <ActionAccess>{
-          ActionAccess.voir,
-          ActionAccess.creer,
-        },
         PageAccess.rapports: const <ActionAccess>{ActionAccess.voir},
         PageAccess.assistantIa: const <ActionAccess>{
           ActionAccess.voir,
@@ -293,6 +290,8 @@ class PermissionService {
     _RegleRoute('/main/articles/categories', PageAccess.articles, ActionAccess.modifier),
     _RegleRoute('/main/articles', PageAccess.articles),
     _RegleRoute('/main/qr-codes', PageAccess.qrCodes),
+    // 🏢 MODE PLATEFORME — production des étiquettes QR (administration).
+    _RegleRoute('/admin/qr-codes', PageAccess.qrCodes),
 
     // 🏬 MODULE 9 — écritures de stock : droits fins côté middleware.
     //  (L'écran Stock lui-même reste en « voir » ; la RPC serveur revérifie
@@ -690,7 +689,7 @@ class PermissionService {
     PageAccess.assistantIa: '/assistant-ia',
     PageAccess.assistance: '/admin',
     PageAccess.notifications: '/admin',
-    PageAccess.qrCodes: '/admin',
+    PageAccess.qrCodes: '/admin/qr-codes',
     PageAccess.scanner: '/scanner',
     PageAccess.panier: '/main/panier',
     PageAccess.fournisseurs: '/main/stock',

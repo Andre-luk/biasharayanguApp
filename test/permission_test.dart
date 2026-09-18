@@ -128,6 +128,8 @@ void main() {
         PageAccess.villes,
         PageAccess.activites,
         PageAccess.groupesTarifaires,
+        // 🏢 production des étiquettes QR des boutiques (service plateforme).
+        PageAccess.qrCodes,
         PageAccess.abonnements,
         PageAccess.assistance,
         PageAccess.notifications,
@@ -233,7 +235,6 @@ void main() {
         PageAccess.scanner,
         PageAccess.panier,
         PageAccess.articles,
-        PageAccess.qrCodes,
         PageAccess.stock,
         PageAccess.clients,
         PageAccess.fournisseurs,
@@ -275,6 +276,8 @@ void main() {
         // aussi côté entreprise, cloisonnée par la RLS. `securite` la
         // remplace comme écran strictement plateforme.
         PageAccess.securite,
+        // 🏢 la production des étiquettes QR est réservée à la plateforme.
+        PageAccess.qrCodes,
         PageAccess.assistance,
         PageAccess.notifications,
       ]) {
@@ -364,12 +367,11 @@ void main() {
   });
 
   group('MAGASINIER — mouvements de stock', () {
-    test('pages : stock, articles (lecture), qr_codes, rapports, assistant IA', () {
+    test('pages : stock, articles (lecture), rapports, assistant IA', () {
       final List<PageAccess> pages =
           service.getPagesAccessibles(RoleUtilisateur.magasinier);
       expect(pages, contains(PageAccess.stock));
       expect(pages, contains(PageAccess.articles));
-      expect(pages, contains(PageAccess.qrCodes));
       // 🤖 MODULE 13 — l'assistant est utilisable, sans droit de modification.
       expect(pages, contains(PageAccess.assistantIa));
       expect(
