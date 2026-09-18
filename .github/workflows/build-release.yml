@@ -255,6 +255,28 @@ jobs:
           Copy-Item sqlite\sqlite3.dll build\windows\x64\runner\Release\
           dir build\windows\x64\runner\Release\sqlite3.dll
 
+      # 🪟 RUNTIME VISUAL C++ (app-local) — indispensable : sans ces DLL,
+      # l'application REFUSE de démarrer sur une machine qui n'a pas le
+      # « Microsoft Visual C++ Redistributable » installé (erreur classique
+      # « MSVCP140.dll introuvable »). En les plaçant à côté de l'exe, elles
+      # sont chargées en priorité : installation sans droits admin, zéro
+      # dépendance système.
+      - name: Embarquer le runtime Visual C++
+        shell: pwsh
+        run: |
+          $dlls = @('msvcp140.dll','msvcp140_1.dll','msvcp140_2.dll',
+                    'vcruntime140.dll','vcruntime140_1.dll','concrt140.dll')
+          foreach ($dll in $dlls) {
+            $src = "C:\Windows\System32\$dll"
+            if (Test-Path $src) {
+              Copy-Item $src build\windows\x64\runner\Release\
+              Write-Host "✓ $dll embarqué"
+            } else {
+              Write-Host "ℹ️  $dll absent du runner (ignoré)"
+            }
+          }
+          Get-ChildItem build\windows\x64\runner\Release\*.dll | Select-Object Name, Length
+
       - name: Créer l'archive
         shell: pwsh
         run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath biashara-yangu-windows.zip
