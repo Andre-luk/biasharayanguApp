@@ -22,6 +22,9 @@ import 'package:biashara_yangu/pages/permissions_role_page.dart';
 import 'package:biashara_yangu/pages/referentiels_hub_page.dart';
 // 📊 MODULE 11 — rapports de la plateforme (exports PDF/Excel tracés).
 import 'package:biashara_yangu/pages/rapports_page.dart';
+// 🧾 MODULE 14 — workflow d'activation à double validation.
+import 'package:biashara_yangu/pages/activations_finance_page.dart';
+import 'package:biashara_yangu/pages/comptes_verification_page.dart';
 
 
 // ====================================================================
@@ -88,6 +91,24 @@ class _AdminHomePageState extends State<AdminHomePage> {
       icone: Icons.card_membership_rounded,
       pages: const <PageAccess>[PageAccess.abonnements, PageAccess.paiements],
       builder: (_) => const AbonnementsLaperlePage(),
+    ),
+    // 🧾 MODULE 14 — première validation : le gestionnaire des comptes
+    // vérifie les dossiers des nouvelles entreprises et les transmet à la
+    // finance (il n'active jamais lui-même).
+    _OngletAdmin(
+      label: 'Vérifications',
+      icone: Icons.fact_check_rounded,
+      pages: const <PageAccess>[PageAccess.verificationComptes],
+      builder: (_) => const ComptesVerificationPage(),
+    ),
+    // 🧾 MODULE 14 — deuxième validation : la finance confirme le paiement
+    // puis l'activation du compte est automatique (total = 30 j ;
+    // partiel = 7 jours d'essai + solde).
+    _OngletAdmin(
+      label: 'Activations',
+      icone: Icons.rocket_launch_rounded,
+      pages: const <PageAccess>[PageAccess.activationsFinance],
+      builder: (_) => const ActivationsFinancePage(),
     ),
     _OngletAdmin(
       label: 'Référentiels',

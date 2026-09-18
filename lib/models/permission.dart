@@ -156,6 +156,17 @@ enum PageAccess {
   groupesTarifaires('groupes_tarifaires', 'Groupes tarifaires', [EspaceApplication.plateforme]),
   abonnements('abonnements', 'Abonnements', [EspaceApplication.plateforme],
       alias: ['abonnement', 'renouvellements', 'impayes']),
+  // 🧾 MODULE 14 — workflow d'activation à double validation. Deux écrans,
+  // deux responsabilités : le GESTIONNAIRE DES COMPTES vérifie le dossier
+  // et le transmet à la finance ; la FINANCE confirme le paiement puis
+  // l'activation est automatique. Les alias couvrent le vocabulaire du
+  // cahier des charges (« activations », « dossiers »).
+  verificationComptes('verification_comptes', 'Comptes à vérifier',
+      [EspaceApplication.plateforme],
+      alias: ['activations', 'dossiers_activation', 'verifications']),
+  activationsFinance('activations_finance', 'Activations & paiements',
+      [EspaceApplication.plateforme],
+      alias: ['activation_finance', 'paiements_activation']),
   paiements('paiements', 'Paiements', [EspaceApplication.plateforme],
       alias: ['avances', 'soldes', 'historique_paiements']),
   finance('finance', 'Finance', [EspaceApplication.plateforme, EspaceApplication.entreprise],

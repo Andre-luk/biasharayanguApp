@@ -102,6 +102,11 @@ import 'package:biashara_yangu/pages/accessibilite_page.dart';
 import 'package:biashara_yangu/pages/guide_utilisation_page.dart';
 import 'package:biashara_yangu/pages/politique_confidentialite_page.dart';
 
+// ========== MODULE 14 : ACTIVATION À DOUBLE VALIDATION ==========
+import 'package:biashara_yangu/pages/activations_finance_page.dart';
+import 'package:biashara_yangu/pages/comptes_verification_page.dart';
+import 'package:biashara_yangu/pages/mon_activation_page.dart';
+
 // ========== MODULE 8 : PANIER & VALIDATION DE VENTE ==========
 import 'package:biashara_yangu/pages/panier_page.dart';
 import 'package:biashara_yangu/pages/encaissement_page.dart';
@@ -223,6 +228,24 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/qr-codes',
       name: 'admin-qr-codes',
       builder: (context, state) => const QrCodesPage(modePlateforme: true),
+    ),
+
+    // 🧾 MODULE 14 — workflow d'activation à double validation.
+    //  • « Comptes à vérifier » (GESTIONNAIRE DES COMPTES) : première
+    //    validation, transmission à la finance ou rejet motivé ;
+    //  • « Activations & paiements » (FINANCE) : validation du paiement et
+    //    activation automatique du compte.
+    // Le middleware exige `verification_comptes/voir` (resp.
+    // `activations_finance/voir`) et les RPC revérifient le rôle serveur.
+    GoRoute(
+      path: '/admin/verification-comptes',
+      name: 'admin-verification-comptes',
+      builder: (context, state) => const ComptesVerificationPage(),
+    ),
+    GoRoute(
+      path: '/admin/activations-finance',
+      name: 'admin-activations-finance',
+      builder: (context, state) => const ActivationsFinancePage(),
     ),
 
     // ========== MODULE 13 : ASSISTANT IA (DEEPSEEK) ==========
@@ -585,6 +608,15 @@ final GoRouter appRouter = GoRouter(
                   path: 'inventaires',
                   name: 'inventaires',
                   builder: (context, state) => const InventairesPage(),
+                ),
+
+                // 🧾 MODULE 14 — tableau de bord du dossier d'activation :
+                // étape en cours, montants, dates, jours restants et
+                // historique complet des décisions (transparence client).
+                GoRoute(
+                  path: 'mon-activation',
+                  name: 'mon-activation',
+                  builder: (context, state) => const MonActivationPage(),
                 ),
 
                 // 🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)

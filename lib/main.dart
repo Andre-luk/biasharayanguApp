@@ -23,6 +23,9 @@ import 'pages/splash_screen.dart';
 import 'services/supabase_service.dart';
 import 'services/sync_service.dart';
 import 'services/abonnement_service.dart';
+// 🧾 MODULE 14 — synchronisation des dossiers d'activation (restriction /
+// réactivation automatiques) au démarrage.
+import 'services/activation_service.dart';
 import 'services/permission_service.dart';
 import 'db_helper.dart';
 
@@ -69,6 +72,9 @@ void main() async {
   try {
     if (supabase.auth.currentUser != null) {
       AbonnementService.instance.executerVerificationGlobaleSilencieuse();
+      // 🧾 MODULE 14 — restriction automatique (solde impayé à l'échéance)
+      // et réactivation après régularisation. Best-effort, jamais bloquant.
+      ActivationService.instance.synchroniserSilencieux();
     }
   } catch (e) {
     debugPrint('Vérification globale des abonnements ignorée: $e');

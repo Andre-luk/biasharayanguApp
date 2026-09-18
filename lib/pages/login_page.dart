@@ -10,6 +10,9 @@ import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/services/subscription_sync_service.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+// 🧾 MODULE 14 — synchronisation du workflow d'activation (restriction /
+// réactivation automatiques) après chaque connexion.
+import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/models/permission.dart';
@@ -235,6 +238,11 @@ class _LoginPageState extends State<LoginPage> {
     // `verifierAccesUtilisateur` est fail-open : un incident réseau ou une
     // fonction absente laisse l'accès complet.
     await AbonnementService.instance.executerVerificationGlobaleSilencieuse();
+
+    // 🧾 MODULE 14 — synchronise les dossiers d'activation : restriction
+    // automatique (solde impayé à l'échéance, données conservées) et
+    // réactivation après régularisation. Best-effort.
+    await ActivationService.instance.synchroniserSilencieux();
 
     final EtatAccesAbonnement etatAbonnement =
         await AbonnementService.instance.verifierAccesUtilisateur(userId);

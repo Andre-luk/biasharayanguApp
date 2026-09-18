@@ -1,0 +1,545 @@
+// lib/pages/mon_activation_page.dart
+//
+// MODULE 14 — « MON DOSSIER D'ACTIVATION » (ESPACE ENTREPRISE).
+//
+// Tableau de bord transparent pour le patron : à quelle étape en est son
+// compte, combien il a payé, quel solde reste, jusqu'à quand l'abonnement
+// court, et l'historique complet des décisions (vérification, paiement,
+// éventuel rejet ou restriction).
+//
+// Les données proviennent de `rpc_activation_etat` (migration 18) : le
+// serveur n'expose le dossier qu'aux membres de l'entreprise et au personnel
+// plateforme. Aucune donnée n'est jamais supprimée — un compte restreint
+// reste consultable.
+
+import 'package:flutter/material.dart';
+
+import 'package:biashara_yangu/models/activation.dart';
+import 'package:biashara_yangu/services/activation_service.dart';
+
+class MonActivationPage extends StatefulWidget {
+  const MonActivationPage({super.key});
+
+  @override
+  State<MonActivationPage> createState() => _MonActivationPageState();
+}
+
+class _MonActivationPageState extends State<MonActivationPage> {
+  EtatActivation? _etat;
+  bool _chargement = true;
+  String? _erreur;
+
+  @override
+  void initState() {
+    super.initState();
+    _charger();
+  }
+
+  Future<void> _charger() async {
+    setState(() {
+      _chargement = true;
+      _erreur = null;
+    });
+
+    try {
+      final EtatActivation etat = await ActivationService.instance.chargerEtat();
+      if (!mounted) return;
+      setState(() {
+        _etat = etat;
+        _chargement = false;
+      });
+    } on ActivationServiceException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _erreur = e.message;
+        _chargement = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _erreur = 'Impossible de charger votre dossier : $e';
+        _chargement = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Mon dossier d\'activation',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _charger,
+        child: _chargement
+            ? const Center(child: CircularProgressIndicator())
+            : _erreur != null
+                ? ListView(
+                    padding: const EdgeInsets.all(24),
+                    children: <Widget>[
+                      Icon(Icons.error_outline,
+                          size: 48, color: Colors.red.shade700),
+                      const SizedBox(height: 12),
+                      Text(_erreur!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: FilledButton.icon(
+                          onPressed: _charger,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text('Réessayer'),
+                        ),
+                      ),
+                    ],
+                  )
+                : _contenu(context, _etat!, colorScheme),
+      ),
+    );
+  }
+
+  Widget _contenu(
+    BuildContext context,
+    EtatActivation etat,
+    ColorScheme colorScheme,
+  ) {
+    if (!etat.aUnDossier) {
+      return ListView(
+        padding: const EdgeInsets.all(24),
+        children: <Widget>[
+          const SizedBox(height: 40),
+          Icon(Icons.folder_open_rounded,
+              size: 64, color: Colors.grey.shade400),
+          const SizedBox(height: 12),
+          const Text(
+            'Aucun dossier d\'activation',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Votre compte n'est rattaché à aucune entreprise pour le moment. "
+            'Le dossier apparaîtra ici dès la création de votre boutique.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: <Widget>[
+        _carteEtape(etat, colorScheme),
+        const SizedBox(height: 12),
+        _carteMontants(etat, colorScheme),
+        const SizedBox(height: 12),
+        _carteDates(etat),
+        const SizedBox(height: 12),
+        _carteHistorique(etat),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CARTE 1 — ÉTAPE (stepper simplifié + message)
+  // ---------------------------------------------------------------------------
+
+  Widget _carteEtape(EtatActivation etat, ColorScheme colorScheme) {
+    final bool restreint = etat.etape == EtapeActivation.restreint;
+    final bool rejete = etat.etape == EtapeActivation.rejete;
+
+    final Color couleur = restreint || rejete
+        ? Colors.red.shade700
+        : etat.etape == EtapeActivation.actif
+            ? Colors.green.shade700
+            : Colors.orange.shade800;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(
+                  etat.etape == EtapeActivation.actif
+                      ? Icons.verified_rounded
+                      : restreint || rejete
+                          ? Icons.error_rounded
+                          : Icons.hourglass_top_rounded,
+                  color: couleur,
+                  size: 28,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        etat.nom ?? 'Mon entreprise',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        etat.etape.libelle,
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            color: couleur),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _etapesChronologie(etat),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: couleur.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(Icons.info_outline_rounded, size: 16, color: couleur),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      etat.messageEtape,
+                      style: TextStyle(fontSize: 12.5, color: couleur),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Chronologie : Déposé → Vérifié → Activé.
+  Widget _etapesChronologie(EtatActivation etat) {
+    final bool verifieOk = etat.verifieLe != null ||
+        etat.etape == EtapeActivation.verifie ||
+        etat.etape == EtapeActivation.actif ||
+        etat.etape == EtapeActivation.restreint;
+    final bool active = etat.valideLeFinance != null ||
+        etat.etape == EtapeActivation.actif ||
+        etat.etape == EtapeActivation.restreint;
+
+    final List<(String, bool, IconData)> etapes = <(String, bool, IconData)>[
+      ('Déposé', true, Icons.assignment_turned_in_outlined),
+      ('Vérifié (comptes)', verifieOk, Icons.fact_check_outlined),
+      ('Activé (finance)', active, Icons.rocket_launch_outlined),
+    ];
+
+    return Row(
+      children: <Widget>[
+        for (int i = 0; i < etapes.length; i++) ...<Widget>[
+          if (i > 0)
+            Expanded(
+              child: Container(
+                height: 2,
+                color: etapes[i].$2
+                    ? Colors.green.shade400
+                    : Colors.grey.shade300,
+              ),
+            ),
+          Column(
+            children: <Widget>[
+              Icon(
+                etapes[i].$3,
+                size: 20,
+                color: etapes[i].$2 ? Colors.green.shade700 : Colors.grey,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                etapes[i].$1,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: etapes[i].$2 ? Colors.green.shade700 : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CARTE 2 — MONTANTS (total / payé / solde + progression)
+  // ---------------------------------------------------------------------------
+
+  Widget _carteMontants(EtatActivation etat, ColorScheme colorScheme) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                const Text(
+                  'Paiement',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    etat.typePaiement.libelle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
+                _montantBloc('Total dû', etat.montantTotalDu, Colors.black87),
+                _montantBloc('Déjà payé', etat.montantDejaPaye,
+                    Colors.green.shade700),
+                _montantBloc(
+                  'Solde',
+                  etat.soldeRestant,
+                  etat.estSolde ? Colors.green.shade700 : Colors.red.shade700,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: etat.tauxPaiement,
+                minHeight: 8,
+                backgroundColor: Colors.grey.shade200,
+                color: etat.estSolde
+                    ? Colors.green.shade600
+                    : colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${(etat.tauxPaiement * 100).toStringAsFixed(0)} % réglé',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _montantBloc(String titre, double valeur, Color couleur) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(titre,
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          const SizedBox(height: 2),
+          Text(
+            '${valeur.toStringAsFixed(0)} CDF',
+            style: TextStyle(
+                fontSize: 13.5, fontWeight: FontWeight.w700, color: couleur),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CARTE 3 — DATES & STATUT
+  // ---------------------------------------------------------------------------
+
+  Widget _carteDates(EtatActivation etat) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Dates & statut',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            const SizedBox(height: 10),
+            if (etat.statut != null)
+              _ligne(Icons.badge_outlined, 'Statut d\'abonnement',
+                  etat.statut!.libelle),
+            if (etat.dateActivation != null)
+              _ligne(Icons.play_circle_outline, 'Activé le',
+                  _date(etat.dateActivation!)),
+            if (etat.dateExpiration != null)
+              _ligne(Icons.event_outlined, 'Expire le',
+                  _date(etat.dateExpiration!)),
+            if (etat.joursRestants != null)
+              _ligne(
+                Icons.timer_outlined,
+                'Jours restants',
+                '${etat.joursRestants} jour(s)',
+                couleur:
+                    etat.joursRestants! <= 3 ? Colors.red.shade700 : null,
+              ),
+            if (etat.verifieLe != null)
+              _ligne(Icons.fact_check_outlined, 'Vérifié le',
+                  _date(etat.verifieLe!)),
+            if (etat.valideLeFinance != null)
+              _ligne(Icons.task_alt_rounded, 'Validé (finance) le',
+                  _date(etat.valideLeFinance!)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ligne(IconData icone, String titre, String valeur, {Color? couleur}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: <Widget>[
+          Icon(icone, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(titre,
+                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade700)),
+          ),
+          Text(
+            valeur,
+            style: TextStyle(
+                fontSize: 12.5, fontWeight: FontWeight.w600, color: couleur),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CARTE 4 — HISTORIQUE (timeline)
+  // ---------------------------------------------------------------------------
+
+  Widget _carteHistorique(EtatActivation etat) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Historique du dossier',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            const SizedBox(height: 10),
+            if (etat.historique.isEmpty)
+              Text(
+                'Aucune action enregistrée pour le moment.',
+                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+              )
+            else
+              ...etat.historique.map(_entree),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _entree(EntreeActivation entree) {
+    final Color couleur = entree.estRejet
+        ? Colors.red.shade700
+        : entree.estPaiement
+            ? Colors.green.shade700
+            : Colors.blue.shade700;
+
+    final IconData icone = entree.estRejet
+        ? Icons.cancel_outlined
+        : entree.estPaiement
+            ? Icons.payments_outlined
+            : entree.etape == EtapeHistoriqueActivation.soumission
+                ? Icons.assignment_outlined
+                : Icons.fact_check_outlined;
+
+    final List<String> details = <String>[
+      if (entree.montant != null)
+        '${entree.montant!.toStringAsFixed(0)} CDF',
+      if ((entree.modePaiement ?? '').isNotEmpty) entree.modePaiement!,
+      if ((entree.reference ?? '').isNotEmpty) 'Réf. ${entree.reference}',
+      if ((entree.note ?? '').isNotEmpty) entree.note!,
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icone, size: 18, color: couleur),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        entree.etape?.libelle ?? 'Action',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    if (entree.le != null)
+                      Text(
+                        _dateHeure(entree.le!),
+                        style: TextStyle(
+                            fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                  ],
+                ),
+                if (details.isNotEmpty)
+                  Text(
+                    details.join('  •  '),
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _date(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  static String _dateHeure(DateTime d) =>
+      '${_date(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+}

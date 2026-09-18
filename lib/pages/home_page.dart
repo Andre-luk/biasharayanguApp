@@ -554,6 +554,16 @@ class _HomePageState extends State<HomePage> {
                 couleur: const Color(0xFF8B5E34),
                 onTap: () => _navTo('/main/rapports'),
               ),
+            // 🧾 MODULE 14 — suivi transparent du dossier d'activation :
+            // étape en cours, paiements, solde, jours restants, historique.
+            if (permissions.peutVoir(PageAccess.dashboard))
+              _CarteStat(
+                titre: 'Mon abonnement',
+                valeur: 'Suivi',
+                icone: Icons.verified_user_rounded,
+                couleur: const Color(0xFFB45309),
+                onTap: () => _navTo('/main/mon-activation'),
+              ),
           ],
         ),
       ],

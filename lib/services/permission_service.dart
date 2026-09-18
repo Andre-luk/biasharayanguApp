@@ -120,29 +120,42 @@ class PermissionService {
       PageAccess.values,
       ActionAccess.values,
     ),
-    RoleUtilisateur.gestionnaireComptes: RolePermission.uniforme(
-      const <PageAccess>[
-        PageAccess.entreprises,
-        PageAccess.utilisateurs,
-        PageAccess.villes,
-        PageAccess.activites,
-        PageAccess.groupesTarifaires,
-        PageAccess.abonnements,
-        // 🏢 production des étiquettes QR des boutiques (service plateforme).
-        PageAccess.qrCodes,
-        PageAccess.assistance,
-        PageAccess.notifications,
-      ],
-      const <ActionAccess>[
-        ActionAccess.voir,
-        ActionAccess.creer,
-        ActionAccess.modifier,
-      ],
+    RoleUtilisateur.gestionnaireComptes: RolePermission.personnalise(
+      <PageAccess, Set<ActionAccess>>{
+        for (final PageAccess page in const <PageAccess>[
+          PageAccess.entreprises,
+          PageAccess.utilisateurs,
+          PageAccess.villes,
+          PageAccess.activites,
+          PageAccess.groupesTarifaires,
+          PageAccess.abonnements,
+          // 🏢 production des étiquettes QR des boutiques (service plateforme).
+          PageAccess.qrCodes,
+          PageAccess.assistance,
+          PageAccess.notifications,
+        ])
+          page: const <ActionAccess>{
+            ActionAccess.voir,
+            ActionAccess.creer,
+            ActionAccess.modifier,
+          },
+        // 🧾 MODULE 14 — première validation du workflow d'activation : il
+        // VÉRIFIE le dossier (et le transmet à la finance) ou le rejette
+        // avec motif. Il n'active jamais un compte : seule la finance
+        // valide le paiement (rôles revérifiés côté serveur).
+        PageAccess.verificationComptes: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.valider,
+        },
+      },
     ),
     RoleUtilisateur.financeLaperle: RolePermission.uniforme(
       const <PageAccess>[
         PageAccess.dashboard,
         PageAccess.abonnements, // renouvellements, impayés
+        // 🧾 MODULE 14 — deuxième validation : validation du paiement
+        // (montant, mode, référence) et activation automatique du compte.
+        PageAccess.activationsFinance,
         PageAccess.paiements, // avances, soldes, historique des paiements
         PageAccess.finance, // rapports financiers
         PageAccess.rapports,
@@ -262,6 +275,10 @@ class PermissionService {
     _RegleRoute('/admin/abonnements', PageAccess.abonnements),
     _RegleRoute('/admin/utilisateurs', PageAccess.utilisateurs),
     _RegleRoute('/admin/villes', PageAccess.villes),
+    // 🧾 MODULE 14 — écrans admin du workflow d'activation (rôles revérifiés
+    // par les RPC : le gestionnaire n'active pas, la finance valide.
+    _RegleRoute('/admin/verification-comptes', PageAccess.verificationComptes),
+    _RegleRoute('/admin/activations-finance', PageAccess.activationsFinance),
     _RegleRoute('/admin', PageAccess.dashboard),
 
     // 🔐 MODULE 12 — journal d'audit (plateforme : toutes les boutiques ;
@@ -317,6 +334,9 @@ class PermissionService {
     _RegleRoute('/main/dettes', PageAccess.caisse),
     _RegleRoute('/main/clients', PageAccess.clients),
     _RegleRoute('/main/inventaires', PageAccess.stock),
+    // 🧾 MODULE 14 — tableau de bord du dossier d'activation (consultable par
+    // les rôles qui accèdent au tableau de bord de la boutique).
+    _RegleRoute('/main/mon-activation', PageAccess.dashboard),
     _RegleRoute('/main', PageAccess.dashboard),
 
     _RegleRoute('/reports', PageAccess.rapports),
@@ -678,6 +698,9 @@ class PermissionService {
     PageAccess.utilisateurs: '/admin',
     PageAccess.abonnements: '/admin',
     PageAccess.paiements: '/admin',
+    // 🧾 MODULE 14 — écrans du workflow d'activation.
+    PageAccess.verificationComptes: '/admin/verification-comptes',
+    PageAccess.activationsFinance: '/admin/activations-finance',
     PageAccess.villes: '/admin',
     PageAccess.activites: '/admin',
     PageAccess.groupesTarifaires: '/admin',
