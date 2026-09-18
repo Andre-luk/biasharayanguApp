@@ -26,6 +26,8 @@ import 'services/abonnement_service.dart';
 // 🧾 MODULE 14 — synchronisation des dossiers d'activation (restriction /
 // réactivation automatiques) au démarrage.
 import 'services/activation_service.dart';
+// 🔔 NOTIFICATIONS — chaque vente + rapport de fin de journée.
+import 'services/notification_service.dart';
 import 'services/permission_service.dart';
 import 'db_helper.dart';
 
@@ -64,6 +66,15 @@ void main() async {
 
   // Lancement du Realtime en arrière-plan
   SupabaseService.instance.initializeRealtime();
+
+  // 🔔 Notifications locales : initialisation + surveillance du rapport de
+  // fin de journée (best-effort — jamais bloquant au démarrage).
+  try {
+    await NotificationService.instance.initialiser();
+    NotificationService.instance.demarrerSurveillanceQuotidienne();
+  } catch (e) {
+    debugPrint('Notifications désactivées : $e');
+  }
 
   // 💳 MODULE 3 — Vérification globale des abonnements au démarrage.
   // Best-effort : si une session est restaurée, on demande à la base de

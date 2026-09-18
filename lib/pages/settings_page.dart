@@ -10,6 +10,7 @@ import 'package:biashara_yangu/services/audit_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
+import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/language_manager.dart';
@@ -74,10 +75,20 @@ class _SettingsPageState extends State<SettingsPage> {
   Utilisateur? _currentUser;
   bool _loading = true;
 
+  // 🔔 NOTIFICATIONS — préférences de l'appareil (ventes + rapport du jour).
+  bool _notifVentes = true;
+  bool _notifRapport = true;
+  int _notifHeureMinutes = NotificationService.heureRapportParDefaut;
+
   @override
   void initState() {
     super.initState();
     _loadUser();
+    // Le service est initialisé au démarrage de l'application ; les valeurs
+    // par défaut couvrent le cas où il serait indisponible.
+    _notifVentes = NotificationService.instance.ventesActives;
+    _notifRapport = NotificationService.instance.rapportActif;
+    _notifHeureMinutes = NotificationService.instance.heureRapportMinutes;
   }
 
   Future<void> _loadUser() async {
@@ -95,6 +106,22 @@ class _SettingsPageState extends State<SettingsPage> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _choisirHeureRapport() async {
+    final TimeOfDay? choix = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: (_notifHeureMinutes ~/ 60) % 24,
+        minute: _notifHeureMinutes % 60,
+      ),
+      helpText: 'Heure du rapport de fin de journée',
+    );
+    if (choix == null) return;
+    final int minutes = choix.hour * 60 + choix.minute;
+    await NotificationService.instance.definirHeureRapport(minutes);
+    if (!mounted) return;
+    setState(() => _notifHeureMinutes = minutes);
   }
 
   Future<void> _logout() async {
@@ -364,6 +391,52 @@ class _SettingsPageState extends State<SettingsPage> {
                 titre: T.settingsAboutTitle,
                 sousTitre: T.aboutAppDescription,
                 onTap: () => context.pushNamed('about'),
+              ),
+            ],
+          ),
+
+          // 🔔 NOTIFICATIONS LOCALES — chaque vente + rapport de fin de journée.
+          _SectionParametres(
+            titre: 'Notifications',
+            tuiles: <Widget>[
+              SwitchListTile(
+                secondary: const Icon(Icons.point_of_sale_rounded),
+                title: const Text('Notifier chaque vente'),
+                subtitle: const Text(
+                    'Alerte à chaque vente encaissée sur cet appareil'),
+                value: _notifVentes,
+                onChanged: (bool actif) async {
+                  await NotificationService.instance
+                      .definirVentesActives(actif);
+                  if (mounted) setState(() => _notifVentes = actif);
+                },
+              ),
+              SwitchListTile(
+                secondary: const Icon(Icons.insights_rounded),
+                title: const Text('Rapport de fin de journée'),
+                subtitle: Text(
+                    'Résumé des ventes du jour à ${NotificationService.libelleHeure(_notifHeureMinutes)}'),
+                value: _notifRapport,
+                onChanged: (bool actif) async {
+                  await NotificationService.instance
+                      .definirRapportActif(actif);
+                  if (mounted) setState(() => _notifRapport = actif);
+                },
+              ),
+              if (_notifRapport)
+                ListTile(
+                  leading: const Icon(Icons.schedule_rounded),
+                  title: const Text('Heure du rapport'),
+                  subtitle: Text(
+                      'Tous les jours à ${NotificationService.libelleHeure(_notifHeureMinutes)}'),
+                  onTap: _choisirHeureRapport,
+                ),
+              ListTile(
+                leading: const Icon(Icons.notifications_active_rounded),
+                title: const Text('Tester le rapport maintenant'),
+                subtitle: const Text('Envoie immédiatement le résumé du jour'),
+                onTap: () => NotificationService.instance
+                    .verifierEtEnvoyerRapportDuJour(forcer: true),
               ),
             ],
           ),

@@ -23,6 +23,7 @@ import 'package:biashara_yangu/models/ligne_panier.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
@@ -233,6 +234,15 @@ class VenteService {
     await _appliquerSortieStockLocale(lignesPanier);
     panier.vider();
     unawaited(_resynchroniser());
+
+    // 🔔 NOTIFICATIONS — « chaque vente » (best-effort : un échec de
+    // notification ne remet jamais en cause la vente confirmée).
+    unawaited(NotificationService.instance.notifierVente(
+      numero: vente.numeroVente,
+      total: vente.total,
+      nbArticles: vente.lignes.length,
+      modePaiement: vente.modePaiement,
+    ));
 
     return vente;
   }
