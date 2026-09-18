@@ -52,8 +52,13 @@ android {
         applicationId = "com.example.biashara_yangu"
         minSdk = minSdkVersionUsed
         targetSdk = compileSdkVersionUsed
-        versionCode = 1
-        versionName = "1.0"
+        // 📦 PUBLICATION (APKPure) — versionCode et versionName suivent le
+        // pubspec.yaml (`version: 1.1.7+9` → versionName « 1.1.7 »,
+        // versionCode 9). ⚠️ Le versionCode DOIT augmenter à chaque
+        // publication (+10, +11…) sinon les mises à jour ne s'installent
+        // pas par-dessus l'ancienne version (exigence Android).
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     compileOptions {

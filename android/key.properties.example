@@ -1,23 +1,19 @@
 # ============================================================================
 #  android/key.properties — MODÈLE (ne pas renommer ce fichier .example)
 #
-#  Pour signer officiellement l'APK release :
+#  Pour signer officiellement l'APK release (obligatoire pour APKPure) :
 #    1. copier ce fichier en « android/key.properties » ;
 #    2. renseigner les valeurs (le fichier est IGNORÉ par git — voir
 #       .gitignore — il ne doit jamais être committé) ;
-#    3. placer le keystore .jks hors du dépôt (par ex. ~/keystores/).
+#    3. placer le keystore .jks hors du dépôt (par ex. ~/Documents/keystores/).
 #
-#  Sans ce fichier, le build release utilise la signature DEBUG : l'APK
-#  s'installe pour tester mais ne peut pas être publié sur le Play Store
-#  ni remplacer une installation signée avec une autre clé.
-#
-#  ⚠️ Rappel Android : une application ne peut se mettre à jour qu'avec la
-#  MÊME clé de signature. Si tu as déjà distribué un APK signé « upload »,
-#  réutilise ce keystore ici.
+#  Procédure complète : docs/publication_app.md (§ 7 — signature APKPure).
+#  ⚠️ MÊME clé à vie : une application ne peut se mettre à jour qu'avec la
+#  signature d'origine ; perdre ce keystore = plus aucune mise à jour possible.
 # ============================================================================
 
 storePassword=motdepasse_du_keystore
 keyPassword=motdepasse_de_la_cle
-keyAlias=upload
+keyAlias=biashara
 # Chemin du keystore : absolu, ou relatif au dossier android/app.
-storeFile=/home/utilisateur/keystores/upload-keystore.jks
+storeFile=/home/andre/Documents/keystores/biashara-upload.jks

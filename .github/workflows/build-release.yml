@@ -100,8 +100,30 @@ jobs:
       - name: Récupérer les dépendances
         run: flutter pub get
 
-      # Sans keystore, le build.gradle.kts retombe sur la clé debug :
-      # la compilation ne casse jamais (voir docs/publication_app.md).
+      # 🔐 SIGNATURE OFFICIELLE (APKPure) — conditionnelle :
+      #  • si les secrets GitHub sont configurés, l'APK est signé avec la clé
+      #    release PERMANENTE → les mises à jour s'installent par-dessus les
+      #    versions précédentes (exigence APKPure / Android) ;
+      #  • sinon, repli sur la clé debug : la compilation ne casse jamais.
+      # Mise en place : docs/publication_app.md (§ 7 — signature APKPure).
+      - name: Restaurer le keystore release (si configuré)
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > android/upload-keystore.jks
+            cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=../upload-keystore.jks
+          EOF
+            echo "✅ Keystore release installé — l'APK sera signé officiellement."
+          else
+            echo "ℹ️ Aucun keystore configuré : repli sur la clé debug."
+          fi
+
       - name: Compiler l'APK release
         run: flutter build apk --release
 
@@ -256,24 +278,16 @@ jobs:
             paquets/biashara-yangu-windows.zip
 
   # ==========================================================================
-  #  VARIANTE « SIGNATURE OFFICIELLE » (optionnelle, plus tard)
+  #  SIGNATURE OFFICIELLE — désormais INTÉGRÉE au job « apk » (voir l'étape
+  #  « Restaurer le keystore release (si configuré) » plus haut).
   # --------------------------------------------------------------------------
-  #  Si tu veux signer l'APK avec ton keystore, ajoute ces deux étapes dans le
-  #  job « apk », AVANT « Compiler l'APK release », et crée les secrets
-  #  GitHub (Settings → Secrets and variables → Actions) :
+  #  Elle s'active automatiquement dès que ces secrets existent
+  #  (Settings → Secrets and variables → Actions) :
   #    • ANDROID_KEYSTORE_BASE64  → le .jks encodé en base64 :
   #        base64 -w0 upload-keystore.jks
   #    • ANDROID_STORE_PASSWORD, ANDROID_KEY_PASSWORD, ANDROID_KEY_ALIAS
-  #
-  #      - name: Restaurer le keystore
-  #        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/upload-keystore.jks
-  #
-  #      - name: Créer key.properties
-  #        run: |
-  #          cat > android/key.properties <<EOF
-  #          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
-  #          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-  #          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-  #          storeFile=upload-keystore.jks
-  #          EOF
+  #  Tant qu'ils sont absents : repli sur la clé debug (build jamais cassé).
+  #  Procédure complète (keystore, APKPure, mises à jour) :
+  #  docs/publication_app.md (§ 7).
+  # ==========================================================================
   # ==========================================================================

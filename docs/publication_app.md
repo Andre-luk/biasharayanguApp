@@ -113,35 +113,113 @@ sudo dnf install gtk3 xz-libs               # Fedora
 
 ---
 
-## 7. SIGNATURE OFFICIELLE ANDROID (pour plus tard)
+## 7. SIGNATURE OFFICIELLE ANDROID (obligatoire pour APKPure)
 
-Par défaut en CI, l'APK release est **signé avec la clé debug** : parfait pour
-tester, mais il ne pourra pas remplacer une installation déjà distribuée avec
-une autre signature.
+Par défaut en CI, l'APK release est **signé avec une clé debug générée
+aléatoirement** : parfait pour tester, mais **inutilisable pour APKPure** —
+sans clé fixe, chaque nouvelle version porterait une signature différente et
+les mises à jour ne pourraient **jamais** s'installer par-dessus l'ancienne.
 
-Pour signer officiellement :
+### A. Créer le keystore (UNE SEULE FOIS, à conserver à vie)
 
 ```bash
-# 1. Créer un keystore (une seule fois — CONSERVE-LE précieusement !)
-keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA \
-        -keysize 2048 -validity 10000 -alias upload
+# Choisis un mot de passe de 6 caractères minimum — note-le dans un endroit sûr.
+keytool -genkeypair -v \
+  -keystore ~/Documents/keystores/biashara-upload.jks \
+  -alias biashara \
+  -keyalg RSA -keysize 2048 -validity 10950 \
+  -dname "CN=Biashara Yangu, O=La Perle, L=Kinshasa, C=CD"
 ```
 
-2. En local : copier `android/key.properties.example` → `android/key.properties`
-   et renseigner les valeurs (le fichier est ignoré par git).
-3. En CI : créer les secrets GitHub
-   (**Settings → Secrets and variables → Actions**) :
-   `ANDROID_KEYSTORE_BASE64` (le `.jks` en base64 : `base64 -w0 upload-keystore.jks`),
-   `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS`,
-   puis décommenter le bloc correspondant dans `.github/workflows/build-release.yml`.
+> ⚠️ **Ce fichier + son mot de passe = la vie de l'application.**
+> Perdre ce keystore = impossible de publier des mises à jour d'une app déjà
+> installée (APKPure, téléphones…). Sauvegarde-le comme la base de données
+> (voir `docs/backup_restore_supabase.md`) : par exemple dans Supabase Storage
+> **privé** + une copie hors ligne (clé USB).
 
-> ⚠️ **Perdre ce keystore = impossible de mettre à jour l'application** sur les
-> téléphones où elle est déjà installée. Sauvegarde-le comme la base de
-> données elle-même (voir `docs/backup_restore_supabase.md`).
+### B. En local (pour tes builds manuels)
+
+Copier `android/key.properties.example` → `android/key.properties` :
+
+```properties
+storePassword=TON_MOT_DE_PASSE
+keyPassword=TON_MOT_DE_PASSE
+keyAlias=biashara
+storeFile=/home/andre/Documents/keystores/biashara-upload.jks
+```
+
+### C. En CI (GitHub) — déjà intégré au workflow ✅
+
+Les deux étapes de signature sont **déjà en place** dans
+`.github/workflows/build-release.yml` : elles s'activent automatiquement dès
+que ces 4 secrets existent
+(**Settings → Secrets and variables → Actions** → *New repository secret*) :
+
+| Secret | Valeur |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 biashara-upload.jks` (coller la sortie) |
+| `ANDROID_STORE_PASSWORD` | le mot de passe du keystore |
+| `ANDROID_KEY_PASSWORD` | le mot de passe de la clé (souvent le même) |
+| `ANDROID_KEY_ALIAS` | `biashara` |
+
+Tant qu'ils sont absents : repli automatique sur la clé debug (le build ne
+casse jamais). Une fois présents : chaque release GitHub est signée avec ta
+clé officielle.
+
+### D. Vérifier la signature d'un APK
+
+```bash
+keytool -printcert -jarfile biashara-yangu.apk
+# → doit afficher « Propriétaire : CN=Biashara Yangu… », pas « Android Debug »
+```
 
 ---
 
-## 8. EN CAS DE PROBLÈME
+## 8. PUBLIER SUR APKPURE (et recevoir les mises à jour)
+
+### A. Première publication
+
+1. **Compte développeur** : créer un compte sur le portail développeur
+   d'APKPure (bouton *Developer / Submit app* sur `apkpure.com`).
+2. **Téléverser l'APK `biashara-yangu.apk`** de la dernière release GitHub
+   — **signé officiellement** (section 7) et avec un `versionCode` **9 ou
+   plus** (`pubspec.yaml → version: 1.1.7+9`).
+3. **Remplir la fiche** : textes prêts dans `docs/apkpure_fiche.md`
+   (nom, descriptions, email, catégorie), icône 512×512
+   (`docs/icone_512.png`) et captures d'écran du téléphone.
+4. Attendre la validation d'APKPure (quelques jours ouvrés).
+
+### B. Chaque mise à jour (le rituel)
+
+1. Côté projet : monter la version dans `pubspec.yaml`
+   (`version: 1.1.8+10` — **le numéro après `+` doit toujours augmenter**),
+   puis :
+   ```bash
+   git add -A && git commit -m "…" && git push
+   git tag -a v1.1.8 -m "Biashara Yangu v1.1.8" && git push origin v1.1.8
+   ```
+2. La CI construit et publie la release GitHub (~30 min) — l'APK est signé
+   avec la clé officielle (même signature que la 1ʳᵉ publication).
+3. Télécharger `biashara-yangu.apk` depuis la release GitHub et le
+   **téléverser sur APKPure** (même console développeur) : la mise à jour est
+   proposée aux utilisateurs (~quelques heures après validation).
+
+> ✅ Les utilisateurs retrouvent automatiquement les nouvelles versions :
+> APKPure notifie/mets à jour les apps installées depuis son store, ET
+> l'application affiche elle-même la version installée (Paramètres → À propos).
+
+### C. Règles d'or pour ne jamais bloquer les mises à jour
+
+| Règle | Pourquoi |
+|---|---|
+| **Même keystore à vie** | Android refuse une mise à jour signée différemment. |
+| **`versionCode` strictement croissant** (`+9`, `+10`, `+11`…) | Android refuse d'installer par-dessus une version égale ou inférieure. |
+| **Ne jamais changer `applicationId`** après la 1ʳᵉ publication | Sinon c'est une NOUVELLE application (l'ancienne ne se met pas à jour). |
+| **Conserver le keystore + mots de passe** | Sans lui, plus aucune mise à jour possible. |
+
+---
+
+## 9. EN CAS DE PROBLÈME
 
 | Symptôme | Cause probable | Solution |
 |---|---|---|
