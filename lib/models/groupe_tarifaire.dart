@@ -15,6 +15,11 @@ class GroupeTarifaire {
   final int dureeEssaiJours;
   final int dureeAbonnementJours;
   final double prixParCollaborateur;
+
+  /// 🏢 MODULE 15 — nombre d'entreprises autorisées par le pack
+  /// (1 = mono-entreprise, 3 = pack avancé multi-entreprises…).
+  final int maxEspaces;
+
   final DateTime? createdAt;
 
   const GroupeTarifaire({
@@ -26,10 +31,13 @@ class GroupeTarifaire {
     this.dureeEssaiJours = 0,
     this.dureeAbonnementJours = 0,
     this.prixParCollaborateur = 0,
+    this.maxEspaces = 1,
     this.createdAt,
   });
 
   factory GroupeTarifaire.fromMap(Map<String, dynamic> map) {
+    final int max = parseInt(map['max_espaces'], fallback: 1);
+
     return GroupeTarifaire(
       id: parseString(map['id']),
       activiteId: parseStringOrNull(map['activite_id']),
@@ -39,6 +47,7 @@ class GroupeTarifaire {
       dureeEssaiJours: parseInt(map['duree_essai_jours']),
       dureeAbonnementJours: parseInt(map['duree_abonnement_jours']),
       prixParCollaborateur: parseDouble(map['prix_par_collaborateur']),
+      maxEspaces: max < 1 ? 1 : max,
       createdAt: parseDateTimeOrNull(map['created_at']),
     );
   }
@@ -53,6 +62,7 @@ class GroupeTarifaire {
       'duree_essai_jours': dureeEssaiJours,
       'duree_abonnement_jours': dureeAbonnementJours,
       'prix_par_collaborateur': prixParCollaborateur,
+      'max_espaces': maxEspaces,
       'created_at': createdAt?.toIso8601String(),
     };
   }
@@ -65,6 +75,9 @@ class GroupeTarifaire {
   String get dureeAbonnementLibelle =>
       '$dureeAbonnementJours ${dureeAbonnementJours > 1 ? 'jours' : 'jour'}';
 
+  /// 🏢 MODULE 15 — ce pack autorise-t-il plusieurs entreprises ?
+  bool get packMulti => maxEspaces > 1;
+
   GroupeTarifaire copyWith({
     String? id,
     String? activiteId,
@@ -74,6 +87,7 @@ class GroupeTarifaire {
     int? dureeEssaiJours,
     int? dureeAbonnementJours,
     double? prixParCollaborateur,
+    int? maxEspaces,
     DateTime? createdAt,
   }) {
     return GroupeTarifaire(
@@ -85,6 +99,7 @@ class GroupeTarifaire {
       dureeEssaiJours: dureeEssaiJours ?? this.dureeEssaiJours,
       dureeAbonnementJours: dureeAbonnementJours ?? this.dureeAbonnementJours,
       prixParCollaborateur: prixParCollaborateur ?? this.prixParCollaborateur,
+      maxEspaces: maxEspaces ?? this.maxEspaces,
       createdAt: createdAt ?? this.createdAt,
     );
   }

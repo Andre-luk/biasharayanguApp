@@ -28,6 +28,9 @@ import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+// 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
+import 'package:biashara_yangu/services/espace_service.dart';
+import 'package:biashara_yangu/widgets/selecteur_espace.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
@@ -78,15 +81,26 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _initialLoad();
+    // 🏢 MODULE 15 — quand l'entreprise active change (sélecteur), on
+    // recharge tout : les données affichées suivent le nouvel espace.
+    EspaceService.instance.etat.addListener(_onEspaceChange);
   }
 
   @override
   void dispose() {
+    EspaceService.instance.etat.removeListener(_onEspaceChange);
     _minuteurRealtime?.cancel();
     if (_dashboardChannel != null) {
       Supabase.instance.client.removeChannel(_dashboardChannel!);
     }
     super.dispose();
+  }
+
+  /// 🏢 MODULE 15 — bascule d'entreprise depuis le sélecteur.
+  void _onEspaceChange() {
+    if (!mounted) return;
+    _loadUserContext();
+    _loadStats(force: true);
   }
 
   Future<void> _initialLoad() async {
@@ -252,6 +266,8 @@ class _HomePageState extends State<HomePage> {
   Future<void> _logout() async {
     await SessionManager.clearSession();
     AbonnementService.instance.reinitialiserAcces();
+    // 🏢 MODULE 15 — la liste des entreprises ne survit pas à la déconnexion.
+    EspaceService.instance.reinitialiser();
     // 🔳 MODULE 7 — la session de vente se termine : le panier partagé et
     // l'historique du scanner ne doivent pas survivre à la déconnexion.
     PanierService.instance.vider();
@@ -401,6 +417,8 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       actions: [
+        // 🏢 MODULE 15 — entreprise active (sélecteur multi-entreprises).
+        const SelecteurEspace(),
         IconButton(
           onPressed: _logout,
           icon: const Icon(Icons.logout_rounded),

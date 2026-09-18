@@ -337,6 +337,10 @@ class PermissionService {
     // 🧾 MODULE 14 — tableau de bord du dossier d'activation (consultable par
     // les rôles qui accèdent au tableau de bord de la boutique).
     _RegleRoute('/main/mon-activation', PageAccess.dashboard),
+    // 🏢 MODULE 15 — mes entreprises (pack multi-entreprises) : accessible
+    // aux rôles qui pilotent la boutique (le serveur limite la CRÉATION au
+    // propriétaire et au pack).
+    _RegleRoute('/main/mes-entreprises', PageAccess.dashboard),
     _RegleRoute('/main', PageAccess.dashboard),
 
     _RegleRoute('/reports', PageAccess.rapports),

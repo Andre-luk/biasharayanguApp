@@ -27,7 +27,10 @@ val compileSdkVersionUsed = findIntProperty("compileSdkVersion", defaultCompileS
 val minSdkVersionUsed = findIntProperty("minSdkVersion", defaultMinSdk)
 
 android {
-    namespace = "com.example.biashara_yangu"
+    // 🏷️ IDENTIFIANT OFFICIEL de l'application (APKPure, mises à jour…).
+    //    ⚠️ NE JAMAIS le changer après la première publication : Android
+    //    considérerait chaque version comme une NOUVELLE application.
+    namespace = "cd.biasharayangu.app"
     compileSdk = compileSdkVersionUsed
 
     // Configuration de la signature :
@@ -49,7 +52,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.biashara_yangu"
+        applicationId = "cd.biasharayangu.app"
         minSdk = minSdkVersionUsed
         targetSdk = compileSdkVersionUsed
         // 📦 PUBLICATION (APKPure) — versionCode et versionName suivent le

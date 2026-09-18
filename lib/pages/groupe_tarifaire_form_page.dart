@@ -68,6 +68,10 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
   String? _activiteId;
   String? _erreurActivite;
 
+  /// 🏢 MODULE 15 — entreprises autorisées par ce pack (1 = standard,
+  /// 3+ = pack multi-entreprises).
+  int _maxEspaces = 1;
+
   bool _chargement = true;
   bool _enregistrement = false;
   bool _suppressionEnCours = false;
@@ -173,6 +177,7 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
           (groupe?.dureeAbonnementJours ?? 30).toString();
       _prixCollaborateurController.text =
           _formatSaisie(groupe?.prixParCollaborateur ?? 0.5);
+      _maxEspaces = groupe?.maxEspaces ?? 1;
     });
   }
 
@@ -368,6 +373,7 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
           dureeEssaiJours: dureeEssaiJours,
           dureeAbonnementJours: dureeAbonnementJours,
           prixParCollaborateur: prixParCollaborateur,
+          maxEspaces: _maxEspaces,
         );
       } else {
         await _service.modifierGroupeTarifaire(
@@ -379,6 +385,7 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
           dureeEssaiJours: dureeEssaiJours,
           dureeAbonnementJours: dureeAbonnementJours,
           prixParCollaborateur: prixParCollaborateur,
+          maxEspaces: _maxEspaces,
         );
       }
     } on ReferentielServiceException catch (e) {
@@ -707,6 +714,33 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
                 ),
               ),
               validator: _validerDureeAbonnement,
+            ),
+            const SizedBox(height: 14),
+            // 🏢 MODULE 15 — PACK MULTI-ENTREPRISES : nombre d'entreprises
+            // que ce pack autorise (1 = une seule ; 3+ = boutique + hôtel
+            // + pharmacie…). Le module 15 lit cette valeur pour autoriser
+            // la création d'entreprises supplémentaires.
+            AppDropdownField<int>(
+              label: 'Entreprises autorisées (pack)',
+              value: _maxEspaces,
+              prefixIcon: Icons.apartment_rounded,
+              items: List<DropdownMenuItem<int>>.generate(
+                10,
+                (int index) {
+                  final int valeur = index + 1;
+                  return DropdownMenuItem<int>(
+                    value: valeur,
+                    child: Text(
+                      valeur == 1
+                          ? '1 entreprise (standard)'
+                          : '$valeur entreprises (pack multi)',
+                    ),
+                  );
+                },
+              ),
+              onChanged: (int? valeur) {
+                if (valeur != null) setState(() => _maxEspaces = valeur);
+              },
             ),
             const SizedBox(height: 14),
             TextFormField(

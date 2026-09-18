@@ -1,4 +1,4 @@
-package com.example.biashara_yangu
+package cd.biasharayangu.app
 
 import io.flutter.embedding.android.FlutterActivity
 

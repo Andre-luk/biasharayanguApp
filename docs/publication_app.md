@@ -101,12 +101,20 @@ sudo dnf install gtk3 xz-libs               # Fedora
 
 ## 6. INSTALLER SUR WINDOWS
 
-1. Clic droit sur `biashara-yangu-windows.zip` → **Extraire tout…**
-   (ne pas lancer depuis l'archive).
-2. Ouvrir le dossier extrait → double-cliquer **`biashara_yangu.exe`**.
-3. Windows SmartScreen peut afficher « Windows a protégé votre PC » :
+### A. Installeur officiel (recommandé) — `biashara-yangu-setup.exe`
+
+1. Télécharger **`biashara-yangu-setup.exe`** depuis la release GitHub.
+2. Double-cliquer → assistant classique : **Suivant → Suivant → Installer**.
+3. L'application s'installe avec un raccourci **Menu Démarrer** (et Bureau en
+   option), plus un **désinstalleur** dans « Applications et fonctionnalités ».
+4. Windows SmartScreen peut afficher « Windows a protégé votre PC » :
    **Informations complémentaires → Exécuter quand même** (l'exécutable n'est
-   pas signé numériquement — voir §8 si tu veux corriger ça plus tard).
+   pas signé numériquement — voir §9 pour signer plus tard).
+
+### B. Version portable — `biashara-yangu-windows.zip`
+
+1. Clic droit sur le zip → **Extraire tout…** (ne pas lancer depuis l'archive).
+2. Ouvrir le dossier extrait → double-cliquer **`biashara_yangu.exe`**.
 
 > 💡 Tout le dossier doit rester ensemble (`data/`, DLL…) : ne déplace pas
 > seulement le `.exe`.

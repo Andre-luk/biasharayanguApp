@@ -344,6 +344,7 @@ class ReferentielService {
     required int dureeEssaiJours,
     required int dureeAbonnementJours,
     required double prixParCollaborateur,
+    int maxEspaces = 1,
   }) {
     return _executer(
       () async {
@@ -355,6 +356,7 @@ class ReferentielService {
           dureeEssaiJours: dureeEssaiJours,
           dureeAbonnementJours: dureeAbonnementJours,
           prixParCollaborateur: prixParCollaborateur,
+          maxEspaces: maxEspaces,
         );
 
         final DateTime maintenant = DateTime.now().toUtc();
@@ -371,6 +373,8 @@ class ReferentielService {
                 'duree_essai_jours': dureeEssaiJours,
                 'duree_abonnement_jours': dureeAbonnementJours,
                 'prix_par_collaborateur': prixParCollaborateur,
+                // 🏢 MODULE 15 — pack multi-entreprises (1 par défaut).
+                'max_espaces': maxEspaces,
                 'created_at': maintenant.toIso8601String(),
               })
               .select()
@@ -402,6 +406,7 @@ class ReferentielService {
     required int dureeEssaiJours,
     required int dureeAbonnementJours,
     required double prixParCollaborateur,
+    int maxEspaces = 1,
   }) {
     return _executer(
       () async {
@@ -413,6 +418,7 @@ class ReferentielService {
           dureeEssaiJours: dureeEssaiJours,
           dureeAbonnementJours: dureeAbonnementJours,
           prixParCollaborateur: prixParCollaborateur,
+          maxEspaces: maxEspaces,
         );
 
         try {
@@ -426,6 +432,8 @@ class ReferentielService {
                 'duree_essai_jours': dureeEssaiJours,
                 'duree_abonnement_jours': dureeAbonnementJours,
                 'prix_par_collaborateur': prixParCollaborateur,
+                // 🏢 MODULE 15 — pack multi-entreprises.
+                'max_espaces': maxEspaces,
               })
               .eq('id', id)
               .select()
@@ -532,6 +540,7 @@ class ReferentielService {
     required int dureeEssaiJours,
     required int dureeAbonnementJours,
     required double prixParCollaborateur,
+    required int maxEspaces,
   }) {
     if (nom.trim().isEmpty) {
       throw const ReferentielServiceException(
@@ -566,6 +575,12 @@ class ReferentielService {
     if (prixParCollaborateur < 0) {
       throw const ReferentielServiceException(
         'Le prix par collaborateur ne peut pas être négatif.',
+      );
+    }
+    // 🏢 MODULE 15 — pack multi-entreprises : entre 1 et 20 entreprises.
+    if (maxEspaces < 1 || maxEspaces > 20) {
+      throw const ReferentielServiceException(
+        'Le nombre d\'entreprises autorisées doit être compris entre 1 et 20.',
       );
     }
   }

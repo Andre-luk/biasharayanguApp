@@ -282,6 +282,22 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
 
+          // 🏢 MODULE 15 — pack multi-entreprises : liste, création et
+          // bascule d'entreprise active (boutique, hôtel, pharmacie…).
+          if (permissions.peutVoir(PageAccess.dashboard))
+            _SectionParametres(
+              titre: 'Mes entreprises',
+              tuiles: <Widget>[
+                _TuileParametre(
+                  icone: Icons.apartment_rounded,
+                  titre: 'Mes entreprises',
+                  sousTitre:
+                      'Boutique, hôtel, pharmacie… : créer, basculer, suivre le pack',
+                  onTap: () => context.pushNamed('mes-entreprises'),
+                ),
+              ],
+            ),
+
           _SectionParametres(
             titre: 'Application',
             tuiles: <Widget>[

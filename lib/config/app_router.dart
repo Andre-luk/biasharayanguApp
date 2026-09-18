@@ -106,6 +106,8 @@ import 'package:biashara_yangu/pages/politique_confidentialite_page.dart';
 import 'package:biashara_yangu/pages/activations_finance_page.dart';
 import 'package:biashara_yangu/pages/comptes_verification_page.dart';
 import 'package:biashara_yangu/pages/mon_activation_page.dart';
+// ========== MODULE 15 : PACK MULTI-ENTREPRISES ==========
+import 'package:biashara_yangu/pages/mes_entreprises_page.dart';
 
 // ========== MODULE 8 : PANIER & VALIDATION DE VENTE ==========
 import 'package:biashara_yangu/pages/panier_page.dart';
@@ -617,6 +619,14 @@ final GoRouter appRouter = GoRouter(
                   path: 'mon-activation',
                   name: 'mon-activation',
                   builder: (context, state) => const MonActivationPage(),
+                ),
+
+                // 🏢 MODULE 15 — mes entreprises (pack multi-entreprises) :
+                // liste, création et bascule d'entreprise active.
+                GoRoute(
+                  path: 'mes-entreprises',
+                  name: 'mes-entreprises',
+                  builder: (context, state) => const MesEntreprisesPage(),
                 ),
 
                 // 🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)

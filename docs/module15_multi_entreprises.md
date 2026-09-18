@@ -1,10 +1,30 @@
-# Module 15 — PACK AVANCÉ MULTI-ENTREPRISES (conception à valider)
+# Module 15 — PACK AVANCÉ MULTI-ENTREPRISES
 
-> **Statut : PROPOSITION — aucune migration destructive ne sera exécutée
-> sans validation du propriétaire de la plateforme.**
+> ✅ **IMPLÉMENTÉ (18/09/2026)** — migration
+> `20260916000019_module15_multi_entreprises.sql` (45 instructions validées)
+> + code application (modèles, `EspaceService`, sélecteur, écran
+> « Mes entreprises ») + tests.
 >
-> Demande : « un pack avancé pour un utilisateur qui aura plusieurs
-> entreprises (boutique, hôtel, pharmacie, etc.) ».
+> **Pour l'activer** : exécuter la migration 19 dans Supabase, puis créer un
+> groupe tarifaire « Pack Avancé » dans **Admin → Référentiels → Groupes
+> tarifaires** avec **« Entreprises autorisées (pack) » = 3** (ou plus), et
+> l'affecter aux clients concernés depuis la fiche entreprise.
+>
+> **Ce qui est livré** :
+> - `groupes_tarifaires.max_espaces` (1 par défaut) — champ ajouté au
+>   formulaire des groupes tarifaires ;
+> - table `espaces` (boutique / hôtel / pharmacie / restaurant / dépôt /
+>   autre), le **sélecteur d'entreprise** dans la barre supérieure, l'écran
+>   **« Mes entreprises »** (liste, création, bascule, quota du pack) ;
+> - `mon_proprietaire()` redéfini : l'espace actif cloisonne TOUTES les
+>   données, avec repli historique (aucune donnée existante touchée) ;
+> - RPC : `rpc_espaces_lister`, `rpc_espace_basculer`, `rpc_espace_creer`
+>   (+ `rpc_entreprise_creer` v4 qui crée l'espace par défaut) ;
+> - journal d'audit : `ESPACE_CREE`, `ESPACE_BASCULE`.
+>
+> **Choix V1 (à faire évoluer si besoin)** : tous les membres de l'entreprise
+> voient tous les espaces ; les quotas IA restent **par espace** ; pas encore
+> de renommage/désactivation d'espace.
 
 ## 1. Pourquoi ce n'est pas un simple ajout de champ
 

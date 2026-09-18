@@ -10,18 +10,17 @@
 | Champ | Valeur |
 |---|---|
 | **Nom de l'application** | `Biashara Yangu` |
-| **Nom du package** | `com.example.biashara_yangu` *(voir note ci-dessous)* |
-| **Version** | `1.1.8` (versionCode `10`) — suivre les releases GitHub |
+| **Nom du package** | `cd.biasharayangu.app` |
+| **Version** | `1.2.0` (versionCode `11`) — suivre les releases GitHub |
 | **Catégorie** | Business (Affaires) |
 | **Classification de contenu** | Tout public |
 | **Email de contact** | `[À COMPLÉTER — ex. contact@biasharayangu.cd]` |
 | **Site web (optionnel)** | `[À COMPLÉTER si tu as un site/page]` |
 | **Politique de confidentialité** | disponible dans l'app : Paramètres → Politique & conditions |
 
-> ⚠️ **Le nom du package ne pourra PLUS jamais changer** après la première
-> publication (sinon = nouvelle application, sans mises à jour). Si tu veux un
-> identifiant plus propre que `com.example.…` (ex. `cd.laperle.biasharayangu`),
-> c'est **maintenant ou jamais** — dis-le avant de publier.
+> ✅ **Le nom du package est définitif : `cd.biasharayangu.app`** — il ne
+> changera JAMAIS (sinon = nouvelle application, sans mises à jour). C'est ce
+> même identifiant qui est enregistré côté application et dans les stores.
 
 ---
 
@@ -113,9 +112,9 @@ Le plus simple : installe l'APK sur ton téléphone et prends des captures de :
 
 ## Pour chaque mise à jour future
 
-1. Nouvelle version dans `pubspec.yaml` (`version: 1.1.8+10` — le `+10`,
-   `+11`… doit **toujours augmenter**).
-2. Build CI : `git tag v1.1.8 && git push origin v1.1.8`.
+1. Nouvelle version dans `pubspec.yaml` (`version: 1.2.1+12` — le `+12`,
+   `+13`… doit **toujours augmenter**).
+2. Build CI : `git tag v1.2.1 && git push origin v1.2.1`.
 3. Télécharger l'APK fraîchement signé depuis la release GitHub.
 4. Le téléverser sur APKPure via la même console développeur.
 

@@ -13,6 +13,8 @@ import 'package:biashara_yangu/services/abonnement_service.dart';
 // 🧾 MODULE 14 — synchronisation du workflow d'activation (restriction /
 // réactivation automatiques) après chaque connexion.
 import 'package:biashara_yangu/services/activation_service.dart';
+// 🏢 MODULE 15 — chargement des entreprises du compte (sélecteur).
+import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/models/permission.dart';
@@ -127,7 +129,13 @@ class _LoginPageState extends State<LoginPage> {
           // uniquement pour cette action).
           await AuditService.instance
               .echecConnexion(email, 'Email ou mot de passe incorrect.');
-          _showSnackBar('Email ou mot de passe incorrect.', isError: true);
+          // 💡 Sur ordinateur, un clavier mal configuré peut transformer les
+          //    caractères (!, @, #…) : l'astuce de l'œil évite le doute.
+          _showSnackBar(
+            'Email ou mot de passe incorrect. Vérifiez les majuscules et les '
+            'caractères spéciaux (!@#…) — affichez le mot de passe avec l\'œil.',
+            isError: true,
+          );
           setState(() => _isLoading = false);
           return;
         }
@@ -243,6 +251,10 @@ class _LoginPageState extends State<LoginPage> {
     // automatique (solde impayé à l'échéance, données conservées) et
     // réactivation après régularisation. Best-effort.
     await ActivationService.instance.synchroniserSilencieux();
+
+    // 🏢 MODULE 15 — charge les entreprises du compte (sélecteur
+    // multi-entreprises). Best-effort : jamais bloquant.
+    await EspaceService.instance.chargerSilencieux();
 
     final EtatAccesAbonnement etatAbonnement =
         await AbonnementService.instance.verifierAccesUtilisateur(userId);
