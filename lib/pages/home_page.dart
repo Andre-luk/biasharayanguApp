@@ -25,7 +25,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
-import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
@@ -38,6 +37,8 @@ import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
+// 🧩 MODULE 16 (phase B) — registre des cartes d'accueil par module.
+import 'package:biashara_yangu/ui/accueil/cartes_accueil.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -319,14 +320,11 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _navTo(String path) async {
     if (_isCollaborator) {
-      // 🔳 MODULE 7 — le vendeur (collaborateur) a le droit d'ouvrir
-      // directement le scanner : c'est son outil de travail.
-      final allowed = path == '/main/new-sale' ||
-          path == '/scanner' ||
-          path == '/login' ||
-          path == '/setup' ||
-          path == '/';
-      if (!allowed) {
+      // � MODULE 4 — le collaborateur ne peut ouvrir que les écrans de son
+      // rôle : mêmes règles que le middleware de navigation (source unique
+      // de vérité), au lieu d'une liste figée qui bloquait ses nouvelles
+      // cartes d'accueil (« Mes ventes » — phase B du module 16).
+      if (!PermissionService.instance.routeAutorisee(path)) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -503,12 +501,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSectionStatistiques(AppLocalizations T) {
-    final PermissionService permissions = PermissionService.instance;
-    // 🧩 MODULE 16 — le profil de modules de l'activité filtre les cartes :
-    // un hôtel ne verra pas « rapports » s'ils ne font pas partie de son
-    // profil. Fail-open : tant que rien n'est chargé, tout reste visible.
-    final ModulesService modulesService = ModulesService.instance;
+    // 🧩 MODULE 16 (phase B) — GRILLE CONSTRUITE DEPUIS LES MODULES :
+    //   cartes visibles = registre des cartes ∩ modules de l'activité ∩
+    //   permissions du rôle. Un hôtel ne verra pas les cartes d'une
+    //   boutique ; le vendeur ne verra que ses écrans.
+    //   Fail-open : profil non chargé/vide → toutes les cartes du rôle
+    //   (comportement historique — zéro régression).
+    final List<CarteAccueil> cartes = CarteAccueil.visibles(
+      modules: ModulesService.instance.modules.value,
+      profilCharge: ModulesService.instance.charge,
+      autorise: PermissionService.instance.peut,
+    );
+    final DonneesAccueil donnees = DonneesAccueil(
+      produitsCount: produitsCount,
+      stockAlertes: _lowStockCount,
+      ventesJour: dailyVentesCount,
+    );
     final ThemeData theme = Theme.of(context);
+
+    // Aucune carte pour ce rôle/activité : la section disparaît.
+    if (cartes.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -543,70 +555,14 @@ class _HomePageState extends State<HomePage> {
           crossAxisSpacing: 12,
           childAspectRatio: 1.28,
           children: [
-            // 🔐 MODULE 4 — chaque carte suit les permissions du rôle : un
-            // caissier (vendeur) ne voit ni le catalogue ni le stock (sinon
-            // le middleware le renverrait sur son écran de vente).
-            // 🧩 MODULE 16 — puis les modules de l'activité de l'entreprise.
-            if (permissions.peutVoir(PageAccess.articles) &&
-                modulesService.moduleActif(ModuleCode.produits))
+            for (final CarteAccueil carte in cartes)
               _CarteStat(
-                titre: T.statProductsCount,
-                valeur: '$produitsCount',
-                icone: Icons.inventory_2_rounded,
-                couleur: const Color(0xFF2563EB),
-                // 🗂️ MODULE 5 — la carte « Produits » ouvre la liste des
-                // articles (catalogue + conditionnements), qui gère aussi la
-                // création.
-                onTap: () => _navTo('/main/articles'),
-              ),
-            if (permissions.peutVoir(PageAccess.stock) &&
-                modulesService.moduleActif(ModuleCode.stock))
-              _CarteStat(
-                titre: T.statStockStatus,
-                valeur: '$_lowStockCount',
-                icone: Icons.warning_amber_rounded,
-                couleur: const Color(0xFFF59E0B),
-                alerte: _lowStockCount > 0,
-                onTap: () => _navTo('/main/stock'),
-              ),
-            // 💰 MODULE 10 — caisse et tableau de bord financier.
-            if (permissions.peutVoir(PageAccess.caisse) &&
-                modulesService.moduleActif(ModuleCode.caisse))
-              _CarteStat(
-                titre: 'Solde & clôture',
-                valeur: 'Caisse',
-                icone: Icons.account_balance_wallet_rounded,
-                couleur: const Color(0xFF0D9488),
-                onTap: () => _navTo('/main/caisse'),
-              ),
-            if (permissions.peutVoir(PageAccess.finance) &&
-                modulesService.moduleActif(ModuleCode.finance))
-              _CarteStat(
-                titre: 'CA & bénéfice',
-                valeur: 'Finance',
-                icone: Icons.insights_rounded,
-                couleur: const Color(0xFF7C3AED),
-                onTap: () => _navTo('/main/finance'),
-              ),
-            // 📊 MODULE 11 — rapports & exports (PDF / Excel signés).
-            if (permissions.peutVoir(PageAccess.rapports) &&
-                modulesService.moduleActif(ModuleCode.rapports))
-              _CarteStat(
-                titre: 'Rapports & exports',
-                valeur: 'Rapports',
-                icone: Icons.bar_chart_rounded,
-                couleur: const Color(0xFF8B5E34),
-                onTap: () => _navTo('/main/rapports'),
-              ),
-            // 🧾 MODULE 14 — suivi transparent du dossier d'activation :
-            // étape en cours, paiements, solde, jours restants, historique.
-            if (permissions.peutVoir(PageAccess.dashboard))
-              _CarteStat(
-                titre: 'Mon abonnement',
-                valeur: 'Suivi',
-                icone: Icons.verified_user_rounded,
-                couleur: const Color(0xFFB45309),
-                onTap: () => _navTo('/main/mon-activation'),
+                titre: carte.titre(T),
+                valeur: carte.valeur(donnees, T),
+                icone: carte.icone,
+                couleur: carte.couleur,
+                alerte: carte.alerte?.call(donnees) ?? false,
+                onTap: () => _navTo(carte.route),
               ),
           ],
         ),
