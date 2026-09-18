@@ -105,24 +105,50 @@ jobs:
       #    release PERMANENTE → les mises à jour s'installent par-dessus les
       #    versions précédentes (exigence APKPure / Android) ;
       #  • sinon, repli sur la clé debug : la compilation ne casse jamais.
-      # Mise en place : docs/publication_app.md (§ 7 — signature APKPure).
+      # Secrets attendus (Settings → Secrets and variables → Actions) :
+      #   ANDROID_KEYSTORE_BASE64  (base64 -w0 du fichier .jks)
+      #   ANDROID_STORE_PASSWORD   ANDROID_KEY_PASSWORD   ANDROID_KEY_ALIAS
+      # Mise en place : docs/publication_app.md (§ 7).
       - name: Restaurer le keystore release (si configuré)
         shell: bash
         env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          B64_PRINCIPAL: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          B64_ALT: ${{ secrets.ANDROID_KEYSTOR_BIASHARA_YANGU }}
+          STORE_PWD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > android/upload-keystore.jks
-            cat > android/key.properties <<EOF
-          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          B64="$B64_PRINCIPAL"
+          if [ -z "$B64" ]; then B64="$B64_ALT"; fi
+
+          if [ -z "$B64" ]; then
+            echo "ℹ️ Aucun keystore configuré : repli sur la clé debug (APK NON signé officiellement)."
+            echo "   Pour signer : créez ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD, ANDROID_KEY_PASSWORD, ANDROID_KEY_ALIAS."
+            exit 0
+          fi
+
+          # Décodage + contrôle sommaire (un keystore réel fait > 1 Ko).
+          printf '%s' "$B64" | base64 -d > android/upload-keystore.jks 2>/dev/null || true
+          TAILLE=$(wc -c < android/upload-keystore.jks 2>/dev/null || echo 0)
+          if [ "$TAILLE" -lt 500 ]; then
+            echo "❌ Le secret keystore ($TAILLE octets décodés) ne contient pas un fichier .jks en base64."
+            echo "   Attendu : ANDROID_KEYSTORE_BASE64 = sortie de « base64 -w0 biashara-upload.jks »."
+            exit 1
+          fi
+
+          if [ -z "$STORE_PWD" ] || [ -z "$KEY_PWD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "❌ Keystore présent mais secrets incomplets : créez AUSSI ANDROID_STORE_PASSWORD,"
+            echo "   ANDROID_KEY_PASSWORD et ANDROID_KEY_ALIAS (Settings → Secrets → Actions)."
+            exit 1
+          fi
+
+          cat > android/key.properties <<EOF
+          storePassword=$STORE_PWD
+          keyPassword=$KEY_PWD
+          keyAlias=$KEY_ALIAS
           storeFile=../upload-keystore.jks
           EOF
-            echo "✅ Keystore release installé — l'APK sera signé officiellement."
-          else
-            echo "ℹ️ Aucun keystore configuré : repli sur la clé debug."
-          fi
+          echo "✅ Keystore release installé ($TAILLE octets) — l'APK sera signé officiellement."
 
       - name: Compiler l'APK release
         run: flutter build apk --release
