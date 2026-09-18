@@ -11,7 +11,7 @@
 |---|---|
 | **Nom de l'application** | `Biashara Yangu` |
 | **Nom du package** | `com.example.biashara_yangu` *(voir note ci-dessous)* |
-| **Version** | `1.1.7` (versionCode `9`) — suivre les releases GitHub |
+| **Version** | `1.1.8` (versionCode `10`) — suivre les releases GitHub |
 | **Catégorie** | Business (Affaires) |
 | **Classification de contenu** | Tout public |
 | **Email de contact** | `[À COMPLÉTER — ex. contact@biasharayangu.cd]` |

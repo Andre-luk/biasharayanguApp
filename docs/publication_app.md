@@ -182,8 +182,8 @@ keytool -printcert -jarfile biashara-yangu.apk
 1. **Compte développeur** : créer un compte sur le portail développeur
    d'APKPure (bouton *Developer / Submit app* sur `apkpure.com`).
 2. **Téléverser l'APK `biashara-yangu.apk`** de la dernière release GitHub
-   — **signé officiellement** (section 7) et avec un `versionCode` **9 ou
-   plus** (`pubspec.yaml → version: 1.1.7+9`).
+   — **signé officiellement** (section 7) et avec un `versionCode` **10 ou
+   plus** (`pubspec.yaml → version: 1.1.8+10`).
 3. **Remplir la fiche** : textes prêts dans `docs/apkpure_fiche.md`
    (nom, descriptions, email, catégorie), icône 512×512
    (`docs/icone_512.png`) et captures d'écran du téléphone.
