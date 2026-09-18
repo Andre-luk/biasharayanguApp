@@ -236,5 +236,6 @@ keytool -printcert -jarfile biashara-yangu.apk
 | « App non installée » sur Android | signature différente | désinstaller l'ancienne version puis réessayer |
 | L'app Linux ne démarre pas | bibliothèque manquante | installer GTK3 / xz (voir §5) |
 | Windows refuse l'exe | SmartScreen (pas de signature) | « Exécuter quand même » ; à terme, signer l'exe (certificat payant) |
+| Windows : « MSVCP140.dll introuvable » | machine sans « Visual C++ Redistributable » (installateurs ≤ v1.2.0 initiale) | ✅ corrigé en **v1.2.0** (le runtime Visual C++ voyage AVEC l'app, aucune installation requise). En attendant : installer « Visual C++ Redistributable x64 » depuis microsoft.com, ou réinstaller avec le nouveau `biashara-yangu-setup.exe` |
 | L'APK est « debug » au lieu de « release » | c'est `build-apk.yml` (le workflow de test) | utiliser le workflow « Publier l'application » (`build-release.yml`) |
 | Linux : `Failed to load dynamic library 'libsqlite3.so'` | version ≤ 1.1.3 : SQLite n'était pas embarquée | ✅ corrigé en **v1.1.4** (SQLite voyage avec l'app). En attendant : `sudo apt install libsqlite3-dev`, ou sans sudo : `ln -sf /lib/x86_64-linux-gnu/libsqlite3.so.0 lib/libsqlite3.so` puis `LD_LIBRARY_PATH="$PWD/lib" ./biashara_yangu` |
