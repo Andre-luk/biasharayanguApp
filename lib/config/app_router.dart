@@ -8,6 +8,8 @@ import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/etiquette_qr.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
+// 🧩 MODULE 16 — profils de modules des types d'activités.
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
@@ -65,6 +67,10 @@ import 'package:biashara_yangu/pages/activite_form_page.dart';
 import 'package:biashara_yangu/pages/activites_page.dart';
 import 'package:biashara_yangu/pages/groupe_tarifaire_form_page.dart';
 import 'package:biashara_yangu/pages/groupes_tarifaires_page.dart';
+
+// ===== MODULE 16 : TYPES D'ACTIVITÉS & MODULES (multi-activités) =====
+import 'package:biashara_yangu/pages/type_activite_form_page.dart';
+import 'package:biashara_yangu/pages/types_activites_page.dart';
 
 // ================== MODULE 3 : MOTEUR D'ABONNEMENT ==================
 import 'package:biashara_yangu/pages/abonnement_detail_page.dart';
@@ -334,7 +340,8 @@ final GoRouter appRouter = GoRouter(
           path: 'entreprises/:id',
           name: 'entreprise-detail',
           builder: (context, state) => EntrepriseDetailPage(
-            entreprise: state.extra is Entreprise ? state.extra as Entreprise : null,
+            entreprise:
+                state.extra is Entreprise ? state.extra as Entreprise : null,
             entrepriseId: state.pathParameters['id'],
           ),
           routes: [
@@ -342,7 +349,9 @@ final GoRouter appRouter = GoRouter(
               path: 'edit',
               name: 'entreprise-edit',
               builder: (context, state) => EntrepriseFormPage(
-                entreprise: state.extra is Entreprise ? state.extra as Entreprise : null,
+                entreprise: state.extra is Entreprise
+                    ? state.extra as Entreprise
+                    : null,
                 entrepriseId: state.pathParameters['id'],
               ),
             ),
@@ -368,7 +377,8 @@ final GoRouter appRouter = GoRouter(
               path: ':id',
               name: 'activite-edit',
               builder: (context, state) => ActiviteFormPage(
-                activite: state.extra is Activite ? state.extra as Activite : null,
+                activite:
+                    state.extra is Activite ? state.extra as Activite : null,
                 activiteId: state.pathParameters['id'],
               ),
             ),
@@ -398,6 +408,35 @@ final GoRouter appRouter = GoRouter(
                     ? state.extra as GroupeTarifaire
                     : null,
                 groupeId: state.pathParameters['id'],
+              ),
+            ),
+          ],
+        ),
+
+        // 🧩 MODULE 16 — TYPES D'ACTIVITÉS & MODULES (multi-activités).
+        //
+        // Le type de chaque entreprise (module 15) détermine ses modules ;
+        // l'« Expert Administrateur » crée ici de nouveaux types (ex :
+        // « Salon de coiffure ») et coche leurs modules — aucune mise à jour
+        // de l'application n'est nécessaire.
+        GoRoute(
+          path: 'types-activites',
+          name: 'types-activites',
+          builder: (context, state) => const TypesActivitesPage(),
+          routes: [
+            GoRoute(
+              path: 'new',
+              name: 'type-activite-new',
+              builder: (context, state) => const TypeActiviteFormPage(),
+            ),
+            GoRoute(
+              path: ':type',
+              name: 'type-activite-edit',
+              builder: (context, state) => TypeActiviteFormPage(
+                profil: state.extra is ProfilModules
+                    ? state.extra as ProfilModules
+                    : null,
+                typeCode: state.pathParameters['type'],
               ),
             ),
           ],
@@ -451,7 +490,6 @@ final GoRouter appRouter = GoRouter(
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) =>
           ScaffoldWithNavBar(navigationShell: navigationShell),
-
       branches: [
         // 🏠 BRANCHE 1 : ACCUEIL, VENTES & SUIVI COMMERCIAL
         StatefulShellBranch(
@@ -483,7 +521,8 @@ final GoRouter appRouter = GoRouter(
                     GoRoute(
                       path: 'inventaire',
                       name: 'stock-inventaire',
-                      builder: (context, state) => const InventaireCloturePage(),
+                      builder: (context, state) =>
+                          const InventaireCloturePage(),
                     ),
                     GoRoute(
                       path: 'approvisionnement',
@@ -508,7 +547,8 @@ final GoRouter appRouter = GoRouter(
                       name: 'stock-article',
                       builder: (context, state) => StockDetailPage(
                         articleId:
-                            int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+                            int.tryParse(state.pathParameters['id'] ?? '') ??
+                                -1,
                         article: state.extra is Article
                             ? state.extra as Article
                             : null,
@@ -655,7 +695,8 @@ final GoRouter appRouter = GoRouter(
                       name: 'article-detail',
                       builder: (context, state) => ArticleDetailPage(
                         articleId:
-                            int.tryParse(state.pathParameters['id'] ?? '') ?? -1,
+                            int.tryParse(state.pathParameters['id'] ?? '') ??
+                                -1,
                         article: state.extra is Article
                             ? state.extra as Article
                             : null,
@@ -675,18 +716,18 @@ final GoRouter appRouter = GoRouter(
                           path: 'conditionnements/new',
                           name: 'conditionnement-new',
                           builder: (context, state) => ConditionnementFormPage(
-                            articleId:
-                                int.tryParse(state.pathParameters['id'] ?? '') ??
-                                    -1,
+                            articleId: int.tryParse(
+                                    state.pathParameters['id'] ?? '') ??
+                                -1,
                           ),
                         ),
                         GoRoute(
                           path: 'conditionnements/:conditionnementId/edit',
                           name: 'conditionnement-edit',
                           builder: (context, state) => ConditionnementFormPage(
-                            articleId:
-                                int.tryParse(state.pathParameters['id'] ?? '') ??
-                                    -1,
+                            articleId: int.tryParse(
+                                    state.pathParameters['id'] ?? '') ??
+                                -1,
                             conditionnement: state.extra is Conditionnement
                                 ? state.extra as Conditionnement
                                 : null,

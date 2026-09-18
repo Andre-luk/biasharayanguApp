@@ -268,10 +268,14 @@ class PermissionService {
 
   static const List<_RegleRoute> _regles = <_RegleRoute>[
     // ---------------------------------------------------------- plateforme
-    _RegleRoute('/admin/permissions', PageAccess.parametres, ActionAccess.modifier),
+    _RegleRoute(
+        '/admin/permissions', PageAccess.parametres, ActionAccess.modifier),
     _RegleRoute('/admin/entreprises', PageAccess.entreprises),
     _RegleRoute('/admin/activites', PageAccess.activites),
     _RegleRoute('/admin/groupes-tarifaires', PageAccess.groupesTarifaires),
+    // 🧩 MODULE 16 — types d'activités & modules (l'activité détermine les
+    // modules de l'application ; mêmes droits que la page « Activités »).
+    _RegleRoute('/admin/types-activites', PageAccess.activites),
     _RegleRoute('/admin/abonnements', PageAccess.abonnements),
     _RegleRoute('/admin/utilisateurs', PageAccess.utilisateurs),
     _RegleRoute('/admin/villes', PageAccess.villes),
@@ -293,18 +297,21 @@ class PermissionService {
     // (réservée au Super Admin via `parametres/modifier`, revérifié serveur).
     _RegleRoute('/assistant-ia', PageAccess.assistantIa),
     _RegleRoute('/achat-quotas', PageAccess.assistantIa),
-    _RegleRoute('/agent-ia-config', PageAccess.parametres, ActionAccess.modifier),
+    _RegleRoute(
+        '/agent-ia-config', PageAccess.parametres, ActionAccess.modifier),
 
     // ---------------------------------------------------------- entreprise
     _RegleRoute('/main/new-sale', PageAccess.caisse, ActionAccess.creer),
     // 🧾 MODULE 8 — panier et encaissement (l'encaissement exige caisse/créer).
-    _RegleRoute('/main/panier/encaissement', PageAccess.caisse, ActionAccess.creer),
+    _RegleRoute(
+        '/main/panier/encaissement', PageAccess.caisse, ActionAccess.creer),
     _RegleRoute('/main/panier', PageAccess.panier),
     _RegleRoute('/main/ventes', PageAccess.ventes),
     _RegleRoute('/confirmation-vente', PageAccess.caisse),
     // 🔳 MODULE 7 — scanner vendeur (écran plein écran, hors barre de navigation).
     _RegleRoute('/scanner', PageAccess.scanner),
-    _RegleRoute('/main/articles/categories', PageAccess.articles, ActionAccess.modifier),
+    _RegleRoute('/main/articles/categories', PageAccess.articles,
+        ActionAccess.modifier),
     _RegleRoute('/main/articles', PageAccess.articles),
     _RegleRoute('/main/qr-codes', PageAccess.qrCodes),
     // 🏢 MODE PLATEFORME — production des étiquettes QR (administration).
@@ -313,16 +320,21 @@ class PermissionService {
     // 🏬 MODULE 9 — écritures de stock : droits fins côté middleware.
     //  (L'écran Stock lui-même reste en « voir » ; la RPC serveur revérifie
     //  les droits `stock/creer` et `stock/modifier` de toute façon.)
-    _RegleRoute('/main/stock/inventaire', PageAccess.stock, ActionAccess.modifier),
-    _RegleRoute('/main/stock/approvisionnement', PageAccess.stock, ActionAccess.creer),
-    _RegleRoute('/main/stock/ajustement', PageAccess.stock, ActionAccess.modifier),
+    _RegleRoute(
+        '/main/stock/inventaire', PageAccess.stock, ActionAccess.modifier),
+    _RegleRoute(
+        '/main/stock/approvisionnement', PageAccess.stock, ActionAccess.creer),
+    _RegleRoute(
+        '/main/stock/ajustement', PageAccess.stock, ActionAccess.modifier),
     _RegleRoute('/main/stock', PageAccess.stock),
     _RegleRoute('/main/add-product', PageAccess.articles, ActionAccess.creer),
-    _RegleRoute('/main/edit-product', PageAccess.articles, ActionAccess.modifier),
+    _RegleRoute(
+        '/main/edit-product', PageAccess.articles, ActionAccess.modifier),
     _RegleRoute('/main/commercial', PageAccess.ventes),
     // 💰 MODULE 10 — finance de l'entreprise : la clôture de caisse est une
     // validation, la création de dépense/dette une écriture commerciale.
-    _RegleRoute('/main/caisse/cloture', PageAccess.caisse, ActionAccess.modifier),
+    _RegleRoute(
+        '/main/caisse/cloture', PageAccess.caisse, ActionAccess.modifier),
     _RegleRoute('/main/caisse', PageAccess.caisse),
     _RegleRoute('/main/finance/rapports', PageAccess.rapports),
     _RegleRoute('/main/finance', PageAccess.finance),
@@ -347,7 +359,8 @@ class PermissionService {
     _RegleRoute('/stock-management', PageAccess.stock),
 
     _RegleRoute('/settings/manage-users', PageAccess.collaborateurs),
-    _RegleRoute('/settings/manage-categories', PageAccess.articles, ActionAccess.modifier),
+    _RegleRoute('/settings/manage-categories', PageAccess.articles,
+        ActionAccess.modifier),
     _RegleRoute('/settings/collaborateurs-stats', PageAccess.collaborateurs),
     _RegleRoute('/settings', PageAccess.parametres),
   ];
@@ -387,15 +400,14 @@ class PermissionService {
         RoleUtilisateur.fromCode(utilisateur.newRole);
     if (depuisNouveau != RoleUtilisateur.inconnu) return depuisNouveau;
 
-    final RoleUtilisateur depuisAncien = RoleUtilisateur.fromCode(utilisateur.role);
+    final RoleUtilisateur depuisAncien =
+        RoleUtilisateur.fromCode(utilisateur.role);
     if (depuisAncien != RoleUtilisateur.inconnu) return depuisAncien;
 
-    final bool aucuneValeur =
-        utilisateur.role.trim().isEmpty &&
-            (utilisateur.newRole ?? '').trim().isEmpty;
+    final bool aucuneValeur = utilisateur.role.trim().isEmpty &&
+        (utilisateur.newRole ?? '').trim().isEmpty;
     if (aucuneValeur) {
-      final bool rattache =
-          (utilisateur.parentId ?? '').trim().isNotEmpty;
+      final bool rattache = (utilisateur.parentId ?? '').trim().isNotEmpty;
       return rattache ? RoleUtilisateur.vendeur : RoleUtilisateur.proprietaire;
     }
 
@@ -435,7 +447,8 @@ class PermissionService {
   /// Prépare le service pour la session qui commence.
   ///
   /// Best-effort : toute erreur laisse la matrice statique en place.
-  Future<void> initialiser(String? codeRole, {bool forcerRechargement = false}) async {
+  Future<void> initialiser(String? codeRole,
+      {bool forcerRechargement = false}) async {
     definirRoleDepuisCode(codeRole);
     if (!_surchargesChargees || forcerRechargement) {
       await rechargerSurcharges();
@@ -588,7 +601,8 @@ class PermissionService {
   // ---------------------------------------------------------------------------
 
   /// Page protégée par une URL, ou `null` si l'URL est libre.
-  static PageAccess? pageRequisePour(String location) => _resoudre(location)?.page;
+  static PageAccess? pageRequisePour(String location) =>
+      _resoudre(location)?.page;
 
   /// Règle exacte appliquée à une URL.
   static ({PageAccess page, ActionAccess action})? _resoudre(String location) {
@@ -598,8 +612,8 @@ class PermissionService {
 
     _RegleRoute? retenue;
     for (final _RegleRoute regle in _regles) {
-      final bool correspond = location == regle.prefixe ||
-          location.startsWith('${regle.prefixe}/');
+      final bool correspond =
+          location == regle.prefixe || location.startsWith('${regle.prefixe}/');
       if (!correspond) continue;
       if (retenue == null || regle.prefixe.length > retenue.prefixe.length) {
         retenue = regle;
@@ -677,7 +691,8 @@ class PermissionService {
               libelle: page.libelle,
               route: routesPage[page],
             ))
-        .where((EntreeMenu entree) => permissions.aAcces(entree.page, ActionAccess.voir))
+        .where((EntreeMenu entree) =>
+            permissions.aAcces(entree.page, ActionAccess.voir))
         .toList(growable: false);
   }
 
@@ -736,7 +751,8 @@ class PermissionService {
     RolePermission permissions,
   ) async {
     if (role == RoleUtilisateur.inconnu) {
-      throw const PermissionServiceException('Rôle inconnu : rien à enregistrer.');
+      throw const PermissionServiceException(
+          'Rôle inconnu : rien à enregistrer.');
     }
 
     final Map<String, dynamic> valeur = <String, dynamic>{
@@ -792,7 +808,9 @@ class PermissionService {
 
   /// RPC absente / non déployée → on autorise le repli applicatif.
   static bool _rpcAbsente(PostgrestException e) =>
-      e.code == 'PGRST202' || e.code == '42883' || e.message.contains('Could not find');
+      e.code == 'PGRST202' ||
+      e.code == '42883' ||
+      e.message.contains('Could not find');
 
   Map<String, dynamic> _surchargesDocument() => <String, dynamic>{
         'roles': <String, dynamic>{

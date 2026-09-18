@@ -28,9 +28,12 @@ import 'services/abonnement_service.dart';
 import 'services/activation_service.dart';
 // 🔔 NOTIFICATIONS — chaque vente + rapport de fin de journée.
 import 'services/notification_service.dart';
+// 🧩 MODULE 16 — modules de l'activité (socle multi-activités, phase A).
+import 'services/modules_service.dart';
 import 'services/permission_service.dart';
 import 'db_helper.dart';
 
+import 'dart:async' show unawaited;
 import 'dart:io' show Platform, Directory, File;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
@@ -42,7 +45,8 @@ Future<void> _initialiserSupabase() async {
   try {
     await Supabase.initialize(
       url: 'https://pqzcliibocndiyqbyddr.supabase.co',
-      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxemNsaWlib2NuZGl5cWJ5ZGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NjAxMjksImV4cCI6MjA3NjEzNjEyOX0.t5XXsrOk_AFRwm-13LYz23-Q6jyFDXEDGNo6kjRDSlM',
+      anonKey:
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBxemNsaWlib2NuZGl5cWJ5ZGRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1NjAxMjksImV4cCI6MjA3NjEzNjEyOX0.t5XXsrOk_AFRwm-13LYz23-Q6jyFDXEDGNo6kjRDSlM',
     );
     supabase = Supabase.instance.client;
   } catch (e) {
@@ -76,6 +80,11 @@ void main() async {
     debugPrint('Notifications désactivées : $e');
   }
 
+  // 🧩 MODULE 16 — MULTI-ACTIVITÉS (phase A) : surveille l'entreprise active.
+  // Chaque bascule d'espace recharge les modules de la nouvelle activité
+  // (best-effort — un échec laisse l'application en mode standard).
+  ModulesService.instance.demarrerSurveillance();
+
   // 💳 MODULE 3 — Vérification globale des abonnements au démarrage.
   // Best-effort : si une session est restaurée, on demande à la base de
   // normaliser les abonnements échus (EXPIRE / EN_ATTENTE_COMPLEMENT).
@@ -108,7 +117,8 @@ void main() async {
       // (Windows utilise directement l'icône .ico du .exe).
       if (Platform.isLinux) {
         try {
-          final String icone = '${Directory(Platform.resolvedExecutable).parent.path}'
+          final String icone =
+              '${Directory(Platform.resolvedExecutable).parent.path}'
               '/data/flutter_assets/assets/Biashara_app_off-.png';
           if (File(icone).existsSync()) {
             await windowManager.setIcon(icone);
@@ -198,27 +208,35 @@ class _BiasharaAppState extends State<BiasharaApp> {
         RoleUtilisateur roleEffectif =
             PermissionService.roleDepuisCodes(role: role);
 
-      if (roleEffectif.estPlateforme) {
-        await PermissionService.instance.initialiser(
-          roleEffectif.code,
-          forcerRechargement: true,
-        );
-        targetRoute = '/admin';
-      } else {
-        final localUser = uid != null ? await DBHelper.instance.getUtilisateurById(uid) : null;
-        _checkSubscriptionInBackground(localUser?.parentId ?? uid);
+        if (roleEffectif.estPlateforme) {
+          await PermissionService.instance.initialiser(
+            roleEffectif.code,
+            forcerRechargement: true,
+          );
+          targetRoute = '/admin';
+        } else {
+          final localUser = uid != null
+              ? await DBHelper.instance.getUtilisateurById(uid)
+              : null;
+          _checkSubscriptionInBackground(localUser?.parentId ?? uid);
 
-        final RoleUtilisateur roleProfil =
-            PermissionService.roleDepuisUtilisateur(localUser);
-        if (roleProfil != RoleUtilisateur.inconnu) roleEffectif = roleProfil;
+          final RoleUtilisateur roleProfil =
+              PermissionService.roleDepuisUtilisateur(localUser);
+          if (roleProfil != RoleUtilisateur.inconnu) roleEffectif = roleProfil;
 
-        await PermissionService.instance.initialiser(
-          roleEffectif.code,
-          forcerRechargement: true,
-        );
+          await PermissionService.instance.initialiser(
+            roleEffectif.code,
+            forcerRechargement: true,
+          );
 
-        targetRoute = PermissionService.instance.accueilPour(roleEffectif) ?? '/main';
-      }
+          // 🧩 MODULE 16 — profil de modules de l'espace actif (activité de
+          // l'entreprise). En arrière-plan : l'écran s'ouvre sans attendre le
+          // réseau (le mode standard reste actif tant que rien n'est chargé).
+          unawaited(ModulesService.instance.chargerSilencieux());
+
+          targetRoute =
+              PermissionService.instance.accueilPour(roleEffectif) ?? '/main';
+        }
 
         // 🚀 SYNCHRONISATION CRITIQUE (Pour Lukengu et après réinstallation)
         if (uid != null) {
@@ -232,12 +250,12 @@ class _BiasharaAppState extends State<BiasharaApp> {
           // On ne met pas 'await' ici pour que l'app s'ouvre sans attendre la fin du téléchargement
           SyncService.instance.initialDownload(uid).then((_) {
             debugPrint('✅ Synchro initiale terminée pour Lukengu');
-          }).catchError((e) => debugPrint('❌ Échec du téléchargement initial: $e'));
+          }).catchError(
+              (e) => debugPrint('❌ Échec du téléchargement initial: $e'));
         }
       }
 
       _terminerDemarrage(targetRoute);
-
     } catch (e) {
       debugPrint('Erreur critique startup: $e');
       _terminerDemarrage('/login');

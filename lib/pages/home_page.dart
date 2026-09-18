@@ -25,11 +25,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 // 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
 import 'package:biashara_yangu/services/espace_service.dart';
+// 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/widgets/selecteur_espace.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -84,11 +87,17 @@ class _HomePageState extends State<HomePage> {
     // 🏢 MODULE 15 — quand l'entreprise active change (sélecteur), on
     // recharge tout : les données affichées suivent le nouvel espace.
     EspaceService.instance.etat.addListener(_onEspaceChange);
+    // 🧩 MODULE 16 — quand le profil de modules de l'activité change
+    // (chargé en arrière-plan au démarrage, à la connexion ou à la bascule
+    // d'entreprise), la grille se reconstruit : les cartes hors activité
+    // disparaissent (masquage uniquement — jamais de blocage).
+    ModulesService.instance.modules.addListener(_onModulesChange);
   }
 
   @override
   void dispose() {
     EspaceService.instance.etat.removeListener(_onEspaceChange);
+    ModulesService.instance.modules.removeListener(_onModulesChange);
     _minuteurRealtime?.cancel();
     if (_dashboardChannel != null) {
       Supabase.instance.client.removeChannel(_dashboardChannel!);
@@ -101,6 +110,13 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     _loadUserContext();
     _loadStats(force: true);
+  }
+
+  /// 🧩 MODULE 16 — le profil de modules de l'activité a été (re)chargé :
+  /// la grille se reconstruit pour refléter les modules actifs.
+  void _onModulesChange() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   Future<void> _initialLoad() async {
@@ -120,17 +136,17 @@ class _HomePageState extends State<HomePage> {
     _dashboardChannel = Supabase.instance.client
         .channel('dashboard-updates')
         .onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'ventes',
-      callback: (payload) => _planifierRechargementStats(),
-    )
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'ventes',
+          callback: (payload) => _planifierRechargementStats(),
+        )
         .onPostgresChanges(
-      event: PostgresChangeEvent.all,
-      schema: 'public',
-      table: 'produits',
-      callback: (payload) => _planifierRechargementStats(),
-    )
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'produits',
+          callback: (payload) => _planifierRechargementStats(),
+        )
         .subscribe();
   }
 
@@ -488,6 +504,10 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildSectionStatistiques(AppLocalizations T) {
     final PermissionService permissions = PermissionService.instance;
+    // 🧩 MODULE 16 — le profil de modules de l'activité filtre les cartes :
+    // un hôtel ne verra pas « rapports » s'ils ne font pas partie de son
+    // profil. Fail-open : tant que rien n'est chargé, tout reste visible.
+    final ModulesService modulesService = ModulesService.instance;
     final ThemeData theme = Theme.of(context);
 
     return Column(
@@ -526,7 +546,9 @@ class _HomePageState extends State<HomePage> {
             // 🔐 MODULE 4 — chaque carte suit les permissions du rôle : un
             // caissier (vendeur) ne voit ni le catalogue ni le stock (sinon
             // le middleware le renverrait sur son écran de vente).
-            if (permissions.peutVoir(PageAccess.articles))
+            // 🧩 MODULE 16 — puis les modules de l'activité de l'entreprise.
+            if (permissions.peutVoir(PageAccess.articles) &&
+                modulesService.moduleActif(ModuleCode.produits))
               _CarteStat(
                 titre: T.statProductsCount,
                 valeur: '$produitsCount',
@@ -537,7 +559,8 @@ class _HomePageState extends State<HomePage> {
                 // création.
                 onTap: () => _navTo('/main/articles'),
               ),
-            if (permissions.peutVoir(PageAccess.stock))
+            if (permissions.peutVoir(PageAccess.stock) &&
+                modulesService.moduleActif(ModuleCode.stock))
               _CarteStat(
                 titre: T.statStockStatus,
                 valeur: '$_lowStockCount',
@@ -547,7 +570,8 @@ class _HomePageState extends State<HomePage> {
                 onTap: () => _navTo('/main/stock'),
               ),
             // 💰 MODULE 10 — caisse et tableau de bord financier.
-            if (permissions.peutVoir(PageAccess.caisse))
+            if (permissions.peutVoir(PageAccess.caisse) &&
+                modulesService.moduleActif(ModuleCode.caisse))
               _CarteStat(
                 titre: 'Solde & clôture',
                 valeur: 'Caisse',
@@ -555,7 +579,8 @@ class _HomePageState extends State<HomePage> {
                 couleur: const Color(0xFF0D9488),
                 onTap: () => _navTo('/main/caisse'),
               ),
-            if (permissions.peutVoir(PageAccess.finance))
+            if (permissions.peutVoir(PageAccess.finance) &&
+                modulesService.moduleActif(ModuleCode.finance))
               _CarteStat(
                 titre: 'CA & bénéfice',
                 valeur: 'Finance',
@@ -564,7 +589,8 @@ class _HomePageState extends State<HomePage> {
                 onTap: () => _navTo('/main/finance'),
               ),
             // 📊 MODULE 11 — rapports & exports (PDF / Excel signés).
-            if (permissions.peutVoir(PageAccess.rapports))
+            if (permissions.peutVoir(PageAccess.rapports) &&
+                modulesService.moduleActif(ModuleCode.rapports))
               _CarteStat(
                 titre: 'Rapports & exports',
                 valeur: 'Rapports',
@@ -874,7 +900,8 @@ class _CarteHero extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _Pastille(icone: Icons.receipt_long_rounded, texte: nbVentesJour),
+                    _Pastille(
+                        icone: Icons.receipt_long_rounded, texte: nbVentesJour),
                   ],
                 ),
               ),

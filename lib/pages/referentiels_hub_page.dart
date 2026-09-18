@@ -11,6 +11,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/activite.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/referentiel_service.dart';
 
 class ReferentielsHubPage extends StatefulWidget {
@@ -22,6 +24,8 @@ class ReferentielsHubPage extends StatefulWidget {
 
 class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
   final ReferentielService _service = ReferentielService.instance;
+  // 🧩 MODULE 16 — référentiel des types d'activités (modules par activité).
+  final ModulesService _modulesService = ModulesService.instance;
 
   bool _chargement = true;
   String? _erreur;
@@ -29,6 +33,7 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
   int _nbActivites = 0;
   int _nbGroupes = 0;
   int _nbEntreprises = 0;
+  int _nbTypes = 0;
 
   @override
   void initState() {
@@ -54,6 +59,7 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
     int nbActivites = 0;
     int nbGroupes = 0;
     int nbEntreprises = 0;
+    int nbTypes = 0;
 
     try {
       final List<dynamic> resultats = await Future.wait<dynamic>(
@@ -61,6 +67,8 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
           _service.getActivites(),
           _service.getGroupesTarifaires(),
           _service.getCompteursEntreprises(),
+          // 🧩 MODULE 16 — profils de modules (page « Types d'activités »).
+          _modulesService.listerProfils(),
         ],
       );
 
@@ -69,6 +77,7 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
           resultats[1] as List<GroupeTarifaire>;
       final CompteursEntreprises compteurs =
           resultats[2] as CompteursEntreprises;
+      final List<ProfilModules> types = resultats[3] as List<ProfilModules>;
 
       nbActivites = activites.length;
       nbGroupes = groupes.length;
@@ -76,7 +85,10 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
         0,
         (int total, int valeur) => total + valeur,
       );
+      nbTypes = types.length;
     } on ReferentielServiceException catch (e) {
+      messageErreur = e.message;
+    } on ModulesServiceException catch (e) {
       messageErreur = e.message;
     } catch (e, st) {
       debugPrint('ReferentielsHubPage._charger: $e\n$st');
@@ -102,6 +114,7 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
       _nbActivites = nbActivites;
       _nbGroupes = nbGroupes;
       _nbEntreprises = nbEntreprises;
+      _nbTypes = nbTypes;
       _erreur = null;
       _chargement = false;
     });
@@ -122,6 +135,15 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
   Future<void> _ouvrirGroupes() async {
     final GoRouter router = GoRouter.of(context);
     await router.push<void>('/admin/groupes-tarifaires');
+
+    if (!mounted) return;
+    await _charger(silencieux: true);
+  }
+
+  // 🧩 MODULE 16 — types d'activités & modules.
+  Future<void> _ouvrirTypes() async {
+    final GoRouter router = GoRouter.of(context);
+    await router.push<void>('/admin/types-activites');
 
     if (!mounted) return;
     await _charger(silencieux: true);
@@ -205,6 +227,20 @@ class _ReferentielsHubPageState extends State<ReferentielsHubPage> {
                 '${_nbGroupes > 1 ? 's' : ''} tarifaire'
                 '${_nbGroupes > 1 ? 's' : ''}',
             onTap: _ouvrirGroupes,
+          ),
+          const SizedBox(height: 12),
+          // 🧩 MODULE 16 — le type d'activité détermine les modules affichés
+          // dans l'application (boutique, hôtel, pharmacie…).
+          _carteReferentiel(
+            theme,
+            icone: Icons.extension_rounded,
+            titre: "Types d'activités",
+            description:
+                "Définir les modules de chaque type d'activité : l'application "
+                "s'adapte à l'entreprise sans mise à jour.",
+            statistiques: '$_nbTypes type'
+                '${_nbTypes > 1 ? 's' : ''} d\'activité',
+            onTap: _ouvrirTypes,
           ),
           const SizedBox(height: 20),
           _note(theme),
