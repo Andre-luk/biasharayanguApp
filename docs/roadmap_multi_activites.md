@@ -80,9 +80,9 @@ Table public.types_espaces_modules
 4. **Tests** : parse des profils, merge permissions × modules, défaut boutique.
 - ✅ Résultat : infrastructure prête, app inchangée pour tout le monde.
 
-### Phase B — Tableaux de bord adaptés *(1-2 j)*
-- `HomePage` : grille de cartes construite depuis les **modules actifs** (fini les cartes inutiles pour un hôtel).
-- Chaque module apporte sa carte d'accueil (CA du jour, chambres libres, commandes en attente…).
+### Phase B — Tableaux de bord adaptés ✅ **LIVRÉE** *(v1.5.0, 18/09/2026 — migration 28 exécutée & vérifiée : hôtel 9 modules, restaurant 12)*
+- `HomePage` : grille de cartes construite depuis les **modules actifs** (fini les cartes inutiles pour un hôtel) — registre `lib/ui/accueil/cartes_accueil.dart`.
+- Chaque module apporte sa carte d'accueil (CA du jour, chambres libres, commandes en attente…) : ajouter la carte d'un module métier = **1 entrée** au registre.
 
 ### Phase C — Modules métier (un module = une migration + écrans + tests)
 
@@ -155,4 +155,4 @@ Chaque phase : **1 migration SQL idempotente + tests Flutter + 1 release** (v1.4
 
 ---
 
-*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phase A livrée en v1.4.0 (migration 27 : `types_espaces_modules` + 3 RPC + page admin « Types d'activités »). Prochaine action : Phase B (tableaux de bord adaptés).*
+*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0) et B (v1.5.0) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant. Prochaine action : **Phase C1 — module Pharmacie** (lots & péremption).*

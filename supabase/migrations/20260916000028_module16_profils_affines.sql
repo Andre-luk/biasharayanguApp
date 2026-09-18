@@ -51,7 +51,7 @@ update public.types_espaces_modules
 --  3. VÉRIFICATIONS
 -- ============================================================================
 
--- 3.a Les deux profils affinés (attendu : hôtel 9 modules, restaurant 11).
+-- 3.a Les deux profils affinés (attendu : hôtel 9 modules, restaurant 12).
 select t.type, t.libelle, t.actif, t.modules,
        jsonb_array_length(t.modules) as nb_modules
   from public.types_espaces_modules t
