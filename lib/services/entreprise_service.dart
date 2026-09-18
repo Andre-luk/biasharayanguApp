@@ -116,6 +116,10 @@ class EntrepriseService {
           _client.from('villes').select(),
           _client.from('activites').select(),
           _client.from('groupes_tarifaires').select(),
+          // Responsable + téléphone (correctif 21). `select()` sans liste de
+          // colonnes : reste compatible même si la colonne `telephone` n'a
+          // pas encore été créée en base.
+          _client.from('utilisateurs').select(),
         ]);
 
         final Map<String, String> villes = {
@@ -134,15 +138,55 @@ class EntrepriseService {
             groupe.id: groupe,
         };
 
+        // Responsable de chaque entreprise : on privilégie le patron
+        // (sans parent_id), sinon le premier utilisateur rattaché.
+        final Map<String, Map<String, dynamic>> responsables =
+            <String, Map<String, dynamic>>{};
+        for (final Map<String, dynamic> utilisateur
+            in parseMapList(reponses[4])) {
+          final String? entrepriseId =
+              parseStringOrNull(utilisateur['entreprise_id']);
+          if (entrepriseId == null || entrepriseId.isEmpty) continue;
+
+          final bool estPatron =
+              parseStringOrNull(utilisateur['parent_id']) == null;
+          final Map<String, dynamic>? existant = responsables[entrepriseId];
+          final bool existantEstPatron = existant != null &&
+              parseStringOrNull(existant['parent_id']) == null;
+
+          if (existant == null || (estPatron && !existantEstPatron)) {
+            responsables[entrepriseId] = utilisateur;
+          }
+        }
+
+        String? nomResponsable(Map<String, dynamic>? utilisateur) {
+          if (utilisateur == null) return null;
+          final String prenom =
+              (parseStringOrNull(utilisateur['prenom']) ?? '').trim();
+          final String nom =
+              (parseStringOrNull(utilisateur['nom']) ?? '').trim();
+          final String complet =
+              <String>[if (prenom.isNotEmpty) prenom, if (nom.isNotEmpty) nom]
+                  .join(' ');
+          if (complet.isNotEmpty) return complet;
+          final String? email = parseStringOrNull(utilisateur['email']);
+          return (email == null || email.isEmpty) ? null : email;
+        }
+
         return parseMapList(reponses[0]).map((Map<String, dynamic> map) {
           final Entreprise entreprise = Entreprise.fromMap(map);
           final GroupeTarifaire? groupe = groupes[entreprise.groupeTarifaireId];
+          final Map<String, dynamic>? responsable = responsables[entreprise.id];
 
           return entreprise.copyWith(
             villeNom: villes[entreprise.villeId],
             activiteNom: activites[entreprise.activiteId],
             groupeTarifaireNom: groupe?.nom,
             groupeTarifaireDureeJours: groupe?.dureeAbonnementJours,
+            responsableNom: nomResponsable(responsable),
+            telephone: responsable == null
+                ? null
+                : parseStringOrNull(responsable['telephone']),
           );
         }).toList();
       },
@@ -150,6 +194,21 @@ class EntrepriseService {
       messageEchec:
           'Impossible de charger la liste des entreprises. Vérifiez votre connexion internet.',
     );
+  }
+
+  /// 🏪 AUTO-RÉPARATION (correctifs 20/21) — garantit qu'un PATRON possède
+  /// son entreprise.
+  ///
+  /// Idempotent : côté serveur, `rpc_entreprise_creer` ne fait rien si
+  /// l'entreprise existe déjà (`deja: true`). Utilisé après la connexion
+  /// pour réparer les inscriptions dont la création avait été bloquée.
+  Future<void> assurerEntreprise() async {
+    try {
+      await _client.rpc('rpc_entreprise_creer');
+    } catch (e) {
+      // Best-effort : ne doit jamais empêcher une connexion.
+      debugPrint('assurerEntreprise ignoré : $e');
+    }
   }
 
   /// Recherche une entreprise par son identifiant, ou `null` si elle n'existe

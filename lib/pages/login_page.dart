@@ -15,6 +15,8 @@ import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
 // 🏢 MODULE 15 — chargement des entreprises du compte (sélecteur).
 import 'package:biashara_yangu/services/espace_service.dart';
+// 🏪 Correctif 21 — auto-réparation : patron sans entreprise.
+import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/models/permission.dart';
@@ -88,6 +90,26 @@ class _LoginPageState extends State<LoginPage> {
           try {
             await _syncService.syncUserProfile(userId);
             final localUser = await _dbHelper.getUtilisateurById(userId);
+
+            // 🏪 CORRECTIF 20/21 — Auto-réparation : un PATRON (inscription
+            // sans code boutique) dont l'entreprise n'a pas pu être créée la
+            // reçoit maintenant (idempotent, best-effort).
+            final String? pIdReparation = localUser?.parentId;
+            if (pIdReparation == null || pIdReparation.isEmpty) {
+              final bool localEstPlateforme = localUser != null &&
+                  PermissionService.roleDepuisUtilisateur(localUser)
+                      .estPlateforme;
+              if (!localEstPlateforme &&
+                  !await SupabaseService.instance
+                      .estAdministrateurPlateforme(userId)) {
+                await EntrepriseService.instance.assurerEntreprise();
+                try {
+                  await _syncService.syncUserProfile(userId);
+                } catch (e) {
+                  debugPrint('Re-sync après auto-réparation : $e');
+                }
+              }
+            }
 
             // Extraction sécurisée du ownerId (Patron)
             final String? pId = localUser?.parentId;

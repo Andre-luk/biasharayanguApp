@@ -581,13 +581,15 @@ class _RapportsPageState extends State<RapportsPage> {
             Row(
               children: <Widget>[
                 Icon(
-                  _estPlateforme() ? Icons.public : Icons.storefront,
+                  _estPlateforme() ? Icons.public : Icons.business_rounded,
                   size: 18,
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _estPlateforme() ? 'Rapports La Perle' : 'Rapports de la boutique',
+                  _estPlateforme()
+                      ? 'Rapports La Perle'
+                      : 'Rapports de l\'entreprise',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
               ],
@@ -921,7 +923,7 @@ class _RapportsPageState extends State<RapportsPage> {
         child: const Padding(
           padding: EdgeInsets.all(24),
           child: Center(
-            child: Text('Aucune donnée sur la période ou les filtres choisis.'),
+            child: Text('Aucune donnée disponible pour cette période.'),
           ),
         ),
       );

@@ -28,6 +28,7 @@ class _SetupPageState extends State<SetupPage> {
   final _passwordCtrl = TextEditingController();
   final _codeBoutiqueCtrl = TextEditingController(); // AJOUT : Contrôleur pour le code d'invitation
   final _boutiqueCtrl = TextEditingController(); // 🏪 Nom de la boutique (entreprise)
+  final _telephoneCtrl = TextEditingController(); // 📞 Correctif 21 : téléphone du responsable
 
   String _role = 'vendor';
   bool _saving = false;
@@ -50,6 +51,7 @@ class _SetupPageState extends State<SetupPage> {
     _passwordCtrl.dispose();
     _codeBoutiqueCtrl.dispose(); // AJOUT : Libération du contrôleur
     _boutiqueCtrl.dispose(); // 🏪 Libération du contrôleur
+    _telephoneCtrl.dispose(); // 📞 Libération du contrôleur
     super.dispose();
   }
 
@@ -87,6 +89,7 @@ class _SetupPageState extends State<SetupPage> {
     final password = _passwordCtrl.text.trim();
     final codeSaisi = _codeBoutiqueCtrl.text.trim(); // AJOUT
     final nomBoutique = _boutiqueCtrl.text.trim(); // 🏪 nom de l'entreprise
+    final telephone = _telephoneCtrl.text.trim(); // 📞 contact du responsable
 
     try {
       if (widget.editUser != null) {
@@ -183,6 +186,7 @@ class _SetupPageState extends State<SetupPage> {
               'rpc_entreprise_creer',
               params: <String, dynamic>{
                 if (nomBoutique.isNotEmpty) 'p_nom': nomBoutique,
+                if (telephone.isNotEmpty) 'p_telephone': telephone,
               },
             );
           } catch (e) {
@@ -322,6 +326,26 @@ class _SetupPageState extends State<SetupPage> {
                             "C'est le nom de votre entreprise (essai de 7 jours). Laissez vide pour « Boutique <votre nom> ».",
                             style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
                           ),
+                        ),
+
+                        // 📞 Correctif 21 — Téléphone du responsable : visible
+                        // dans l'administration pour la vérification du compte.
+                        const SizedBox(height: 20),
+                        _buildFieldTitle("Téléphone (Optionnel)"),
+                        TextFormField(
+                          controller: _telephoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          decoration: _buildInputDecoration(
+                            Icons.phone_outlined,
+                            "ex : +243 81 23 45 67",
+                          ),
+                          validator: (v) {
+                            final String valeur = (v ?? '').trim();
+                            if (valeur.isEmpty) return null;
+                            return valeur.length < 8
+                                ? 'Numéro trop court'
+                                : null;
+                          },
                         ),
                       ],
 

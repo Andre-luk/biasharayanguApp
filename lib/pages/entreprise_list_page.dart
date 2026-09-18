@@ -545,12 +545,41 @@ class _EntrepriseListPageState extends State<EntrepriseListPage> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Responsable : ${entreprise.responsableNom ?? '—'}'
+                      '  •  Tél : ${(entreprise.telephone ?? '').isEmpty ? '—' : entreprise.telephone}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Pack : ${entreprise.groupeTarifaireNom ?? '—'}'
+                      '  •  À payer : ${formatMontant(entreprise.montantTotalDu)}'
+                      '  •  Payé : ${formatMontant(entreprise.montantDejaPaye)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
+                        _puceEtape(entreprise),
+                        const SizedBox(width: 8),
                         StatutAbonnementChip(
                             statut: entreprise.statutEffectif, compact: true),
-                        const SizedBox(width: 8),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
                         Flexible(
                           child: Text(
                             'Solde : ${formatMontant(entreprise.soldeRestant)}',
@@ -561,6 +590,14 @@ class _EntrepriseListPageState extends State<EntrepriseListPage> {
                               fontWeight: FontWeight.w600,
                               color: couleurSolde,
                             ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          formatDate(entreprise.createdAt),
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: theme.colorScheme.outline,
                           ),
                         ),
                       ],
@@ -579,6 +616,48 @@ class _EntrepriseListPageState extends State<EntrepriseListPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Puce compacte de l'étape d'activation (correctifs 20/21) : le statut
+  /// « en attente de vérification » est visible dès la liste admin.
+  Widget _puceEtape(Entreprise entreprise) {
+    Color fond = Colors.green.shade100;
+    Color texte = Colors.green.shade900;
+
+    switch (entreprise.activationEtape) {
+      case 'en_attente_verification':
+        fond = Colors.orange.shade100;
+        texte = Colors.orange.shade900;
+        break;
+      case 'verifie':
+        fond = Colors.blue.shade100;
+        texte = Colors.blue.shade900;
+        break;
+      case 'rejete':
+        fond = Colors.red.shade100;
+        texte = Colors.red.shade900;
+        break;
+      case 'restreint':
+        fond = Colors.deepOrange.shade100;
+        texte = Colors.deepOrange.shade900;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: fond,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        entreprise.libelleActivation,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: texte,
         ),
       ),
     );
