@@ -73,7 +73,7 @@ Table public.types_espaces_modules
 
 ## 3. Découpage en phases
 
-### Phase A — Socle « modules » *(invisible pour l'utilisateur, ~2-3 j)*
+### Phase A — Socle « modules » ✅ **LIVRÉE** *(v1.4.0, 18/09/2026 — migration 27 exécutée & vérifiée en production)*
 1. **Migration** : table `types_espaces_modules` + seed (boutique → modules actuels ; hôtel/pharmacie/restaurant → pré-configurés, y compris les modules **inactifs** car pas encore codés) + RPC `rpc_mes_modules()` + `rpc_types_espaces_lister()` + `rpc_type_espace_modules_maj()` (Expert).
 2. **Dart** : `ModuleActivite`, `ModulesService`, branchement login/démarrage, garde `moduleActif()` dans les widgets existants (aucun changement visuel au début).
 3. **Admin** : page « Types d'activités » (liste + édition des modules) dans l'onglet Référentiels.
@@ -155,4 +155,4 @@ Chaque phase : **1 migration SQL idempotente + tests Flutter + 1 release** (v1.4
 
 ---
 
-*Document préparé le 18/09/2026 — feu vert utilisateur donné. Prochaine action : implémenter la Phase A.*
+*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phase A livrée en v1.4.0 (migration 27 : `types_espaces_modules` + 3 RPC + page admin « Types d'activités »). Prochaine action : Phase B (tableaux de bord adaptés).*
