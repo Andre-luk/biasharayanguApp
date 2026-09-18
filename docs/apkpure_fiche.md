@@ -16,7 +16,7 @@
 | **Classification de contenu** | Tout public |
 | **Email de contact** | `[À COMPLÉTER — ex. contact@biasharayangu.cd]` |
 | **Site web (optionnel)** | `[À COMPLÉTER si tu as un site/page]` |
-| **Politique de confidentialité** | disponible dans l'app : Paramètres → Politique & conditions |
+| **URL de la politique de confidentialité** | `https://andre-luk.github.io/biasharayangu-legal/` |
 
 > ✅ **Le nom du package est définitif : `cd.biasharayangu.app`** — il ne
 > changera JAMAIS (sinon = nouvelle application, sans mises à jour). C'est ce
