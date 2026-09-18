@@ -28,6 +28,11 @@ IconData iconePourPage(PageAccess page) {
       return Icons.workspace_premium_rounded;
     case PageAccess.abonnements:
       return Icons.card_membership_rounded;
+    // 🧾 MODULE 14 — écrans du workflow d'activation.
+    case PageAccess.verificationComptes:
+      return Icons.fact_check_rounded;
+    case PageAccess.activationsFinance:
+      return Icons.rocket_launch_rounded;
     case PageAccess.paiements:
       return Icons.payments_rounded;
     case PageAccess.finance:
