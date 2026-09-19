@@ -76,6 +76,9 @@ class GuideUtilisationPage extends StatelessWidget {
                   'prix de vente, unité, quantité et seuil d\'alerte.',
               'Créez des conditionnements (ex. « Farde de 12 ») : les prix et '
                   'le stock sont convertis automatiquement.',
+              'Mode (variantes) : renseignez taille, couleur et marque sur la '
+                  'fiche — la recherche retrouve l\'article par « bleu », '
+                  '« M »…',
               'Stock → « Approvisionnement » pour les entrées, « Ajustement » '
                   'pour corriger, « Inventaire » pour compter.',
               'Import d\'articles : bouton « Import » (fichier CSV/Excel) pour '

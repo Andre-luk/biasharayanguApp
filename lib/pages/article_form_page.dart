@@ -62,6 +62,11 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   // 🥩 MODULE 16 C6 — boucherie : article vendu au poids (kg).
   bool _vendableAuPoids = false;
 
+  // 👕 MODULE 16 C8 — mode : variantes simples (taille, couleur, marque).
+  final TextEditingController _tailleController = TextEditingController();
+  final TextEditingController _couleurController = TextEditingController();
+  final TextEditingController _marqueController = TextEditingController();
+
   List<Categorie> _categories = const <Categorie>[];
   String _categorieSelectionnee = '';
 
@@ -91,6 +96,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     _quantiteController.dispose();
     _descriptionController.dispose();
     _lotController.dispose();
+    _tailleController.dispose();
+    _couleurController.dispose();
+    _marqueController.dispose();
     super.dispose();
   }
 
@@ -141,6 +149,11 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         _lotController.text = article.lotNumero ?? '';
         _dateExpiration = article.dateExpiration;
         _vendableAuPoids = article.vendableAuPoids;
+        // 👕 MODULE 16 C8 — variantes connues (les clés libres éventuelles
+        // d'un article importé sont conservées à l'enregistrement).
+        _tailleController.text = article.attributs['taille'] ?? '';
+        _couleurController.text = article.attributs['couleur'] ?? '';
+        _marqueController.text = article.attributs['marque'] ?? '';
         _categorieSelectionnee = article.categorie.trim();
         _photoUrl = article.photo;
       }
@@ -554,6 +567,77 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     );
   }
 
+  // 👕 MODULE 16 C8 — MODE : VARIANTES (TAILLE / COULEUR / MARQUE)
+  // ---------------------------------------------------------------------------
+
+  /// Section « Variantes » (module variantes actif uniquement).
+  ///
+  /// Chaque variante reste un ARTICLE à part entière : ces champs servent à
+  /// retrouver la fiche (recherche « bleu », « M »…) et à l'afficher.
+  Widget _sectionVariantes() {
+    final ThemeData theme = Theme.of(context);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(Icons.palette_rounded, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Variantes (mode)',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Taille, couleur, marque… : créez un article PAR variante '
+              '(ex. « Chemise — M / Bleu ») — ces champs accélèrent la '
+              'recherche et l\'affichage.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: TextField(
+                    controller: _tailleController,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: _decoration('Taille',
+                        hint: 'S, M, L, 42…', icone: Icons.straighten_rounded),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _couleurController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: _decoration('Couleur',
+                        hint: 'Bleu, Noir…', icone: Icons.color_lens_rounded),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _marqueController,
+              textCapitalization: TextCapitalization.words,
+              decoration: _decoration('Marque (optionnelle)',
+                  hint: 'Casino, Nike…', icone: Icons.sell_rounded),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _sectionConditionnements() {
     final Article? article = _article;
     final ThemeData theme = Theme.of(context);
@@ -657,6 +741,22 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
       // car les champs sont initialisés depuis l'article).
       final String lotNumero = _lotController.text.trim();
 
+      // 👕 MODULE 16 C8 — variantes : on part des attributs existants pour
+      // ne jamais effacer une clé non gérée par ce formulaire.
+      final Map<String, String> attributs =
+          Map<String, String>.from(_article?.attributs ?? const <String, String>{});
+      void poserAttribut(String cle, String valeur) {
+        if (valeur.isEmpty) {
+          attributs.remove(cle);
+        } else {
+          attributs[cle] = valeur;
+        }
+      }
+
+      poserAttribut('taille', _tailleController.text.trim());
+      poserAttribut('couleur', _couleurController.text.trim());
+      poserAttribut('marque', _marqueController.text.trim());
+
       if (_estModification) {
         await _service.majArticle(
           id: _article!.id,
@@ -671,6 +771,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           lotNumero: lotNumero,
           dateExpiration: _dateExpiration,
           vendableAuPoids: _vendableAuPoids,
+          attributs: attributs,
         );
         if (!mounted) return;
         _afficherMessage('Modifications enregistrées.');
@@ -688,6 +789,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           lotNumero: lotNumero,
           dateExpiration: _dateExpiration,
           vendableAuPoids: _vendableAuPoids,
+          attributs: attributs,
         );
         if (!mounted) return;
         context.pop(true);
@@ -927,6 +1029,15 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                           .moduleActif(ModuleCode.pesee)) ...[
                         const SizedBox(height: 20),
                         _sectionVenteAuPoids(),
+                      ],
+                      // 👕 MODULE 16 C8 — MODE : variantes.
+                      //  Affiché uniquement si l'activité a le module
+                      //  « variantes » (les clés inconnues de l'article
+                      //  sont conservées à l'enregistrement).
+                      if (ModulesService.instance
+                          .moduleActif(ModuleCode.variantes)) ...[
+                        const SizedBox(height: 20),
+                        _sectionVariantes(),
                       ],
                       const SizedBox(height: 20),
 

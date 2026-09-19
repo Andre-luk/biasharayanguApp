@@ -313,14 +313,28 @@ class _ArticlesPageState extends State<ArticlesPage> {
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
-          child: Text(
-            '${article.categorie.trim().isEmpty ? 'Sans catégorie' : article.categorie}'
-            ' · ${formatMontant(article.prixVente)}'
-            // 🥩 MODULE 16 C6 — boucherie : prix au kg bien visible.
-            '${article.vendableAuPoids ? ' / kg 🥩' : ''}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                '${article.categorie.trim().isEmpty ? 'Sans catégorie' : article.categorie}'
+                ' · ${formatMontant(article.prixVente)}'
+                // 🥩 MODULE 16 C6 — boucherie : prix au kg bien visible.
+                '${article.vendableAuPoids ? ' / kg 🥩' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall,
+              ),
+              // 👕 MODULE 16 C8 — mode : variantes (M · Bleu · Casino…).
+              if (article.aVariantes)
+                Text(
+                  '👕 ${article.resumeVariantes}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.primary),
+                ),
+            ],
           ),
         ),
         trailing: Column(

@@ -211,6 +211,7 @@ class ArticleService {
     String? lotNumero,
     DateTime? dateExpiration,
     bool vendableAuPoids = false,
+    Map<String, String> attributs = const <String, String>{},
   }) {
     return _executer(
       () async {
@@ -240,6 +241,8 @@ class ArticleService {
               'date_expiration': _isoJour(dateExpiration),
               // 🥩 MODULE 16 C6 — boucherie : vente au poids.
               'vendable_au_poids': vendableAuPoids,
+              // 👕 MODULE 16 C8 — mode : variantes (taille, couleur…).
+              'attributs': attributs,
               'owner_id': proprietaire,
             })
             .select()
@@ -271,6 +274,7 @@ class ArticleService {
     String? lotNumero,
     DateTime? dateExpiration,
     bool vendableAuPoids = false,
+    Map<String, String> attributs = const <String, String>{},
   }) {
     return _executer(
       () async {
@@ -299,6 +303,8 @@ class ArticleService {
               'date_expiration': _isoJour(dateExpiration),
               // 🥩 MODULE 16 C6 — boucherie : vente au poids.
               'vendable_au_poids': vendableAuPoids,
+              // 👕 MODULE 16 C8 — mode : variantes (taille, couleur…).
+              'attributs': attributs,
             })
             .eq('id', id)
             .select()
@@ -387,9 +393,10 @@ class ArticleService {
 
   /// Filtrage en mémoire de la liste des articles.
   ///
-  /// [recherche] couvre le nom, la catégorie ET les codes des conditionnements
-  /// (libellé, code-barre, identifiant du QR code) — « recherche par nom/code »
-  /// du cahier des charges.
+  /// [recherche] couvre le nom, la catégorie, les VARIANTES (taille,
+  /// couleur, marque — Module 16 C8) ET les codes des conditionnements
+  /// (libellé, code-barre, identifiant du QR code) — « recherche par
+  /// nom/code » du cahier des charges.
   static List<Article> filtrer(
     List<Article> articles, {
     String? recherche,
@@ -408,6 +415,11 @@ class ArticleService {
 
       if (article.nom.toLowerCase().contains(requete)) return true;
       if (article.categorie.toLowerCase().contains(requete)) return true;
+
+      // 👕 MODULE 16 C8 — variantes : « bleu » retrouve la chemise bleue.
+      for (final String valeur in article.attributs.values) {
+        if (valeur.toLowerCase().contains(requete)) return true;
+      }
 
       for (final Conditionnement conditionnement in article.conditionnements) {
         if (conditionnement.libelle.toLowerCase().contains(requete))

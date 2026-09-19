@@ -22,7 +22,7 @@ du Congo. Collaborateur marketing : **La Perle Corp**. Développeur principal :
 | **Clients & dettes** | Fiches clients, crédits, remboursements, relances WhatsApp/SMS |
 | **Caisse & finance** | Encaissements, clôtures de caisse, dépenses, tableau de bord CA/bénéfice |
 | **Rapports** | 11+ types (ventes, articles, catégories, vendeurs, top produits, finance, stock, caisse, dépenses, dettes, expirations), exports PDF/Excel signés |
-| **Modules métier** | 🏨 Hôtel (chambres, réservations, check-in/out, facture séjour) · 💊 Pharmacie (lots, péremption, blocage de vente expirée) · 🍽️ Restaurant (tables, commandes, écran cuisine, encaissement caisse) · 🎉 Salle des fêtes (salles, calendrier, prestations, avances & soldes) · 🥖 Boulangerie (matières premières, productions, pertes, coût de revient) · 🥩 Boucherie (vente au poids, pas de 0,5 kg, ticket au kg) |
+| **Modules métier** | 🏨 Hôtel (chambres, réservations, check-in/out, facture séjour) · 💊 Pharmacie (lots, péremption, blocage de vente expirée) · 🍽️ Restaurant (tables, commandes, écran cuisine, encaissement caisse) · 🎉 Salle des fêtes (salles, calendrier, prestations, avances & soldes) · 🥖 Boulangerie (matières premières, productions, pertes, coût de revient) · 🥩 Boucherie (vente au poids, pas de 0,5 kg, ticket au kg) · 👕 Mode (variantes taille/couleur/marque, recherche par variante) |
 | **Équipe** | Collaborateurs, 8 rôles, permissions fines personnalisables par le Super Admin |
 | **Assistant IA** | Chat intégré (quotas par packs), actions contrôlées par les droits |
 | **Abonnement** | Workflow d'activation vérifié (comptes → finance), essai 7 j / total 30 j, restrictions sans suppression de données |
@@ -83,6 +83,7 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0033          Module 16 phase C4 — salle des fêtes (salles, événements)
 0034          Module 16 phase C5 — boulangerie (matières, productions)
 0035          Module 16 phase C6 — boucherie (articles vendus au poids)
+0036          Module 16 phase C8 — variantes (taille, couleur, marque)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise

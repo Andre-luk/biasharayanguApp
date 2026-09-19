@@ -443,7 +443,7 @@ void main() {
   // =========================================================================
 
   group('Catalogue des modules (phases C livrées)', () {
-    test('les modules des phases C1→C6 sont marqués disponibles', () {
+    test('les modules des phases C1→C8 sont marqués disponibles', () {
       for (final String code in <String>[
         ModuleCode.chambres,
         ModuleCode.reservations,
@@ -456,6 +456,7 @@ void main() {
         ModuleCode.evenements,
         ModuleCode.production,
         ModuleCode.pesee,
+        ModuleCode.variantes,
       ]) {
         final ModuleActivite? module = ModuleActivite.parCode(code);
         expect(module, isNotNull, reason: 'Module $code absent du catalogue');
@@ -464,13 +465,13 @@ void main() {
       }
     });
 
-    test('les modules des phases suivantes (C8) restent « bientôt »', () {
-      for (final String code in <String>[
-        ModuleCode.variantes,
-      ]) {
-        expect(ModuleActivite.parCode(code)!.disponible, isFalse,
-            reason: 'Le module $code (phase suivante) reste à venir');
-      }
+    test('plus aucun module n\'est marqué « bientôt »', () {
+      expect(
+        ModuleActivite.catalogue
+            .where((ModuleActivite m) => !m.disponible)
+            .map((ModuleActivite m) => m.code),
+        isEmpty,
+      );
     });
   });
 }

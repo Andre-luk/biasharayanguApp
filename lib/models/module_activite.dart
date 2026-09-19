@@ -252,7 +252,6 @@ class ModuleActivite {
       description: 'Attributs des articles : taille, couleur, marque.',
       icone: Icons.palette,
       categorie: ModuleCategorie.commerceSpecialise,
-      disponible: false,
     ),
   ];
 

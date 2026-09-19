@@ -38,6 +38,10 @@ class Article {
   /// caisse propose la saisie du poids (0,75 kg, pas de 0,5 kg).
   final bool vendableAuPoids;
 
+  /// 👕 MODULE 16 C8 (mode) — variantes simples : {taille, couleur,
+  /// marque…} (objet JSON libre, vide si aucune).
+  final Map<String, String> attributs;
+
   final String? ownerId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -60,6 +64,7 @@ class Article {
     this.lotNumero,
     this.dateExpiration,
     this.vendableAuPoids = false,
+    this.attributs = const <String, String>{},
     this.ownerId,
     this.createdAt,
     this.updatedAt,
@@ -84,6 +89,7 @@ class Article {
       lotNumero: parseStringOrNull(map['lot_numero']),
       dateExpiration: parseDateTimeOrNull(map['date_expiration']),
       vendableAuPoids: map['vendable_au_poids'] == true,
+      attributs: _attributsDepuisJson(map['attributs']),
       ownerId: parseStringOrNull(map['owner_id']),
       createdAt: parseDateTimeOrNull(map['created_at']),
       updatedAt: parseDateTimeOrNull(map['updated_at']),
@@ -110,6 +116,8 @@ class Article {
           dateExpiration == null ? null : _isoJour(dateExpiration!),
       // 🥩 MODULE 16 C6 — vente au poids (boucherie).
       'vendable_au_poids': vendableAuPoids,
+      // 👕 MODULE 16 C8 — variantes (mode).
+      'attributs': attributs,
     };
   }
 
@@ -134,6 +142,7 @@ class Article {
     String? lotNumero,
     DateTime? dateExpiration,
     bool? vendableAuPoids,
+    Map<String, String>? attributs,
     String? ownerId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -153,6 +162,7 @@ class Article {
       lotNumero: lotNumero ?? this.lotNumero,
       dateExpiration: dateExpiration ?? this.dateExpiration,
       vendableAuPoids: vendableAuPoids ?? this.vendableAuPoids,
+      attributs: attributs ?? this.attributs,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -182,6 +192,50 @@ class Article {
 
   /// L'article a-t-il une date de péremption ?
   bool get aDateExpiration => dateExpiration != null;
+
+  /// 👕 MODULE 16 C8 (mode) — l'article a-t-il des variantes ?
+  bool get aVariantes => attributs.isNotEmpty;
+
+  /// Taille saisie (« M », « 42 »…), ou `null`.
+  String? get taille => attributs['taille'];
+
+  /// Couleur saisie, ou `null`.
+  String? get couleur => attributs['couleur'];
+
+  /// Marque saisie, ou `null`.
+  String? get marque => attributs['marque'];
+
+  /// Résumé lisible (« M · Bleu · Casino »), vide si aucun attribut.
+  /// Les trois clés connues passent d'abord, puis les autres.
+  String get resumeVariantes {
+    if (attributs.isEmpty) return '';
+    const List<String> ordre = <String>['taille', 'couleur', 'marque'];
+    final List<String> parties = <String>[];
+    for (final String cle in ordre) {
+      final String? valeur = attributs[cle];
+      if (valeur != null && valeur.isNotEmpty) parties.add(valeur);
+    }
+    attributs.forEach((String cle, String valeur) {
+      if (!ordre.contains(cle) && valeur.isNotEmpty) parties.add(valeur);
+    });
+    return parties.join(' · ');
+  }
+
+  /// Convertit le jsonb `attributs` en map texte (clés/valeurs vides
+  /// écartées, valeurs non textuelles converties en texte).
+  static Map<String, String> _attributsDepuisJson(dynamic brut) {
+    final Map<String, dynamic>? map = parseMap(brut);
+    if (map == null || map.isEmpty) return const <String, String>{};
+
+    final Map<String, String> resultat = <String, String>{};
+    map.forEach((String cle, dynamic valeur) {
+      final String texte = parseString(valeur).trim();
+      if (cle.trim().isNotEmpty && texte.isNotEmpty) {
+        resultat[cle.trim()] = texte;
+      }
+    });
+    return resultat;
+  }
 
   /// Stock total en unités de base, formule du cahier des charges :
   ///

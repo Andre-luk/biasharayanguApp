@@ -201,12 +201,12 @@ void main() {
       expect(module.libelle, 'Vente au poids');
     });
 
-    test('seul le module variantes reste « bientôt »', () {
+    test('plus aucun module du catalogue n\'est marqué « bientôt »', () {
       expect(
         ModuleActivite.catalogue
             .where((ModuleActivite m) => !m.disponible)
             .map((ModuleActivite m) => m.code),
-        <String>[ModuleCode.variantes],
+        isEmpty,
       );
     });
   });
