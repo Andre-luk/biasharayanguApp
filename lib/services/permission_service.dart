@@ -213,6 +213,9 @@ class PermissionService {
         PageAccess.tables,
         PageAccess.commandes,
         PageAccess.cuisine,
+        // 🎉 MODULE 16 C4 — salle des fêtes : salles, événements (tout).
+        PageAccess.salles,
+        PageAccess.evenements,
       ],
       ActionAccess.values, // tout, sauf l'administration de la plateforme
     ),
@@ -260,6 +263,13 @@ class PermissionService {
           ActionAccess.creer,
         },
         PageAccess.cuisine: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        // 🎉 C4 — agent d'accueil événementiel : salles en consultation,
+        // événements voir + créer (la configuration des prix reste au patron).
+        PageAccess.salles: const <ActionAccess>{ActionAccess.voir},
+        PageAccess.evenements: const <ActionAccess>{
           ActionAccess.voir,
           ActionAccess.creer,
         },
@@ -406,6 +416,9 @@ class PermissionService {
     _RegleRoute('/main/restaurant/tables', PageAccess.tables),
     _RegleRoute('/main/restaurant/commandes', PageAccess.commandes),
     _RegleRoute('/main/restaurant/cuisine', PageAccess.cuisine),
+    // 🎉 MODULE 16 C4 — SALLE DES FÊTES : salles et événements.
+    _RegleRoute('/main/evenements/salles', PageAccess.salles),
+    _RegleRoute('/main/evenements', PageAccess.evenements),
     _RegleRoute('/main', PageAccess.dashboard),
 
     _RegleRoute('/reports', PageAccess.rapports),
@@ -796,6 +809,9 @@ class PermissionService {
     PageAccess.tables: '/main/restaurant/tables',
     PageAccess.commandes: '/main/restaurant/commandes',
     PageAccess.cuisine: '/main/restaurant/cuisine',
+    // 🎉 MODULE 16 C4 — salle des fêtes.
+    PageAccess.salles: '/main/evenements/salles',
+    PageAccess.evenements: '/main/evenements',
   };
 
   // ---------------------------------------------------------------------------

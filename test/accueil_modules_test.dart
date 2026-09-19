@@ -101,7 +101,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 16);
+      expect(cartes.length, 18);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
@@ -112,6 +112,9 @@ void main() {
       expect(idsDe(cartes), contains('tables'));
       expect(idsDe(cartes), contains('commandes'));
       expect(idsDe(cartes), contains('cuisine'));
+      // 🎉 MODULE 16 C4 — les cartes salle des fêtes sont désormais codées.
+      expect(idsDe(cartes), contains('salles'));
+      expect(idsDe(cartes), contains('evenements'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -121,7 +124,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 16);
+      expect(cartes.length, 18);
     });
   });
 
@@ -214,6 +217,53 @@ void main() {
       );
 
       for (final String code in <String>['tables', 'commandes', 'cuisine']) {
+        expect(
+          cartes.where((CarteAccueil c) => c.module == code),
+          isEmpty,
+          reason: 'Aucune carte sans le module $code',
+        );
+      }
+    });
+  });
+
+  group('CarteAccueil.visibles — salle des fêtes (phase C4)', () {
+    const Set<String> profilSalleFetes = <String>{
+      'caisse',
+      'clients',
+      'finance',
+      'rapports',
+      'assistant_ia',
+      'salles',
+      'evenements',
+    };
+
+    test('événements et salles en tête de la grille', () {
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: profilSalleFetes,
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+
+      expect(idsDe(cartes), <String>[
+        'evenements',
+        'salles',
+        'clients',
+        'caisse',
+        'finance',
+        'rapports',
+        'assistant_ia',
+        'abonnement',
+      ]);
+    });
+
+    test('les cartes salle des fêtes disparaissent sans leur module', () {
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: const <String>{'caisse', 'clients'},
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+
+      for (final String code in <String>['salles', 'evenements']) {
         expect(
           cartes.where((CarteAccueil c) => c.module == code),
           isEmpty,

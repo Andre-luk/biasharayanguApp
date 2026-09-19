@@ -87,6 +87,11 @@ IconData iconePourPage(PageAccess page) {
       return Icons.restaurant_menu_rounded;
     case PageAccess.cuisine:
       return Icons.soup_kitchen_rounded;
+    // 🎉 MODULE 16 C4 — salle des fêtes.
+    case PageAccess.salles:
+      return Icons.meeting_room_rounded;
+    case PageAccess.evenements:
+      return Icons.celebration_rounded;
   }
 }
 

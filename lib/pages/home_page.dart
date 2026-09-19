@@ -37,6 +37,9 @@ import 'package:biashara_yangu/services/hotel_service.dart';
 // 🍽️ MODULE 16 C3 — tableau de bord restaurant (tables, commandes).
 import 'package:biashara_yangu/models/restaurant_tableau_bord.dart';
 import 'package:biashara_yangu/services/restaurant_service.dart';
+// 🎉 MODULE 16 C4 — tableau de bord salle des fêtes (salles, événements).
+import 'package:biashara_yangu/models/salle_fete_tableau_bord.dart';
+import 'package:biashara_yangu/services/salle_fete_service.dart';
 // 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
@@ -89,6 +92,12 @@ class _HomePageState extends State<HomePage> {
   int _tablesOccupees = 0;
   int _commandesActives = 0;
   int _cuisineEnAttente = 0;
+
+  // 🎉 MODULE 16 C4 — salle des fêtes : salles + événements.
+  int _sallesTotal = 0;
+  int _sallesActives = 0;
+  int _evenementsAVenir = 0;
+  double _soldeEvenements = 0;
 
   // Variables d'état utilisateur
   Utilisateur? utilisateur;
@@ -359,6 +368,30 @@ class _HomePageState extends State<HomePage> {
 
       if (!mounted) return;
 
+      // 🎉 MODULE 16 C4 — salle des fêtes : salles + événements (best-effort).
+      int sallesTotal = _sallesTotal;
+      int sallesActives = _sallesActives;
+      int evenementsAVenir = _evenementsAVenir;
+      double soldeEvenements = _soldeEvenements;
+      final bool salleFeteActive =
+          ModulesService.instance.moduleActif(ModuleCode.salles) ||
+              ModulesService.instance.moduleActif(ModuleCode.evenements);
+      if (salleFeteActive &&
+          PermissionService.instance.peutVoir(PageAccess.evenements)) {
+        try {
+          final TableauBordSalleFete bord =
+              await SalleFeteService.instance.tableauBord();
+          sallesTotal = bord.sallesTotal;
+          sallesActives = bord.sallesActives;
+          evenementsAVenir = bord.evenementsAVenir;
+          soldeEvenements = bord.solde;
+        } catch (e) {
+          debugPrint('HomePage salle des fêtes (ignoré) : $e');
+        }
+      }
+
+      if (!mounted) return;
+
       setState(() {
         overallTotalVentesAmount = (results[0] as num?)?.toDouble() ?? 0.0;
         dailyTotalVentesAmount = (results[1] as num?)?.toDouble() ?? 0.0;
@@ -376,6 +409,10 @@ class _HomePageState extends State<HomePage> {
         _tablesOccupees = tablesOccupees;
         _commandesActives = commandesActives;
         _cuisineEnAttente = cuisineEnAttente;
+        _sallesTotal = sallesTotal;
+        _sallesActives = sallesActives;
+        _evenementsAVenir = evenementsAVenir;
+        _soldeEvenements = soldeEvenements;
       });
     } catch (e) {
       debugPrint('HomePage: Erreur lors du chargement des stats: $e');
@@ -628,6 +665,10 @@ class _HomePageState extends State<HomePage> {
       tablesOccupees: _tablesOccupees,
       commandesActives: _commandesActives,
       cuisineEnAttente: _cuisineEnAttente,
+      sallesTotal: _sallesTotal,
+      sallesActives: _sallesActives,
+      evenementsAVenir: _evenementsAVenir,
+      soldeEvenements: _soldeEvenements,
     );
     final ThemeData theme = Theme.of(context);
 

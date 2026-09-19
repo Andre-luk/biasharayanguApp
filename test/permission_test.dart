@@ -313,6 +313,10 @@ void main() {
           PageAccess.tables,
           PageAccess.commandes,
           PageAccess.cuisine,
+          // 🎉 MODULE 16 C4 — agent d'accueil événementiel : salles en
+          // lecture, événements voir + créer.
+          PageAccess.salles,
+          PageAccess.evenements,
         ],
       );
     });
@@ -367,6 +371,25 @@ void main() {
           service.aAcces(RoleUtilisateur.vendeur, PageAccess.tables, action),
           isFalse,
           reason: 'tables/${action.code}',
+        );
+      }
+
+      // 🎉 MODULE 16 C4 — agent d'accueil événementiel : il prépare les
+      // événements mais ne configure ni les salles ni leurs prix.
+      expect(
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.evenements, ActionAccess.creer),
+        isTrue,
+      );
+      for (final ActionAccess action in <ActionAccess>[
+        ActionAccess.creer,
+        ActionAccess.modifier,
+        ActionAccess.supprimer,
+      ]) {
+        expect(
+          service.aAcces(RoleUtilisateur.vendeur, PageAccess.salles, action),
+          isFalse,
+          reason: 'salles/${action.code}',
         );
       }
     });
@@ -645,7 +668,8 @@ void main() {
   // =========================================================================
 
   group('Menu dynamique', () {
-    test('le menu d\'un vendeur contient ses onze pages (hôtel & resto)', () {
+    test('le menu d\'un vendeur contient ses treize pages (hôtel, resto & fêtes)',
+        () {
       final List<EntreeMenu> menu =
           service.menuPour(RoleUtilisateur.vendeur, EspaceApplication.entreprise);
 
@@ -665,6 +689,9 @@ void main() {
           PageAccess.tables,
           PageAccess.commandes,
           PageAccess.cuisine,
+          // 🎉 MODULE 16 C4 — salle des fêtes.
+          PageAccess.salles,
+          PageAccess.evenements,
         ],
       );
     });

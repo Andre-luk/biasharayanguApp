@@ -38,6 +38,10 @@ class DonneesAccueil {
     this.tablesOccupees = 0,
     this.commandesActives = 0,
     this.cuisineEnAttente = 0,
+    this.sallesTotal = 0,
+    this.sallesActives = 0,
+    this.evenementsAVenir = 0,
+    this.soldeEvenements = 0,
   });
 
   /// Nombre d'articles au catalogue.
@@ -78,6 +82,19 @@ class DonneesAccueil {
 
   /// 🍽️ charge de la cuisine (en préparation + prêtes).
   final int cuisineEnAttente;
+
+  /// 🎉 MODULE 16 C4 — salles de fête actives.
+  final int sallesTotal;
+
+  /// 🎉 salles actuellement répertoriées comme actives (miroir de
+  /// [sallesTotal] hors salles désactivées).
+  final int sallesActives;
+
+  /// 🎉 événements réservés ou confirmés dont la date est à venir.
+  final int evenementsAVenir;
+
+  /// 🎉 solde à encaisser sur les événements non annulés.
+  final double soldeEvenements;
 }
 
 /// Une carte du tableau de bord d'accueil.
@@ -244,6 +261,33 @@ class CarteAccueil {
       couleur: const Color(0xFFB91C1C),
       route: '/main/restaurant/cuisine',
       alerte: (DonneesAccueil d) => d.cuisineEnAttente > 0,
+    ),
+    // 🎉 MODULE 16 C4 — salle des fêtes : calendrier des événements.
+    CarteAccueil(
+      id: 'evenements',
+      module: ModuleCode.evenements,
+      page: PageAccess.evenements,
+      priorite: 18,
+      titre: (AppLocalizations T) => 'Événements',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          '${d.evenementsAVenir}',
+      icone: Icons.celebration_rounded,
+      couleur: const Color(0xFF7C3AED),
+      route: '/main/evenements',
+      alerte: (DonneesAccueil d) => d.evenementsAVenir > 0,
+    ),
+    // 🎉 MODULE 16 C4 — salle des fêtes : salles disponibles.
+    CarteAccueil(
+      id: 'salles',
+      module: ModuleCode.salles,
+      page: PageAccess.salles,
+      priorite: 19,
+      titre: (AppLocalizations T) => 'Salles',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          d.sallesTotal == 0 ? 'À créer' : '${d.sallesActives}/${d.sallesTotal}',
+      icone: Icons.meeting_room_rounded,
+      couleur: const Color(0xFF9333EA),
+      route: '/main/evenements/salles',
     ),
     // 🧾 MODULE 8 — historique des ventes.
     CarteAccueil(

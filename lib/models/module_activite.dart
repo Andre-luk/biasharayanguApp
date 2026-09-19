@@ -33,7 +33,7 @@ abstract final class ModuleCode {
   static const String rapports = 'rapports';
   static const String assistantIa = 'assistant_ia';
 
-  // ------------------------------------------------- phases C (métier, à venir)
+  // -------------------------------- phases C (métier) — C1→C4 DÉJÀ LIVRÉS
   static const String chambres = 'chambres';
   static const String reservations = 'reservations';
   static const String checkin = 'checkin';
@@ -172,7 +172,6 @@ class ModuleActivite {
       description: 'Plan des chambres, statuts et équipements.',
       icone: Icons.hotel,
       categorie: ModuleCategorie.sejour,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.reservations,
@@ -180,7 +179,6 @@ class ModuleActivite {
       description: 'Réservations clients, avances et soldes.',
       icone: Icons.event_available,
       categorie: ModuleCategorie.sejour,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.checkin,
@@ -188,7 +186,6 @@ class ModuleActivite {
       description: 'Arrivées, départs et facturation des séjours.',
       icone: Icons.how_to_reg,
       categorie: ModuleCategorie.sejour,
-      disponible: false,
     ),
     // --------------------------------------------- restaurant (phase C3)
     ModuleActivite(
@@ -197,7 +194,6 @@ class ModuleActivite {
       description: 'Tables, occupation et service.',
       icone: Icons.table_restaurant,
       categorie: ModuleCategorie.restauration,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.commandes,
@@ -205,7 +201,6 @@ class ModuleActivite {
       description: 'Prise de commande (table → cuisine).',
       icone: Icons.receipt_long,
       categorie: ModuleCategorie.restauration,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.cuisine,
@@ -213,7 +208,6 @@ class ModuleActivite {
       description: 'File de préparation pour la cuisine.',
       icone: Icons.soup_kitchen,
       categorie: ModuleCategorie.restauration,
-      disponible: false,
     ),
     // -------------------------------------------- salle des fêtes (C4)
     ModuleActivite(
@@ -222,7 +216,6 @@ class ModuleActivite {
       description: 'Salles, capacités et tarifs.',
       icone: Icons.meeting_room,
       categorie: ModuleCategorie.evenementiel,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.evenements,
@@ -230,7 +223,6 @@ class ModuleActivite {
       description: 'Calendrier, contrats et avances des événements.',
       icone: Icons.celebration,
       categorie: ModuleCategorie.evenementiel,
-      disponible: false,
     ),
     // ---------------------------------------- commerces spécialisés (C1/C5/C6/C8)
     ModuleActivite(
@@ -239,7 +231,6 @@ class ModuleActivite {
       description: "Lots, dates d'expiration et alertes (pharmacie).",
       icone: Icons.science,
       categorie: ModuleCategorie.commerceSpecialise,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.production,

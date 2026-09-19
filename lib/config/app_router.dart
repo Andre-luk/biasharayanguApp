@@ -106,6 +106,14 @@ import 'package:biashara_yangu/pages/commandes_page.dart';
 import 'package:biashara_yangu/pages/cuisine_page.dart';
 import 'package:biashara_yangu/pages/table_salle_form_page.dart';
 import 'package:biashara_yangu/pages/tables_salle_page.dart';
+// 🎉 MODULE 16 C4 — salle des fêtes : salles, événements & dossier.
+import 'package:biashara_yangu/models/evenement.dart';
+import 'package:biashara_yangu/models/salle.dart';
+import 'package:biashara_yangu/pages/evenement_detail_page.dart';
+import 'package:biashara_yangu/pages/evenement_form_page.dart';
+import 'package:biashara_yangu/pages/evenements_page.dart';
+import 'package:biashara_yangu/pages/salle_form_page.dart';
+import 'package:biashara_yangu/pages/salles_page.dart';
 
 // ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
 import 'package:biashara_yangu/pages/qr_apercu_page.dart';
@@ -792,6 +800,62 @@ final GoRouter appRouter = GoRouter(
                   path: 'restaurant/cuisine',
                   name: 'restaurant-cuisine',
                   builder: (context, state) => const CuisinePage(),
+                ),
+
+                // 🎉 MODULE 16 C4 — SALLE DES FÊTES : salles (nom,
+                // capacité, prix/jour), calendrier des événements, dossier
+                // complet (prestations, cycle de vie, encaissements).
+                GoRoute(
+                  path: 'evenements',
+                  name: 'evenements',
+                  builder: (context, state) => const EvenementsPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'evenements-new',
+                      builder: (context, state) => const EvenementFormPage(),
+                    ),
+                    GoRoute(
+                      path: 'salles',
+                      name: 'evenements-salles',
+                      builder: (context, state) => const SallesPage(),
+                      routes: <RouteBase>[
+                        GoRoute(
+                          path: 'new',
+                          name: 'evenements-salle-new',
+                          builder: (context, state) => const SalleFormPage(),
+                        ),
+                        GoRoute(
+                          path: ':id/edit',
+                          name: 'evenements-salle-edit',
+                          builder: (context, state) => SalleFormPage(
+                            salle: state.extra is Salle
+                                ? state.extra as Salle
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    GoRoute(
+                      path: ':id',
+                      name: 'evenements-detail',
+                      builder: (context, state) => EvenementDetailPage(
+                        evenementId: state.pathParameters['id'] ?? '',
+                        evenement: state.extra is Evenement
+                            ? state.extra as Evenement
+                            : null,
+                      ),
+                    ),
+                    GoRoute(
+                      path: ':id/edit',
+                      name: 'evenements-edit',
+                      builder: (context, state) => EvenementFormPage(
+                        evenement: state.extra is Evenement
+                            ? state.extra as Evenement
+                            : null,
+                      ),
+                    ),
+                  ],
                 ),
 
                 // 🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)

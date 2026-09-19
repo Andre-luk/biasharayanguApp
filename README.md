@@ -20,7 +20,7 @@ restaurant, salle des fêtes, boulangerie, boucherie…) — Flutter + Supabase,
 | **Clients & dettes** | Fiches clients, crédits, remboursements, relances WhatsApp/SMS |
 | **Caisse & finance** | Encaissements, clôtures de caisse, dépenses, tableau de bord CA/bénéfice |
 | **Rapports** | 11+ types (ventes, articles, catégories, vendeurs, top produits, finance, stock, caisse, dépenses, dettes, expirations), exports PDF/Excel signés |
-| **Modules métier** | 🏨 Hôtel (chambres, réservations, check-in/out, facture séjour) · 💊 Pharmacie (lots, péremption, blocage de vente expirée) · 🍽️ Restaurant (tables, commandes, écran cuisine, encaissement caisse) · 🎉 Salle des fêtes (prévu) · 🥖 Boulangerie (prévu) · 🥩 Boucherie au poids (prévu) |
+| **Modules métier** | 🏨 Hôtel (chambres, réservations, check-in/out, facture séjour) · 💊 Pharmacie (lots, péremption, blocage de vente expirée) · 🍽️ Restaurant (tables, commandes, écran cuisine, encaissement caisse) · 🎉 Salle des fêtes (salles, calendrier, prestations, avances & soldes) · 🥖 Boulangerie (prévu) · 🥩 Boucherie au poids (prévu) |
 | **Équipe** | Collaborateurs, 8 rôles, permissions fines personnalisables par le Super Admin |
 | **Assistant IA** | Chat intégré (quotas par packs), actions contrôlées par les droits |
 | **Abonnement** | Workflow d'activation vérifié (comptes → finance), essai 7 j / total 30 j, restrictions sans suppression de données |
@@ -77,6 +77,8 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0029          Module 16 phase C1 — pharmacie (lots & péremption)
 0030          Module 16 phase C2 — hôtel (chambres, réservations, réception)
 0031          Module 16 phase C3 — restaurant (tables, commandes, cuisine)
+0032          Module 16 phase D — rapports par activité (hôtel, restaurant)
+0033          Module 16 phase C4 — salle des fêtes (salles, événements)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise

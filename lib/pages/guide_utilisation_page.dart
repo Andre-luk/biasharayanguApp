@@ -287,10 +287,57 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _TitreSection(
-            '👥 Équipe, assistant et réglages',
+            '🎉 Salle des fêtes',
+            'Activée si votre activité est « Salle des fêtes » : salles, '
+            'calendrier des événements, prestations et encaissements.',
           ),
           _Etape(
             numero: '18',
+            titre: 'Créer vos salles',
+            icone: Icons.meeting_room_rounded,
+            points: <String>[
+              'Événements → icône salle (en haut) → « Nouvelle salle » : nom, '
+                  'capacité, prix par jour et équipements (sono, parking…).',
+              'Le prix par jour est un tarif proposé : vous pouvez le '
+                  'négocier pour chaque événement.',
+              'Désactivez une salle plutôt que de la supprimer si elle a '
+                  'déjà des événements.',
+            ],
+          ),
+          _Etape(
+            numero: '19',
+            titre: 'Enregistrer un événement',
+            icone: Icons.celebration_rounded,
+            points: <String>[
+              'Événements → « Nouvel événement » : salle, titre (Mariage '
+                  'Kabeya…), client, dates, heures et nombre d\'invités.',
+              'Une salle ne peut pas être réservée deux fois sur les mêmes '
+                  'dates : le calendrier est protégé automatiquement.',
+              'L\'avance éventuelle est encaissée dès la création ; le solde '
+                  'se suit dans le dossier.',
+            ],
+          ),
+          _Etape(
+            numero: '20',
+            titre: 'Prestations, cycle de vie et encaissements',
+            icone: Icons.room_service_rounded,
+            points: <String>[
+              'Ouvrez le dossier : ajoutez les prestations (traiteur, '
+                  'décoration, sonorisation…) — elles S\'AJOUTENT au prix de '
+                  'la salle.',
+              'Faites avancer le dossier : Réservé → Confirmé → En cours → '
+                  'Terminé (ou Annulé avec motif).',
+              'Bouton « Encaisser » : avances, acomptes et soldes, avec le '
+                  'mode de paiement — tout est tracé.',
+              'Le tableau de bord d\'accueil affiche les événements à venir ; '
+                  'la carte « Événements » rappelle le solde à encaisser.',
+            ],
+          ),
+          _TitreSection(
+            '👥 Équipe, assistant et réglages',
+          ),
+          _Etape(
+            numero: '21',
             titre: 'Travailler en équipe',
             icone: Icons.badge_rounded,
             points: <String>[
@@ -303,7 +350,7 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _Etape(
-            numero: '19',
+            numero: '22',
             titre: 'Assistant IA et abonnement',
             icone: Icons.smart_toy_rounded,
             points: <String>[
@@ -316,7 +363,7 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _Etape(
-            numero: '20',
+            numero: '23',
             titre: 'Notifications, confort et légal',
             icone: Icons.settings_applications_rounded,
             points: <String>[
@@ -355,7 +402,7 @@ class _Entete extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Le guide officiel : 20 étapes pour maîtriser CHAQUE module — '
+              'Le guide officiel : 23 étapes pour maîtriser CHAQUE module — '
               'de la première vente à l\'écran cuisine de votre restaurant.',
               style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
             ),

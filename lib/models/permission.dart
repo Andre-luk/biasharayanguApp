@@ -223,7 +223,12 @@ enum PageAccess {
   commandes('commandes', 'Commandes', [EspaceApplication.entreprise],
       alias: ['salle']),
   cuisine('cuisine', 'Cuisine', [EspaceApplication.entreprise],
-      alias: ['ecran_cuisine']);
+      alias: ['ecran_cuisine']),
+  // 🎉 MODULE 16 C4 — SALLE DES FÊTES : salles et événements.
+  salles('salles', 'Salles', [EspaceApplication.entreprise],
+      alias: ['salle_des_fetes', 'salle_fete']),
+  evenements('evenements', 'Événements', [EspaceApplication.entreprise],
+      alias: ['calendrier', 'reservations_salles']);
 
   const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
 
