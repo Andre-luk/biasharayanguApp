@@ -32,11 +32,13 @@ class PolitiqueConfidentialitePage extends StatelessWidget {
             titre: '1. Qui sommes-nous ?',
             contenu:
                 'Biashara Yangu est une application de gestion de commerce '
-                'éditée et exploitée par La Perle (Lubumbashi, République '
-                'Démocratique du Congo). Elle permet aux entreprises '
-                '(boutiques, hôtels, pharmacies, restaurants…) de gérer '
-                'ventes, stock, caisse, dettes, collaborateurs, rapports et '
-                'un assistant intelligent — à Lubumbashi et partout en RDC.',
+                'éditée et exploitée par Biashara Tech (Lubumbashi, '
+                'République Démocratique du Congo), avec La Perle Corp comme '
+                'collaborateur chargé du marketing. Elle permet aux '
+                'entreprises (boutiques, hôtels, pharmacies, restaurants…) '
+                'de gérer ventes, stock, caisse, dettes, collaborateurs, '
+                'rapports et un assistant intelligent — à Lubumbashi et '
+                'partout en RDC.',
           ),
           _section(
             context,
@@ -114,9 +116,9 @@ class PolitiqueConfidentialitePage extends StatelessWidget {
                 'prix ou du journal) entraîne la suspension du compte.\n'
                 '• L\'utilisation de l\'assistant IA est facturée en quotas, '
                 'achetés par packs de 10 à 100.\n'
-                '• Le service est fourni « en l\'état » ; La Perle s\'engage '
-                'sur un effort de disponibilité maximal (maintenance '
-                'planifiée communiquée à l\'avance).\n\n'
+                '• Le service est fourni « en l\'état » ; Biashara Tech '
+                's\'engage sur un effort de disponibilité maximal '
+                '(maintenance planifiée communiquée à l\'avance).\n\n'
                 'Le détail complet (abonnement, responsabilité, résiliation) '
                 'figure sur la page « Conditions d\'utilisation » des '
                 'Paramètres.',
@@ -135,7 +137,7 @@ class PolitiqueConfidentialitePage extends StatelessWidget {
             context,
             titre: '9. Nous contacter',
             contenu:
-                'La Perle — Lubumbashi, RDC\n'
+                'Biashara Tech — Lubumbashi, RDC\n'
                 'Email : support@biasharayangu.cd\n'
                 'Pour toute question relative à vos données ou à '
                 'l\'application, l\'équipe répond du lundi au samedi.',

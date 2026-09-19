@@ -238,7 +238,6 @@ class ModuleActivite {
       description: 'Production, matières premières et pertes (boulangerie).',
       icone: Icons.bakery_dining,
       categorie: ModuleCategorie.commerceSpecialise,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.pesee,

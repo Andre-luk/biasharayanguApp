@@ -42,6 +42,9 @@ class DonneesAccueil {
     this.sallesActives = 0,
     this.evenementsAVenir = 0,
     this.soldeEvenements = 0,
+    this.matieresTotal = 0,
+    this.matieresAlerte = 0,
+    this.productionsJour = 0,
   });
 
   /// Nombre d'articles au catalogue.
@@ -95,6 +98,15 @@ class DonneesAccueil {
 
   /// 🎉 solde à encaisser sur les événements non annulés.
   final double soldeEvenements;
+
+  /// 🥖 MODULE 16 C5 — matières premières suivies (boulangerie).
+  final int matieresTotal;
+
+  /// 🥖 matières premières au niveau (ou sous) leur seuil d'alerte.
+  final int matieresAlerte;
+
+  /// 🥖 productions terminées aujourd'hui.
+  final int productionsJour;
 }
 
 /// Une carte du tableau de bord d'accueil.
@@ -288,6 +300,20 @@ class CarteAccueil {
       icone: Icons.meeting_room_rounded,
       couleur: const Color(0xFF9333EA),
       route: '/main/evenements/salles',
+    ),
+    // 🥖 MODULE 16 C5 — boulangerie : productions du jour (+ alertes matières).
+    CarteAccueil(
+      id: 'production',
+      module: ModuleCode.production,
+      page: PageAccess.production,
+      priorite: 21,
+      titre: (AppLocalizations T) => 'Production',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          '${d.productionsJour}',
+      icone: Icons.bakery_dining_rounded,
+      couleur: const Color(0xFFB45309),
+      route: '/main/production',
+      alerte: (DonneesAccueil d) => d.matieresAlerte > 0,
     ),
     // 🧾 MODULE 8 — historique des ventes.
     CarteAccueil(

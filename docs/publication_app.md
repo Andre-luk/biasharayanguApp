@@ -136,7 +136,7 @@ keytool -genkeypair -v \
   -keystore ~/Documents/keystores/biashara-upload.jks \
   -alias biashara \
   -keyalg RSA -keysize 2048 -validity 10950 \
-  -dname "CN=Biashara Yangu, O=La Perle, L=Kinshasa, C=CD"
+  -dname "CN=Biashara Yangu, O=Biashara Tech, L=Lubumbashi, C=CD"
 ```
 
 > ⚠️ **Ce fichier + son mot de passe = la vie de l'application.**

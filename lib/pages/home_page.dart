@@ -40,6 +40,9 @@ import 'package:biashara_yangu/services/restaurant_service.dart';
 // 🎉 MODULE 16 C4 — tableau de bord salle des fêtes (salles, événements).
 import 'package:biashara_yangu/models/salle_fete_tableau_bord.dart';
 import 'package:biashara_yangu/services/salle_fete_service.dart';
+// 🥖 MODULE 16 C5 — tableau de bord boulangerie (matières, productions).
+import 'package:biashara_yangu/models/production_tableau_bord.dart';
+import 'package:biashara_yangu/services/production_service.dart';
 // 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
@@ -98,6 +101,11 @@ class _HomePageState extends State<HomePage> {
   int _sallesActives = 0;
   int _evenementsAVenir = 0;
   double _soldeEvenements = 0;
+
+  // 🥖 MODULE 16 C5 — boulangerie : matières + productions du jour.
+  int _matieresTotal = 0;
+  int _matieresAlerte = 0;
+  int _productionsJour = 0;
 
   // Variables d'état utilisateur
   Utilisateur? utilisateur;
@@ -392,6 +400,25 @@ class _HomePageState extends State<HomePage> {
 
       if (!mounted) return;
 
+      // 🥖 MODULE 16 C5 — boulangerie : matières + productions (best-effort).
+      int matieresTotal = _matieresTotal;
+      int matieresAlerte = _matieresAlerte;
+      int productionsJour = _productionsJour;
+      if (ModulesService.instance.moduleActif(ModuleCode.production) &&
+          PermissionService.instance.peutVoir(PageAccess.production)) {
+        try {
+          final TableauBordProduction bord =
+              await ProductionService.instance.tableauBord();
+          matieresTotal = bord.matieres;
+          matieresAlerte = bord.matieresAlerte;
+          productionsJour = bord.productionsJour;
+        } catch (e) {
+          debugPrint('HomePage production (ignoré) : $e');
+        }
+      }
+
+      if (!mounted) return;
+
       setState(() {
         overallTotalVentesAmount = (results[0] as num?)?.toDouble() ?? 0.0;
         dailyTotalVentesAmount = (results[1] as num?)?.toDouble() ?? 0.0;
@@ -413,6 +440,9 @@ class _HomePageState extends State<HomePage> {
         _sallesActives = sallesActives;
         _evenementsAVenir = evenementsAVenir;
         _soldeEvenements = soldeEvenements;
+        _matieresTotal = matieresTotal;
+        _matieresAlerte = matieresAlerte;
+        _productionsJour = productionsJour;
       });
     } catch (e) {
       debugPrint('HomePage: Erreur lors du chargement des stats: $e');
@@ -669,6 +699,9 @@ class _HomePageState extends State<HomePage> {
       sallesActives: _sallesActives,
       evenementsAVenir: _evenementsAVenir,
       soldeEvenements: _soldeEvenements,
+      matieresTotal: _matieresTotal,
+      matieresAlerte: _matieresAlerte,
+      productionsJour: _productionsJour,
     );
     final ThemeData theme = Theme.of(context);
 

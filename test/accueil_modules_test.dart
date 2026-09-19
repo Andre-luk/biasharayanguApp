@@ -101,7 +101,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 18);
+      expect(cartes.length, 19);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
@@ -115,6 +115,8 @@ void main() {
       // 🎉 MODULE 16 C4 — les cartes salle des fêtes sont désormais codées.
       expect(idsDe(cartes), contains('salles'));
       expect(idsDe(cartes), contains('evenements'));
+      // 🥖 MODULE 16 C5 — la carte boulangerie est désormais codée.
+      expect(idsDe(cartes), contains('production'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -124,7 +126,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 18);
+      expect(cartes.length, 19);
     });
   });
 
@@ -270,6 +272,48 @@ void main() {
           reason: 'Aucune carte sans le module $code',
         );
       }
+    });
+  });
+
+  group('CarteAccueil.visibles — boulangerie (phase C5)', () {
+    const Set<String> profilBoulangerie = <String>{
+      'caisse',
+      'clients',
+      'finance',
+      'rapports',
+      'assistant_ia',
+      'production',
+    };
+
+    test('la carte Production apparaît en tête après les métiers', () {
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: profilBoulangerie,
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+
+      expect(idsDe(cartes), <String>[
+        'production',
+        'clients',
+        'caisse',
+        'finance',
+        'rapports',
+        'assistant_ia',
+        'abonnement',
+      ]);
+    });
+
+    test('la carte Production disparaît sans son module', () {
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: const <String>{'caisse', 'clients'},
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+
+      expect(
+        cartes.where((CarteAccueil c) => c.module == 'production'),
+        isEmpty,
+      );
     });
   });
 

@@ -71,7 +71,7 @@ if [ "$CHOIX" = "2" ]; then
   keytool -genkeypair -v -keystore "$JKS" -alias biashara \
     -keyalg RSA -keysize 2048 -validity 10950 \
     -storepass "$MDP" -keypass "$MDP" \
-    -dname "CN=Biashara Yangu, O=La Perle, L=Kinshasa, C=CD" >/dev/null 2>&1
+    -dname "CN=Biashara Yangu, O=Biashara Tech, L=Lubumbashi, C=CD" >/dev/null 2>&1
 
   ALIAS="biashara"
   echo "✅ Nouveau keystore créé — alias : « $ALIAS »"

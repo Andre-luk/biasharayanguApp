@@ -35,7 +35,7 @@ class ConditionsUtilisationPage extends StatelessWidget {
             titre: '1. Objet et acceptation',
             contenu:
                 'Biashara Yangu est un service de gestion commerciale édité '
-                'par La Perle, à Lubumbashi (République Démocratique du '
+                'par Biashara Tech, à Lubumbashi (République Démocratique du '
                 'Congo). En créant un compte ou en utilisant l\'application, '
                 'vous acceptez sans réserve les présentes conditions. Si vous '
                 'les refusez, n\'utilisez pas le service.',
@@ -121,10 +121,10 @@ class ConditionsUtilisationPage extends StatelessWidget {
             titre: '7. Propriété intellectuelle',
             contenu:
                 'L\'application, son code, sa marque, ses écrans et sa '
-                'documentation restent la propriété exclusive de La Perle. '
-                'En revanche, VOS données commerciales (ventes, clients, '
-                'stock, rapports…) vous appartiennent : elles ne sont jamais '
-                'réutilisées à votre insu.',
+                'documentation restent la propriété exclusive de Biashara '
+                'Tech. En revanche, VOS données commerciales (ventes, '
+                'clients, stock, rapports…) vous appartiennent : elles ne '
+                'sont jamais réutilisées à votre insu.',
           ),
           _section(
             context,
@@ -140,7 +140,7 @@ class ConditionsUtilisationPage extends StatelessWidget {
             context,
             titre: '9. Limitation de responsabilité',
             contenu:
-                'La Perle ne peut être tenue responsable des pertes de '
+                'Biashara Tech ne peut être tenue responsable des pertes de '
                 'bénéfices, de la mauvaise saisie des données, des pannes '
                 'd\'internet ou électriques, ni des dommages indirects. Dans '
                 'tous les cas, sa responsabilité est plafonnée au montant '
@@ -154,8 +154,8 @@ class ConditionsUtilisationPage extends StatelessWidget {
                 'support@biasharayangu.cd ; vos données restent exportables '
                 'pendant 30 jours, puis sont supprimées (hors obligations '
                 'légales de conservation).\n'
-                '• La Perle peut suspendre un compte en cas de fraude, de '
-                'non-paiement ou de violation des présentes conditions, '
+                '• Biashara Tech peut suspendre un compte en cas de fraude, '
+                'de non-paiement ou de violation des présentes conditions, '
                 'après notification.',
           ),
           _section(
@@ -188,7 +188,7 @@ class ConditionsUtilisationPage extends StatelessWidget {
             context,
             titre: '14. Contact',
             contenu:
-                'La Perle — Lubumbashi, République Démocratique du Congo\n'
+                'Biashara Tech — Lubumbashi, République Démocratique du Congo\n'
                 'Email : support@biasharayangu.cd\n'
                 'Du lundi au samedi.',
           ),

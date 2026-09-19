@@ -92,6 +92,9 @@ IconData iconePourPage(PageAccess page) {
       return Icons.meeting_room_rounded;
     case PageAccess.evenements:
       return Icons.celebration_rounded;
+    // 🥖 MODULE 16 C5 — boulangerie.
+    case PageAccess.production:
+      return Icons.bakery_dining_rounded;
   }
 }
 

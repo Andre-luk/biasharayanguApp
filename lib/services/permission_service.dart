@@ -216,6 +216,8 @@ class PermissionService {
         // 🎉 MODULE 16 C4 — salle des fêtes : salles, événements (tout).
         PageAccess.salles,
         PageAccess.evenements,
+        // 🥖 MODULE 16 C5 — boulangerie : matières, productions (tout).
+        PageAccess.production,
       ],
       ActionAccess.values, // tout, sauf l'administration de la plateforme
     ),
@@ -273,6 +275,12 @@ class PermissionService {
           ActionAccess.voir,
           ActionAccess.creer,
         },
+        // 🥖 C5 — boulanger-vendeur : productions et matières (voir + créer),
+        // sans configuration (seuils, prix, suppression = patron/magasinier).
+        PageAccess.production: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
       },
     ),
     RoleUtilisateur.magasinier: RolePermission.personnalise(
@@ -287,6 +295,12 @@ class PermissionService {
         PageAccess.assistantIa: const <ActionAccess>{
           ActionAccess.voir,
           ActionAccess.creer,
+        },
+        // 🥖 MODULE 16 C5 — l'atelier gère les matières et les productions.
+        PageAccess.production: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+          ActionAccess.modifier,
         },
       },
     ),
@@ -419,6 +433,9 @@ class PermissionService {
     // 🎉 MODULE 16 C4 — SALLE DES FÊTES : salles et événements.
     _RegleRoute('/main/evenements/salles', PageAccess.salles),
     _RegleRoute('/main/evenements', PageAccess.evenements),
+    // 🥖 MODULE 16 C5 — BOULANGERIE : matières et productions.
+    _RegleRoute('/main/production/matieres', PageAccess.production),
+    _RegleRoute('/main/production', PageAccess.production),
     _RegleRoute('/main', PageAccess.dashboard),
 
     _RegleRoute('/reports', PageAccess.rapports),
@@ -812,6 +829,8 @@ class PermissionService {
     // 🎉 MODULE 16 C4 — salle des fêtes.
     PageAccess.salles: '/main/evenements/salles',
     PageAccess.evenements: '/main/evenements',
+    // 🥖 MODULE 16 C5 — boulangerie.
+    PageAccess.production: '/main/production',
   };
 
   // ---------------------------------------------------------------------------

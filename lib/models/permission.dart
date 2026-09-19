@@ -228,7 +228,10 @@ enum PageAccess {
   salles('salles', 'Salles', [EspaceApplication.entreprise],
       alias: ['salle_des_fetes', 'salle_fete']),
   evenements('evenements', 'Événements', [EspaceApplication.entreprise],
-      alias: ['calendrier', 'reservations_salles']);
+      alias: ['calendrier', 'reservations_salles']),
+  // 🥖 MODULE 16 C5 — BOULANGERIE : matières premières et productions.
+  production('production', 'Production', [EspaceApplication.entreprise],
+      alias: ['boulangerie', 'atelier', 'fabrication']);
 
   const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
 

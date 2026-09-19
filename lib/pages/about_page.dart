@@ -3,9 +3,9 @@
 // ℹ️ À PROPOS — informations officielles de l'application.
 //
 // Application : Biashara Yangu (gestion de commerce multi-activités).
-// Éditeur : La Perle Corp — Lubumbashi, République Démocratique du Congo.
-// Développement : Biashara Tech — développeur principal : Andre Lukengu,
-// avec la participation de La Perle Corp.
+// Éditeur : Biashara Tech — Lubumbashi, République Démocratique du Congo.
+// Développement : Biashara Tech — développeur principal : Andre Lukengu.
+// Collaborateur : La Perle Corp — chargé du marketing.
 //
 // Cette page rassemble tout ce qu'une application professionnelle doit
 // publier : identité, version, éditeur, développeur, contacts officiels,
@@ -24,10 +24,11 @@ class AboutPage extends StatelessWidget {
   static const String appName = 'Biashara Yangu';
   static const String appVersion = '1.6.0';
   static const String appBuild = '15';
-  static const String editeur = 'La Perle Corp — Lubumbashi, RDC';
+  static const String editeur = 'Biashara Tech — Lubumbashi, RDC';
   static const String developpeur = 'Biashara Tech';
   static const String developpeurPrincipal = 'Andre Lukengu';
-  static const String participation = 'La Perle Corp';
+  static const String participation =
+      'La Perle Corp — collaborateur, chargé du marketing';
 
   // ── Contacts officiels ─────────────────────────────────────────────────────
   static const String email = 'support@biasharayangu.cd';
@@ -82,10 +83,12 @@ class AboutPage extends StatelessWidget {
             '• Clients, crédits et relances WhatsApp / SMS.\n'
             '• Dépenses, dettes, clôtures de caisse et suivi financier.\n'
             '• Rapports & exports PDF/Excel (ventes, finance, stock, '
-            'expirations, occupation hôtel, commandes restaurant…).\n'
+            'expirations, occupation hôtel, séjours, commandes restaurant…).\n'
             '• Modules métier : hôtel (chambres, réservations, check-in/out, '
             'facture séjour), pharmacie (lots, péremption, blocage de vente), '
-            'restaurant (tables, commandes, écran cuisine).\n'
+            'restaurant (tables, commandes, écran cuisine), salle des '
+            'fêtes (salles, événements, prestations, avances) et boulangerie '
+            '(matières premières, productions, coût de revient).\n'
             '• Équipe : 8 rôles et permissions fines par écran et par action.\n'
             '• Assistant IA avec quotas et journal d\'audit complet.',
           ),
@@ -93,11 +96,12 @@ class AboutPage extends StatelessWidget {
           _section(
             theme,
             'Mentions officielles',
-            'Biashara Yangu est éditée et exploitée par La Perle Corp '
+            'Biashara Yangu est éditée et exploitée par Biashara Tech '
             '(Lubumbashi, République Démocratique du Congo) et développée '
-            'par Biashara Tech — développeur principal : Andre Lukengu, avec '
-            'la participation de La Perle Corp.\n\n'
-            '© 2026 Biashara Tech & La Perle Corp — tous droits réservés. '
+            'par Biashara Tech — développeur principal : Andre Lukengu. '
+            'La Perle Corp est collaborateur de Biashara Tech et assure la '
+            'charge du marketing du produit.\n\n'
+            '© 2026 Biashara Tech — tous droits réservés. '
             '« Biashara Yangu », son logo, ses écrans et son code sont '
             'protégés ; toute reproduction sans autorisation écrite est '
             'interdite.\n\n'
@@ -170,7 +174,8 @@ class AboutPage extends StatelessWidget {
           Center(
             child: Text(
               '$appName — version $appVersion (build $appBuild)\n'
-              'Biashara Tech × La Perle Corp — Lubumbashi, RDC',
+              'Édité par Biashara Tech — Lubumbashi, RDC\n'
+              'La Perle Corp — collaborateur (marketing)',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),
@@ -269,13 +274,13 @@ class AboutPage extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _ligneIdentite(theme, Icons.business_rounded, 'Éditeur',
-              'La Perle Corp'),
+              'Biashara Tech'),
           _ligneIdentite(theme, Icons.code_rounded, 'Développement',
               'Biashara Tech'),
           _ligneIdentite(theme, Icons.person_rounded, 'Développeur principal',
               'Andre Lukengu'),
-          _ligneIdentite(theme, Icons.handshake_rounded, 'Participation',
-              'La Perle Corp'),
+          _ligneIdentite(theme, Icons.handshake_rounded, 'Collaborateur',
+              'La Perle Corp — chargé du marketing'),
           _ligneIdentite(theme, Icons.place_rounded, 'Siège',
               'Lubumbashi, RDC'),
         ],

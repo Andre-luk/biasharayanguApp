@@ -114,6 +114,14 @@ import 'package:biashara_yangu/pages/evenement_form_page.dart';
 import 'package:biashara_yangu/pages/evenements_page.dart';
 import 'package:biashara_yangu/pages/salle_form_page.dart';
 import 'package:biashara_yangu/pages/salles_page.dart';
+// 🥖 MODULE 16 C5 — boulangerie : matières premières & productions.
+import 'package:biashara_yangu/models/matiere_premiere.dart';
+import 'package:biashara_yangu/models/production.dart';
+import 'package:biashara_yangu/pages/matiere_form_page.dart';
+import 'package:biashara_yangu/pages/matieres_premieres_page.dart';
+import 'package:biashara_yangu/pages/production_detail_page.dart';
+import 'package:biashara_yangu/pages/production_form_page.dart';
+import 'package:biashara_yangu/pages/productions_page.dart';
 
 // ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
 import 'package:biashara_yangu/pages/qr_apercu_page.dart';
@@ -852,6 +860,54 @@ final GoRouter appRouter = GoRouter(
                       builder: (context, state) => EvenementFormPage(
                         evenement: state.extra is Evenement
                             ? state.extra as Evenement
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // 🥖 MODULE 16 C5 — BOULANGERIE : matières premières
+                // (farine, levure…), productions (quantités, pertes,
+                // coût de revient) et entrée en stock du produit fini.
+                GoRoute(
+                  path: 'production',
+                  name: 'production',
+                  builder: (context, state) => const ProductionsPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'production-new',
+                      builder: (context, state) => const ProductionFormPage(),
+                    ),
+                    GoRoute(
+                      path: 'matieres',
+                      name: 'production-matieres',
+                      builder: (context, state) =>
+                          const MatieresPremieresPage(),
+                      routes: <RouteBase>[
+                        GoRoute(
+                          path: 'new',
+                          name: 'production-matiere-new',
+                          builder: (context, state) => const MatiereFormPage(),
+                        ),
+                        GoRoute(
+                          path: ':id/edit',
+                          name: 'production-matiere-edit',
+                          builder: (context, state) => MatiereFormPage(
+                            matiere: state.extra is MatierePremiere
+                                ? state.extra as MatierePremiere
+                                : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    GoRoute(
+                      path: ':id',
+                      name: 'production-detail',
+                      builder: (context, state) => ProductionDetailPage(
+                        productionId: state.pathParameters['id'] ?? '',
+                        production: state.extra is Production
+                            ? state.extra as Production
                             : null,
                       ),
                     ),

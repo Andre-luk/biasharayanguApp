@@ -317,6 +317,8 @@ void main() {
           // lecture, événements voir + créer.
           PageAccess.salles,
           PageAccess.evenements,
+          // 🥖 MODULE 16 C5 — boulanger-vendeur : productions (voir + créer).
+          PageAccess.production,
         ],
       );
     });
@@ -668,7 +670,8 @@ void main() {
   // =========================================================================
 
   group('Menu dynamique', () {
-    test('le menu d\'un vendeur contient ses treize pages (hôtel, resto & fêtes)',
+    test(
+        'le menu d\'un vendeur contient ses quatorze pages (hôtel, resto, fêtes & boulangerie)',
         () {
       final List<EntreeMenu> menu =
           service.menuPour(RoleUtilisateur.vendeur, EspaceApplication.entreprise);
@@ -692,6 +695,8 @@ void main() {
           // 🎉 MODULE 16 C4 — salle des fêtes.
           PageAccess.salles,
           PageAccess.evenements,
+          // 🥖 MODULE 16 C5 — boulangerie.
+          PageAccess.production,
         ],
       );
     });

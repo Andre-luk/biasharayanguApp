@@ -334,10 +334,56 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _TitreSection(
-            '👥 Équipe, assistant et réglages',
+            '🥖 Boulangerie',
+            'Activée si votre activité est « Boulangerie » : matières '
+            'premières, productions du jour, pertes et coût de revient.',
           ),
           _Etape(
             numero: '21',
+            titre: 'Créer vos matières premières',
+            icone: Icons.science_rounded,
+            points: <String>[
+              'Production → icône Sciences (en haut) → « Nouvelle matière » : '
+                  'farine, levure, sucre… avec l\'unité (kg, l…) et le SEUIL '
+                  'D\'ALERTE.',
+              'Le prix par unité sert au calcul du coût de revient ; il se '
+                  'met à jour à chaque approvisionnement.',
+              'Une matière en alerte s\'affiche en rouge sur l\'accueil et '
+                  'dans l\'atelier.',
+            ],
+          ),
+          _Etape(
+            numero: '22',
+            titre: 'Approvisionner et surveiller le stock',
+            icone: Icons.add_box_rounded,
+            points: <String>[
+              'Menu d\'une matière → « Approvisionner » : quantité reçue et '
+                  'prix payé (le stock augmente immédiatement).',
+              '« Inventaire (ajuster) » corrige le stock au niveau réellement '
+                  'constaté (raison obligatoire : pesée, casse…).',
+              'Le filtre « Alertes » liste ce qui manque avant la fournée.',
+            ],
+          ),
+          _Etape(
+            numero: '23',
+            titre: 'Lancer et clôturer une production',
+            icone: Icons.bakery_dining_rounded,
+            points: <String>[
+              'Production → « Nouvelle production » : produit fini (pain, '
+                  'croissant…) et quantité prévue.',
+              'Ouvrez le dossier : ajoutez les matières utilisées — elles '
+                  'sont DÉDUITES du stock avec leur coût du moment.',
+              '« Clôturer » : saisissez la quantité réellement produite — le '
+                  'produit fini ENTRE EN STOCK, les pertes et le coût de '
+                  'revient unitaire sont calculés automatiquement.',
+              'Annuler une production en cours rend les matières au stock.',
+            ],
+          ),
+          _TitreSection(
+            '👥 Équipe, assistant et réglages',
+          ),
+          _Etape(
+            numero: '24',
             titre: 'Travailler en équipe',
             icone: Icons.badge_rounded,
             points: <String>[
@@ -350,7 +396,7 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _Etape(
-            numero: '22',
+            numero: '25',
             titre: 'Assistant IA et abonnement',
             icone: Icons.smart_toy_rounded,
             points: <String>[
@@ -363,7 +409,7 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _Etape(
-            numero: '23',
+            numero: '26',
             titre: 'Notifications, confort et légal',
             icone: Icons.settings_applications_rounded,
             points: <String>[
@@ -402,8 +448,8 @@ class _Entete extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Le guide officiel : 23 étapes pour maîtriser CHAQUE module — '
-              'de la première vente à l\'écran cuisine de votre restaurant.',
+              'Le guide officiel : 26 étapes pour maîtriser CHAQUE module — '
+              'de la première vente à la production de votre boulangerie.',
               style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
             ),
           ),
