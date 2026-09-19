@@ -28,6 +28,7 @@ class DonneesAccueil {
     this.produitsCount = 0,
     this.stockAlertes = 0,
     this.ventesJour = 0,
+    this.expirationsCount = 0,
   });
 
   /// Nombre d'articles au catalogue.
@@ -38,6 +39,9 @@ class DonneesAccueil {
 
   /// Nombre de ventes du jour.
   final int ventesJour;
+
+  /// 🧩 MODULE 16 C1 — produits expirés ou expirant sous 30 jours.
+  final int expirationsCount;
 }
 
 /// Une carte du tableau de bord d'accueil.
@@ -109,6 +113,20 @@ class CarteAccueil {
       couleur: const Color(0xFFF59E0B),
       route: '/main/stock',
       alerte: (DonneesAccueil d) => d.stockAlertes > 0,
+    ),
+    // 💊 MODULE 16 C1 — pharmacie : produits expirés / bientôt périmés.
+    CarteAccueil(
+      id: 'expirations',
+      module: ModuleCode.lotsExpiration,
+      page: PageAccess.articles,
+      priorite: 25,
+      titre: (AppLocalizations T) => 'Expirations',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          d.expirationsCount == 0 ? 'À jour' : '${d.expirationsCount}',
+      icone: Icons.medication_rounded,
+      couleur: const Color(0xFFDC2626),
+      route: '/main/articles/expirations',
+      alerte: (DonneesAccueil d) => d.expirationsCount > 0,
     ),
     // 🧾 MODULE 8 — historique des ventes.
     CarteAccueil(

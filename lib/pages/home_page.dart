@@ -25,9 +25,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+// 🧩 MODULE 16 C1 — compteur d'expirations (pharmacie).
+import 'package:biashara_yangu/services/article_service.dart';
 // 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
@@ -65,6 +68,8 @@ class _HomePageState extends State<HomePage> {
   int dailyVentesCount = 0;
   int produitsCount = 0;
   int _lowStockCount = 0;
+  // 🧩 MODULE 16 C1 — produits expirés / bientôt périmés (pharmacie).
+  int _expirationsCount = 0;
 
   // Variables d'état utilisateur
   Utilisateur? utilisateur;
@@ -267,6 +272,21 @@ class _HomePageState extends State<HomePage> {
 
       if (!mounted) return;
 
+      // 🧩 MODULE 16 C1 — pharmacie : compteur « expirations » (carte
+      // d'accueil). Requête Supabase légère, best-effort : un échec laisse
+      // simplement le compteur inchangé.
+      int expirations = _expirationsCount;
+      if (ModulesService.instance.moduleActif(ModuleCode.lotsExpiration) &&
+          PermissionService.instance.peutVoir(PageAccess.articles)) {
+        try {
+          expirations = await ArticleService.instance.compterExpirations();
+        } catch (e) {
+          debugPrint('HomePage expirations (ignoré) : $e');
+        }
+      }
+
+      if (!mounted) return;
+
       setState(() {
         overallTotalVentesAmount = (results[0] as num?)?.toDouble() ?? 0.0;
         dailyTotalVentesAmount = (results[1] as num?)?.toDouble() ?? 0.0;
@@ -274,6 +294,7 @@ class _HomePageState extends State<HomePage> {
         dailyVentesCount = results[3] as int;
         produitsCount = results[4] as int;
         _lowStockCount = results[5] as int;
+        _expirationsCount = expirations;
       });
     } catch (e) {
       debugPrint('HomePage: Erreur lors du chargement des stats: $e');
@@ -516,6 +537,7 @@ class _HomePageState extends State<HomePage> {
       produitsCount: produitsCount,
       stockAlertes: _lowStockCount,
       ventesJour: dailyVentesCount,
+      expirationsCount: _expirationsCount,
     );
     final ThemeData theme = Theme.of(context);
 

@@ -123,6 +123,9 @@ class VenteService {
         return TypeErreurVente.panierVide;
       case 'MONTANT_INSUFFISANT':
         return TypeErreurVente.inconnu;
+      // 🧩 MODULE 16 C1 — pharmacie : produit expiré → vente bloquée.
+      case 'PRODUIT_EXPIRE':
+        return TypeErreurVente.stock;
       // 🔐 MODULE 12 — annulation de vente.
       case 'RAISON_OBLIGATOIRE':
       case 'VENTE_INVALIDE':
@@ -168,7 +171,8 @@ class VenteService {
         type: TypeErreurVente.abonnement,
       );
     }
-    if (!PermissionService.instance.peut(PageAccess.caisse, ActionAccess.creer)) {
+    if (!PermissionService.instance
+        .peut(PageAccess.caisse, ActionAccess.creer)) {
       throw const VenteServiceException(
         'Votre rôle ne permet pas d\'encaisser une vente.',
         type: TypeErreurVente.droits,
@@ -191,8 +195,9 @@ class VenteService {
       };
     }).toList(growable: false);
 
-    final String? transaction =
-        (numeroTransaction ?? '').trim().isEmpty ? null : numeroTransaction!.trim();
+    final String? transaction = (numeroTransaction ?? '').trim().isEmpty
+        ? null
+        : numeroTransaction!.trim();
 
     dynamic reponse;
     try {

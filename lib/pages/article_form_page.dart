@@ -16,9 +16,14 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/categorie.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/image_service.dart';
+// 🧩 MODULE 16 C1 — les champs lot/date n'apparaissent que si l'activité
+// a le module « lots_expiration » (pharmacie…).
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
@@ -50,6 +55,10 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   final TextEditingController _quantiteController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
+  // 🧩 MODULE 16 C1 — pharmacie : lot & date de péremption.
+  final TextEditingController _lotController = TextEditingController();
+  DateTime? _dateExpiration;
+
   List<Categorie> _categories = const <Categorie>[];
   String _categorieSelectionnee = '';
 
@@ -78,6 +87,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     _prixVenteController.dispose();
     _quantiteController.dispose();
     _descriptionController.dispose();
+    _lotController.dispose();
     super.dispose();
   }
 
@@ -125,6 +135,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         _prixVenteController.text = _champNombre(article.prixVente);
         _quantiteController.text = _champNombre(article.quantite);
         _descriptionController.text = article.description ?? '';
+        _lotController.text = article.lotNumero ?? '';
+        _dateExpiration = article.dateExpiration;
         _categorieSelectionnee = article.categorie.trim();
         _photoUrl = article.photo;
       }
@@ -276,7 +288,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     for (final Categorie categorie in _categories) {
       items.add(DropdownMenuItem<String>(
         value: categorie.nom,
-        child: Text(categorie.nom, maxLines: 1, overflow: TextOverflow.ellipsis),
+        child:
+            Text(categorie.nom, maxLines: 1, overflow: TextOverflow.ellipsis),
       ));
     }
 
@@ -315,8 +328,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
             autofocus: true,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(hintText: 'Nom de la catégorie'),
-            onSubmitted: (String valeur) =>
-                Navigator.pop(ctx, valeur.trim()),
+            onSubmitted: (String valeur) => Navigator.pop(ctx, valeur.trim()),
           ),
           actions: [
             TextButton(
@@ -376,6 +388,127 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
       extra: conditionnement,
     );
     if (modifie == true) await _rechargerArticle();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🧩 MODULE 16 C1 — PHARMACIE : LOT & PÉREMPTION
+  // ---------------------------------------------------------------------------
+
+  /// Ouvre le calendrier pour choisir la date de péremption.
+  Future<void> _choisirDateExpiration() async {
+    final DateTime maintenant = DateTime.now();
+    final DateTime? choix = await showDatePicker(
+      context: context,
+      initialDate: _dateExpiration ?? maintenant,
+      firstDate: DateTime(maintenant.year - 5),
+      lastDate: DateTime(maintenant.year + 10),
+      helpText: 'Date de péremption',
+    );
+    if (!mounted || choix == null) return;
+    setState(() => _dateExpiration = choix);
+  }
+
+  static String _libelleDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  /// Section « Lot & péremption » (module lots_expiration actif uniquement).
+  Widget _sectionLotsEtExpiration() {
+    final ThemeData theme = Theme.of(context);
+    final StatutExpiration? statut = StatutExpiration.depuis(_dateExpiration);
+    final int? jours = StatutExpiration.joursRestants(_dateExpiration);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.science_outlined,
+              size: 18,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Lot & péremption',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _lotController,
+          textCapitalization: TextCapitalization.characters,
+          decoration: _decoration(
+            'Numéro de lot (optionnel)',
+            hint: 'Ex. : LOT-2026-A17',
+            icone: Icons.tag_outlined,
+          ),
+        ),
+        const SizedBox(height: 12),
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _choisirDateExpiration,
+          child: InputDecorator(
+            decoration: _decoration(
+              'Date de péremption (optionnelle)',
+              icone: Icons.event_outlined,
+            ).copyWith(
+              suffixIcon: _dateExpiration == null
+                  ? const Icon(Icons.calendar_month_outlined)
+                  : IconButton(
+                      tooltip: 'Effacer la date',
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => setState(() => _dateExpiration = null),
+                    ),
+            ),
+            child: Text(
+              _dateExpiration == null
+                  ? 'Aucune date'
+                  : _libelleDate(_dateExpiration!),
+              style: TextStyle(
+                fontSize: 15,
+                color: _dateExpiration == null
+                    ? theme.colorScheme.onSurfaceVariant
+                    : theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ),
+        if (statut == StatutExpiration.expire) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Produit EXPIRÉ (${StatutExpiration.libelleJours(jours)}) — '
+                  'la vente sera refusée en caisse.',
+                  style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+                ),
+              ),
+            ],
+          ),
+        ] else if (statut == StatutExpiration.proche) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded,
+                  size: 16, color: Colors.orange.shade800),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'Expire bientôt (${StatutExpiration.libelleJours(jours)}).',
+                  style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _sectionConditionnements() {
@@ -476,6 +609,10 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
       final double prixVente = _lireNombre(_prixVenteController.text);
       final double quantite = _lireNombre(_quantiteController.text);
       final String description = _descriptionController.text.trim();
+      // 🧩 MODULE 16 C1 — pharmacie : lot & date de péremption (les valeurs
+      // d'un article existant sont conservées même si le module est inactif,
+      // car les champs sont initialisés depuis l'article).
+      final String lotNumero = _lotController.text.trim();
 
       if (_estModification) {
         await _service.majArticle(
@@ -488,6 +625,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           uniteMesure: unite,
           photo: photo,
           description: description,
+          lotNumero: lotNumero,
+          dateExpiration: _dateExpiration,
         );
         if (!mounted) return;
         _afficherMessage('Modifications enregistrées.');
@@ -502,6 +641,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           uniteMesure: unite,
           photo: photo,
           description: description,
+          lotNumero: lotNumero,
+          dateExpiration: _dateExpiration,
         );
         if (!mounted) return;
         context.pop(true);
@@ -570,7 +711,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
               ? Center(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text(_erreurChargement!, textAlign: TextAlign.center),
+                    child:
+                        Text(_erreurChargement!, textAlign: TextAlign.center),
                   ),
                 )
               : Form(
@@ -597,7 +739,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                                   children: [
                                     OutlinedButton.icon(
                                       onPressed: _choisirPhoto,
-                                      icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                                      icon: const Icon(
+                                          Icons.photo_camera_outlined,
+                                          size: 18),
                                       label: const Text('Choisir'),
                                     ),
                                     const SizedBox(width: 8),
@@ -621,10 +765,10 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       TextFormField(
                         controller: _nomController,
                         textCapitalization: TextCapitalization.sentences,
-                        decoration:
-                            _decoration('Nom *', hint: 'Ex. Eau Casino', icone: Icons.label_outline),
-                        validator: (String? v) =>
-                            _validerObligatoire(v, "Le nom de l'article est obligatoire."),
+                        decoration: _decoration('Nom *',
+                            hint: 'Ex. Eau Casino', icone: Icons.label_outline),
+                        validator: (String? v) => _validerObligatoire(
+                            v, "Le nom de l'article est obligatoire."),
                       ),
                       const SizedBox(height: 16),
 
@@ -652,8 +796,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                           hint: 'bouteille, pièce, kg…',
                           icone: Icons.straighten,
                         ),
-                        validator: (String? v) => _validerObligatoire(
-                            v, "L'unité de base est obligatoire (ex. bouteille)."),
+                        validator: (String? v) => _validerObligatoire(v,
+                            "L'unité de base est obligatoire (ex. bouteille)."),
                       ),
                       const SizedBox(height: 16),
 
@@ -663,26 +807,32 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                           Expanded(
                             child: TextFormField(
                               controller: _prixAchatController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9.,]')),
                               ],
                               decoration: _decoration("Prix d'achat (unité)"),
-                              validator: (String? v) =>
-                                  _validerNombre(v, "Le prix d'achat est invalide."),
+                              validator: (String? v) => _validerNombre(
+                                  v, "Le prix d'achat est invalide."),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: TextFormField(
                               controller: _prixVenteController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               inputFormatters: [
-                                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                                FilteringTextInputFormatter.allow(
+                                    RegExp(r'[0-9.,]')),
                               ],
                               decoration: _decoration('Prix de vente (unité)'),
-                              validator: (String? v) =>
-                                  _validerNombre(v, 'Le prix de vente est invalide.'),
+                              validator: (String? v) => _validerNombre(
+                                  v, 'Le prix de vente est invalide.'),
                             ),
                           ),
                         ],
@@ -692,7 +842,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       // -------------------------------------------- stock
                       TextFormField(
                         controller: _quantiteController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                         ],
@@ -713,6 +864,16 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                         textCapitalization: TextCapitalization.sentences,
                         decoration: _decoration('Description (optionnelle)'),
                       ),
+
+                      // 🧩 MODULE 16 C1 — PHARMACIE : lot & péremption.
+                      //  Affiché uniquement si l'activité a le module
+                      //  « lots_expiration » (les valeurs restent celles de
+                      //  l'article sinon — jamais effacées).
+                      if (ModulesService.instance
+                          .moduleActif(ModuleCode.lotsExpiration)) ...[
+                        const SizedBox(height: 20),
+                        _sectionLotsEtExpiration(),
+                      ],
                       const SizedBox(height: 20),
 
                       // -------------------------------- conditionnements
@@ -728,7 +889,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                               ? const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.save_outlined),
                           label: Text(

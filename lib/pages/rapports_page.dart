@@ -19,8 +19,10 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/rapport.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/rapport_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -65,6 +67,8 @@ class _RapportsPageState extends State<RapportsPage> {
   // Filtres (utilisés selon le type sélectionné).
   GroupePeriodeRapport _groupe = GroupePeriodeRapport.jour;
   int _limiteTop = 10;
+  // 🧩 MODULE 16 C1 — pharmacie : horizon du rapport « Expirations ».
+  int _joursExpiration = 90;
   final TextEditingController _controleurCategorie = TextEditingController();
   bool _alerteSeulement = false;
   bool _detailDepenses = false;
@@ -86,9 +90,7 @@ class _RapportsPageState extends State<RapportsPage> {
     _fin = DateTime(aujourdHui.year, aujourdHui.month, aujourdHui.day);
     _debut = _fin.subtract(const Duration(days: 29));
 
-    _types = TypeRapport.values
-        .where(_autorise)
-        .toList(growable: false);
+    _types = TypeRapport.values.where(_autorise).toList(growable: false);
     _type = _types.isEmpty ? null : _types.first;
 
     _chargerContexte();
@@ -135,6 +137,11 @@ class _RapportsPageState extends State<RapportsPage> {
             _permissions.peut(PageAccess.finance, ActionAccess.voir);
       case TypeRapport.depenses:
         return _permissions.peut(PageAccess.depenses, ActionAccess.voir);
+      case TypeRapport.expirations:
+        // 🧩 MODULE 16 C1 — le rapport « Expirations » n'apparaît que si
+        // l'activité a le module lots_expiration (pharmacie…).
+        return _permissions.peut(PageAccess.articles, ActionAccess.voir) &&
+            ModulesService.instance.moduleActif(ModuleCode.lotsExpiration);
       case TypeRapport.plateformeRevenus:
       case TypeRapport.plateformeImpayes:
       case TypeRapport.plateformeVilles:
@@ -150,17 +157,20 @@ class _RapportsPageState extends State<RapportsPage> {
     }
   }
 
-  /// `true` si le type utilise la période (le stock n'en dépend pas).
-  bool get _typeUtilisePeriode => _type != null && _type != TypeRapport.stock;
+  /// `true` si le type utilise la période (le stock et les expirations
+  /// n'en dépendent pas).
+  bool get _typeUtilisePeriode =>
+      _type != null &&
+      _type != TypeRapport.stock &&
+      _type != TypeRapport.expirations;
 
   // ---------------------------------------------------------------------------
   // CONTEXTE (nom d'entreprise + logo pour les exports)
   // ---------------------------------------------------------------------------
 
   Future<void> _chargerContexte() async {
-    final String? nom = _estPlateforme()
-        ? 'La Perle'
-        : await _service.nomEntrepriseCourante();
+    final String? nom =
+        _estPlateforme() ? 'La Perle' : await _service.nomEntrepriseCourante();
     final Uint8List? logo = await _service.chargerLogo();
     if (!mounted) return;
     setState(() {
@@ -192,6 +202,9 @@ class _RapportsPageState extends State<RapportsPage> {
           if (_statutDettes != null && _statutDettes!.isNotEmpty)
             'statut': _statutDettes,
         };
+      case TypeRapport.expirations:
+        // 🧩 MODULE 16 C1 — horizon (jours) du rapport pharmacie.
+        return <String, dynamic>{'jours': _joursExpiration};
       case TypeRapport.plateformeNouveauxComptes:
         return <String, dynamic>{'groupe': _groupe.code};
       default:
@@ -335,7 +348,8 @@ class _RapportsPageState extends State<RapportsPage> {
     }
   }
 
-  void _snack(String message, {required bool succes, bool dureeLongue = false}) {
+  void _snack(String message,
+      {required bool succes, bool dureeLongue = false}) {
     if (!mounted) return;
     final ThemeData theme = Theme.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -441,7 +455,8 @@ class _RapportsPageState extends State<RapportsPage> {
                                   content: SelectableText(entree.empreinte!),
                                   actions: <Widget>[
                                     TextButton(
-                                      onPressed: () => Navigator.of(context).pop(),
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
                                       child: const Text('Fermer'),
                                     ),
                                   ],
@@ -644,7 +659,8 @@ class _RapportsPageState extends State<RapportsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            const Text('Période', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('Période',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -782,6 +798,28 @@ class _RapportsPageState extends State<RapportsPage> {
             },
           ),
         );
+      case TypeRapport.expirations:
+        // 🧩 MODULE 16 C1 — pharmacie : horizon du suivi.
+        enfants.add(const Text('Horizon du suivi',
+            style: TextStyle(fontWeight: FontWeight.bold)));
+        enfants.add(const SizedBox(height: 8));
+        enfants.add(
+          Wrap(
+            spacing: 8,
+            children: <int>[30, 90, 365]
+                .map(
+                  (int jours) => ChoiceChip(
+                    label: Text(jours == 365 ? '1 an' : '≤ $jours jours'),
+                    selected: _joursExpiration == jours,
+                    onSelected: (_) {
+                      setState(() => _joursExpiration = jours);
+                      _generer();
+                    },
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        );
       case TypeRapport.dettes:
         enfants.add(const Text('Statut des dettes',
             style: TextStyle(fontWeight: FontWeight.bold)));
@@ -862,7 +900,8 @@ class _RapportsPageState extends State<RapportsPage> {
             Expanded(
               child: Text(
                 donnees.titre,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
             Text(
@@ -882,8 +921,8 @@ class _RapportsPageState extends State<RapportsPage> {
             children: donnees.resume
                 .map(
                   (LigneResumeRapport indicateur) => Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(10),
@@ -1000,7 +1039,8 @@ class _RapportsPageState extends State<RapportsPage> {
                             Text(
                               i == 0
                                   ? 'TOTAUX'
-                                  : (donnees.totalFormate(donnees.colonnes[i]) ??
+                                  : (donnees
+                                          .totalFormate(donnees.colonnes[i]) ??
                                       ''),
                               style: const TextStyle(
                                   fontSize: 12, fontWeight: FontWeight.bold),
@@ -1068,7 +1108,8 @@ class _RapportsPageState extends State<RapportsPage> {
                   label: const Text('Partager'),
                 ),
                 OutlinedButton.icon(
-                  onPressed: actif ? () => _exporter(action: 'impression') : null,
+                  onPressed:
+                      actif ? () => _exporter(action: 'impression') : null,
                   icon: const Icon(Icons.print_outlined),
                   label: const Text('Imprimer'),
                 ),

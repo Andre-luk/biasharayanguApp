@@ -85,6 +85,8 @@ import 'package:biashara_yangu/pages/article_form_page.dart';
 import 'package:biashara_yangu/pages/articles_page.dart';
 import 'package:biashara_yangu/pages/categories_page.dart';
 import 'package:biashara_yangu/pages/conditionnement_form_page.dart';
+// 🧩 MODULE 16 C1 — écran « Expirations » (pharmacie : lots & péremption).
+import 'package:biashara_yangu/pages/expirations_page.dart';
 
 // ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
 import 'package:biashara_yangu/pages/qr_apercu_page.dart';
@@ -689,6 +691,13 @@ final GoRouter appRouter = GoRouter(
                       path: 'new',
                       name: 'article-new',
                       builder: (context, state) => const ArticleFormPage(),
+                    ),
+                    // 🧩 MODULE 16 C1 — pharmacie : produits expirés ou
+                    // proches de la péremption (module lots_expiration).
+                    GoRoute(
+                      path: 'expirations',
+                      name: 'articles-expirations',
+                      builder: (context, state) => const ExpirationsPage(),
                     ),
                     GoRoute(
                       path: ':id',

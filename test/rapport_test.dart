@@ -219,7 +219,7 @@ void main() {
       final List<TypeRapport> plateforme =
           TypeRapport.deEspace(EspaceRapport.plateforme);
 
-      expect(entreprise, hasLength(10));
+      expect(entreprise, hasLength(11));
       expect(plateforme, hasLength(6));
       expect(entreprise.every((TypeRapport t) => !t.estPlateforme), isTrue);
       expect(plateforme.every((TypeRapport t) => t.estPlateforme), isTrue);

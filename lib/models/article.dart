@@ -1,5 +1,6 @@
 // lib/models/article.dart
 import 'package:biashara_yangu/models/conditionnement.dart';
+import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/models/statut_stock.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -25,6 +26,14 @@ class Article {
   final double seuilAlerte;
   final String? photo;
   final String? description;
+
+  /// 🧩 MODULE 16 C1 (pharmacie) — numéro de lot (facultatif).
+  final String? lotNumero;
+
+  /// 🧩 MODULE 16 C1 — date de péremption (facultatif). Une fois dépassée,
+  /// la vente est refusée par le serveur (réglage du blocage côté base).
+  final DateTime? dateExpiration;
+
   final String? ownerId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -44,6 +53,8 @@ class Article {
     this.seuilAlerte = 5,
     this.photo,
     this.description,
+    this.lotNumero,
+    this.dateExpiration,
     this.ownerId,
     this.createdAt,
     this.updatedAt,
@@ -65,6 +76,8 @@ class Article {
       seuilAlerte: parseDouble(map['seuil_alerte'], fallback: 5),
       photo: parseStringOrNull(map['photo']),
       description: parseStringOrNull(map['description']),
+      lotNumero: parseStringOrNull(map['lot_numero']),
+      dateExpiration: parseDateTimeOrNull(map['date_expiration']),
       ownerId: parseStringOrNull(map['owner_id']),
       createdAt: parseDateTimeOrNull(map['created_at']),
       updatedAt: parseDateTimeOrNull(map['updated_at']),
@@ -86,7 +99,17 @@ class Article {
       'unite_mesure': uniteMesure,
       'photo': photo,
       'description': description,
+      'lot_numero': lotNumero,
+      'date_expiration':
+          dateExpiration == null ? null : _isoJour(dateExpiration!),
     };
+  }
+
+  /// Date au format « AAAA-MM-JJ » attendu par la colonne `date` de Supabase.
+  static String _isoJour(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   Article copyWith({
@@ -100,6 +123,8 @@ class Article {
     double? seuilAlerte,
     String? photo,
     String? description,
+    String? lotNumero,
+    DateTime? dateExpiration,
     String? ownerId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -116,6 +141,8 @@ class Article {
       seuilAlerte: seuilAlerte ?? this.seuilAlerte,
       photo: photo ?? this.photo,
       description: description ?? this.description,
+      lotNumero: lotNumero ?? this.lotNumero,
+      dateExpiration: dateExpiration ?? this.dateExpiration,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -131,6 +158,20 @@ class Article {
         quantite: quantite,
         seuilAlerte: seuilAlerte,
       );
+
+  /// 🧩 MODULE 16 C1 (pharmacie) — statut d'expiration (`null` si l'article
+  /// n'a pas de date de péremption).
+  StatutExpiration? get statutExpiration =>
+      StatutExpiration.depuis(dateExpiration);
+
+  /// L'article est-il expiré (date dépassée) ?
+  bool get estExpire => statutExpiration == StatutExpiration.expire;
+
+  /// L'article expire-t-il bientôt (≤ 30 jours) ?
+  bool get expireBientot => statutExpiration == StatutExpiration.proche;
+
+  /// L'article a-t-il une date de péremption ?
+  bool get aDateExpiration => dateExpiration != null;
 
   /// Stock total en unités de base, formule du cahier des charges :
   ///

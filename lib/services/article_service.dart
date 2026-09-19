@@ -21,6 +21,7 @@ import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/categorie.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/mouvement_article.dart';
+import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -86,7 +87,8 @@ class ArticleService {
     }
 
     try {
-      final utilisateurLocal = await DBHelper.instance.getUtilisateurById(utilisateurId);
+      final utilisateurLocal =
+          await DBHelper.instance.getUtilisateurById(utilisateurId);
       final String? parent = utilisateurLocal?.parentId;
       if (parent != null && parent.isNotEmpty) return parent;
     } catch (e) {
@@ -176,11 +178,8 @@ class ArticleService {
   Future<Article?> getArticleById(int id) {
     return _executer(
       () async {
-        final dynamic reponse = await _client
-            .from('produits')
-            .select()
-            .eq('id', id)
-            .maybeSingle();
+        final dynamic reponse =
+            await _client.from('produits').select().eq('id', id).maybeSingle();
 
         final Map<String, dynamic>? ligne = parseMap(reponse);
         if (ligne == null) return null;
@@ -209,6 +208,8 @@ class ArticleService {
     required String uniteMesure,
     String? photo,
     String? description,
+    String? lotNumero,
+    DateTime? dateExpiration,
   }) {
     return _executer(
       () async {
@@ -233,6 +234,9 @@ class ArticleService {
               'unite_mesure': uniteMesure.trim(),
               'photo': _texteOuNull(photo),
               'description': _texteOuNull(description),
+              // 🧩 MODULE 16 C1 — pharmacie : lot & date de péremption.
+              'lot_numero': _texteOuNull(lotNumero),
+              'date_expiration': _isoJour(dateExpiration),
               'owner_id': proprietaire,
             })
             .select()
@@ -261,6 +265,8 @@ class ArticleService {
     required String uniteMesure,
     String? photo,
     String? description,
+    String? lotNumero,
+    DateTime? dateExpiration,
   }) {
     return _executer(
       () async {
@@ -283,6 +289,10 @@ class ArticleService {
               'unite_mesure': uniteMesure.trim(),
               'photo': _texteOuNull(photo),
               'description': _texteOuNull(description),
+              // 🧩 MODULE 16 C1 — pharmacie : lot & date de péremption
+              //  (une date effacée dans le formulaire doit être vidée ici).
+              'lot_numero': _texteOuNull(lotNumero),
+              'date_expiration': _isoJour(dateExpiration),
             })
             .eq('id', id)
             .select()
@@ -294,6 +304,64 @@ class ArticleService {
       messageEchec:
           "Impossible d'enregistrer les modifications. Vérifiez votre connexion internet puis réessayez.",
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🧩 MODULE 16 C1 — PHARMACIE : LOTS & EXPIRATIONS
+  // ---------------------------------------------------------------------------
+
+  /// Articles ayant une date de péremption, triés par urgence (expirés
+  /// d'abord, puis les plus proches). [jours] = horizon : les produits
+  /// expirant au-delà ne sont pas renvoyés (les expirés le sont toujours).
+  Future<List<Article>> listerExpirations({int jours = 365}) async {
+    final List<Article> articles = await getArticles();
+    final DateTime reference = DateTime.now();
+    final DateTime limite =
+        DateTime(reference.year, reference.month, reference.day)
+            .add(Duration(days: jours));
+
+    final List<Article> concernes = articles
+        .where((Article article) =>
+            article.dateExpiration != null &&
+            !article.dateExpiration!.isAfter(limite))
+        .toList(growable: false);
+
+    return StatutExpiration.trierParUrgence(concernes, reference: reference);
+  }
+
+  /// Nombre de produits EXPIRÉS ou expirant sous [jours] (carte d'accueil).
+  /// Requête légère (identifiants seulement).
+  Future<int> compterExpirations({int jours = 30}) {
+    return _executer(
+      () async {
+        final String proprietaire = await _requireProprietaire();
+        final DateTime reference = DateTime.now();
+        final String limite = _isoJour(
+          DateTime(reference.year, reference.month, reference.day)
+              .add(Duration(days: jours)),
+        )!;
+
+        final List<dynamic> lignes = await _client
+            .from('produits')
+            .select('id')
+            .eq('owner_id', proprietaire)
+            .not('date_expiration', 'is', null)
+            .lte('date_expiration', limite);
+
+        return lignes.length;
+      },
+      actionLibelle: 'le comptage des expirations',
+      messageEchec:
+          'Impossible de compter les produits expirés. Vérifiez votre connexion internet.',
+    );
+  }
+
+  /// « AAAA-MM-JJ » pour les colonnes `date` de Supabase (`null` accepté).
+  static String? _isoJour(DateTime? date) {
+    if (date == null) return null;
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 
   /// Supprime un article.
@@ -336,7 +404,8 @@ class ArticleService {
       if (article.categorie.toLowerCase().contains(requete)) return true;
 
       for (final Conditionnement conditionnement in article.conditionnements) {
-        if (conditionnement.libelle.toLowerCase().contains(requete)) return true;
+        if (conditionnement.libelle.toLowerCase().contains(requete))
+          return true;
         final String? codeBarre = conditionnement.codeBarreTexte;
         if (codeBarre != null && codeBarre.toLowerCase().contains(requete)) {
           return true;
@@ -524,8 +593,7 @@ class ArticleService {
 
         await _client
             .from('categories')
-            .update(<String, dynamic>{'nom': propre})
-            .eq('id', categorie.id);
+            .update(<String, dynamic>{'nom': propre}).eq('id', categorie.id);
 
         // Propagation aux articles de la boutique (best-effort : un échec ici
         // n'annule pas le renommage du référentiel).
@@ -537,7 +605,8 @@ class ArticleService {
               .eq('owner_id', proprietaire)
               .eq('categorie', categorie.nom);
         } catch (e) {
-          debugPrint('ArticleService.renommerCategorie (propagation ignorée): $e');
+          debugPrint(
+              'ArticleService.renommerCategorie (propagation ignorée): $e');
         }
       },
       actionLibelle: 'le renommage de la catégorie',
@@ -629,7 +698,8 @@ class ArticleService {
           mouvements.add(MouvementArticle(
             id: 'vente-${ligne['id']}',
             source: SourceMouvement.vente,
-            quantite: -parseDouble(ligne['quantite']), // une vente SORT du stock
+            quantite:
+                -parseDouble(ligne['quantite']), // une vente SORT du stock
             motif: parseStringOrNull(ligne['mode_paiement']),
             date: parseDateTimeOrNull(ligne['date']),
           ));
@@ -758,7 +828,8 @@ class ArticleService {
     required String uniteMesure,
   }) {
     if (nom.trim().isEmpty) {
-      throw const ArticleServiceException("Le nom de l'article est obligatoire.");
+      throw const ArticleServiceException(
+          "Le nom de l'article est obligatoire.");
     }
     if (uniteMesure.trim().isEmpty) {
       throw const ArticleServiceException(

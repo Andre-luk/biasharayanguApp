@@ -161,6 +161,12 @@ enum TypeRapport {
     'Restes à recouvrer, ancienneté et échéances des clients',
     EspaceRapport.entreprise,
   ),
+  expirations(
+    'expirations',
+    'Expirations (pharmacie)',
+    'Produits expirés ou proches de la péremption, triés par urgence',
+    EspaceRapport.entreprise,
+  ),
 
   // ------------------------------------------------------------- plateforme
   plateformeRevenus(
@@ -243,6 +249,9 @@ const Map<String, String> _libellesStatutsRapport = <String, String>{
   'actif': 'Actif',
   'essai_7j': 'Essai 7 jours',
   'expire': 'Expiré',
+  // 🧩 MODULE 16 C1 — statuts d'expiration (rapport pharmacie).
+  'proche': 'Expire bientôt',
+  'valide': 'Valide',
   'suspendu': 'Suspendu',
   'en_attente_complement': 'Attente de complément',
   'inconnu': 'Inconnu',

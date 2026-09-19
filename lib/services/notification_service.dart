@@ -112,7 +112,8 @@ class NotificationService {
   }) {
     final String articles = '$nbArticles article${nbArticles > 1 ? 's' : ''}';
     final String mode = (modePaiement ?? '').trim();
-    final String ref = numero.trim().isEmpty ? 'Vente encaissée' : numero.trim();
+    final String ref =
+        numero.trim().isEmpty ? 'Vente encaissée' : numero.trim();
     return '$ref • ${formatMontant(total)} ($articles)'
         '${mode.isEmpty ? '' : ' • $mode'}';
   }
@@ -125,14 +126,37 @@ class NotificationService {
   }
 
   /// Corps du rapport quotidien.
-  static String messageRapport(ResumeVentesJour resume, DateTime jour) {
+  ///
+  /// 🧩 MODULE 16 C1 — [produitsExpires] / [produitsProches] ajoutent la
+  /// ligne « 💊 Expirations » (pharmacie) quand des dates existent.
+  static String messageRapport(
+    ResumeVentesJour resume,
+    DateTime jour, {
+    int? produitsExpires,
+    int? produitsProches,
+  }) {
+    final StringBuffer tampon = StringBuffer();
+
     if (resume.estVide) {
-      return 'Aucune vente enregistrée aujourd\'hui.';
+      tampon.write('Aucune vente enregistrée aujourd\'hui.');
+    } else {
+      final String articles = resume.nbArticles > 1 ? 'articles' : 'article';
+      tampon.write('Ventes : ${resume.nbVentes} • '
+          'Chiffre d\'affaires : ${formatMontant(resume.ca)} • '
+          '$articles vendus : ${resume.nbArticles}');
     }
-    final String articles = resume.nbArticles > 1 ? 'articles' : 'article';
-    return 'Ventes : ${resume.nbVentes} • '
-        'Chiffre d\'affaires : ${formatMontant(resume.ca)} • '
-        '$articles vendus : ${resume.nbArticles}';
+
+    final int expires = produitsExpires ?? 0;
+    final int proches = produitsProches ?? 0;
+    if (expires > 0 || proches > 0) {
+      final List<String> parts = <String>[
+        if (expires > 0) '$expires expiré${expires > 1 ? 's' : ''}',
+        if (proches > 0) '$proches bientôt (≤ 30 j)',
+      ];
+      tampon.write('\n💊 Expirations : ${parts.join(' • ')}');
+    }
+
+    return tampon.toString();
   }
 
   /// Le rapport du jour doit-il être envoyé maintenant ?
@@ -159,15 +183,17 @@ class NotificationService {
       _prefs = await SharedPreferences.getInstance();
       _ventesActives = _prefs!.getBool(_prefVentes) ?? true;
       _rapportActif = _prefs!.getBool(_prefRapport) ?? true;
-      _heureRapportMinutes = _prefs!.getInt(_prefHeure) ?? heureRapportParDefaut;
+      _heureRapportMinutes =
+          _prefs!.getInt(_prefHeure) ?? heureRapportParDefaut;
     } catch (e) {
       debugPrint('NotificationService (préférences) : $e');
     }
 
-    _supporte = !kIsWeb &&
-        (Platform.isAndroid || Platform.isIOS || Platform.isLinux);
+    _supporte =
+        !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isLinux);
     if (!_supporte) {
-      debugPrint('NotificationService : plateforme sans notifications locales.');
+      debugPrint(
+          'NotificationService : plateforme sans notifications locales.');
       return;
     }
 
@@ -235,7 +261,8 @@ class NotificationService {
 
   // ── Affichage ────────────────────────────────────────────────────────────
 
-  NotificationDetails _details(String canalId, String canalNom, String description) {
+  NotificationDetails _details(
+      String canalId, String canalNom, String description) {
     return NotificationDetails(
       android: AndroidNotificationDetails(
         canalId,
@@ -267,7 +294,8 @@ class NotificationService {
           nbArticles: nbArticles,
           modePaiement: modePaiement,
         ),
-        notificationDetails: _details(_canalVentes, 'Ventes', 'Alerte à chaque vente encaissée'),
+        notificationDetails:
+            _details(_canalVentes, 'Ventes', 'Alerte à chaque vente encaissée'),
       );
     } catch (e) {
       debugPrint('NotificationService (vente) : $e');
@@ -296,13 +324,18 @@ class NotificationService {
     final ResumeVentesJour? resume = await resumeDuJour();
     if (resume == null) return; // réseau indisponible → nouvel essai ensuite
 
+    // 🧩 MODULE 16 C1 — pharmacie : compteurs d'expiration (best-effort ;
+    // (0, 0) en cas d'échec — le rapport du soir reste envoyé).
+    final (int expires, int proches) = await compterExpirations();
+
     try {
       await _plugin?.show(
         id: _idRapport,
         title: titreRapport(maintenant),
-        body: messageRapport(resume, maintenant),
-        notificationDetails: _details(_canalRapport, 'Rapport de fin de journée',
-            'Résumé des ventes du jour'),
+        body: messageRapport(resume, maintenant,
+            produitsExpires: expires, produitsProches: proches),
+        notificationDetails: _details(_canalRapport,
+            'Rapport de fin de journée', 'Résumé des ventes du jour'),
       );
       await _prefs?.setString(_prefDernierJour, cleJour(maintenant));
     } catch (e) {
@@ -329,7 +362,8 @@ class NotificationService {
           .gte('date', debutLocal.toUtc().toIso8601String())
           .lt('date', finLocale.toUtc().toIso8601String());
 
-      final List<dynamic> lignes = (reponse as List<dynamic>?) ?? const <dynamic>[];
+      final List<dynamic> lignes =
+          (reponse as List<dynamic>?) ?? const <dynamic>[];
       double ca = 0;
       int quantite = 0;
       final Set<String> ventes = <String>{};
@@ -340,7 +374,8 @@ class NotificationService {
         ca += parseDouble(ligne['prix']);
         quantite += parseDouble(ligne['quantite']).round();
         final String? uuid = parseStringOrNull(ligne['vente_uuid']);
-        ventes.add((uuid != null && uuid.isNotEmpty) ? uuid : 'L${ligne['id']}');
+        ventes
+            .add((uuid != null && uuid.isNotEmpty) ? uuid : 'L${ligne['id']}');
       }
 
       return ResumeVentesJour(
@@ -351,6 +386,47 @@ class NotificationService {
     } catch (e) {
       debugPrint('NotificationService (résumé du jour) : $e');
       return null;
+    }
+  }
+
+  /// 🧩 MODULE 16 C1 — compteurs d'expiration des articles (déjà expirés,
+  /// bientôt périmés ≤ 30 j). Best-effort : (0, 0) en cas d'échec.
+  Future<(int, int)> compterExpirations() async {
+    try {
+      final String? proprietaire = await _proprietaireActif();
+      if (proprietaire == null || proprietaire.isEmpty) return (0, 0);
+
+      final dynamic reponse = await SupabaseService.instance.client
+          .from('produits')
+          .select('date_expiration')
+          .eq('owner_id', proprietaire)
+          .not('date_expiration', 'is', null);
+
+      final List<dynamic> lignes =
+          (reponse as List<dynamic>?) ?? const <dynamic>[];
+      final DateTime maintenant = DateTime.now();
+      final DateTime reference =
+          DateTime(maintenant.year, maintenant.month, maintenant.day);
+
+      int expires = 0;
+      int proches = 0;
+      for (final dynamic brut in lignes) {
+        final Map<String, dynamic> ligne =
+            Map<String, dynamic>.from(brut as Map<dynamic, dynamic>);
+        final DateTime? date = parseDateTimeOrNull(ligne['date_expiration']);
+        if (date == null) continue;
+
+        final DateTime jour = DateTime(date.year, date.month, date.day);
+        if (jour.isBefore(reference)) {
+          expires++;
+        } else if (jour.difference(reference).inDays <= 30) {
+          proches++;
+        }
+      }
+      return (expires, proches);
+    } catch (e) {
+      debugPrint('NotificationService (expirations) : $e');
+      return (0, 0);
     }
   }
 
@@ -365,7 +441,8 @@ class NotificationService {
     if (uid == null || uid.isEmpty) return null;
 
     try {
-      final dynamic utilisateur = await DBHelper.instance.getUtilisateurById(uid);
+      final dynamic utilisateur =
+          await DBHelper.instance.getUtilisateurById(uid);
       final String? parent = utilisateur?.parentId as String?;
       if (parent != null && parent.isNotEmpty) return parent;
     } catch (_) {}

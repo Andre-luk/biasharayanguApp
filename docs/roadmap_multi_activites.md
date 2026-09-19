@@ -88,7 +88,7 @@ Table public.types_espaces_modules
 
 | Ordre | Module | Contenu principal |
 |---|---|---|
-| C1 | **Pharmacie** | `produits.lot_numero` + `produits.date_expiration` (+ table `lots_produits` si multi-lots), **alertes d'expiration** (dashboard + notifications), rapport « Expirations », blocage vente si expiré (configurable) |
+| C1 ✅ | **Pharmacie** | ✅ **LIVRÉE** *(v1.6.0 — migration 29)* : `produits.lot_numero` + `produits.date_expiration`, écran « Expirations » (tri par urgence + filtres), carte d'accueil avec compteur, alertes dans le rapport quotidien, rapport « Expirations », blocage de vente si expiré (configurable `bloquer_vente_produit_expire`) |
 | C2 | **Hôtel** | `chambres` (n°, type, capacité, prix, statut : libre → réservée → occupée → à nettoyer), `reservations` (client, dates, personnes, avance, solde), **check-in/check-out**, facture séjour, dashboard occupations + arrivées/départs du jour |
 | C3 | **Restaurant** | `tables_salle`, commandes (`commandes` + `lignes_commande` : table, statut *envoyée → en préparation → prête → servie*), **écran cuisine**, envoi en cuisine, encaissement via la caisse existante |
 | C4 | **Salle des fêtes** | `salles` (capacité, prix), `evenements` (client, date, heures, invités, avance, solde), calendrier, contrats/factures |
@@ -155,4 +155,4 @@ Chaque phase : **1 migration SQL idempotente + tests Flutter + 1 release** (v1.4
 
 ---
 
-*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0) et B (v1.5.0) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant. Prochaine action : **Phase C1 — module Pharmacie** (lots & péremption).*
+*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0) et C1 Pharmacie (v1.6.0) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable). Prochaine action : **Phase C2 — module Hôtel** (chambres & réservations).*

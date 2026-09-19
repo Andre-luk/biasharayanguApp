@@ -94,15 +94,16 @@ void main() {
       ]);
     });
 
-    test('fail-open : profil NON chargé => mêmes cartes qu\'en boutique', () {
+    test('fail-open : profil NON chargé => toutes les cartes du registre', () {
       final List<CarteAccueil> cartes = CarteAccueil.visibles(
         modules: const <String>{},
         profilCharge: false,
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 9);
+      expect(cartes.length, 10);
       expect(idsDe(cartes).first, 'produits');
+      expect(idsDe(cartes), contains('expirations'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -112,7 +113,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 9);
+      expect(cartes.length, 10);
     });
   });
 
