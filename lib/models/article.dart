@@ -34,6 +34,10 @@ class Article {
   /// la vente est refusée par le serveur (réglage du blocage côté base).
   final DateTime? dateExpiration;
 
+  /// 🥩 MODULE 16 C6 (boucherie) — l'article se vend AU POIDS (kg) : la
+  /// caisse propose la saisie du poids (0,75 kg, pas de 0,5 kg).
+  final bool vendableAuPoids;
+
   final String? ownerId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -55,6 +59,7 @@ class Article {
     this.description,
     this.lotNumero,
     this.dateExpiration,
+    this.vendableAuPoids = false,
     this.ownerId,
     this.createdAt,
     this.updatedAt,
@@ -78,6 +83,7 @@ class Article {
       description: parseStringOrNull(map['description']),
       lotNumero: parseStringOrNull(map['lot_numero']),
       dateExpiration: parseDateTimeOrNull(map['date_expiration']),
+      vendableAuPoids: map['vendable_au_poids'] == true,
       ownerId: parseStringOrNull(map['owner_id']),
       createdAt: parseDateTimeOrNull(map['created_at']),
       updatedAt: parseDateTimeOrNull(map['updated_at']),
@@ -102,6 +108,8 @@ class Article {
       'lot_numero': lotNumero,
       'date_expiration':
           dateExpiration == null ? null : _isoJour(dateExpiration!),
+      // 🥩 MODULE 16 C6 — vente au poids (boucherie).
+      'vendable_au_poids': vendableAuPoids,
     };
   }
 
@@ -125,6 +133,7 @@ class Article {
     String? description,
     String? lotNumero,
     DateTime? dateExpiration,
+    bool? vendableAuPoids,
     String? ownerId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -143,6 +152,7 @@ class Article {
       description: description ?? this.description,
       lotNumero: lotNumero ?? this.lotNumero,
       dateExpiration: dateExpiration ?? this.dateExpiration,
+      vendableAuPoids: vendableAuPoids ?? this.vendableAuPoids,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

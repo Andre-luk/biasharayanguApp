@@ -829,7 +829,9 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
   void _ajuster(double delta) {
     final double maximum = _article.quantiteMaxVendable;
     double valeur = _quantite + delta;
-    if (valeur < 0.0001) valeur = 1;
+    // 🥩 MODULE 16 C6 — article pesé : minimum 0,5 kg ; sinon 1 unité.
+    final double minimum = _article.pasQuantite;
+    if (valeur < minimum) valeur = minimum;
     if (maximum > 0 && valeur > maximum) valeur = maximum;
     setState(() {
       _quantite = valeur;
@@ -1040,6 +1042,26 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
             ),
           ],
         ),
+        // 🥩 MODULE 16 C6 — boucherie : rappel de la vente au poids.
+        if (_article.vendableAuPoids) ...<Widget>[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: _vertAccent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(color: _vertAccent.withValues(alpha: 0.4)),
+            ),
+            child: const Text(
+              '🥩 Vendu au poids — indiquez le poids en kg (ex. 0,75)',
+              style: TextStyle(
+                color: _vertAccent,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1107,8 +1129,8 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
             const Spacer(),
             _boutonPas(
               icone: Icons.remove_rounded,
-              actif: !rupture && _quantite > 1,
-              onTap: () => _ajuster(-1),
+              actif: !rupture && _quantite > _article.pasQuantite,
+              onTap: () => _ajuster(-_article.pasQuantite),
             ),
             SizedBox(
               width: 92,
@@ -1141,7 +1163,7 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
             _boutonPas(
               icone: Icons.add_rounded,
               actif: !rupture && _quantite < maximum,
-              onTap: () => _ajuster(1),
+              onTap: () => _ajuster(_article.pasQuantite),
             ),
           ],
         ),

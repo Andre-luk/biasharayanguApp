@@ -51,7 +51,7 @@ void main() {
     test('les modules métier des phases C livrées ne sont plus « bientôt »',
         () {
       for (final String code in <String>[
-        // C1→C5 : codés et livrés → disponibles.
+        // C1→C6 : codés et livrés → disponibles.
         ModuleCode.chambres,
         ModuleCode.reservations,
         ModuleCode.checkin,
@@ -62,6 +62,7 @@ void main() {
         ModuleCode.evenements,
         ModuleCode.lotsExpiration,
         ModuleCode.production,
+        ModuleCode.pesee,
       ]) {
         final ModuleActivite? module = ModuleActivite.parCode(code);
         expect(module, isNotNull, reason: 'Module pré-déclaré absent : $code');
@@ -73,8 +74,7 @@ void main() {
     test('les modules des phases suivantes restent pré-déclarés « bientôt »',
         () {
       for (final String code in <String>[
-        // C6/C8 : pas encore codés → badge « bientôt ».
-        ModuleCode.pesee,
+        // C8 : pas encore codé → badge « bientôt ».
         ModuleCode.variantes,
       ]) {
         final ModuleActivite? module = ModuleActivite.parCode(code);

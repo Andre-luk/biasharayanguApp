@@ -59,6 +59,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   final TextEditingController _lotController = TextEditingController();
   DateTime? _dateExpiration;
 
+  // 🥩 MODULE 16 C6 — boucherie : article vendu au poids (kg).
+  bool _vendableAuPoids = false;
+
   List<Categorie> _categories = const <Categorie>[];
   String _categorieSelectionnee = '';
 
@@ -137,6 +140,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         _descriptionController.text = article.description ?? '';
         _lotController.text = article.lotNumero ?? '';
         _dateExpiration = article.dateExpiration;
+        _vendableAuPoids = article.vendableAuPoids;
         _categorieSelectionnee = article.categorie.trim();
         _photoUrl = article.photo;
       }
@@ -511,6 +515,45 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     );
   }
 
+  // 🥩 MODULE 16 C6 — BOUCHERIE : VENTE AU POIDS
+  // ---------------------------------------------------------------------------
+
+  /// Section « Vente au poids » (module pesee actif uniquement).
+  Widget _sectionVenteAuPoids() {
+    final ThemeData theme = Theme.of(context);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: SwitchListTile(
+          value: _vendableAuPoids,
+          onChanged: (bool valeur) {
+            setState(() {
+              _vendableAuPoids = valeur;
+              // Un article pesé se mesure en kg : on pré-remplit l'unité.
+              if (valeur && _uniteController.text.trim().isEmpty) {
+                _uniteController.text = 'kg';
+              }
+            });
+          },
+          secondary: const Icon(Icons.scale_rounded),
+          title: const Text(
+            'Vendu au poids (kg)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            'La caisse proposera la saisie du poids (0,75 kg, pas de '
+            '0,5 kg) et le prix indiqué sera le prix AU KILO. '
+            'L\'unité de base doit être « kg ».',
+            style: theme.textTheme.bodySmall,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _sectionConditionnements() {
     final Article? article = _article;
     final ThemeData theme = Theme.of(context);
@@ -627,6 +670,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           description: description,
           lotNumero: lotNumero,
           dateExpiration: _dateExpiration,
+          vendableAuPoids: _vendableAuPoids,
         );
         if (!mounted) return;
         _afficherMessage('Modifications enregistrées.');
@@ -643,6 +687,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           description: description,
           lotNumero: lotNumero,
           dateExpiration: _dateExpiration,
+          vendableAuPoids: _vendableAuPoids,
         );
         if (!mounted) return;
         context.pop(true);
@@ -873,6 +918,15 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                           .moduleActif(ModuleCode.lotsExpiration)) ...[
                         const SizedBox(height: 20),
                         _sectionLotsEtExpiration(),
+                      ],
+                      // 🥩 MODULE 16 C6 — BOUCHERIE : vente au poids.
+                      //  Affiché uniquement si l'activité a le module
+                      //  « pesee » (les valeurs restent celles de l'article
+                      //  sinon — jamais effacées).
+                      if (ModulesService.instance
+                          .moduleActif(ModuleCode.pesee)) ...[
+                        const SizedBox(height: 20),
+                        _sectionVenteAuPoids(),
                       ],
                       const SizedBox(height: 20),
 

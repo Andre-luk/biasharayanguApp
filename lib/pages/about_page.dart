@@ -87,8 +87,9 @@ class AboutPage extends StatelessWidget {
             '• Modules métier : hôtel (chambres, réservations, check-in/out, '
             'facture séjour), pharmacie (lots, péremption, blocage de vente), '
             'restaurant (tables, commandes, écran cuisine), salle des '
-            'fêtes (salles, événements, prestations, avances) et boulangerie '
-            '(matières premières, productions, coût de revient).\n'
+            'fêtes (salles, événements, prestations, avances), boulangerie '
+            '(matières premières, productions, coût de revient) et boucherie '
+            '(vente au poids, ticket au kg).\n'
             '• Équipe : 8 rôles et permissions fines par écran et par action.\n'
             '• Assistant IA avec quotas et journal d\'audit complet.',
           ),

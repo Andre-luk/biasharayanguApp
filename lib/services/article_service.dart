@@ -210,6 +210,7 @@ class ArticleService {
     String? description,
     String? lotNumero,
     DateTime? dateExpiration,
+    bool vendableAuPoids = false,
   }) {
     return _executer(
       () async {
@@ -237,6 +238,8 @@ class ArticleService {
               // 🧩 MODULE 16 C1 — pharmacie : lot & date de péremption.
               'lot_numero': _texteOuNull(lotNumero),
               'date_expiration': _isoJour(dateExpiration),
+              // 🥩 MODULE 16 C6 — boucherie : vente au poids.
+              'vendable_au_poids': vendableAuPoids,
               'owner_id': proprietaire,
             })
             .select()
@@ -267,6 +270,7 @@ class ArticleService {
     String? description,
     String? lotNumero,
     DateTime? dateExpiration,
+    bool vendableAuPoids = false,
   }) {
     return _executer(
       () async {
@@ -293,6 +297,8 @@ class ArticleService {
               //  (une date effacée dans le formulaire doit être vidée ici).
               'lot_numero': _texteOuNull(lotNumero),
               'date_expiration': _isoJour(dateExpiration),
+              // 🥩 MODULE 16 C6 — boucherie : vente au poids.
+              'vendable_au_poids': vendableAuPoids,
             })
             .eq('id', id)
             .select()

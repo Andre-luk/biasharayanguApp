@@ -245,7 +245,6 @@ class ModuleActivite {
       description: 'Vente au kg avec arrondis (boucherie).',
       icone: Icons.scale,
       categorie: ModuleCategorie.commerceSpecialise,
-      disponible: false,
     ),
     ModuleActivite(
       code: ModuleCode.variantes,

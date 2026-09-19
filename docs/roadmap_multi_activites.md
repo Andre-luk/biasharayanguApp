@@ -23,15 +23,15 @@ Un **module** est une unité fonctionnelle activable/désactivable :
 | `employes` | Collaborateurs, rôles | ✅ Modules 4/13 |
 | `rapports` | Rapports & exports | ✅ Module 11 |
 | `assistant_ia` | Assistant DeepSeek | ✅ Module 13 |
-| **`chambres`** | Chambres, statuts, équipements | ❌ à créer |
-| **`reservations`** | Réservations hôtel / salle des fêtes | ❌ à créer |
-| **`checkin`** | Arrivées / départs, facturation séjour | ❌ à créer |
-| **`tables`** | Plan de salle, occupation | ❌ à créer |
-| **`commandes`** | Commandes restaurant (table → cuisine) | ❌ à créer |
-| **`cuisine`** | Écran cuisine (préparation) | ❌ à créer |
-| **`lots_expiration`** | Lots, dates de péremption (pharmacie/boucherie) | ❌ à créer |
-| **`production`** | Production + matières premières (boulangerie) | ❌ à créer |
-| **`pesee`** | Vente au poids (kg) | ❌ partiel (unités multiples ✓) |
+| **`chambres`** | Chambres, statuts, équipements | ✅ C2 |
+| **`reservations`** | Réservations hôtel / salle des fêtes | ✅ C2 |
+| **`checkin`** | Arrivées / départs, facturation séjour | ✅ C2 |
+| **`tables`** | Plan de salle, occupation | ✅ C3 |
+| **`commandes`** | Commandes restaurant (table → cuisine) | ✅ C3 |
+| **`cuisine`** | Écran cuisine (préparation) | ✅ C3 |
+| **`lots_expiration`** | Lots, dates de péremption (pharmacie/boucherie) | ✅ C1 |
+| **`production`** | Production + matières premières (boulangerie) | ✅ C5 |
+| **`pesee`** | Vente au poids (kg) | ✅ C6 |
 | **`variantes`** | Tailles / couleurs (mode) | ❌ à créer |
 
 ---
@@ -93,7 +93,7 @@ Table public.types_espaces_modules
 | C3 ✅ | **Restaurant** | ✅ **LIVRÉE** *(migration 31 — prochaine release)* : `tables_salle` (zone, places, statut libre/occupée/réservée), `commandes` + `lignes_commande` (statut *ouverte → envoyée → en préparation → prête → servie → encaissée*), **écran cuisine** (auto-refresh 20 s), envoi en cuisine, **encaissement via la caisse existante** (`rpc_vente_valider` : stock, reçu, journal), cartes « Tables / Commandes / Cuisine », permissions `tables` · `commandes` · `cuisine` |
 | C4 ✅ | **Salle des fêtes** | ✅ **LIVRÉE** *(migration 33 — prochaine release)* : `salles` (nom, capacité, prix/jour, équipements, actif), `evenements` (client fiche ou libre, dates + heures, invités, prix négocié, avance/solde, cycle *réservé → confirmé → en cours → terminé / annulé*, numéro `EVT-…`), `lignes_evenement` (prestations : traiteur, décoration… **en plus** du prix de la salle), **chevauchement de salle refusé**, encaissements d'avances/soldes tracés, tableau de bord événementiel (salles, événements du jour/à venir, encaissé, solde, 5 prochains), cartes d'accueil « Événements / Salles », profil d'activité « Salle des fêtes » seedé, permissions `salles` · `evenements` |
 | C5 ✅ | **Boulangerie** | ✅ **LIVRÉE** *(migration 34 — prochaine release)* : `matieres_premieres` (stock, seuil d'alerte, prix unitaire), `productions` (produit fini, quantité prévue/réelle, **pertes**, coût de revient unitaire, statut *en cours → terminée / annulée*, numéro `PROD-…`), `consommations_production` (matières déduites du stock, coût figé), **entrée en stock automatique du produit fini à la clôture** (via ajustement officiel Module 9), annulation = matières rendues au stock, tableau de bord production du jour (alertes matières, quantité, pertes, coût), cartes d'accueil « Production », profil d'activité « Boulangerie » seedé, permissions `production` |
-| C6 | **Boucherie / vente au poids** | saisie au **kg** dans le panier (quantités décimales déjà supportées ✓), prix au kg, arrondis, ticket avec poids |
+| C6 ✅ | **Boucherie / vente au poids** | ✅ **LIVRÉE** *(migration 35 — prochaine release)* : `produits.vendable_au_poids` (prix AU KILO), caisse adaptée (saisie du poids 0,75 kg, pas de 0,5 kg au scanner et au panier, badge « / kg » dans la liste), ticket et stock au poids exact (les quantités décimales traversaient déjà vente/stock/reçus), profil d'activité « Boucherie » seedé. **C7 déjà couvert** par les conditionnements ; reste **C8 (variantes)**. |
 | C7 | **Quincaillerie / magasin** | déjà couvert par les **conditionnements** (pièce/carton/sac/rouleau) — juste des profils types + libellés |
 | C8 | **Variantes mode** | `produits.attributs jsonb` (couleur, taille, marque) + filtre/variantes simples |
 
@@ -150,11 +150,11 @@ Créé par l'**Expert Administrateur** en 2 minutes : modules `clients` + `rende
 ```
 Phase A (socle)  →  Phase B (dashboards)  →  C1 Pharmacie ✅  →  C2 Hôtel ✅
    →  C3 Restaurant ✅  →  D Rapports par activité ✅  →  C4 Salle des fêtes ✅
-   →  C5 Boulangerie ✅  →  C6 Boucherie  →  Phase E (packs)
+   →  C5 Boulangerie ✅  →  C6 Boucherie ✅  →  C8 Variantes  →  Phase E (packs)
 ```
 
 Chaque phase : **1 migration SQL idempotente + tests Flutter** — et **une SEULE release à la fin**, quand tous les modules sont terminés (consigne utilisateur du 19/09/2026 : plus de release intermédiaire).
 
 ---
 
-*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0), **C2 Hôtel** (migration 30), **C3 Restaurant** (migration 31), **D — rapports par activité** (migration 32) et **C4 Salle des fêtes** (migration 33 : salles, événements, prestations, encaissements, tableau de bord) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** + **restaurant : plan de salle, commandes, écran cuisine, encaissement via la caisse** + **rapports filtrés par modules actifs, page « À propos » officielle (éditeur Biashara Tech · développeur Andre Lukengu · La Perle Corp collaborateur marketing) et guide d'utilisation par module (bouton ? partout)** + **salle des fêtes : salles, calendrier, prestations, avances & soldes** + **boulangerie : matières premières, productions, pertes & coût de revient (entrée en stock automatique)**. Prochaine action : **C6 Boucherie**, puis **Phase E (packs par modules)** — release unique ensuite.*
+*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0), **C2 Hôtel** (migration 30), **C3 Restaurant** (migration 31), **D — rapports par activité** (migration 32), **C4 Salle des fêtes** (migration 33), **C5 Boulangerie** (migration 34) et **C6 Boucherie / vente au poids** (migration 35) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** + **restaurant : plan de salle, commandes, écran cuisine, encaissement via la caisse** + **rapports filtrés par modules actifs, page « À propos » officielle (éditeur Biashara Tech · développeur Andre Lukengu · La Perle Corp collaborateur marketing) et guide d'utilisation par module (bouton ? partout)** + **salle des fêtes : salles, calendrier, prestations, avances & soldes** + **boulangerie : matières premières, productions, pertes & coût de revient (entrée en stock automatique)** + **boucherie : articles vendus au poids (prix/kg, pas de 0,5 kg, ticket au kg)**. Prochaine action : **C8 Variantes (tailles/couleurs)**, puis **Phase E (packs par modules)** — release unique ensuite.*

@@ -380,10 +380,42 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _TitreSection(
-            '👥 Équipe, assistant et réglages',
+            '🥩 Vente au poids (boucherie)',
+            'Activée si votre activité est « Boucherie » : les articles se '
+            'vendent au kilo, avec pesée et ticket au poids.',
           ),
           _Etape(
             numero: '24',
+            titre: 'Marquer un article « vendu au poids »',
+            icone: Icons.scale_rounded,
+            points: <String>[
+              'Articles → ouvrez la fiche → activez « Vendu au poids (kg) » '
+                  '(l\'unité se remplit en kg automatiquement).',
+              'Le prix saisi est alors le prix AU KILO ; la liste affiche '
+                  '« / kg » pour le repérer d\'un coup d\'œil.',
+              'Le stock reste suivi en kg : il accepte les décimales '
+                  '(12,5 kg).',
+            ],
+          ),
+          _Etape(
+            numero: '25',
+            titre: 'Vendre à la pesée',
+            icone: Icons.shopping_cart_checkout_rounded,
+            points: <String>[
+              'Au scan (ou au panier), la fiche propose la saisie du POIDS : '
+                  'boutons + / − par pas de 0,5 kg ou saisie directe '
+                  '(0,75 kg).',
+              'Le ticket, la vente et le stock utilisent le poids exact — '
+                  'rien à convertir.',
+              'Astuce : branchez une balance à étiquette QR (module QR) pour '
+                  'scanner directement le produit pesé.',
+            ],
+          ),
+          _TitreSection(
+            '👥 Équipe, assistant et réglages',
+          ),
+          _Etape(
+            numero: '26',
             titre: 'Travailler en équipe',
             icone: Icons.badge_rounded,
             points: <String>[
@@ -396,7 +428,7 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _Etape(
-            numero: '25',
+            numero: '27',
             titre: 'Assistant IA et abonnement',
             icone: Icons.smart_toy_rounded,
             points: <String>[
@@ -409,7 +441,7 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _Etape(
-            numero: '26',
+            numero: '28',
             titre: 'Notifications, confort et légal',
             icone: Icons.settings_applications_rounded,
             points: <String>[
@@ -448,7 +480,7 @@ class _Entete extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Le guide officiel : 26 étapes pour maîtriser CHAQUE module — '
+              'Le guide officiel : 28 étapes pour maîtriser CHAQUE module — '
               'de la première vente à la production de votre boulangerie.',
               style: TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
             ),

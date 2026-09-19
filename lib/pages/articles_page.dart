@@ -315,7 +315,9 @@ class _ArticlesPageState extends State<ArticlesPage> {
           padding: const EdgeInsets.only(top: 2),
           child: Text(
             '${article.categorie.trim().isEmpty ? 'Sans catégorie' : article.categorie}'
-            ' · ${formatMontant(article.prixVente)}',
+            ' · ${formatMontant(article.prixVente)}'
+            // 🥩 MODULE 16 C6 — boucherie : prix au kg bien visible.
+            '${article.vendableAuPoids ? ' / kg 🥩' : ''}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall,

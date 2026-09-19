@@ -95,6 +95,17 @@ class ArticleScanne {
   double get unitesBaseParVente =>
       conditionnement?.quantiteUnitesBase ?? 1;
 
+  /// 🥩 MODULE 16 C6 (boucherie) — l'objet vendu se pèse-t-il ?
+  ///
+  /// Vrai seulement pour l'unité de base marquée « vendable au poids »
+  /// (un conditionnement reste vendu à la pièce).
+  bool get vendableAuPoids =>
+      conditionnement == null && article.vendableAuPoids;
+
+  /// Pas des boutons + / − de la quantité : 0,5 kg pour un article pesé,
+  /// 1 sinon.
+  double get pasQuantite => vendableAuPoids ? 0.5 : 1;
+
   /// Stock disponible, exprimé en UNITÉS DE BASE.
   double get stockUnitesBase => article.quantite;
 

@@ -288,6 +288,10 @@ class _PanierPageState extends State<PanierPage> {
   Widget _buildLigne(LignePanier ligne) {
     final ThemeData theme = Theme.of(context);
     final double maximum = ligne.vendu.quantiteMaxVendable;
+    // 🥩 MODULE 16 C6 — boucherie : articles pesés → pas de 0,5 kg.
+    final bool auPoids = ligne.vendu.vendableAuPoids;
+    final double pas = ligne.vendu.pasQuantite;
+    final double minimum = auPoids ? 0.25 : 1;
 
     return Card(
       elevation: 0,
@@ -310,11 +314,15 @@ class _PanierPageState extends State<PanierPage> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    ligne.vendu.estConditionnement
-                        ? '${ligne.vendu.libelleConditionnement} · '
-                            '${formatMontant(ligne.prixUnitaire)} l\'unité'
-                        : '${formatMontant(ligne.prixUnitaire)} / '
-                            '${ligne.vendu.uniteVente}',
+                    auPoids
+                        ? '🥩 Vendu au poids · '
+                            '${formatMontant(ligne.prixUnitaire)} / '
+                            '${ligne.vendu.uniteVente}'
+                        : ligne.vendu.estConditionnement
+                            ? '${ligne.vendu.libelleConditionnement} · '
+                                '${formatMontant(ligne.prixUnitaire)} l\'unité'
+                            : '${formatMontant(ligne.prixUnitaire)} / '
+                                '${ligne.vendu.uniteVente}',
                     style: TextStyle(
                       fontSize: 12,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -325,9 +333,14 @@ class _PanierPageState extends State<PanierPage> {
             ),
             _boutonPas(
               icone: Icons.remove_rounded,
-              actif: ligne.quantite > 1,
-              onTap: () =>
-                  _panier.modifierQuantite(ligne.itemId, ligne.quantite - 1),
+              actif: ligne.quantite > minimum,
+              onTap: () {
+                final double nouvelle = ligne.quantite - pas;
+                _panier.modifierQuantite(
+                  ligne.itemId,
+                  nouvelle < minimum ? minimum : nouvelle,
+                );
+              },
             ),
             InkWell(
               borderRadius: BorderRadius.circular(10),
@@ -336,7 +349,10 @@ class _PanierPageState extends State<PanierPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 child: Text(
-                  _texteQuantite(ligne.quantite),
+                  auPoids
+                      ? '${_texteQuantite(ligne.quantite)} '
+                          '${ligne.vendu.uniteVente}'
+                      : _texteQuantite(ligne.quantite),
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
@@ -347,8 +363,13 @@ class _PanierPageState extends State<PanierPage> {
             _boutonPas(
               icone: Icons.add_rounded,
               actif: ligne.quantite < maximum,
-              onTap: () =>
-                  _panier.modifierQuantite(ligne.itemId, ligne.quantite + 1),
+              onTap: () {
+                final double nouvelle = ligne.quantite + pas;
+                _panier.modifierQuantite(
+                  ligne.itemId,
+                  maximum > 0 && nouvelle > maximum ? maximum : nouvelle,
+                );
+              },
             ),
             SizedBox(
               width: 86,
