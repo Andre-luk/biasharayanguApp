@@ -88,7 +88,7 @@ Table public.types_espaces_modules
 
 | Ordre | Module | Contenu principal |
 |---|---|---|
-| C1 ✅ | **Pharmacie** | ✅ **LIVRÉE** *(v1.6.0 — migration 29)* : `produits.lot_numero` + `produits.date_expiration`, écran « Expirations » (tri par urgence + filtres), carte d'accueil avec compteur, alertes dans le rapport quotidien, rapport « Expirations », blocage de vente si expiré (configurable `bloquer_vente_produit_expire`) |
+| C1 ✅ | **Pharmacie** | ✅ **LIVRÉE** *(v1.6.0 — migration 29)* : `produits.lot_numero` + `produits.date_expiration`, écran « Expirations » (tri par urgence + filtres), carte d'accueil avec compteur, alertes dans le rapport quotidien, rapport « Expirations », blocage de vente si expiré (configurable `ventes.bloquer_produits_expires`) |
 | C2 | **Hôtel** | `chambres` (n°, type, capacité, prix, statut : libre → réservée → occupée → à nettoyer), `reservations` (client, dates, personnes, avance, solde), **check-in/check-out**, facture séjour, dashboard occupations + arrivées/départs du jour |
 | C3 | **Restaurant** | `tables_salle`, commandes (`commandes` + `lignes_commande` : table, statut *envoyée → en préparation → prête → servie*), **écran cuisine**, envoi en cuisine, encaissement via la caisse existante |
 | C4 | **Salle des fêtes** | `salles` (capacité, prix), `evenements` (client, date, heures, invités, avance, solde), calendrier, contrats/factures |
