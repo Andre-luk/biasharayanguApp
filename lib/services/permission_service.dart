@@ -209,6 +209,10 @@ class PermissionService {
         PageAccess.chambres,
         PageAccess.reservations,
         PageAccess.reception,
+        // 🍽️ MODULE 16 C3 — restaurant : tables, commandes, cuisine (tout).
+        PageAccess.tables,
+        PageAccess.commandes,
+        PageAccess.cuisine,
       ],
       ActionAccess.values, // tout, sauf l'administration de la plateforme
     ),
@@ -246,6 +250,16 @@ class PermissionService {
           ActionAccess.creer,
         },
         PageAccess.reception: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        // 🍽️ C3 — serveur/cuisine : commandes et cuisine, sans configurer.
+        PageAccess.tables: const <ActionAccess>{ActionAccess.voir},
+        PageAccess.commandes: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        PageAccess.cuisine: const <ActionAccess>{
           ActionAccess.voir,
           ActionAccess.creer,
         },
@@ -388,6 +402,10 @@ class PermissionService {
     _RegleRoute('/main/hotel/chambres', PageAccess.chambres),
     _RegleRoute('/main/hotel/reservations', PageAccess.reservations),
     _RegleRoute('/main/hotel/reception', PageAccess.reception),
+    // 🍽️ MODULE 16 C3 — RESTAURANT : plan de salle, commandes et cuisine.
+    _RegleRoute('/main/restaurant/tables', PageAccess.tables),
+    _RegleRoute('/main/restaurant/commandes', PageAccess.commandes),
+    _RegleRoute('/main/restaurant/cuisine', PageAccess.cuisine),
     _RegleRoute('/main', PageAccess.dashboard),
 
     _RegleRoute('/reports', PageAccess.rapports),
@@ -774,6 +792,10 @@ class PermissionService {
     PageAccess.chambres: '/main/hotel/chambres',
     PageAccess.reservations: '/main/hotel/reservations',
     PageAccess.reception: '/main/hotel/reception',
+    // 🍽️ MODULE 16 C3 — restaurant.
+    PageAccess.tables: '/main/restaurant/tables',
+    PageAccess.commandes: '/main/restaurant/commandes',
+    PageAccess.cuisine: '/main/restaurant/cuisine',
   };
 
   // ---------------------------------------------------------------------------

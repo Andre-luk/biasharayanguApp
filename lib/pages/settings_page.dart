@@ -383,8 +383,14 @@ class _SettingsPageState extends State<SettingsPage> {
               _TuileParametre(
                 icone: Icons.privacy_tip_outlined,
                 titre: 'Politique & conditions',
-                sousTitre: 'Confidentialité et conditions d\'utilisation',
+                sousTitre: 'Confidentialité et protection de vos données',
                 onTap: () => context.pushNamed('politique-confidentialite'),
+              ),
+              _TuileParametre(
+                icone: Icons.gavel_rounded,
+                titre: 'Conditions d\'utilisation',
+                sousTitre: 'Règles du service, abonnement et responsabilités',
+                onTap: () => context.pushNamed('conditions-utilisation'),
               ),
               _TuileParametre(
                 icone: Icons.info_outline_rounded,

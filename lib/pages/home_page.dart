@@ -34,6 +34,9 @@ import 'package:biashara_yangu/services/article_service.dart';
 // 🏨 MODULE 16 C2 — tableau de bord hôtel (occupation, arrivées/départs).
 import 'package:biashara_yangu/models/hotel_tableau_bord.dart';
 import 'package:biashara_yangu/services/hotel_service.dart';
+// 🍽️ MODULE 16 C3 — tableau de bord restaurant (tables, commandes).
+import 'package:biashara_yangu/models/restaurant_tableau_bord.dart';
+import 'package:biashara_yangu/services/restaurant_service.dart';
 // 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
@@ -80,6 +83,12 @@ class _HomePageState extends State<HomePage> {
   int _reservationsActives = 0;
   int _arriveesJour = 0;
   int _departsJour = 0;
+
+  // 🍽️ MODULE 16 C3 — restaurant : tables + commandes du service.
+  int _tablesTotal = 0;
+  int _tablesOccupees = 0;
+  int _commandesActives = 0;
+  int _cuisineEnAttente = 0;
 
   // Variables d'état utilisateur
   Utilisateur? utilisateur;
@@ -325,6 +334,31 @@ class _HomePageState extends State<HomePage> {
 
       if (!mounted) return;
 
+      // 🍽️ MODULE 16 C3 — restaurant : tables + commandes (best-effort).
+      int tablesTotal = _tablesTotal;
+      int tablesOccupees = _tablesOccupees;
+      int commandesActives = _commandesActives;
+      int cuisineEnAttente = _cuisineEnAttente;
+      final bool restaurantActif =
+          ModulesService.instance.moduleActif(ModuleCode.tables) ||
+              ModulesService.instance.moduleActif(ModuleCode.commandes) ||
+              ModulesService.instance.moduleActif(ModuleCode.cuisine);
+      if (restaurantActif &&
+          PermissionService.instance.peutVoir(PageAccess.tables)) {
+        try {
+          final RestaurantTableauBord bord =
+              await RestaurantService.instance.tableauBord();
+          tablesTotal = bord.tablesTotal;
+          tablesOccupees = bord.tablesOccupees;
+          commandesActives = bord.commandesActives;
+          cuisineEnAttente = bord.cuisineCount;
+        } catch (e) {
+          debugPrint('HomePage restaurant (ignoré) : $e');
+        }
+      }
+
+      if (!mounted) return;
+
       setState(() {
         overallTotalVentesAmount = (results[0] as num?)?.toDouble() ?? 0.0;
         dailyTotalVentesAmount = (results[1] as num?)?.toDouble() ?? 0.0;
@@ -338,6 +372,10 @@ class _HomePageState extends State<HomePage> {
         _reservationsActives = reservationsActives;
         _arriveesJour = arriveesJour;
         _departsJour = departsJour;
+        _tablesTotal = tablesTotal;
+        _tablesOccupees = tablesOccupees;
+        _commandesActives = commandesActives;
+        _cuisineEnAttente = cuisineEnAttente;
       });
     } catch (e) {
       debugPrint('HomePage: Erreur lors du chargement des stats: $e');
@@ -586,6 +624,10 @@ class _HomePageState extends State<HomePage> {
       reservationsActives: _reservationsActives,
       arriveesJour: _arriveesJour,
       departsJour: _departsJour,
+      tablesTotal: _tablesTotal,
+      tablesOccupees: _tablesOccupees,
+      commandesActives: _commandesActives,
+      cuisineEnAttente: _cuisineEnAttente,
     );
     final ThemeData theme = Theme.of(context);
 

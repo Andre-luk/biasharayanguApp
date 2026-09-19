@@ -216,7 +216,14 @@ enum PageAccess {
   reservations('reservations', 'Réservations', [EspaceApplication.entreprise],
       alias: ['planning']),
   reception('reception', 'Réception (séjours)', [EspaceApplication.entreprise],
-      alias: ['checkin', 'check_in', 'arrivees', 'departs']);
+      alias: ['checkin', 'check_in', 'arrivees', 'departs']),
+  // 🍽️ MODULE 16 C3 — RESTAURANT : plan de salle, commandes et cuisine.
+  tables('tables', 'Tables de salle', [EspaceApplication.entreprise],
+      alias: ['plan_de_salle', 'salle']),
+  commandes('commandes', 'Commandes', [EspaceApplication.entreprise],
+      alias: ['salle']),
+  cuisine('cuisine', 'Cuisine', [EspaceApplication.entreprise],
+      alias: ['ecran_cuisine']);
 
   const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
 

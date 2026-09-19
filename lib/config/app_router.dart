@@ -87,6 +87,8 @@ import 'package:biashara_yangu/pages/categories_page.dart';
 import 'package:biashara_yangu/pages/conditionnement_form_page.dart';
 // 🧩 MODULE 16 C1 — écran « Expirations » (pharmacie : lots & péremption).
 import 'package:biashara_yangu/pages/expirations_page.dart';
+// ⚖️ Conditions d'utilisation (droit congolais — Lubumbashi, RDC).
+import 'package:biashara_yangu/pages/conditions_utilisation_page.dart';
 // 🏨 MODULE 16 C2 — hôtel : chambres, réservations, réception & facture.
 import 'package:biashara_yangu/models/chambre.dart';
 import 'package:biashara_yangu/models/reservation.dart';
@@ -96,6 +98,14 @@ import 'package:biashara_yangu/pages/facture_sejour_page.dart';
 import 'package:biashara_yangu/pages/reception_page.dart';
 import 'package:biashara_yangu/pages/reservation_form_page.dart';
 import 'package:biashara_yangu/pages/reservations_page.dart';
+// 🍽️ MODULE 16 C3 — restaurant : plan de salle, commandes & cuisine.
+import 'package:biashara_yangu/models/commande.dart';
+import 'package:biashara_yangu/models/table_salle.dart';
+import 'package:biashara_yangu/pages/commande_detail_page.dart';
+import 'package:biashara_yangu/pages/commandes_page.dart';
+import 'package:biashara_yangu/pages/cuisine_page.dart';
+import 'package:biashara_yangu/pages/table_salle_form_page.dart';
+import 'package:biashara_yangu/pages/tables_salle_page.dart';
 
 // ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
 import 'package:biashara_yangu/pages/qr_apercu_page.dart';
@@ -303,6 +313,12 @@ final GoRouter appRouter = GoRouter(
       path: '/politique-confidentialite',
       name: 'politique-confidentialite',
       builder: (context, state) => const PolitiqueConfidentialitePage(),
+    ),
+    // ⚖️ Conditions d'utilisation (droit congolais — Lubumbashi, RDC).
+    GoRoute(
+      path: '/conditions-utilisation',
+      name: 'conditions-utilisation',
+      builder: (context, state) => const ConditionsUtilisationPage(),
     ),
 
     // ============== MODULE 8 : CONFIRMATION DE VENTE ==============
@@ -730,6 +746,52 @@ final GoRouter appRouter = GoRouter(
                   path: 'hotel/reception',
                   name: 'hotel-reception',
                   builder: (context, state) => const ReceptionPage(),
+                ),
+
+                // 🍽️ MODULE 16 C3 — RESTAURANT : plan de salle, commandes
+                // (envoi cuisine, service, encaissement) et écran cuisine.
+                GoRoute(
+                  path: 'restaurant/tables',
+                  name: 'restaurant-tables',
+                  builder: (context, state) => const TablesSallePage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'restaurant-table-new',
+                      builder: (context, state) => const TableSalleFormPage(),
+                    ),
+                    GoRoute(
+                      path: ':id/edit',
+                      name: 'restaurant-table-edit',
+                      builder: (context, state) => TableSalleFormPage(
+                        table: state.extra is TableSalle
+                            ? state.extra as TableSalle
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'restaurant/commandes',
+                  name: 'restaurant-commandes',
+                  builder: (context, state) => const CommandesPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: ':id',
+                      name: 'restaurant-commande-detail',
+                      builder: (context, state) => CommandeDetailPage(
+                        commandeId: state.pathParameters['id'] ?? '',
+                        commande: state.extra is Commande
+                            ? state.extra as Commande
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'restaurant/cuisine',
+                  name: 'restaurant-cuisine',
+                  builder: (context, state) => const CuisinePage(),
                 ),
 
                 // 🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)

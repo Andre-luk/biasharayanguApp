@@ -12,7 +12,7 @@ import 'package:biashara_yangu/ui/theme/app_theme.dart';
 class PolitiqueConfidentialitePage extends StatelessWidget {
   const PolitiqueConfidentialitePage({super.key});
 
-  static const String _miseAJour = '18 septembre 2026';
+  static const String _miseAJour = '19 septembre 2026';
 
   @override
   Widget build(BuildContext context) {
@@ -32,10 +32,11 @@ class PolitiqueConfidentialitePage extends StatelessWidget {
             titre: '1. Qui sommes-nous ?',
             contenu:
                 'Biashara Yangu est une application de gestion de commerce '
-                'éditée par La Perle (Kinshasa, RDC). Elle permet aux '
-                'entreprises (boutiques, hôtels, pharmacies, restaurants…) de '
-                'gérer ventes, stock, caisse, dettes, collaborateurs, '
-                'rapports et un assistant intelligent.',
+                'éditée et exploitée par La Perle (Lubumbashi, République '
+                'Démocratique du Congo). Elle permet aux entreprises '
+                '(boutiques, hôtels, pharmacies, restaurants…) de gérer '
+                'ventes, stock, caisse, dettes, collaborateurs, rapports et '
+                'un assistant intelligent — à Lubumbashi et partout en RDC.',
           ),
           _section(
             context,
@@ -115,13 +116,26 @@ class PolitiqueConfidentialitePage extends StatelessWidget {
                 'achetés par packs de 10 à 100.\n'
                 '• Le service est fourni « en l\'état » ; La Perle s\'engage '
                 'sur un effort de disponibilité maximal (maintenance '
-                'planifiée communiquée à l\'avance).',
+                'planifiée communiquée à l\'avance).\n\n'
+                'Le détail complet (abonnement, responsabilité, résiliation) '
+                'figure sur la page « Conditions d\'utilisation » des '
+                'Paramètres.',
           ),
           _section(
             context,
-            titre: '8. Nous contacter',
+            titre: '8. Droit applicable',
             contenu:
-                'La Perle — Kinshasa, RDC\n'
+                'Le service est édité et exploité depuis la République '
+                'Démocratique du Congo. Les présentes règles sont régies par '
+                'le DROIT CONGOLAIS ; tout litige relève des tribunaux '
+                'compétents de LUBUMBASHI, après une tentative de règlement '
+                'amiable (support@biasharayangu.cd).',
+          ),
+          _section(
+            context,
+            titre: '9. Nous contacter',
+            contenu:
+                'La Perle — Lubumbashi, RDC\n'
                 'Email : support@biasharayangu.cd\n'
                 'Pour toute question relative à vos données ou à '
                 'l\'application, l\'équipe répond du lundi au samedi.',

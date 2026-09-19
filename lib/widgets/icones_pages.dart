@@ -80,6 +80,13 @@ IconData iconePourPage(PageAccess page) {
       return Icons.event_available_rounded;
     case PageAccess.reception:
       return Icons.room_service_rounded;
+    // 🍽️ MODULE 16 C3 — restaurant.
+    case PageAccess.tables:
+      return Icons.table_restaurant_rounded;
+    case PageAccess.commandes:
+      return Icons.restaurant_menu_rounded;
+    case PageAccess.cuisine:
+      return Icons.soup_kitchen_rounded;
   }
 }
 

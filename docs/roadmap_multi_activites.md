@@ -90,7 +90,7 @@ Table public.types_espaces_modules
 |---|---|---|
 | C1 ✅ | **Pharmacie** | ✅ **LIVRÉE** *(v1.6.0 — migration 29)* : `produits.lot_numero` + `produits.date_expiration`, écran « Expirations » (tri par urgence + filtres), carte d'accueil avec compteur, alertes dans le rapport quotidien, rapport « Expirations », blocage de vente si expiré (configurable `ventes.bloquer_produits_expires`) |
 | C2 ✅ | **Hôtel** | ✅ **LIVRÉE** *(migration 30 — prochaine release)* : `chambres` (n°, type, capacité, prix, statut : libre → réservée → occupée → à nettoyer), `reservations` (client, dates, personnes, avance, solde), **check-in/check-out**, facture séjour, réception du jour (occupation + arrivées/départs), cartes d'accueil « Chambres / Réservations / Réception », permissions `chambres` · `reservations` · `reception` |
-| C3 | **Restaurant** | `tables_salle`, commandes (`commandes` + `lignes_commande` : table, statut *envoyée → en préparation → prête → servie*), **écran cuisine**, envoi en cuisine, encaissement via la caisse existante |
+| C3 ✅ | **Restaurant** | ✅ **LIVRÉE** *(migration 31 — prochaine release)* : `tables_salle` (zone, places, statut libre/occupée/réservée), `commandes` + `lignes_commande` (statut *ouverte → envoyée → en préparation → prête → servie → encaissée*), **écran cuisine** (auto-refresh 20 s), envoi en cuisine, **encaissement via la caisse existante** (`rpc_vente_valider` : stock, reçu, journal), cartes « Tables / Commandes / Cuisine », permissions `tables` · `commandes` · `cuisine` |
 | C4 | **Salle des fêtes** | `salles` (capacité, prix), `evenements` (client, date, heures, invités, avance, solde), calendrier, contrats/factures |
 | C5 | **Boulangerie** | `matieres_premieres` + consommation, `productions` (produit fini, quantité, pertes), coût de revient, dashboard production du jour |
 | C6 | **Boucherie / vente au poids** | saisie au **kg** dans le panier (quantités décimales déjà supportées ✓), prix au kg, arrondis, ticket avec poids |
@@ -148,11 +148,11 @@ Créé par l'**Expert Administrateur** en 2 minutes : modules `clients` + `rende
 
 ```
 Phase A (socle)  →  Phase B (dashboards)  →  C1 Pharmacie  →  C2 Hôtel ✅
-   →  C3 Restaurant  →  D (rapports par activité)  →  C4/C5/C6  →  Phase E (packs)
+   →  C3 Restaurant ✅  →  D (rapports par activité)  →  C4/C5/C6  →  Phase E (packs)
 ```
 
 Chaque phase : **1 migration SQL idempotente + tests Flutter** — et **une SEULE release à la fin**, quand tous les modules sont terminés (consigne utilisateur du 19/09/2026 : plus de release intermédiaire).
 
 ---
 
-*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0) et **C2 Hôtel** livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** (migration 30). Prochaine action : **Phase C3 — module Restaurant** (tables, commandes, écran cuisine).*
+*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0), **C2 Hôtel** et **C3 Restaurant** livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** (migration 30) + **restaurant : plan de salle, commandes, écran cuisine, encaissement via la caisse** (migration 31). Prochaine action : **Phase D — rapports par activité**.*

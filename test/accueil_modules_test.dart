@@ -101,13 +101,17 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 13);
+      expect(cartes.length, 16);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
       expect(idsDe(cartes), contains('chambres'));
       expect(idsDe(cartes), contains('reservations'));
       expect(idsDe(cartes), contains('checkin'));
+      // 🍽️ MODULE 16 C3 — les cartes restaurant sont désormais codées.
+      expect(idsDe(cartes), contains('tables'));
+      expect(idsDe(cartes), contains('commandes'));
+      expect(idsDe(cartes), contains('cuisine'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -117,7 +121,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 13);
+      expect(cartes.length, 16);
     });
   });
 
@@ -162,6 +166,56 @@ void main() {
       ]) {
         expect(
           sansModules.where((CarteAccueil c) => c.module == code),
+          isEmpty,
+          reason: 'Aucune carte sans le module $code',
+        );
+      }
+    });
+  });
+
+  group('CarteAccueil.visibles — restaurant (phase C3)', () {
+    const Set<String> profilRestaurant = <String>{
+      'caisse',
+      'clients',
+      'finance',
+      'employes',
+      'rapports',
+      'assistant_ia',
+      'tables',
+      'commandes',
+      'cuisine',
+    };
+
+    test('tables, commandes et cuisine en tête de la grille', () {
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: profilRestaurant,
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+
+      expect(idsDe(cartes), <String>[
+        'tables',
+        'commandes',
+        'cuisine',
+        'clients',
+        'caisse',
+        'finance',
+        'rapports',
+        'assistant_ia',
+        'abonnement',
+      ]);
+    });
+
+    test('les cartes restaurant disparaissent sans leur module', () {
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: const <String>{'caisse', 'clients'},
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+
+      for (final String code in <String>['tables', 'commandes', 'cuisine']) {
+        expect(
+          cartes.where((CarteAccueil c) => c.module == code),
           isEmpty,
           reason: 'Aucune carte sans le module $code',
         );
@@ -220,6 +274,42 @@ void main() {
           'caisse',
           'assistant_ia'
         ],
+      );
+    });
+
+    test('vendeur + restaurant : tables, commandes et cuisine puis caisse', () {
+      const Set<PageAccess> pagesVendeur = <PageAccess>{
+        PageAccess.ventes,
+        PageAccess.caisse,
+        PageAccess.scanner,
+        PageAccess.panier,
+        PageAccess.assistantIa,
+        PageAccess.chambres,
+        PageAccess.reservations,
+        PageAccess.reception,
+        PageAccess.tables,
+        PageAccess.commandes,
+        PageAccess.cuisine,
+      };
+
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: const <String>{
+          'caisse',
+          'clients',
+          'finance',
+          'rapports',
+          'assistant_ia',
+          'tables',
+          'commandes',
+          'cuisine',
+        },
+        profilCharge: true,
+        autorise: autorisationPour(pagesVendeur),
+      );
+
+      expect(
+        idsDe(cartes),
+        <String>['tables', 'commandes', 'cuisine', 'caisse', 'assistant_ia'],
       );
     });
 
@@ -295,6 +385,27 @@ void main() {
       expect(carte('checkin').alerte!(donnees), isTrue);
       expect(carte('checkin').alerte!(const DonneesAccueil()), isFalse);
       expect(carte('chambres').alerte, isNull);
+    });
+
+    test('les valeurs restaurant reflètent le service du jour', () {
+      const DonneesAccueil donnees = DonneesAccueil(
+        tablesTotal: 10,
+        tablesOccupees: 4,
+        commandesActives: 3,
+        cuisineEnAttente: 2,
+      );
+
+      CarteAccueil carte(String id) =>
+          CarteAccueil.registre.firstWhere((CarteAccueil c) => c.id == id);
+
+      expect(carte('tables').valeur(donnees, fr), '4/10');
+      expect(carte('commandes').valeur(donnees, fr), '3');
+      expect(carte('cuisine').valeur(donnees, fr), '2');
+
+      // La carte « Cuisine » s'allume dès qu'une commande attend.
+      expect(carte('cuisine').alerte!(donnees), isTrue);
+      expect(carte('cuisine').alerte!(const DonneesAccueil()), isFalse);
+      expect(carte('tables').alerte, isNull);
     });
 
     test('l\'alerte de stock suit le seuil', () {

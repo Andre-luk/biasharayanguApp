@@ -34,6 +34,10 @@ class DonneesAccueil {
     this.reservationsActives = 0,
     this.arriveesJour = 0,
     this.departsJour = 0,
+    this.tablesTotal = 0,
+    this.tablesOccupees = 0,
+    this.commandesActives = 0,
+    this.cuisineEnAttente = 0,
   });
 
   /// Nombre d'articles au catalogue.
@@ -62,6 +66,18 @@ class DonneesAccueil {
 
   /// 🏨 départs à enregistrer aujourd'hui.
   final int departsJour;
+
+  /// 🍽️ MODULE 16 C3 — tables de salle actives.
+  final int tablesTotal;
+
+  /// 🍽️ tables actuellement occupées.
+  final int tablesOccupees;
+
+  /// 🍽️ commandes ni encaissées ni annulées.
+  final int commandesActives;
+
+  /// 🍽️ charge de la cuisine (en préparation + prêtes).
+  final int cuisineEnAttente;
 }
 
 /// Une carte du tableau de bord d'accueil.
@@ -188,6 +204,46 @@ class CarteAccueil {
       route: '/main/hotel/reception',
       alerte: (DonneesAccueil d) =>
           d.arriveesJour > 0 || d.departsJour > 0,
+    ),
+    // 🍽️ MODULE 16 C3 — restaurant : occupation des tables.
+    CarteAccueil(
+      id: 'tables',
+      module: ModuleCode.tables,
+      page: PageAccess.tables,
+      priorite: 13,
+      titre: (AppLocalizations T) => 'Tables',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          '${d.tablesOccupees}/${d.tablesTotal}',
+      icone: Icons.table_restaurant_rounded,
+      couleur: const Color(0xFFEA580C),
+      route: '/main/restaurant/tables',
+    ),
+    // 🍽️ MODULE 16 C3 — restaurant : commandes actives.
+    CarteAccueil(
+      id: 'commandes',
+      module: ModuleCode.commandes,
+      page: PageAccess.commandes,
+      priorite: 15,
+      titre: (AppLocalizations T) => 'Commandes',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          d.commandesActives == 0 ? 'À jour' : '${d.commandesActives}',
+      icone: Icons.restaurant_menu_rounded,
+      couleur: const Color(0xFFB45309),
+      route: '/main/restaurant/commandes',
+    ),
+    // 🍽️ MODULE 16 C3 — restaurant : cuisine (en préparation + prêtes).
+    CarteAccueil(
+      id: 'cuisine',
+      module: ModuleCode.cuisine,
+      page: PageAccess.cuisine,
+      priorite: 17,
+      titre: (AppLocalizations T) => 'Cuisine',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          '${d.cuisineEnAttente}',
+      icone: Icons.soup_kitchen_rounded,
+      couleur: const Color(0xFFB91C1C),
+      route: '/main/restaurant/cuisine',
+      alerte: (DonneesAccueil d) => d.cuisineEnAttente > 0,
     ),
     // 🧾 MODULE 8 — historique des ventes.
     CarteAccueil(

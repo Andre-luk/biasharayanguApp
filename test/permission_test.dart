@@ -291,7 +291,8 @@ void main() {
   });
 
   group('VENDEUR — vendre, jamais modifier un prix', () {
-    test('pages : ventes, caisse, scanner, panier, assistant IA, hôtel', () {
+    test('pages : ventes, caisse, scanner, panier, assistant IA, hôtel, resto',
+        () {
       expect(
         service.getPagesAccessibles(RoleUtilisateur.vendeur),
         <PageAccess>[
@@ -307,6 +308,11 @@ void main() {
           PageAccess.chambres,
           PageAccess.reservations,
           PageAccess.reception,
+          // 🍽️ MODULE 16 C3 — serveur / cuisine : tables en lecture,
+          // commandes et écran cuisine (jamais la configuration).
+          PageAccess.tables,
+          PageAccess.commandes,
+          PageAccess.cuisine,
         ],
       );
     });
@@ -338,6 +344,29 @@ void main() {
           service.aAcces(RoleUtilisateur.vendeur, PageAccess.chambres, action),
           isFalse,
           reason: 'chambres/${action.code}',
+        );
+      }
+
+      // 🍽️ MODULE 16 C3 — serveur : commandes + cuisine, sans configurer.
+      expect(
+        service.aAcces(RoleUtilisateur.vendeur, PageAccess.commandes,
+            ActionAccess.creer),
+        isTrue,
+      );
+      expect(
+        service.aAcces(RoleUtilisateur.vendeur, PageAccess.cuisine,
+            ActionAccess.creer),
+        isTrue,
+      );
+      for (final ActionAccess action in <ActionAccess>[
+        ActionAccess.creer,
+        ActionAccess.modifier,
+        ActionAccess.supprimer,
+      ]) {
+        expect(
+          service.aAcces(RoleUtilisateur.vendeur, PageAccess.tables, action),
+          isFalse,
+          reason: 'tables/${action.code}',
         );
       }
     });
@@ -616,7 +645,7 @@ void main() {
   // =========================================================================
 
   group('Menu dynamique', () {
-    test('le menu d\'un vendeur contient ses huit pages (hôtel inclus)', () {
+    test('le menu d\'un vendeur contient ses onze pages (hôtel & resto)', () {
       final List<EntreeMenu> menu =
           service.menuPour(RoleUtilisateur.vendeur, EspaceApplication.entreprise);
 
@@ -632,6 +661,10 @@ void main() {
           PageAccess.chambres,
           PageAccess.reservations,
           PageAccess.reception,
+          // 🍽️ MODULE 16 C3 — service restaurant.
+          PageAccess.tables,
+          PageAccess.commandes,
+          PageAccess.cuisine,
         ],
       );
     });
