@@ -73,6 +73,13 @@ IconData iconePourPage(PageAccess page) {
       return Icons.qr_code_rounded;
     case PageAccess.rapports:
       return Icons.bar_chart_rounded;
+    // 🏨 MODULE 16 C2 — hôtel.
+    case PageAccess.chambres:
+      return Icons.king_bed_rounded;
+    case PageAccess.reservations:
+      return Icons.event_available_rounded;
+    case PageAccess.reception:
+      return Icons.room_service_rounded;
   }
 }
 

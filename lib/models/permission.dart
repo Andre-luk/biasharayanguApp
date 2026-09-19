@@ -209,7 +209,14 @@ enum PageAccess {
   // 🤖 MODULE 13 — assistant IA (espace entreprise ; les outils accessibles
   // dépendent du rôle, revérifié par le serveur à chaque action).
   assistantIa('assistant_ia', 'Assistant IA', [EspaceApplication.entreprise],
-      alias: ['agent_ia', 'ia']);
+      alias: ['agent_ia', 'ia']),
+  // 🏨 MODULE 16 C2 — HÔTEL : chambres, planning des réservations et
+  // réception (arrivées / départs / check-in / check-out).
+  chambres('chambres', 'Chambres', [EspaceApplication.entreprise]),
+  reservations('reservations', 'Réservations', [EspaceApplication.entreprise],
+      alias: ['planning']),
+  reception('reception', 'Réception (séjours)', [EspaceApplication.entreprise],
+      alias: ['checkin', 'check_in', 'arrivees', 'departs']);
 
   const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
 

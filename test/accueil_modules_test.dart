@@ -101,9 +101,13 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 10);
+      expect(cartes.length, 13);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
+      // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
+      expect(idsDe(cartes), contains('chambres'));
+      expect(idsDe(cartes), contains('reservations'));
+      expect(idsDe(cartes), contains('checkin'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -113,19 +117,25 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 10);
+      expect(cartes.length, 13);
     });
   });
 
-  group('CarteAccueil.visibles — hôtel (phase B)', () {
-    test('les cartes de commerce disparaissent du tableau de bord', () {
+  group('CarteAccueil.visibles — hôtel (phases B & C2)', () {
+    test('les cartes de commerce disparaissent, les cartes hôtel apparaissent',
+        () {
       final List<CarteAccueil> cartes = CarteAccueil.visibles(
         modules: profilHotel,
         profilCharge: true,
         autorise: autorisationPour(toutesPages),
       );
 
+      // 🏨 MODULE 16 C2 — chambres, réservations et réception en tête
+      // (priorités 12 / 14 / 16), puis les cartes partagées.
       expect(idsDe(cartes), <String>[
+        'chambres',
+        'reservations',
+        'checkin',
         'clients',
         'caisse',
         'finance',
@@ -138,9 +148,9 @@ void main() {
       expect(idsDe(cartes), isNot(contains('ventes')));
     });
 
-    test('les modules métier non codés n\'inventent aucune carte', () {
-      final List<CarteAccueil> cartes = CarteAccueil.visibles(
-        modules: profilHotel,
+    test('la grille hôtel est pilotée par les 3 modules métier', () {
+      final List<CarteAccueil> sansModules = CarteAccueil.visibles(
+        modules: const <String>{'caisse', 'clients'},
         profilCharge: true,
         autorise: autorisationPour(toutesPages),
       );
@@ -148,12 +158,12 @@ void main() {
       for (final String code in <String>[
         'chambres',
         'reservations',
-        'checkin'
+        'checkin',
       ]) {
         expect(
-          cartes.where((CarteAccueil c) => c.module == code),
+          sansModules.where((CarteAccueil c) => c.module == code),
           isEmpty,
-          reason: 'Aucune carte ne doit exister pour $code (phase C2)',
+          reason: 'Aucune carte sans le module $code',
         );
       }
     });
@@ -168,6 +178,10 @@ void main() {
         PageAccess.scanner,
         PageAccess.panier,
         PageAccess.assistantIa,
+        // 🏨 MODULE 16 C2 — réceptionniste d'hôtel.
+        PageAccess.chambres,
+        PageAccess.reservations,
+        PageAccess.reception,
       };
 
       final List<CarteAccueil> cartes = CarteAccueil.visibles(
@@ -177,6 +191,36 @@ void main() {
       );
 
       expect(idsDe(cartes), <String>['ventes', 'caisse', 'assistant_ia']);
+    });
+
+    test('vendeur + hôtel : cartes hôtel puis caisse et assistant', () {
+      const Set<PageAccess> pagesVendeur = <PageAccess>{
+        PageAccess.ventes,
+        PageAccess.caisse,
+        PageAccess.scanner,
+        PageAccess.panier,
+        PageAccess.assistantIa,
+        PageAccess.chambres,
+        PageAccess.reservations,
+        PageAccess.reception,
+      };
+
+      final List<CarteAccueil> cartes = CarteAccueil.visibles(
+        modules: profilHotel,
+        profilCharge: true,
+        autorise: autorisationPour(pagesVendeur),
+      );
+
+      expect(
+        idsDe(cartes),
+        <String>[
+          'chambres',
+          'reservations',
+          'checkin',
+          'caisse',
+          'assistant_ia'
+        ],
+      );
     });
 
     test('magasinier : Produits + Stock + Rapports + Assistant IA', () {
@@ -228,6 +272,29 @@ void main() {
       expect(carte('produits').valeur(donnees, fr), '12');
       expect(carte('stock').valeur(donnees, fr), '3');
       expect(carte('ventes').valeur(donnees, fr), '5');
+    });
+
+    test('les valeurs hôtel reflètent l\'occupation et la réception du jour',
+        () {
+      const DonneesAccueil donnees = DonneesAccueil(
+        chambresTotal: 12,
+        chambresOccupees: 5,
+        reservationsActives: 3,
+        arriveesJour: 2,
+        departsJour: 1,
+      );
+
+      CarteAccueil carte(String id) =>
+          CarteAccueil.registre.firstWhere((CarteAccueil c) => c.id == id);
+
+      expect(carte('chambres').valeur(donnees, fr), '5/12');
+      expect(carte('reservations').valeur(donnees, fr), '3');
+      expect(carte('checkin').valeur(donnees, fr), '2/1');
+
+      // La carte « Réception » s'allume quand il y a des mouvements.
+      expect(carte('checkin').alerte!(donnees), isTrue);
+      expect(carte('checkin').alerte!(const DonneesAccueil()), isFalse);
+      expect(carte('chambres').alerte, isNull);
     });
 
     test('l\'alerte de stock suit le seuil', () {

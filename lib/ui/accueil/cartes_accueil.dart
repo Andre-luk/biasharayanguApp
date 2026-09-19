@@ -29,6 +29,11 @@ class DonneesAccueil {
     this.stockAlertes = 0,
     this.ventesJour = 0,
     this.expirationsCount = 0,
+    this.chambresTotal = 0,
+    this.chambresOccupees = 0,
+    this.reservationsActives = 0,
+    this.arriveesJour = 0,
+    this.departsJour = 0,
   });
 
   /// Nombre d'articles au catalogue.
@@ -42,6 +47,21 @@ class DonneesAccueil {
 
   /// 🧩 MODULE 16 C1 — produits expirés ou expirant sous 30 jours.
   final int expirationsCount;
+
+  /// 🏨 MODULE 16 C2 — chambres actives de l'hôtel.
+  final int chambresTotal;
+
+  /// 🏨 chambres actuellement occupées.
+  final int chambresOccupees;
+
+  /// 🏨 séjours en attente ou en cours.
+  final int reservationsActives;
+
+  /// 🏨 arrivées attendues aujourd'hui (ou en retard).
+  final int arriveesJour;
+
+  /// 🏨 départs à enregistrer aujourd'hui.
+  final int departsJour;
 }
 
 /// Une carte du tableau de bord d'accueil.
@@ -127,6 +147,47 @@ class CarteAccueil {
       couleur: const Color(0xFFDC2626),
       route: '/main/articles/expirations',
       alerte: (DonneesAccueil d) => d.expirationsCount > 0,
+    ),
+    // 🏨 MODULE 16 C2 — hôtel : occupation des chambres.
+    CarteAccueil(
+      id: 'chambres',
+      module: ModuleCode.chambres,
+      page: PageAccess.chambres,
+      priorite: 12,
+      titre: (AppLocalizations T) => 'Chambres',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          '${d.chambresOccupees}/${d.chambresTotal}',
+      icone: Icons.king_bed_rounded,
+      couleur: const Color(0xFF0369A1),
+      route: '/main/hotel/chambres',
+    ),
+    // 🏨 MODULE 16 C2 — hôtel : planning des réservations.
+    CarteAccueil(
+      id: 'reservations',
+      module: ModuleCode.reservations,
+      page: PageAccess.reservations,
+      priorite: 14,
+      titre: (AppLocalizations T) => 'Réservations',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          d.reservationsActives == 0 ? 'À jour' : '${d.reservationsActives}',
+      icone: Icons.event_available_rounded,
+      couleur: const Color(0xFF0F766E),
+      route: '/main/hotel/reservations',
+    ),
+    // 🏨 MODULE 16 C2 — hôtel : réception (arrivées / départs du jour).
+    CarteAccueil(
+      id: 'checkin',
+      module: ModuleCode.checkin,
+      page: PageAccess.reception,
+      priorite: 16,
+      titre: (AppLocalizations T) => 'Réception',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          '${d.arriveesJour}/${d.departsJour}',
+      icone: Icons.room_service_rounded,
+      couleur: const Color(0xFF9333EA),
+      route: '/main/hotel/reception',
+      alerte: (DonneesAccueil d) =>
+          d.arriveesJour > 0 || d.departsJour > 0,
     ),
     // 🧾 MODULE 8 — historique des ventes.
     CarteAccueil(

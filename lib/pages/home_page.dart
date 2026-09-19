@@ -31,6 +31,9 @@ import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 // 🧩 MODULE 16 C1 — compteur d'expirations (pharmacie).
 import 'package:biashara_yangu/services/article_service.dart';
+// 🏨 MODULE 16 C2 — tableau de bord hôtel (occupation, arrivées/départs).
+import 'package:biashara_yangu/models/hotel_tableau_bord.dart';
+import 'package:biashara_yangu/services/hotel_service.dart';
 // 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
@@ -70,6 +73,13 @@ class _HomePageState extends State<HomePage> {
   int _lowStockCount = 0;
   // 🧩 MODULE 16 C1 — produits expirés / bientôt périmés (pharmacie).
   int _expirationsCount = 0;
+
+  // 🏨 MODULE 16 C2 — hôtel : occupation + mouvements du jour.
+  int _chambresTotal = 0;
+  int _chambresOccupees = 0;
+  int _reservationsActives = 0;
+  int _arriveesJour = 0;
+  int _departsJour = 0;
 
   // Variables d'état utilisateur
   Utilisateur? utilisateur;
@@ -287,6 +297,34 @@ class _HomePageState extends State<HomePage> {
 
       if (!mounted) return;
 
+      // 🏨 MODULE 16 C2 — hôtel : occupation, arrivées et départs du jour
+      // (une seule RPC `rpc_hotel_tableau_bord`, best-effort).
+      int chambresTotal = _chambresTotal;
+      int chambresOccupees = _chambresOccupees;
+      int reservationsActives = _reservationsActives;
+      int arriveesJour = _arriveesJour;
+      int departsJour = _departsJour;
+      final bool hotelActif =
+          ModulesService.instance.moduleActif(ModuleCode.chambres) ||
+              ModulesService.instance.moduleActif(ModuleCode.reservations) ||
+              ModulesService.instance.moduleActif(ModuleCode.checkin);
+      if (hotelActif &&
+          PermissionService.instance.peutVoir(PageAccess.chambres)) {
+        try {
+          final TableauBordHotel bord =
+              await HotelService.instance.tableauBord();
+          chambresTotal = bord.total;
+          chambresOccupees = bord.occupees;
+          reservationsActives = bord.reservationsActives;
+          arriveesJour = bord.arriveesCount;
+          departsJour = bord.departsCount;
+        } catch (e) {
+          debugPrint('HomePage hôtel (ignoré) : $e');
+        }
+      }
+
+      if (!mounted) return;
+
       setState(() {
         overallTotalVentesAmount = (results[0] as num?)?.toDouble() ?? 0.0;
         dailyTotalVentesAmount = (results[1] as num?)?.toDouble() ?? 0.0;
@@ -295,6 +333,11 @@ class _HomePageState extends State<HomePage> {
         produitsCount = results[4] as int;
         _lowStockCount = results[5] as int;
         _expirationsCount = expirations;
+        _chambresTotal = chambresTotal;
+        _chambresOccupees = chambresOccupees;
+        _reservationsActives = reservationsActives;
+        _arriveesJour = arriveesJour;
+        _departsJour = departsJour;
       });
     } catch (e) {
       debugPrint('HomePage: Erreur lors du chargement des stats: $e');
@@ -538,6 +581,11 @@ class _HomePageState extends State<HomePage> {
       stockAlertes: _lowStockCount,
       ventesJour: dailyVentesCount,
       expirationsCount: _expirationsCount,
+      chambresTotal: _chambresTotal,
+      chambresOccupees: _chambresOccupees,
+      reservationsActives: _reservationsActives,
+      arriveesJour: _arriveesJour,
+      departsJour: _departsJour,
     );
     final ThemeData theme = Theme.of(context);
 

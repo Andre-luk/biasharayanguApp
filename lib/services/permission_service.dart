@@ -205,21 +205,51 @@ class PermissionService {
         PageAccess.audit, // 🔐 MODULE 12 — journal de SA boutique
         PageAccess.assistantIa, // 🤖 MODULE 13 — assistant IA
         PageAccess.parametres,
+        // 🏨 MODULE 16 C2 — hôtel : chambres, planning, réception (tout).
+        PageAccess.chambres,
+        PageAccess.reservations,
+        PageAccess.reception,
       ],
       ActionAccess.values, // tout, sauf l'administration de la plateforme
     ),
-    RoleUtilisateur.vendeur: RolePermission.uniforme(
-      const <PageAccess>[
-        PageAccess.ventes, // historique de ses ventes
-        PageAccess.caisse, // nouvelle vente + encaissement
-        PageAccess.scanner,
-        PageAccess.panier,
-        PageAccess.assistantIa, // 🤖 MODULE 13 — assistant IA (outils du rôle)
-      ],
-      const <ActionAccess>[
-        ActionAccess.voir,
-        ActionAccess.creer, // vendre — et rien d'autre
-      ],
+    // 🏨 MODULE 16 C2 — le vendeur est aussi RÉCEPTIONNISTE d'hôtel : il
+    // consulte les chambres, gère le planning (voir + créer) et les
+    // arrivées/départs, mais ne configure JAMAIS les chambres (création,
+    // prix, suppression) — c'est le travail du propriétaire.
+    RoleUtilisateur.vendeur: RolePermission.personnalise(
+      <PageAccess, Set<ActionAccess>>{
+        PageAccess.ventes: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        PageAccess.caisse: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer, // vendre — et rien d'autre
+        },
+        PageAccess.scanner: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        PageAccess.panier: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        PageAccess.assistantIa: const <ActionAccess>{
+          // 🤖 MODULE 13 — assistant IA (outils du rôle).
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        // 🏨 réception d'hôtel : le planning et les séjours, pas la config.
+        PageAccess.chambres: const <ActionAccess>{ActionAccess.voir},
+        PageAccess.reservations: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        PageAccess.reception: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+      },
     ),
     RoleUtilisateur.magasinier: RolePermission.personnalise(
       <PageAccess, Set<ActionAccess>>{
@@ -353,6 +383,11 @@ class PermissionService {
     // aux rôles qui pilotent la boutique (le serveur limite la CRÉATION au
     // propriétaire et au pack).
     _RegleRoute('/main/mes-entreprises', PageAccess.dashboard),
+    // 🏨 MODULE 16 C2 — HÔTEL : chambres, planning et réception (le module
+    // de l'activité masque déjà les écrans hors hôtel).
+    _RegleRoute('/main/hotel/chambres', PageAccess.chambres),
+    _RegleRoute('/main/hotel/reservations', PageAccess.reservations),
+    _RegleRoute('/main/hotel/reception', PageAccess.reception),
     _RegleRoute('/main', PageAccess.dashboard),
 
     _RegleRoute('/reports', PageAccess.rapports),
@@ -735,6 +770,10 @@ class PermissionService {
     PageAccess.scanner: '/scanner',
     PageAccess.panier: '/main/panier',
     PageAccess.fournisseurs: '/main/stock',
+    // 🏨 MODULE 16 C2 — hôtel.
+    PageAccess.chambres: '/main/hotel/chambres',
+    PageAccess.reservations: '/main/hotel/reservations',
+    PageAccess.reception: '/main/hotel/reception',
   };
 
   // ---------------------------------------------------------------------------

@@ -291,7 +291,7 @@ void main() {
   });
 
   group('VENDEUR — vendre, jamais modifier un prix', () {
-    test('pages : ventes, caisse, scanner, panier, assistant IA', () {
+    test('pages : ventes, caisse, scanner, panier, assistant IA, hôtel', () {
       expect(
         service.getPagesAccessibles(RoleUtilisateur.vendeur),
         <PageAccess>[
@@ -302,8 +302,44 @@ void main() {
           // 🤖 MODULE 13 — il peut interroger l'assistant, mais les outils
           // sensibles (prix, suppression…) restent refusés CÔTÉ SERVEUR.
           PageAccess.assistantIa,
+          // 🏨 MODULE 16 C2 — réceptionniste d'hôtel : chambres en lecture,
+          // planning et arrivées/départs (jamais la configuration).
+          PageAccess.chambres,
+          PageAccess.reservations,
+          PageAccess.reception,
         ],
       );
+    });
+
+    test('réceptionniste : planning & séjours, jamais la configuration hôtel',
+        () {
+      expect(
+        service.aAcces(RoleUtilisateur.vendeur, PageAccess.reservations,
+            ActionAccess.creer),
+        isTrue,
+      );
+      expect(
+        service.aAcces(RoleUtilisateur.vendeur, PageAccess.reception,
+            ActionAccess.creer),
+        isTrue,
+      );
+      expect(
+        service.aAcces(RoleUtilisateur.vendeur, PageAccess.chambres,
+            ActionAccess.voir),
+        isTrue,
+      );
+      // ❌ Aucune écriture sur les chambres (création, prix, suppression).
+      for (final ActionAccess action in <ActionAccess>[
+        ActionAccess.creer,
+        ActionAccess.modifier,
+        ActionAccess.supprimer,
+      ]) {
+        expect(
+          service.aAcces(RoleUtilisateur.vendeur, PageAccess.chambres, action),
+          isFalse,
+          reason: 'chambres/${action.code}',
+        );
+      }
     });
 
     test('peut vendre', () {
@@ -580,7 +616,7 @@ void main() {
   // =========================================================================
 
   group('Menu dynamique', () {
-    test('le menu d\'un vendeur ne contient que ses cinq pages', () {
+    test('le menu d\'un vendeur contient ses huit pages (hôtel inclus)', () {
       final List<EntreeMenu> menu =
           service.menuPour(RoleUtilisateur.vendeur, EspaceApplication.entreprise);
 
@@ -592,6 +628,10 @@ void main() {
           PageAccess.scanner,
           PageAccess.panier,
           PageAccess.assistantIa, // 🤖 MODULE 13
+          // 🏨 MODULE 16 C2 — réception d'hôtel.
+          PageAccess.chambres,
+          PageAccess.reservations,
+          PageAccess.reception,
         ],
       );
     });

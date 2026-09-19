@@ -87,6 +87,15 @@ import 'package:biashara_yangu/pages/categories_page.dart';
 import 'package:biashara_yangu/pages/conditionnement_form_page.dart';
 // 🧩 MODULE 16 C1 — écran « Expirations » (pharmacie : lots & péremption).
 import 'package:biashara_yangu/pages/expirations_page.dart';
+// 🏨 MODULE 16 C2 — hôtel : chambres, réservations, réception & facture.
+import 'package:biashara_yangu/models/chambre.dart';
+import 'package:biashara_yangu/models/reservation.dart';
+import 'package:biashara_yangu/pages/chambre_form_page.dart';
+import 'package:biashara_yangu/pages/chambres_page.dart';
+import 'package:biashara_yangu/pages/facture_sejour_page.dart';
+import 'package:biashara_yangu/pages/reception_page.dart';
+import 'package:biashara_yangu/pages/reservation_form_page.dart';
+import 'package:biashara_yangu/pages/reservations_page.dart';
 
 // ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
 import 'package:biashara_yangu/pages/qr_apercu_page.dart';
@@ -669,6 +678,58 @@ final GoRouter appRouter = GoRouter(
                   path: 'mes-entreprises',
                   name: 'mes-entreprises',
                   builder: (context, state) => const MesEntreprisesPage(),
+                ),
+
+                // 🏨 MODULE 16 C2 — HÔTEL : chambres & occupation, planning
+                // des réservations (check-in / check-out), réception du jour
+                // et facture de séjour.
+                GoRoute(
+                  path: 'hotel/chambres',
+                  name: 'hotel-chambres',
+                  builder: (context, state) => const ChambresPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'hotel-chambre-new',
+                      builder: (context, state) => const ChambreFormPage(),
+                    ),
+                    GoRoute(
+                      path: ':id/edit',
+                      name: 'hotel-chambre-edit',
+                      builder: (context, state) => ChambreFormPage(
+                        chambre: state.extra is Chambre
+                            ? state.extra as Chambre
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'hotel/reservations',
+                  name: 'hotel-reservations',
+                  builder: (context, state) => const ReservationsPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'hotel-reservation-new',
+                      builder: (context, state) =>
+                          const ReservationFormPage(),
+                    ),
+                    GoRoute(
+                      path: ':id/facture',
+                      name: 'hotel-facture',
+                      builder: (context, state) => FactureSejourPage(
+                        reservation: state.extra is Reservation
+                            ? state.extra as Reservation
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+                GoRoute(
+                  path: 'hotel/reception',
+                  name: 'hotel-reception',
+                  builder: (context, state) => const ReceptionPage(),
                 ),
 
                 // 🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)
