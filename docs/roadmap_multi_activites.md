@@ -97,10 +97,11 @@ Table public.types_espaces_modules
 | C7 | **Quincaillerie / magasin** | déjà couvert par les **conditionnements** (pièce/carton/sac/rouleau) — juste des profils types + libellés |
 | C8 | **Variantes mode** | `produits.attributs jsonb` (couleur, taille, marque) + filtre/variantes simples |
 
-### Phase D — Rapports par activité *(1-2 j)*
-- Nouveaux types de rapports : `expirations`, `occupation_chambres`, `arrivees_departs`, `commandes_jour`, `production`, `pertes`…
-- La **liste des rapports affichée** est filtrée par modules actifs (un hôtel ne voit pas « ventes par article » s'il ne l'a pas).
-- Le titre générique « **Rapports de l'entreprise** » est déjà en place ✓.
+### Phase D — Rapports par activité *(1-2 j)* — ✅ **LIVRÉE** *(migration 32)*
+- ✅ Nouveaux types de rapports : `occupation_chambres` (taux d'occupation par jour, arrivées, départs, CA séjours), `arrivees_departs` (liste des séjours : client, chambre, dates, nuits, montant, solde), `commandes_jour` (commandes restaurant par jour, encaissées, annulées, CA) — en plus d'`expirations` (livré en v1.6.0).
+- ✅ La **liste des rapports affichée** est filtrée par modules actifs (un hôtel ne voit pas « commandes restaurant » s'il ne l'a pas, et inversement).
+- ✅ Le titre générique « **Rapports de l'entreprise** » est déjà en place ✓.
+- *Reste pour plus tard : `production` / `pertes` (arriveront avec les modules boulangerie C5) — sans bloquer la phase.*
 
 ### Phase E — Abonnement par modules *(2 j)*
 - `groupes_tarifaires.modules jsonb` : un pack autorise une liste de modules.
@@ -147,12 +148,12 @@ Créé par l'**Expert Administrateur** en 2 minutes : modules `clients` + `rende
 ## 6. Ordre de livraison recommandé
 
 ```
-Phase A (socle)  →  Phase B (dashboards)  →  C1 Pharmacie  →  C2 Hôtel ✅
-   →  C3 Restaurant ✅  →  D (rapports par activité)  →  C4/C5/C6  →  Phase E (packs)
+Phase A (socle)  →  Phase B (dashboards)  →  C1 Pharmacie ✅  →  C2 Hôtel ✅
+   →  C3 Restaurant ✅  →  D Rapports par activité ✅  →  C4/C5/C6  →  Phase E (packs)
 ```
 
 Chaque phase : **1 migration SQL idempotente + tests Flutter** — et **une SEULE release à la fin**, quand tous les modules sont terminés (consigne utilisateur du 19/09/2026 : plus de release intermédiaire).
 
 ---
 
-*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0), **C2 Hôtel** et **C3 Restaurant** livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** (migration 30) + **restaurant : plan de salle, commandes, écran cuisine, encaissement via la caisse** (migration 31). Prochaine action : **Phase D — rapports par activité**.*
+*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0), **C2 Hôtel** (migration 30), **C3 Restaurant** (migration 31) et **D — rapports par activité** (migration 32 : occupation des chambres, arrivées & départs, commandes restaurant, expirations) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** + **restaurant : plan de salle, commandes, écran cuisine, encaissement via la caisse** + **rapports filtrés par modules actifs, page « À propos » officielle (Biashara Tech · Andre Lukengu · La Perle Corp) et guide d'utilisation par module (bouton ? partout)**. Prochaine action : **C4 Salle des fêtes → C5 Boulangerie → C6 Boucherie**, puis **Phase E (packs par modules)** — release unique ensuite.*

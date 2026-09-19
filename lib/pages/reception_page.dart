@@ -11,6 +11,7 @@
 // revérifiée côté serveur (droits `reception/créer`).
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/chambre.dart';
 import 'package:biashara_yangu/models/hotel_tableau_bord.dart';
@@ -163,7 +164,16 @@ class _ReceptionPageState extends State<ReceptionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Réception')),
+      appBar: AppBar(
+        title: const Text('Réception'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Guide d\'utilisation',
+            onPressed: () => context.pushNamed('guide-utilisation'),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
+        ],
+      ),
       body: _chargement
           ? const Center(child: CircularProgressIndicator())
           : _erreur != null

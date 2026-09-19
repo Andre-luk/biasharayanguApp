@@ -160,6 +160,13 @@ class _ExpirationsPageState extends State<ExpirationsPage> {
           'Expirations',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Guide d\'utilisation',
+            onPressed: () => context.pushNamed('guide-utilisation'),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
+        ],
       ),
       body: _construireCorps(theme),
     );

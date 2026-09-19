@@ -142,6 +142,22 @@ class _RapportsPageState extends State<RapportsPage> {
         // l'activité a le module lots_expiration (pharmacie…).
         return _permissions.peut(PageAccess.articles, ActionAccess.voir) &&
             ModulesService.instance.moduleActif(ModuleCode.lotsExpiration);
+      // ☀️ PHASE D — rapports par activité : chaque rapport n'apparaît que
+      // si l'activité a le module correspondant (hôtel / restaurant…).
+      case TypeRapport.occupationChambres:
+        return _permissions.peut(PageAccess.chambres, ActionAccess.voir) &&
+            ModulesService.instance.moduleActif(ModuleCode.chambres);
+      case TypeRapport.arriveesDeparts:
+        return (_permissions.peut(PageAccess.reception, ActionAccess.voir) ||
+                _permissions.peut(
+                    PageAccess.reservations, ActionAccess.voir)) &&
+            (ModulesService.instance.moduleActif(ModuleCode.checkin) ||
+                ModulesService.instance.moduleActif(ModuleCode.reservations));
+      case TypeRapport.commandesJour:
+        return (_permissions.peut(PageAccess.commandes, ActionAccess.voir) ||
+                _permissions.peut(PageAccess.cuisine, ActionAccess.voir)) &&
+            (ModulesService.instance.moduleActif(ModuleCode.commandes) ||
+                ModulesService.instance.moduleActif(ModuleCode.cuisine));
       case TypeRapport.plateformeRevenus:
       case TypeRapport.plateformeImpayes:
       case TypeRapport.plateformeVilles:

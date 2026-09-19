@@ -342,7 +342,16 @@ class _TablesSallePageState extends State<TablesSallePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tables de salle')),
+      appBar: AppBar(
+        title: const Text('Tables de salle'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Guide d\'utilisation',
+            onPressed: () => context.pushNamed('guide-utilisation'),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _actionEnCours ? null : () => _ouvrirForm(),
         icon: const Icon(Icons.add_rounded),

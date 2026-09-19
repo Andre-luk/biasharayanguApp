@@ -250,7 +250,16 @@ class _CommandesPageState extends State<CommandesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Commandes')),
+      appBar: AppBar(
+        title: const Text('Commandes'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Guide d\'utilisation',
+            onPressed: () => context.pushNamed('guide-utilisation'),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _creationEnCours ? null : _nouvelleCommande,
         icon: _creationEnCours

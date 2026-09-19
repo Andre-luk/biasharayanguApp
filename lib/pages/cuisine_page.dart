@@ -10,6 +10,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/commande.dart';
 import 'package:biashara_yangu/services/restaurant_service.dart';
@@ -136,6 +137,11 @@ class _CuisinePageState extends State<CuisinePage> {
       appBar: AppBar(
         title: const Text('Cuisine'),
         actions: <Widget>[
+          IconButton(
+            tooltip: 'Guide d\'utilisation',
+            onPressed: () => context.pushNamed('guide-utilisation'),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
           IconButton(
             tooltip: 'Actualiser',
             onPressed: () => _charger(),

@@ -1,208 +1,334 @@
 // lib/pages/about_page.dart
+//
+// ℹ️ À PROPOS — informations officielles de l'application.
+//
+// Application : Biashara Yangu (gestion de commerce multi-activités).
+// Éditeur : La Perle Corp — Lubumbashi, République Démocratique du Congo.
+// Développement : Biashara Tech — développeur principal : Andre Lukengu,
+// avec la participation de La Perle Corp.
+//
+// Cette page rassemble tout ce qu'une application professionnelle doit
+// publier : identité, version, éditeur, développeur, contacts officiels,
+// mentions légales, technologies et accès aux documents légaux.
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Clipboard
-import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
-  static const String phone = '+243974084668';
-  static const String email = 'Andrelukengu67@gmail.com';
-  static const String address = 'Lubumbashi, Haut-Katanga, République démocratique du Congo';
+  // ── Identité officielle ────────────────────────────────────────────────────
   static const String appName = 'Biashara Yangu';
-  static const String appVersion = '1.0.0'; // Mettre à jour si tu utilises package_info_plus
+  static const String appVersion = '1.6.0';
+  static const String appBuild = '15';
+  static const String editeur = 'La Perle Corp — Lubumbashi, RDC';
+  static const String developpeur = 'Biashara Tech';
+  static const String developpeurPrincipal = 'Andre Lukengu';
+  static const String participation = 'La Perle Corp';
 
-  void _copyToClipboard(BuildContext context, String label, String value) {
-    Clipboard.setData(ClipboardData(text: value));
+  // ── Contacts officiels ─────────────────────────────────────────────────────
+  static const String email = 'support@biasharayangu.cd';
+  static const String phone = '+243 974 084 668';
+  static const String adresse =
+      'Lubumbashi, Haut-Katanga, République Démocratique du Congo';
+
+  void _copier(BuildContext context, String label, String valeur) {
+    Clipboard.setData(ClipboardData(text: valeur));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label copié·e dans le presse-papiers'), duration: const Duration(seconds: 2)),
+      SnackBar(
+        content: Text('$label copié dans le presse-papiers'),
+        duration: const Duration(seconds: 2),
+      ),
     );
-  }
-
-  Widget _sectionTitle(BuildContext context, String text) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(text, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-    );
-  }
-
-  Widget _sectionText(BuildContext context, String text) {
-    final theme = Theme.of(context);
-    return Text(text, style: theme.textTheme.bodyMedium, textAlign: TextAlign.justify);
   }
 
   @override
   Widget build(BuildContext context) {
-    final T = AppLocalizations.of(context)!;
+    final ThemeData theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(T.settingsAboutTitle ?? 'À propos'),
+        title: const Text(
+          'À propos',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Center(
-                child: Column(
-                  children: [
-                    Hero(
-                      tag: 'app_logo',
-                      child: Image.asset('assets/Biashara_app_off-.png', height: 80),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(appName, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    Text('Version $appVersion', style: Theme.of(context).textTheme.bodySmall),
-                  ],
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+        children: <Widget>[
+          _entete(theme),
+          _section(
+            theme,
+            'Présentation',
+            'Biashara Yangu est une application professionnelle de gestion '
+            'de commerce, pensée pour la réalité congolaise : elle fonctionne '
+            'sur Android, Windows et Linux, avec une base locale (même sans '
+            'internet) et une synchronisation sécurisée en ligne.\n\n'
+            'UNE SEULE application pour tous les métiers : boutique, hôtel, '
+            'pharmacie, restaurant, salle des fêtes, boulangerie… Le type '
+            'd\'activité choisi active automatiquement les modules utiles '
+            '(chambres, commandes, lots & péremption…) et le tableau de bord '
+            's\'adapte.',
+          ),
+          _section(
+            theme,
+            'Fonctionnalités principales',
+            '• Ventes & caisse : panier, scanner, encaissement (espèces, '
+            'mobile money, carte, dette), reçus et annulations tracées.\n'
+            '• Articles, stock et inventaires, avec seuils d\'alerte.\n'
+            '• Clients, crédits et relances WhatsApp / SMS.\n'
+            '• Dépenses, dettes, clôtures de caisse et suivi financier.\n'
+            '• Rapports & exports PDF/Excel (ventes, finance, stock, '
+            'expirations, occupation hôtel, commandes restaurant…).\n'
+            '• Modules métier : hôtel (chambres, réservations, check-in/out, '
+            'facture séjour), pharmacie (lots, péremption, blocage de vente), '
+            'restaurant (tables, commandes, écran cuisine).\n'
+            '• Équipe : 8 rôles et permissions fines par écran et par action.\n'
+            '• Assistant IA avec quotas et journal d\'audit complet.',
+          ),
+          _identite(theme),
+          _section(
+            theme,
+            'Mentions officielles',
+            'Biashara Yangu est éditée et exploitée par La Perle Corp '
+            '(Lubumbashi, République Démocratique du Congo) et développée '
+            'par Biashara Tech — développeur principal : Andre Lukengu, avec '
+            'la participation de La Perle Corp.\n\n'
+            '© 2026 Biashara Tech & La Perle Corp — tous droits réservés. '
+            '« Biashara Yangu », son logo, ses écrans et son code sont '
+            'protégés ; toute reproduction sans autorisation écrite est '
+            'interdite.\n\n'
+            'Service régi par le droit congolais — juridiction des tribunaux '
+            'compétents de Lubumbashi.',
+          ),
+          _section(
+            theme,
+            'Technologies & licences open source',
+            'L\'application s\'appuie sur des composants libres que nous '
+            'remercions :\n'
+            '• Flutter & Dart (BSD-3, Google) — interface multiplateforme.\n'
+            '• Supabase & PostgreSQL (Apache-2.0 / PostgreSQL License) — '
+            'base de données et synchronisation sécurisée.\n'
+            '• go_router (BSD-3), flutter_local_notifications (BSD-3), '
+            'SQLite (domaine public), pdf & printing (Apache-2.0).\n'
+            '• Assistant IA : service DeepSeek, utilisé uniquement pour '
+            'répondre à vos questions.',
+          ),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      context.pushNamed('politique-confidentialite'),
+                  icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                  label: const Text('Confidentialité'),
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // Presentation
-              _sectionTitle(context, 'Présentation'),
-              _sectionText(
-                context,
-                // Texte professionnel proposé
-                'Biashara Yangu est une solution mobile légère et hors-connexion pour la gestion '
-                    'quotidienne des petites entreprises. Conçue pour les commerçants et les boutiques '
-                    'de terrain, l\'application permet de suivre le stock, d\'enregistrer des ventes, '
-                    'de générer des factures, et de synchroniser les données avec le cloud lorsque la '
-                    'connexion internet est disponible. L\'approche \"offline-first\" garantit que vous '
-                    'pouvez travailler sans interruption, même dans des zones à connectivité limitée.',
-              ),
-              const SizedBox(height: 18),
-
-              // Fonctionnalités courtes
-              _sectionTitle(context, 'Fonctionnalités principales'),
-              _sectionText(
-                context,
-                '• Gestion simple et rapide des produits et stocks.\n'
-                    '• Saisie de ventes (caisse) avec génération d\'un ticket/facture.\n'
-                    '• Utilisateurs secondaires (collaborateurs) limités à la caisse.\n'
-                    '• Synchronisation bidirectionnelle avec Supabase quand connecté.\n'
-                    '• Historique des approvisionnements et journal des ventes.',
-              ),
-              const SizedBox(height: 18),
-
-              // Politique et confidentialité (résumé)
-              _sectionTitle(context, 'Confidentialité & Politique'),
-              _sectionText(
-                context,
-                'Vos données (produits, ventes, clients) sont stockées localement sur votre appareil '
-                    'et synchronisées avec le serveur Supabase configuré par l\'application uniquement si vous autorisez la synchronisation. '
-                    'Nous respectons la confidentialité de vos données : elles ne sont pas vendues à des tiers. '
-                    'Les informations sensibles (mots de passe) sont stockées sous forme hachée localement. '
-                    'Pour toute demande de suppression complète de vos données sur nos serveurs, contactez le support ci-dessous.',
-              ),
-              const SizedBox(height: 18),
-
-              // Conditions d'utilisation (résumé)
-              _sectionTitle(context, 'Conditions d\'utilisation (résumé)'),
-              _sectionText(
-                context,
-                'L\'utilisation de Biashara Yangu implique l\'acceptation que l\'éditeur ne soit pas tenu responsable '
-                    'des pertes financières résultant d\'une mauvaise utilisation de l\'application. Il est recommandé '
-                    'd\'effectuer des sauvegardes régulières et d\'utiliser des mots de passe robustes pour les comptes.',
-              ),
-              const SizedBox(height: 18),
-
-              // Contact
-              _sectionTitle(context, 'Contact & Support'),
-              _sectionText(context, 'Pour assistance technique, partenariats ou demandes générales :'),
-              const SizedBox(height: 8),
-
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Theme.of(context).dividerColor)),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Téléphone
-                      Row(
-                        children: [
-                          const Icon(Icons.phone, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(phone, style: Theme.of(context).textTheme.bodyMedium)),
-                          IconButton(
-                            tooltip: 'Copier le numéro',
-                            icon: const Icon(Icons.copy, size: 18),
-                            onPressed: () => _copyToClipboard(context, 'Numéro', phone),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // Email
-                      Row(
-                        children: [
-                          const Icon(Icons.email, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(email, style: Theme.of(context).textTheme.bodyMedium)),
-                          IconButton(
-                            tooltip: 'Copier l\'email',
-                            icon: const Icon(Icons.copy, size: 18),
-                            onPressed: () => _copyToClipboard(context, 'Email', email),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      // Adresse
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text(address, style: Theme.of(context).textTheme.bodyMedium)),
-                          IconButton(
-                            tooltip: 'Copier l\'adresse',
-                            icon: const Icon(Icons.copy, size: 18),
-                            onPressed: () => _copyToClipboard(context, 'Adresse', address),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-
-              // Support & heures
-              _sectionTitle(context, 'Support'),
-              _sectionText(
-                context,
-                'Heures d\'assistance : lundi — vendredi, 09:00 — 17:00 (heure locale). '
-                    'Pour les demandes urgentes, envoyez un message WhatsApp au numéro indiqué ou un email en décrivant précisément votre problème.',
-              ),
-              const SizedBox(height: 18),
-
-              // Mentions légales courtes
-              _sectionTitle(context, 'Mentions légales'),
-              _sectionText(
-                context,
-                'Ce logiciel est fourni tel quel. L\'éditeur se réserve le droit de modifier les fonctionnalités, '
-                    'les politiques et les conditions d\'utilisation à tout moment avec ou sans préavis. '
-                    'Les mises à jour seront publiées via les canaux de distribution habituels.',
-              ),
-              const SizedBox(height: 24),
-
-              // Footer: license / version
-              Center(
-                child: Column(
-                  children: [
-                    Text('© ${DateTime.now().year} Biashara Yangu', style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 6),
-                    Text('Version: $appVersion', style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 20),
-                  ],
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.pushNamed('conditions-utilisation'),
+                  icon: const Icon(Icons.gavel_rounded, size: 18),
+                  label: const Text('Conditions'),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          _section(
+            theme,
+            'Contact & support',
+            'Assistance technique, partenariats, informations : l\'équipe '
+            'répond du lundi au samedi.',
+          ),
+          const SizedBox(height: 4),
+          _ligneContact(
+            context,
+            theme,
+            icone: Icons.email_outlined,
+            libelle: 'Email',
+            valeur: email,
+          ),
+          _ligneContact(
+            context,
+            theme,
+            icone: Icons.phone_outlined,
+            libelle: 'Téléphone',
+            valeur: phone,
+          ),
+          _ligneContact(
+            context,
+            theme,
+            icone: Icons.location_on_outlined,
+            libelle: 'Adresse',
+            valeur: adresse,
+          ),
+          const SizedBox(height: 14),
+          Center(
+            child: Text(
+              '$appName — version $appVersion (build $appBuild)\n'
+              'Biashara Tech × La Perle Corp — Lubumbashi, RDC',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // COMPOSANTS
+  // ---------------------------------------------------------------------------
+
+  Widget _entete(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: AppDegrades.primaire,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: <Widget>[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              'assets/Biashara_app_off-.png',
+              height: 76,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.storefront_rounded,
+                      color: Colors.white, size: 56),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            appName,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Version $appVersion (build $appBuild) • Gestion de commerce '
+            'multi-activités',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 12.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _section(ThemeData theme, String titre, String contenu) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            titre,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            contenu,
+            style: theme.textTheme.bodySmall?.copyWith(height: 1.55),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _identite(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Éditeur & développeur',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+          ),
+          const SizedBox(height: 10),
+          _ligneIdentite(theme, Icons.business_rounded, 'Éditeur',
+              'La Perle Corp'),
+          _ligneIdentite(theme, Icons.code_rounded, 'Développement',
+              'Biashara Tech'),
+          _ligneIdentite(theme, Icons.person_rounded, 'Développeur principal',
+              'Andre Lukengu'),
+          _ligneIdentite(theme, Icons.handshake_rounded, 'Participation',
+              'La Perle Corp'),
+          _ligneIdentite(theme, Icons.place_rounded, 'Siège',
+              'Lubumbashi, RDC'),
+        ],
+      ),
+    );
+  }
+
+  Widget _ligneIdentite(
+      ThemeData theme, IconData icone, String libelle, String valeur) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: <Widget>[
+          Icon(icone, size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 140,
+            child: Text(libelle, style: theme.textTheme.bodySmall),
+          ),
+          Expanded(
+            child: Text(
+              valeur,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ligneContact(
+    BuildContext context,
+    ThemeData theme, {
+    required IconData icone,
+    required String libelle,
+    required String valeur,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 6),
+      child: ListTile(
+        dense: true,
+        leading: Icon(icone, color: theme.colorScheme.primary),
+        title: Text(libelle, style: theme.textTheme.bodySmall),
+        subtitle: Text(
+          valeur,
+          style: theme.textTheme.bodyMedium
+              ?.copyWith(fontWeight: FontWeight.w600),
+        ),
+        trailing: IconButton(
+          tooltip: 'Copier',
+          icon: const Icon(Icons.copy_rounded, size: 18),
+          onPressed: () => _copier(context, libelle, valeur),
         ),
       ),
     );

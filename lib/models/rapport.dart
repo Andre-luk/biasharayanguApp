@@ -167,6 +167,25 @@ enum TypeRapport {
     'Produits expirés ou proches de la péremption, triés par urgence',
     EspaceRapport.entreprise,
   ),
+  // ☀️ PHASE D — rapports par activité (visibles selon les modules actifs).
+  occupationChambres(
+    'occupation_chambres',
+    'Occupation (hôtel)',
+    'Chambres occupées, taux d\'occupation, arrivées et départs par jour',
+    EspaceRapport.entreprise,
+  ),
+  arriveesDeparts(
+    'arrivees_departs',
+    'Arrivées & départs (séjours)',
+    'Liste des séjours de la période : client, chambre, montant, solde',
+    EspaceRapport.entreprise,
+  ),
+  commandesJour(
+    'commandes_jour',
+    'Commandes (restaurant)',
+    'Commandes par jour : encaissées, annulées, montant',
+    EspaceRapport.entreprise,
+  ),
 
   // ------------------------------------------------------------- plateforme
   plateformeRevenus(

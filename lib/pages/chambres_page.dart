@@ -213,7 +213,16 @@ class _ChambresPageState extends State<ChambresPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chambres')),
+      appBar: AppBar(
+        title: const Text('Chambres'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Guide d\'utilisation',
+            onPressed: () => context.pushNamed('guide-utilisation'),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _ouvrirForm(),
         icon: const Icon(Icons.add_rounded),
