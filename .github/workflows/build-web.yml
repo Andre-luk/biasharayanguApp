@@ -129,6 +129,16 @@ jobs:
     name: Publier sur la branche gh-pages
     needs: web
     runs-on: ubuntu-latest
+    # ⚠️ SÉRIALISATION OBLIGATOIRE : un même push déclenche CE workflow DEUX
+    # fois (une fois pour la branche `main`, une fois pour le tag `v*`). Les
+    # deux exécutions poussaient alors EN MÊME TEMPS sur `gh-pages` : la
+    # seconde était rejetée (« Updates were rejected because the remote
+    # contains work that you do not have locally ») et faisait apparaître un
+    # échec alors que le site était bien publié. Le groupe de concurrence
+    # ci-dessous les met à la queue leu leu.
+    concurrency:
+      group: gh-pages-publication
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
