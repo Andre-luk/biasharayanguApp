@@ -29,7 +29,8 @@ public), pas sur ton ordinateur.
 3. Télécharge :
    - 📱 **`biashara-yangu.apk`** → téléphone Android ;
    - 🐧 **`biashara-yangu-linux.tar.gz`** → ordinateur Linux ;
-   - 🪟 **`biashara-yangu-windows.zip`** → ordinateur Windows.
+   - 🪟 **`biashara-yangu-windows.zip`** → ordinateur Windows ;
+   - 🌐 **`biashara-yangu-web.zip`** → site web navigateur (voir §10).
 
 ### Méthode B — Onglet « Actions » (conservé 30 jours)
 
@@ -239,3 +240,35 @@ keytool -printcert -jarfile biashara-yangu.apk
 | Windows : « MSVCP140.dll introuvable » | machine sans « Visual C++ Redistributable » (installateurs ≤ v1.2.0 initiale) | ✅ corrigé en **v1.2.0** (le runtime Visual C++ voyage AVEC l'app, aucune installation requise). En attendant : installer « Visual C++ Redistributable x64 » depuis microsoft.com, ou réinstaller avec le nouveau `biashara-yangu-setup.exe` |
 | L'APK est « debug » au lieu de « release » | c'est `build-apk.yml` (le workflow de test) | utiliser le workflow « Publier l'application » (`build-release.yml`) |
 | Linux : `Failed to load dynamic library 'libsqlite3.so'` | version ≤ 1.1.3 : SQLite n'était pas embarquée | ✅ corrigé en **v1.1.4** (SQLite voyage avec l'app). En attendant : `sudo apt install libsqlite3-dev`, ou sans sudo : `ln -sf /lib/x86_64-linux-gnu/libsqlite3.so.0 lib/libsqlite3.so` puis `LD_LIBRARY_PATH="$PWD/lib" ./biashara_yangu` |
+
+---
+
+## 10. VERSION WEB (navigateur)
+
+L'application fonctionne aussi dans un navigateur (Chrome, Edge, Firefox…) —
+compilée par la CI (`build-web.yml`), **sans rien compiler sur ta machine**.
+
+**Où récupérer le fichier** : page « Releases » → `biashara-yangu-web.zip`
+(ou onglet « Actions » → run « Publier le web (Flutter Web) » → Artifacts,
+conservé 30 jours).
+
+**Comment le mettre en ligne** (décompresser puis servir le dossier) :
+
+1. décompresser `biashara-yangu-web.zip` (tu obtiens `index.html`,
+   `main.dart.js`, etc.) ;
+2. héberger le contenu chez un hébergeur classique : GitHub Pages, Netlify
+   (glisser-déposer le dossier), Vercel, ou un simple dossier Apache/Nginx.
+
+```bash
+unzip biashara-yangu-web.zip -d biashara-web
+cd biashara-web && python3 -m http.server 8080   # test local : http://localhost:8080
+```
+
+> ⚠️ **À savoir** : sur le web, l'application travaille **uniquement en ligne
+> avec Supabase** (pas de base SQLite locale — un navigateur ne le permet
+> pas). Les exports PDF/Excel et les QR codes se **téléchargent** dans le
+> navigateur (dossier « Téléchargements »).
+
+**Relancer une publication web** : Actions → « Publier le web (Flutter Web) »
+→ *Run workflow* (champ `release_tag` = ex. `v2.0.0` pour joindre le zip à un
+release existant), ou simplement pousser sur `main`.
