@@ -608,7 +608,7 @@ void main() {
       expect(ReglesActivite.stock(profilRestaurant, true), isTrue);
     });
 
-    test('un salon de coiffure (ni ventes ni étiquettes) garde sa caisse', () {
+    test('un salon de coiffure (ni ventes ni stock) garde sa caisse', () {
       const Set<String> profilSalon = <String>{
         'produits',
         'caisse',
@@ -620,7 +620,9 @@ void main() {
       expect(ReglesActivite.ventes(profilSalon, true), isFalse);
       expect(ReglesActivite.caisse(profilSalon, true), isTrue);
       expect(ReglesActivite.catalogue(profilSalon, true), isTrue);
-      expect(ReglesActivite.stock(profilSalon, true), isTrue);
+      // ⚠️ Pas de module `stock` dans ce profil : l'onglet Stock disparaît,
+      // même si l'activité gère des articles (le profil est l'autorité).
+      expect(ReglesActivite.stock(profilSalon, true), isFalse);
     });
 
     test('fail-open : profil non chargé ou vide → tout reste visible', () {

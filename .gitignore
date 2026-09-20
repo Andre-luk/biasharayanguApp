@@ -52,3 +52,6 @@ android/key.properties
 *.keystore
 
 
+
+# Supabase CLI (cache local)
+supabase/.temp/

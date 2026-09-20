@@ -102,13 +102,17 @@ abstract final class ReglesActivite {
         const <String>{ModuleCode.produits},
       );
 
-  /// 🏬 Stock & inventaire (onglet « Stock » de la barre de navigation).
-  /// Le catalogue suffit à le proposer : une activité qui gère des articles
-  /// gère leur stock.
+  /// 🏬 Stock & inventaire (onglet « Stock », rapports de stock).
+  ///
+  /// ⚠️ Seul le module `stock` compte : le PROFIL est l'autorité. Une activité
+  /// qui gère des articles sans gestion de stock (ex. « salon_de_coiffure »
+  /// créé par l'Expert : produits, caisse, clients, rapports, employes) ne
+  /// doit pas voir l'onglet — ses articles restent accessibles par l'écran
+  /// Articles.
   static bool stock(Set<String> modules, bool profilCharge) => actif(
         modules,
         profilCharge,
-        const <String>{ModuleCode.stock, ModuleCode.produits},
+        const <String>{ModuleCode.stock},
       );
 
   /// 💵 Caisse / encaissement : présent dans TOUS les profils actuels, mais

@@ -103,10 +103,56 @@ if npx --yes supabase@latest functions deploy "$FONCTION" --project-ref "$REF"; 
 else
   echo
   echo "❌ Le déploiement a échoué."
-  echo "   Pistes : jeton invalide/expiré, projet non accessible avec ce jeton,"
-  echo "   ou pas de connexion internet. Auto-test :  npx supabase projects list"
+  echo "   • « 403 … does not have the necessary privileges » → le jeton est en"
+  echo "     LECTURE SEULE : régénérez-le (Access Tokens) en laissant TOUTES les"
+  echo "     portées (« scopes ») cochées, puis relancez ce script."
+  echo "   • Autres pistes : jeton expiré, projet non accessible avec ce jeton,"
+  echo "     pas de connexion internet. Auto-test : npx supabase projects list"
   exit 1
 fi
+echo
+
+# --- 4 bis. Secret de la clé IA ---------------------------------------
+echo "--- Secret DEEPSEEK_API_KEY (clé de l'IA) ---"
+SECRETS=$(npx --yes supabase@latest secrets list --project-ref "$REF" 2>/dev/null || echo '')
+if printf '%s' "$SECRETS" | grep -q '"name":"DEEPSEEK_API_KEY"'; then
+  echo "✅ Le secret DEEPSEEK_API_KEY est défini."
+else
+  echo "⚠️  Le secret DEEPSEEK_API_KEY est ABSENT : la fonction répondrait"
+  echo "    « SECRET_MANQUANT » (les autres noms ne sont pas lus par le code)."
+  read -rsp "Collez la clé DeepSeek (sk-…), ou Entrée pour la définir plus tard : " DSK
+  echo
+  if [ -n "$DSK" ]; then
+    if npx --yes supabase@latest secrets set "DEEPSEEK_API_KEY=$DSK" --project-ref "$REF"; then
+      echo "✅ Secret enregistré."
+    else
+      echo "❌ Échec de l'enregistrement du secret."
+    fi
+    unset DSK
+  else
+    echo "ℹ️  Ignoré (à définir dans Dashboard → Project Settings → Edge Functions → Secrets)."
+  fi
+fi
+echo
+
+# --- 4 ter. Fonctions présentes (nom exact attendu) -------------------
+echo "--- Fonctions publiées sur le projet ---"
+npx --yes supabase@latest functions list --project-ref "$REF" 2>/dev/null \
+  | python3 -c "
+import sys,json
+raw=sys.stdin.read()
+try:
+    d=json.loads(raw)
+    for f in d.get('functions',[]):
+        print(f\"  - {f['slug']:24} {f['status']}\")
+    if not d.get('functions'):
+        print('  (aucune)')
+except Exception:
+    print('  (liste indisponible)')
+" 2>/dev/null || echo "  (liste indisponible)"
+echo "⚠️  L'application appelle le slug EXACT « $FONCTION » : toute autre"
+echo "    fonction (ex. nom généré automatiquement type « clever-action »)"
+echo "    reste injoignable par l'app."
 echo
 
 # --- 5. Vérification par appel réel (sans secret) ----------------------
