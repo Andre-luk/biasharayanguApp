@@ -53,9 +53,10 @@ lib/
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
 supabase/migrations/   → 40 migrations SQL idempotentes (0000 → 0039)
-test/                  → 622 tests purs (modèles, permissions, rapports, modules, devises)
+test/                  → 624 tests purs (modèles, permissions, rapports, modules, devises)
 docs/                  → documentation interne (roadmap, publication, modules)
-tools/                 → utilitaires (signature Android : setup_signature.sh)
+tools/                 → utilitaires (signature Android `setup_signature.sh`,
+                          déploiement de l'assistant IA `deploy_agent_ia.sh`)
 ```
 
 **Règle d'or du socle multi-activités :** profil de modules inconnu, absent ou
@@ -132,14 +133,27 @@ validation du paiement (module 14). Vérifier l'état d'un compte :
 `select nom, statut, activation_etape, public.abonnement_etat(id) from
 public.entreprises;` (`OK` / `ACTIVATION` / `LECTURE_SEULE` / `BLOQUE`).
 
-**Écrans pilotés par l'activité (v2.1.1)** — les entrées qui n'ont pas de
-carte d'accueil suivent aussi les modules de l'activité
-(`ReglesActivite`, `lib/models/module_activite.dart`) : « Nouvelle Vente »,
-scanner et suivi commercial exigent le module `ventes` ; « Ajouter un
-produit » exige un catalogue (`produits`/`qr`) ; l'onglet « Stock » exige
-`stock`/`produits`. Un hôtel ou un salon de coiffure (pas de vente au
-comptoir) voit à la place un raccourci **Caisse**. Masquage uniquement —
-aucun blocage, les permissions (module 4) restent seules décisionnaires.
+**Écrans pilotés par l'activité (v2.1.1 → v2.1.2)** — **toutes** les entrées du
+monde entreprise suivent les modules de l'activité
+(`ReglesActivite`, `lib/models/module_activite.dart`) :
+
+| Entrée | Module(s) requis |
+|---|---|
+| Nouvelle Vente, Scanner, Suivi commercial, rapports de ventes | `ventes` |
+| Ajouter un produit, Catégories, Importer des articles | `produits` (⚠️ **les étiquettes `qr` ne suffisent pas**) |
+| Onglet Stock, rapports de stock | `stock` ou `produits` |
+| Onglet Rapports | `rapports` |
+| Assistant IA, Quotas IA | `assistant_ia` |
+| Caisse, dettes, rapports de caisse | `caisse` |
+| Dépenses, Finance, rapports de dépenses | `finance` |
+| Clients | `clients` |
+| Collaborateurs | `employes` |
+| Cartes du menu « Gestion commerciale » | chacune son module |
+
+Une activité sans vente au comptoir (hôtel, salon de coiffure) reçoit un
+raccourci **Caisse** à la place. Règle d'or inchangée : **masquage uniquement**
+(fail-open si le profil n'est pas chargé) — les permissions (module 4) restent
+seules décisionnaires, et les écrans restent joignables par lien direct.
 
 **Affichage ordinateur (v2.1.1)** — `lib/ui/mise_en_page_adaptative.dart`
 centre le contenu de l'accueil et le borne à 980 px, passe la grille de
@@ -179,7 +193,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 622 tests — doit rester 100 % vert
+flutter test             # 624 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -235,6 +249,8 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 - `docs/roadmap_multi_activites.md` — plan complet des phases A → E
 - `docs/publication_app.md` — keystore, releases, dépannage, stores
+- `docs/deployer_function_ia.md` — publier l'Edge Function `agent-ia`
+  (script `tools/deploy_agent_ia.sh` ou Dashboard ; secret `DEEPSEEK_API_KEY`)
 - `docs/mise_a_jour_v1.x.x.md` — notes de mise à jour pour les fiches store
 - `docs/module12_analyse_actions.md`, `module13_agent_ia.md`, `module14_activation.md`,
   `module15_multi_entreprises.md` — documentation par module

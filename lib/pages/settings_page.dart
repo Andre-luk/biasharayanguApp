@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/audit_service.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
@@ -269,6 +271,17 @@ class _SettingsPageState extends State<SettingsPage> {
         isPatron && permissions.peutVoir(PageAccess.collaborateurs);
     final bool isAdmin = permissions.peutModifier(PageAccess.parametres);
 
+    // 🧩 MODULE 16 — les entrées d'écran suivent AUSSI l'activité : un hôtel
+    // ne voit ni « Catégories » d'articles, ni « Importer des articles », ni
+    // l'assistant IA si son profil ne les contient pas (masquage uniquement).
+    final ModulesService modules = ModulesService.instance;
+    final bool catalogueDisponible = ReglesActivite.catalogue(
+      modules.modules.value,
+      modules.charge,
+    );
+    final bool assistantDisponible =
+        modules.moduleActif(ModuleCode.assistantIa);
+
     return Scaffold(
       appBar: AppBar(title: Text(T.settingsTitle)),
       body: ListView(
@@ -352,14 +365,17 @@ class _SettingsPageState extends State<SettingsPage> {
                     'Devise de travail (CDF/USD) et taux de change 1 USD = X CDF',
                 onTap: () => context.pushNamed('devise'),
               ),
-              _TuileParametre(
-                icone: Icons.category_rounded,
-                titre: T.manageCategories,
-                sousTitre: T.manageCategoriesSubtitle,
-                onTap: () => context.pushNamed('manage-categories'),
-              ),
-              // 🤖 MODULE 13 — assistant IA & quotas (selon permissions du rôle).
-              if (permissions.peutVoir(PageAccess.assistantIa))
+              if (catalogueDisponible)
+                _TuileParametre(
+                  icone: Icons.category_rounded,
+                  titre: T.manageCategories,
+                  sousTitre: T.manageCategoriesSubtitle,
+                  onTap: () => context.pushNamed('manage-categories'),
+                ),
+              // 🤖 MODULE 13 — assistant IA & quotas (selon permissions du rôle
+              // ET module de l'activité).
+              if (assistantDisponible &&
+                  permissions.peutVoir(PageAccess.assistantIa))
                 _TuileParametre(
                   icone: Icons.smart_toy_rounded,
                   titre: 'Assistant IA',
@@ -367,7 +383,8 @@ class _SettingsPageState extends State<SettingsPage> {
                       'Posez vos questions, l\'assistant agit selon vos droits',
                   onTap: () => context.pushNamed('assistant-ia'),
                 ),
-              if (permissions.peutVoir(PageAccess.assistantIa))
+              if (assistantDisponible &&
+                  permissions.peutVoir(PageAccess.assistantIa))
                 _TuileParametre(
                   icone: Icons.shopping_cart_checkout_rounded,
                   titre: 'Quotas IA',
@@ -470,7 +487,8 @@ class _SettingsPageState extends State<SettingsPage> {
           // journal d'audit pour le propriétaire, import d'articles pour
           // les rôles autorisés à créer des articles).
           if (permissions.peutVoir(PageAccess.audit) ||
-              permissions.peut(PageAccess.articles, ActionAccess.creer))
+              (catalogueDisponible &&
+                  permissions.peut(PageAccess.articles, ActionAccess.creer)))
             _SectionParametres(
               titre: 'Traçabilité & données',
               tuiles: <Widget>[
@@ -482,7 +500,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         'Qui a fait quoi, quand — filtres, détail et export PDF signé',
                     onTap: () => context.pushNamed('journal-audit'),
                   ),
-                if (permissions.peut(PageAccess.articles, ActionAccess.creer))
+                if (catalogueDisponible &&
+                    permissions.peut(PageAccess.articles, ActionAccess.creer))
                   _TuileParametre(
                     icone: Icons.upload_file_rounded,
                     titre: 'Importer des articles',

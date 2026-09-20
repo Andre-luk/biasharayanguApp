@@ -56,7 +56,12 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
         PageAccess.panier,
       ],
     ),
-    _BrancheNav(index: 1, pages: <PageAccess>[PageAccess.rapports]),
+    _BrancheNav(
+      index: 1,
+      pages: <PageAccess>[PageAccess.rapports],
+      // 🧩 MODULE 16 — l'onglet « Rapports » suit l'activité.
+      activite: ReglesActivite.module(ModuleCode.rapports),
+    ),
     _BrancheNav(
       index: 2,
       pages: <PageAccess>[PageAccess.stock, PageAccess.articles],

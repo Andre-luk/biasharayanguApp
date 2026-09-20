@@ -1,0 +1,23 @@
+# ============================================================================
+#  biashara_yangu — configuration Supabase pour la CLI (déploiement)
+# ============================================================================
+#  Ce fichier permet de déployer les Edge Functions en ligne de commande :
+#
+#     npx supabase functions deploy agent-ia --project-ref pqzcliibocndiyqbyddr
+#
+#  ⚠️ Il ne contient AUCUN secret (la référence de projet est publique : elle
+#  figure déjà dans `lib/main.dart`). La clé DeepSeek vit dans les *Secrets* du
+#  projet (Dashboard → Project Settings → Edge Functions → Secrets), jamais ici.
+#
+#  Raccourci : `tools/deploy_agent_ia.sh` (demande le jeton d'accès en caché).
+
+project_id = "pqzcliibocndiyqbyddr"
+
+# ---------------------------------------------------------------------------
+#  Edge Functions
+# ---------------------------------------------------------------------------
+#  `verify_jwt = true` (défaut) : la fonction refuse tout appel sans JWT
+#  utilisateur valide — c'est ce que fait l'application (elle envoie le jeton
+#  de la session en cours).
+[functions.agent-ia]
+verify_jwt = true

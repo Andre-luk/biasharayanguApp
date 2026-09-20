@@ -555,7 +555,21 @@ void main() {
       // …mais il garde sa caisse et son onglet Stock est bien masqué.
       expect(ReglesActivite.caisse(profilHotelReel, true), isTrue);
       expect(ReglesActivite.stock(profilHotelReel, true), isFalse);
-      expect(ReglesActivite.catalogue(profilHotelReel, true), isTrue);
+      // ⚠️ Le profil Hôtel contient `qr` (étiquettes) : cela ne doit PAS
+      // faire apparaître « Ajouter un produit » ni les catégories d'articles.
+      expect(ReglesActivite.catalogue(profilHotelReel, true), isFalse);
+    });
+
+    test('les étiquettes QR seules ne donnent pas accès au catalogue', () {
+      const Set<String> profilAvecQrSeul = <String>{
+        'qr',
+        'caisse',
+        'clients',
+      };
+
+      expect(ReglesActivite.catalogue(profilAvecQrSeul, true), isFalse);
+      expect(ReglesActivite.stock(profilAvecQrSeul, true), isFalse);
+      expect(ReglesActivite.caisse(profilAvecQrSeul, true), isTrue);
     });
 
     test('une boutique garde toutes ses actions', () {
@@ -646,6 +660,23 @@ void main() {
         ModulesService.estActif(profilHotel, false, ModuleCode.ventes),
         ReglesActivite.ventes(profilHotel, false),
       );
+    });
+
+    test('module() : testeur d\'un module précis (onglets, menus)', () {
+      final bool Function(Set<String>, bool) rapports =
+          ReglesActivite.module(ModuleCode.rapports);
+
+      expect(
+        rapports(const <String>{ModuleCode.rapports}, true),
+        isTrue,
+      );
+      expect(
+        rapports(const <String>{ModuleCode.ventes}, true),
+        isFalse,
+      );
+      // Fail-open : profil non chargé → l'onglet reste proposé.
+      expect(rapports(const <String>{ModuleCode.ventes}, false), isTrue);
+      expect(rapports(const <String>{}, true), isTrue);
     });
   });
 }

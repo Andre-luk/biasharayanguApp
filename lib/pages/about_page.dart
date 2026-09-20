@@ -22,8 +22,8 @@ class AboutPage extends StatelessWidget {
 
   // ── Identité officielle ────────────────────────────────────────────────────
   static const String appName = 'Biashara Yangu';
-  static const String appVersion = '2.1.1';
-  static const String appBuild = '20';
+  static const String appVersion = '2.1.2';
+  static const String appBuild = '21';
   static const String editeur = 'Biashara Tech — Lubumbashi, RDC';
   static const String developpeur = 'Biashara Tech';
   static const String developpeurPrincipal = 'Andre Lukengu';

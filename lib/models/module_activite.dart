@@ -90,12 +90,16 @@ abstract final class ReglesActivite {
         const <String>{ModuleCode.ventes},
       );
 
-  /// 🗂️ Catalogue d'articles : « Ajouter un produit », étiquettes QR,
+  /// 🗂️ Catalogue d'articles : « Ajouter un produit », catégories, import,
   /// conditionnements.
+  ///
+  /// ⚠️ Uniquement le module `produits` : les ÉTIQUETTES QR (`qr`) ne
+  /// suffisent PAS — un hôtel peut imprimer des étiquettes sans avoir de
+  /// catalogue d'articles à gérer (constaté en production).
   static bool catalogue(Set<String> modules, bool profilCharge) => actif(
         modules,
         profilCharge,
-        const <String>{ModuleCode.produits, ModuleCode.qr},
+        const <String>{ModuleCode.produits},
       );
 
   /// 🏬 Stock & inventaire (onglet « Stock » de la barre de navigation).
@@ -114,6 +118,19 @@ abstract final class ReglesActivite {
         profilCharge,
         const <String>{ModuleCode.caisse},
       );
+
+  /// 🔎 Testeur d'un module précis, à passer aux entrées qui n'ont qu'une
+  /// seule dépendance (onglet « Rapports », cartes d'un menu…).
+  ///
+  /// ```dart
+  /// _BrancheNav(index: 1, activite: ReglesActivite.module(ModuleCode.rapports))
+  /// ```
+  static bool Function(Set<String> modules, bool profilCharge) module(
+    String code,
+  ) {
+    return (Set<String> modules, bool profilCharge) =>
+        actif(modules, profilCharge, <String>{code});
+  }
 }
 
 /// Regroupement d'affichage des modules (page admin « Types d'activités »).

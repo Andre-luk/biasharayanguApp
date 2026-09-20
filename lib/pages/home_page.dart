@@ -858,8 +858,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
     final bool peutAjouterProduit = articlesDisponibles &&
         permissions.peut(PageAccess.articles, ActionAccess.creer);
+    // 🧩 MODULE 16 — « Collaborateurs » suit aussi l'activité : une activité
+    // qui ne gère pas d'équipe ne propose pas l'écran.
+    final bool equipeDisponible = ModulesService.instance
+        .moduleActif(ModuleCode.employes);
     final bool peutGererCollaborateurs =
-        permissions.peutVoir(PageAccess.collaborateurs);
+        equipeDisponible && permissions.peutVoir(PageAccess.collaborateurs);
 
     if (!peutAjouterProduit && !peutGererCollaborateurs) {
       return const SizedBox.shrink();

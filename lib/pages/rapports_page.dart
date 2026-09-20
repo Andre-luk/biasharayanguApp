@@ -122,23 +122,33 @@ class _RapportsPageState extends State<RapportsPage> {
     }
 
     switch (type) {
+      // 🧩 MODULE 16 — ces rapports décrivent les VENTES : l'activité doit
+      // avoir le module « Ventes & panier » (un hôtel n'en a pas).
       case TypeRapport.ventes:
       case TypeRapport.ventesArticle:
       case TypeRapport.ventesCategorie:
       case TypeRapport.ventesVendeur:
       case TypeRapport.topProduits:
-        return _permissions.peut(PageAccess.rapports, ActionAccess.voir);
+        return _permissions.peut(PageAccess.rapports, ActionAccess.voir) &&
+            ModulesService.instance.moduleActif(ModuleCode.ventes);
       case TypeRapport.finance:
-        return _permissions.peut(PageAccess.finance, ActionAccess.voir);
+        return _permissions.peut(PageAccess.finance, ActionAccess.voir) &&
+            ModulesService.instance.moduleActif(ModuleCode.finance);
       case TypeRapport.stock:
-        return _permissions.peut(PageAccess.rapports, ActionAccess.voir) ||
-            _permissions.peut(PageAccess.stock, ActionAccess.voir);
+        return (_permissions.peut(PageAccess.rapports, ActionAccess.voir) ||
+                _permissions.peut(PageAccess.stock, ActionAccess.voir)) &&
+            ReglesActivite.stock(
+              ModulesService.instance.modules.value,
+              ModulesService.instance.charge,
+            );
       case TypeRapport.caisse:
       case TypeRapport.dettes:
-        return _permissions.peut(PageAccess.caisse, ActionAccess.voir) ||
-            _permissions.peut(PageAccess.finance, ActionAccess.voir);
+        return (_permissions.peut(PageAccess.caisse, ActionAccess.voir) ||
+                _permissions.peut(PageAccess.finance, ActionAccess.voir)) &&
+            ModulesService.instance.moduleActif(ModuleCode.caisse);
       case TypeRapport.depenses:
-        return _permissions.peut(PageAccess.depenses, ActionAccess.voir);
+        return _permissions.peut(PageAccess.depenses, ActionAccess.voir) &&
+            ModulesService.instance.moduleActif(ModuleCode.finance);
       case TypeRapport.expirations:
         // 🧩 MODULE 16 C1 — le rapport « Expirations » n'apparaît que si
         // l'activité a le module lots_expiration (pharmacie…).
