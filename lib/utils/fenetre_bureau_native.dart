@@ -1,17 +1,25 @@
 // lib/utils/fenetre_bureau_native.dart
 //
-// 🖥️ Configuration de fenêtre pour Windows / Linux / macOS
-// (taille, centrage, icône) — code natif uniquement (`dart:io` + paquet
-// `window_manager`).
+// 🖥️ Configuration de fenêtre pour Windows / macOS (taille, centrage).
+//
+// ⚠️ LINUX VOLONTAIREMENT EXCLU — diagnostic du 2026-09-20 (core dump) :
+// le greffon `window_manager` 0.2.5 plante (SIGSEGV dans gtk_widget_show →
+// libwindow_manager_plugin.so) sur les GTK récents au moment d'afficher la
+// fenêtre. La fenêtre Linux est donc configurée NATIVEMENT dans
+// `linux/runner/my_application.cc` (taille 1200×800, minimum 900×600,
+// titre « Biashara Yangu »), et l'icône vient du raccourci .desktop.
 
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// Prépare et affiche la fenêtre de bureau (no-op sur mobile).
+/// Prépare et affiche la fenêtre de bureau.
+/// • Windows / macOS : window_manager (taille, centrage, focus) ;
+/// • Linux : no-op (configuration native — voir en-tête) ;
+/// • mobile / web : no-op.
 Future<void> configurerFenetreBureau() async {
-  if (!Platform.isWindows && !Platform.isLinux && !Platform.isMacOS) return;
+  if (!Platform.isWindows && !Platform.isMacOS) return;
 
   await windowManager.ensureInitialized();
   const WindowOptions windowOptions = WindowOptions(
@@ -23,20 +31,5 @@ Future<void> configurerFenetreBureau() async {
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
     await windowManager.focus();
-
-    // 🖼️ Icône de la fenêtre — Linux : le logo est chargé depuis le paquet
-    // (Windows utilise directement l'icône .ico du .exe).
-    if (Platform.isLinux) {
-      try {
-        final String icone =
-            '${Directory(Platform.resolvedExecutable).parent.path}'
-            '/data/flutter_assets/assets/Biashara_app_off-.png';
-        if (File(icone).existsSync()) {
-          await windowManager.setIcon(icone);
-        }
-      } catch (e) {
-        debugPrint('Icône de fenêtre ignorée : $e');
-      }
-    }
   });
 }

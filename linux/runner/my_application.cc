@@ -46,14 +46,20 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "biashara_yangu");
+    gtk_header_bar_set_title(header_bar, "Biashara Yangu");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "biashara_yangu");
+    gtk_window_set_title(window, "Biashara Yangu");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  // 🖥️ Fenêtre : 1200×800 par défaut, minimum 900×600 (config native —
+  // window_manager n'est PAS utilisé sur Linux, voir fenetre_bureau_native.dart).
+  gtk_window_set_default_size(window, 1200, 800);
+  GdkGeometry geometry;
+  geometry.min_width = 900;
+  geometry.min_height = 600;
+  gtk_window_set_geometry_hints(window, nullptr, &geometry, GDK_HINT_MIN_SIZE);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(project, self->dart_entrypoint_arguments);
