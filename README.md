@@ -49,10 +49,11 @@ lib/
   services/            → accès Supabase (RPC + tables), session, notifications
   pages/               → écrans (boutique, hôtel, restaurant, admin, réglages)
   ui/accueil/          → registre des cartes du tableau de bord (modules)
+  ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
 supabase/migrations/   → 40 migrations SQL idempotentes (0000 → 0039)
-test/                  → 607 tests purs (modèles, permissions, rapports, modules, devises)
+test/                  → 622 tests purs (modèles, permissions, rapports, modules, devises)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android : setup_signature.sh)
 ```
@@ -131,6 +132,22 @@ validation du paiement (module 14). Vérifier l'état d'un compte :
 `select nom, statut, activation_etape, public.abonnement_etat(id) from
 public.entreprises;` (`OK` / `ACTIVATION` / `LECTURE_SEULE` / `BLOQUE`).
 
+**Écrans pilotés par l'activité (v2.1.1)** — les entrées qui n'ont pas de
+carte d'accueil suivent aussi les modules de l'activité
+(`ReglesActivite`, `lib/models/module_activite.dart`) : « Nouvelle Vente »,
+scanner et suivi commercial exigent le module `ventes` ; « Ajouter un
+produit » exige un catalogue (`produits`/`qr`) ; l'onglet « Stock » exige
+`stock`/`produits`. Un hôtel ou un salon de coiffure (pas de vente au
+comptoir) voit à la place un raccourci **Caisse**. Masquage uniquement —
+aucun blocage, les permissions (module 4) restent seules décisionnaires.
+
+**Affichage ordinateur (v2.1.1)** — `lib/ui/mise_en_page_adaptative.dart`
+centre le contenu de l'accueil et le borne à 980 px, passe la grille de
+statistiques à **3 colonnes** au-delà de 760 px de contenu, et la fenêtre
+native (`linux/runner/my_application.cc`) s'ouvre à 1 200 × 800 **bornée à
+l'écran** (94 % × 92 %, minimum 900 × 600) : plus de barre de navigation sous
+la dalle sur un portable 1 366 × 768.
+
 ### 3.3 Réglages dans l'application
 
 | Écran | Réglages |
@@ -162,7 +179,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 567 tests — doit rester 100 % vert
+flutter test             # 622 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -183,7 +200,7 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **2.0.0+16**
+- Flutter **3.47.4** / Dart **3.13.3**, app **2.1.1+20**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`
   (avec *core library desugaring* Android), `sqlite3` + `sqflite_common_ffi`
   (SQLite embarquée), `pdf`/`printing` (exports), `mobile_scanner` (scanner)

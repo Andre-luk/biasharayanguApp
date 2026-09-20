@@ -67,6 +67,8 @@ Table public.types_espaces_modules
   2. **Modules** (nouveau) : l'activité a-t-elle ce module ;
   3. **Abonnement** (Module 3) : lecture seule / bloqué.
 - UI filtrée : cartes d'accueil, menus Paramètres, entrées admin, liste des rapports — **masquées si module inactif**.
+- `lib/models/module_activite.dart` → `ReglesActivite` : règles d'affichage **pures et testables** des entrées SANS carte d'accueil (actions rapides de l'accueil, boutons secondaires, onglets de la barre de navigation). Ex. `ReglesActivite.ventes(...)` → « Nouvelle Vente » / scanner / suivi commercial ; `catalogue(...)` → « Ajouter un produit » ; `stock(...)` → onglet « Stock ». Ajouté en **v2.1.1** (un hôtel voyait encore « Nouvelle Vente », « Scanner » et l'onglet « Stock »).
+- `lib/ui/mise_en_page_adaptative.dart` : `MiseEnPageAdaptative` (v2.1.1) — contenu **centré et borné à 980 px** + **3 colonnes** de grille sur ordinateur (l'interface téléphone était étirée en plein écran).
 - Règle d'or de compatibilité : **type inconnu ou config absente → profil « boutique » par défaut** = comportement actuel, zéro régression.
 
 ---

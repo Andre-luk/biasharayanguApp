@@ -53,9 +53,35 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "Biashara Yangu");
   }
 
-  // 🖥️ Fenêtre : 1200×800 par défaut, minimum 900×600 (config native —
+  // 🖥️ Fenêtre : 1200×800 par défaut, MINIMUM 900×600 (config native —
   // window_manager n'est PAS utilisé sur Linux, voir fenetre_bureau_native.dart).
-  gtk_window_set_default_size(window, 1200, 800);
+  //
+  // ⚠️ La taille est bornée à l'écran : sur un portable 1366×768, une fenêtre
+  // de 800 px de haut dépasse la dalle et la barre de navigation du bas passe
+  // sous l'écran. On garde donc 6 % de marge en largeur et 8 % en hauteur.
+  int largeur = 1200;
+  int hauteur = 800;
+  GdkDisplay* display = gtk_widget_get_display(GTK_WIDGET(window));
+  if (display != nullptr) {
+    GdkMonitor* monitor = gdk_display_get_primary_monitor(display);
+    if (monitor == nullptr && gdk_display_get_n_monitors(display) > 0) {
+      monitor = gdk_display_get_monitor(display, 0);
+    }
+    if (monitor != nullptr) {
+      GdkRectangle zone;
+      gdk_monitor_get_geometry(monitor, &zone);
+      if (zone.width > 0 && zone.height > 0) {
+        const int largeurEcran = static_cast<int>(zone.width * 0.94);
+        const int hauteurEcran = static_cast<int>(zone.height * 0.92);
+        if (largeur > largeurEcran) largeur = largeurEcran;
+        if (hauteur > hauteurEcran) hauteur = hauteurEcran;
+      }
+    }
+  }
+  // Jamais moins que la taille minimale déclarée juste après.
+  if (largeur < 900) largeur = 900;
+  if (hauteur < 600) hauteur = 600;
+  gtk_window_set_default_size(window, largeur, hauteur);
   GdkGeometry geometry;
   geometry.min_width = 900;
   geometry.min_height = 600;

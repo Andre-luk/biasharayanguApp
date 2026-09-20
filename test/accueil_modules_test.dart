@@ -530,4 +530,122 @@ void main() {
       expect(produits.titre(fr), 'Produits');
     });
   });
+
+  // ==========================================================================
+  //  RÈGLES D'AFFICHAGE DES ENTRÉES SANS CARTE (actions rapides, onglets)
+  // ==========================================================================
+  group('ReglesActivite — vente au comptoir', () {
+    test('un hôtel ne vend pas au comptoir (pas de « Nouvelle Vente »)', () {
+      // ⚠️ Le profil Hôtel contient encore `qr` (étiquettes) : c'est bien le
+      // module `ventes` qui décide, pas la présence d'étiquettes.
+      const Set<String> profilHotelReel = <String>{
+        'qr',
+        'caisse',
+        'clients',
+        'finance',
+        'employes',
+        'rapports',
+        'assistant_ia',
+        'chambres',
+        'reservations',
+        'checkin',
+      };
+
+      expect(ReglesActivite.ventes(profilHotelReel, true), isFalse);
+      // …mais il garde sa caisse et son onglet Stock est bien masqué.
+      expect(ReglesActivite.caisse(profilHotelReel, true), isTrue);
+      expect(ReglesActivite.stock(profilHotelReel, true), isFalse);
+      expect(ReglesActivite.catalogue(profilHotelReel, true), isTrue);
+    });
+
+    test('une boutique garde toutes ses actions', () {
+      const Set<String> profilBoutique = <String>{
+        'ventes',
+        'produits',
+        'stock',
+        'qr',
+        'caisse',
+        'clients',
+        'finance',
+        'employes',
+        'rapports',
+        'assistant_ia',
+      };
+
+      expect(ReglesActivite.ventes(profilBoutique, true), isTrue);
+      expect(ReglesActivite.catalogue(profilBoutique, true), isTrue);
+      expect(ReglesActivite.stock(profilBoutique, true), isTrue);
+      expect(ReglesActivite.caisse(profilBoutique, true), isTrue);
+    });
+
+    test('un restaurant vend au comptoir mais n\'a pas d\'étiquettes', () {
+      const Set<String> profilRestaurant = <String>{
+        'ventes',
+        'produits',
+        'stock',
+        'caisse',
+        'tables',
+        'commandes',
+        'cuisine',
+      };
+
+      expect(ReglesActivite.ventes(profilRestaurant, true), isTrue);
+      expect(ReglesActivite.catalogue(profilRestaurant, true), isTrue);
+      expect(ReglesActivite.stock(profilRestaurant, true), isTrue);
+    });
+
+    test('un salon de coiffure (ni ventes ni étiquettes) garde sa caisse', () {
+      const Set<String> profilSalon = <String>{
+        'produits',
+        'caisse',
+        'clients',
+        'rapports',
+        'employes',
+      };
+
+      expect(ReglesActivite.ventes(profilSalon, true), isFalse);
+      expect(ReglesActivite.caisse(profilSalon, true), isTrue);
+      expect(ReglesActivite.catalogue(profilSalon, true), isTrue);
+      expect(ReglesActivite.stock(profilSalon, true), isTrue);
+    });
+
+    test('fail-open : profil non chargé ou vide → tout reste visible', () {
+      for (final Set<String> modules in <Set<String>>[
+        <String>{},
+        profilHotel,
+      ]) {
+        expect(ReglesActivite.ventes(modules, false), isTrue);
+        expect(ReglesActivite.catalogue(modules, false), isTrue);
+        expect(ReglesActivite.stock(modules, false), isTrue);
+        expect(ReglesActivite.caisse(modules, false), isTrue);
+      }
+
+      // Profil vide mais « chargé » (réponse serveur sans modules) : le
+      // service restaure le mode standard → tout est visible.
+      expect(ReglesActivite.ventes(const <String>{}, true), isTrue);
+      expect(ReglesActivite.stock(const <String>{}, true), isTrue);
+    });
+
+    test('un profil vide masque… rien du tout (aucune régression)', () {
+      // Un profil ne contenant QUE des modules métier très spécialisés ne
+      // doit pas faire disparaître les entrées de base de la boutique.
+      const Set<String> profilMinimal = <String>{'chambres'};
+
+      expect(ReglesActivite.ventes(profilMinimal, true), isFalse);
+      expect(ReglesActivite.caisse(profilMinimal, true), isFalse);
+      expect(ReglesActivite.catalogue(profilMinimal, true), isFalse);
+      expect(ReglesActivite.stock(profilMinimal, true), isFalse);
+    });
+
+    test('ModulesService.estActif délègue la même règle fail-open', () {
+      expect(
+        ModulesService.estActif(profilHotel, true, ModuleCode.ventes),
+        ReglesActivite.ventes(profilHotel, true),
+      );
+      expect(
+        ModulesService.estActif(profilHotel, false, ModuleCode.ventes),
+        ReglesActivite.ventes(profilHotel, false),
+      );
+    });
+  });
 }

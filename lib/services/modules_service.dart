@@ -92,10 +92,11 @@ class ModulesService {
   bool moduleActif(String code) => estActif(modules.value, _charge, code);
 
   /// Version PURE (testable sans réseau) de [moduleActif].
-  static bool estActif(Set<String> actifs, bool charge, String code) {
-    if (!charge || actifs.isEmpty) return true;
-    return actifs.contains(code);
-  }
+  ///
+  /// Délègue à [ReglesActivite.actif] : la règle fail-open est écrite UNE
+  /// seule fois (model) et partagée par toutes les entrées de l'interface.
+  static bool estActif(Set<String> actifs, bool charge, String code) =>
+      ReglesActivite.actif(actifs, charge, <String>{code});
 
   // ---------------------------------------------------------------------------
   // CHARGEMENT

@@ -51,6 +51,71 @@ abstract final class ModuleCode {
   static const String profilDefaut = 'boutique';
 }
 
+/// 🧩 MODULE 16 — RÈGLES D'AFFICHAGE PILOTÉES PAR L'ACTIVITÉ.
+///
+/// Un module ne fait que **MASQUER** une entrée : il ne bloque jamais un
+/// écran. Ces règles répondent à la question « cette activité utilise-t-elle
+/// cet écran ? » pour les entrées qui n'ont pas de carte d'accueil : actions
+/// rapides de l'accueil, boutons secondaires, onglets de la barre de
+/// navigation.
+///
+/// ⚠️ Fail-open (règle d'or du module 16) : profil non chargé ou vide →
+/// `true`. Sans cette précaution, une panne réseau ferait disparaître des
+/// boutons légitimes (boutique hors ligne).
+///
+/// Miroir de `public.modules_base()` / des profils `public.types_espaces_modules`
+/// côté serveur et de [ModulesService.moduleActif] côté client.
+abstract final class ReglesActivite {
+  /// Règle générique : AU MOINS UN des modules est-il actif ?
+  static bool actif(
+    Set<String> modules,
+    bool profilCharge,
+    Set<String> codes,
+  ) {
+    if (!profilCharge || modules.isEmpty) return true; // fail-open
+    for (final String code in codes) {
+      if (modules.contains(code)) return true;
+    }
+    return false;
+  }
+
+  /// 💰 Vente au comptoir : « Nouvelle Vente », scanner vendeur, suivi
+  /// commercial, montants « ventes du jour ».
+  ///
+  /// Un hôtel (profil sans `ventes`) n'encaisse pas au comptoir : il utilise
+  /// ses propres écrans (réservations, check-in) et sa caisse.
+  static bool ventes(Set<String> modules, bool profilCharge) => actif(
+        modules,
+        profilCharge,
+        const <String>{ModuleCode.ventes},
+      );
+
+  /// 🗂️ Catalogue d'articles : « Ajouter un produit », étiquettes QR,
+  /// conditionnements.
+  static bool catalogue(Set<String> modules, bool profilCharge) => actif(
+        modules,
+        profilCharge,
+        const <String>{ModuleCode.produits, ModuleCode.qr},
+      );
+
+  /// 🏬 Stock & inventaire (onglet « Stock » de la barre de navigation).
+  /// Le catalogue suffit à le proposer : une activité qui gère des articles
+  /// gère leur stock.
+  static bool stock(Set<String> modules, bool profilCharge) => actif(
+        modules,
+        profilCharge,
+        const <String>{ModuleCode.stock, ModuleCode.produits},
+      );
+
+  /// 💵 Caisse / encaissement : présent dans TOUS les profils actuels, mais
+  /// une activité peut un jour se contenter de rapports.
+  static bool caisse(Set<String> modules, bool profilCharge) => actif(
+        modules,
+        profilCharge,
+        const <String>{ModuleCode.caisse},
+      );
+}
+
 /// Regroupement d'affichage des modules (page admin « Types d'activités »).
 enum ModuleCategorie {
   general('Général'),

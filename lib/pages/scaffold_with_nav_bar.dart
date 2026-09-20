@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -14,11 +16,18 @@ import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
 /// 🔐 MODULE 4 — une branche n'est proposée que si le rôle possède AU MOINS
 /// une des pages qu'elle contient (en lecture). L'ordre des branches dans
 /// `app_router.dart` reste la référence : cet index ne sert qu'à l'affichage.
+///
+/// 🧩 MODULE 16 — une branche peut en plus dépendre de l'ACTIVITÉ
+/// ([activite]) : un hôtel n'a pas d'onglet « Stock ».
 class _BrancheNav {
-  const _BrancheNav({required this.index, required this.pages});
+  const _BrancheNav({required this.index, required this.pages, this.activite});
 
   final int index;
   final List<PageAccess> pages;
+
+  /// Condition d'activité (module 16) : la branche n'est proposée que si elle
+  /// renvoie `true`. `null` = aucune restriction d'activité.
+  final bool Function(Set<String> modules, bool profilCharge)? activite;
 }
 
 // Ce widget est le 'Shell' qui enveloppe les pages principales (/main, /reports, /catalog, /settings)
@@ -51,6 +60,8 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     _BrancheNav(
       index: 2,
       pages: <PageAccess>[PageAccess.stock, PageAccess.articles],
+      // 🧩 MODULE 16 — pas de stock ni de catalogue (hôtel) → pas d'onglet.
+      activite: ReglesActivite.stock,
     ),
     _BrancheNav(index: 3, pages: <PageAccess>[PageAccess.parametres]),
   ];
@@ -61,6 +72,20 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   void initState() {
     super.initState();
     _checkUserRole();
+    // 🧩 MODULE 16 — le profil de modules de l'activité arrive en arrière-plan
+    // (réseau) : dès qu'il est chargé, la barre se reconstruit et les onglets
+    // hors activité disparaissent.
+    ModulesService.instance.modules.addListener(_onModulesChange);
+  }
+
+  @override
+  void dispose() {
+    ModulesService.instance.modules.removeListener(_onModulesChange);
+    super.dispose();
+  }
+
+  void _onModulesChange() {
+    if (mounted) setState(() {});
   }
 
   /// 🔐 MODULE 4 — contrôle du rôle à l'entrée de l'espace entreprise.
@@ -97,9 +122,14 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   /// Branches proposées au rôle connecté (au moins la branche d'accueil).
   List<_BrancheNav> get _branchesVisibles {
     final PermissionService permissions = PermissionService.instance;
+    final Set<String> modules = ModulesService.instance.modules.value;
+    final bool profilCharge = ModulesService.instance.charge;
+
     final List<_BrancheNav> visibles = _toutesLesBranches
         .where((_BrancheNav branche) =>
-            branche.pages.any((PageAccess page) => permissions.peutVoir(page)))
+            branche.pages.any((PageAccess page) => permissions.peutVoir(page)) &&
+            (branche.activite == null ||
+                branche.activite!(modules, profilCharge)))
         .toList(growable: false);
 
     return visibles.isEmpty

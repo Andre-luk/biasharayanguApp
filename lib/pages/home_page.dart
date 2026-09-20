@@ -56,6 +56,8 @@ import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 // 🧩 MODULE 16 (phase B) — registre des cartes d'accueil par module.
 import 'package:biashara_yangu/ui/accueil/cartes_accueil.dart';
+// 🖥️ Mise en page adaptative (contenu centré et grille à l'échelle du bureau).
+import 'package:biashara_yangu/ui/mise_en_page_adaptative.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -665,17 +667,34 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
+  /// 🏠 Actions rapides — ELLES SUIVENT L'ACTIVITÉ de l'entreprise.
+  ///
+  /// 🧩 MODULE 16 — un hôtel (profil sans le module « Ventes & panier »)
+  /// n'encaissait pas au comptoir : il ne doit donc plus voir « Nouvelle
+  /// Vente » ni le scanner. Il garde en revanche l'accès direct à sa CAISSE,
+  /// écran d'encaissement de ses réservations et séjours.
+  ///
+  /// Masquage uniquement (règle d'or du module 16) : les écrans restent
+  /// joignables par lien direct, les permissions du module 4 n'ont pas bougé.
   Widget _buildActionsRapides(AppLocalizations T) {
     final PermissionService permissions = PermissionService.instance;
+    final ThemeData theme = Theme.of(context);
 
     // 🔒 MODULE 17 — cadenas tant que le compte n'est pas opérationnel
     // (activation en attente de la finance, abonnement échu, suspension).
     final bool verrouille = AbonnementService.instance.operationsVerrouillees;
 
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionRapide(
+    final Set<String> modules = ModulesService.instance.modules.value;
+    final bool profilCharge = ModulesService.instance.charge;
+    final bool ventesActives = ReglesActivite.ventes(modules, profilCharge);
+
+    final List<Widget> actions = <Widget>[];
+
+    if (ventesActives) {
+      // ⚠️ L'écran de vente est protégé par `caisse` + `créer` (module 10).
+      if (permissions.peut(PageAccess.caisse, ActionAccess.creer)) {
+        actions.add(
+          _ActionRapide(
             libelle: T.buttonNewSale,
             icone: Icons.point_of_sale_rounded,
             degrade: AppDegrades.hero,
@@ -683,28 +702,52 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             verrouille: verrouille,
             onTap: () => _navTo('/main/new-sale'),
           ),
+        );
+      }
+
+      actions.add(
+        permissions.peutVoir(PageAccess.scanner)
+            ? _ActionRapide(
+                libelle: 'Scanner',
+                icone: Icons.qr_code_scanner_rounded,
+                degrade: AppDegrades.accent,
+                couleurTexte: Colors.white,
+                verrouille: verrouille,
+                onTap: () => _navTo('/scanner'),
+              )
+            : _ActionRapide(
+                libelle: 'Suivi commercial',
+                icone: Icons.insights_rounded,
+                couleur: theme.colorScheme.surface,
+                couleurTexte: theme.colorScheme.primary,
+                bordure: theme.colorScheme.outlineVariant,
+                verrouille: verrouille,
+                onTap: () => _navTo('/main/commercial'),
+              ),
+      );
+    } else if (ReglesActivite.caisse(modules, profilCharge) &&
+        permissions.peutVoir(PageAccess.caisse)) {
+      // Pas de vente au comptoir → un seul raccourci : la caisse.
+      actions.add(
+        _ActionRapide(
+          libelle: 'Caisse',
+          icone: Icons.payments_rounded,
+          degrade: AppDegrades.accent,
+          couleurTexte: Colors.white,
+          verrouille: verrouille,
+          onTap: () => _navTo('/main/caisse'),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: permissions.peutVoir(PageAccess.scanner)
-              ? _ActionRapide(
-                  libelle: 'Scanner',
-                  icone: Icons.qr_code_scanner_rounded,
-                  degrade: AppDegrades.accent,
-                  couleurTexte: Colors.white,
-                  verrouille: verrouille,
-                  onTap: () => _navTo('/scanner'),
-                )
-              : _ActionRapide(
-                  libelle: 'Suivi commercial',
-                  icone: Icons.insights_rounded,
-                  couleur: Theme.of(context).colorScheme.surface,
-                  couleurTexte: Theme.of(context).colorScheme.primary,
-                  bordure: Theme.of(context).colorScheme.outlineVariant,
-                  verrouille: verrouille,
-                  onTap: () => _navTo('/main/commercial'),
-                ),
-        ),
+      );
+    }
+
+    if (actions.isEmpty) return const SizedBox.shrink();
+
+    return Row(
+      children: <Widget>[
+        for (int i = 0; i < actions.length; i++) ...<Widget>[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: actions[i]),
+        ],
       ],
     );
   }
@@ -744,6 +787,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       productionsJour: _productionsJour,
     );
     final ThemeData theme = Theme.of(context);
+    final double largeurEcran = MediaQuery.sizeOf(context).width;
 
     // Aucune carte pour ce rôle/activité : la section disparaît.
     if (cartes.isEmpty) return const SizedBox.shrink();
@@ -774,7 +818,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
         ),
         GridView.count(
-          crossAxisCount: 2,
+          // 🖥️ Ordinateur : 3 colonnes au lieu de 2 → les cartes gardent une
+          // taille raisonnable au lieu d'être gonflées pour remplir la ligne.
+          crossAxisCount: MiseEnPageAdaptative.colonnesGrille(largeurEcran),
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
@@ -803,7 +849,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // « Collaborateurs » est réservé aux rôles qui gèrent l'équipe (patron).
     // Sans ces droits, les boutons disparaissent (fini les clics qui
     // renvoyaient silencieusement vers l'écran de vente).
-    final bool peutAjouterProduit =
+    // 🧩 MODULE 16 — et l'activité doit gérer un CATALOGUE : un hôtel sans
+    // articles n'a rien à ajouter. On vérifie le droit AVANT la permission des
+    // articles pour que `peutAjouterProduit` soit faux dès que le module manque.
+    final bool articlesDisponibles = ReglesActivite.catalogue(
+      ModulesService.instance.modules.value,
+      ModulesService.instance.charge,
+    );
+    final bool peutAjouterProduit = articlesDisponibles &&
         permissions.peut(PageAccess.articles, ActionAccess.creer);
     final bool peutGererCollaborateurs =
         permissions.peutVoir(PageAccess.collaborateurs);
@@ -909,6 +962,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations T = AppLocalizations.of(context)!;
+    final double largeurEcran = MediaQuery.sizeOf(context).width;
 
     return Scaffold(
       appBar: _buildAppBar(T),
@@ -918,9 +972,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         color: Theme.of(context).colorScheme.primary,
         child: _loading
             ? _buildChargement()
+            // 🖥️ ORDINATEUR : le contenu est CENTRÉ et borné à
+            // `MiseEnPageAdaptative.largeurContenuMax` — sans cela les cartes
+            // et les boutons, dessinés pour un téléphone, s'étirent sur toute
+            // la largeur de la fenêtre et paraissent démesurés.
             : ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                padding: EdgeInsets.fromLTRB(
+                  MiseEnPageAdaptative.margeLaterale(largeurEcran),
+                  8,
+                  MiseEnPageAdaptative.margeLaterale(largeurEcran),
+                  32,
+                ),
                 children: [
                   _Apparition(
                     delai: 0,
