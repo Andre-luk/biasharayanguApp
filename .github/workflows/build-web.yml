@@ -115,3 +115,39 @@ jobs:
         with:
           tag_name: ${{ inputs.release_tag }}
           files: biashara-yangu-web.zip
+
+  # ==========================================================================
+  #  ÉTAPE 3 — BRANCHE `gh-pages` (GitHub Pages).
+  #  Le site est copié automatiquement dans la branche `gh-pages` : il
+  #  suffit d'activer Pages UNE SEULE FOIS (Settings → Pages → Source :
+  #  « Deploy from a branch » → branche `gh-pages` → / (root)) pour que
+  #  l'application soit en ligne sur
+  #      https://andre-luk.github.io/biasharayanguApp/
+  #  et mise à jour à chaque passage de ce workflow.
+  # ==========================================================================
+  pages:
+    name: Publier sur la branche gh-pages
+    needs: web
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Récupérer l'archive du site
+        uses: actions/download-artifact@v4
+        with:
+          name: biashara-yangu-web
+          path: site
+
+      - name: Décompresser le site
+        run: cd site && unzip -o biashara-yangu-web.zip && rm biashara-yangu-web.zip
+
+      - name: Adapter le chemin GitHub Pages (/biasharayanguApp/)
+        run: sed -i 's|<base href="/">|<base href="/biasharayanguApp/">|' site/index.html
+
+      - name: Copier vers la branche gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          commit_message: 'site web — ${{ github.sha }}'
