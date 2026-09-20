@@ -103,11 +103,11 @@ Table public.types_espaces_modules
 - ✅ Le titre générique « **Rapports de l'entreprise** » est déjà en place ✓.
 - *Reste pour plus tard : `production` / `pertes` (arriveront avec les modules boulangerie C5) — sans bloquer la phase.*
 
-### Phase E — Abonnement par modules *(2 j)*
-- `groupes_tarifaires.modules jsonb` : un pack autorise une liste de modules.
-- Les modules effectifs = **type d'espace ∩ pack souscrit**.
-- Écran admin Groupes tarifaires : cocher les modules du pack.
-- Tarification par packs : « Essentiel » (ventes/stock) / « Avancé » (+multi-entreprises, +IA) / « Spécialisé » (+hôtel/+pharmacie…).
+### Phase E — Abonnement par modules *(2 j)* — ✅ **LIVRÉE** *(migration 37)*
+- ✅ `groupes_tarifaires.modules jsonb` : `[]` = aucun filtre (toutes les activités inchangées) ; sinon, liste des modules autorisés.
+- ✅ Les modules effectifs = **type d'espace ∩ pack souscrit** (`rpc_mes_modules` v2, fail-open si intersection vide).
+- ✅ Écran admin Groupes tarifaires : section « Modules du pack » (cases groupées par catégorie, « Tout décocher »).
+- ✅ Tarification par packs possible : « Essentiel » (ventes/stock) / « Avancé » (+finance, +IA…) / « Spécialisé » (aucun filtre) — exemples d'`update` dans la migration 37.
 
 ---
 
@@ -150,11 +150,11 @@ Créé par l'**Expert Administrateur** en 2 minutes : modules `clients` + `rende
 ```
 Phase A (socle)  →  Phase B (dashboards)  →  C1 Pharmacie ✅  →  C2 Hôtel ✅
    →  C3 Restaurant ✅  →  D Rapports par activité ✅  →  C4 Salle des fêtes ✅
-   →  C5 Boulangerie ✅  →  C6 Boucherie ✅  →  C8 Variantes ✅  →  Phase E (packs)
+   →  C5 Boulangerie ✅  →  C6 Boucherie ✅  →  C8 Variantes ✅  →  Phase E ✅
 ```
 
 Chaque phase : **1 migration SQL idempotente + tests Flutter** — et **une SEULE release à la fin**, quand tous les modules sont terminés (consigne utilisateur du 19/09/2026 : plus de release intermédiaire).
 
 ---
 
-*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0), **C2 Hôtel** (migration 30), **C3 Restaurant** (migration 31), **D — rapports par activité** (migration 32), **C4 Salle des fêtes** (migration 33), **C5 Boulangerie** (migration 34) et **C6 Boucherie / vente au poids** (migration 35) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** + **restaurant : plan de salle, commandes, écran cuisine, encaissement via la caisse** + **rapports filtrés par modules actifs, page « À propos » officielle (éditeur Biashara Tech · développeur Andre Lukengu · La Perle Corp collaborateur marketing) et guide d'utilisation par module (bouton ? partout)** + **salle des fêtes : salles, calendrier, prestations, avances & soldes** + **boulangerie : matières premières, productions, pertes & coût de revient (entrée en stock automatique)** + **boucherie : articles vendus au poids (prix/kg, pas de 0,5 kg, ticket au kg)** + **mode : variantes taille/couleur/marque avec recherche par variante (migration 36)**. **TOUTES les phases C sont livrées — prochaine action unique : Phase E (packs par modules : Essentiel / Avancé / Spécialisé)**, puis release unique.*
+*Document préparé le 18/09/2026 — feu vert utilisateur donné. Phases A (v1.4.0), B (v1.5.0), C1 Pharmacie (v1.6.0), **C2 Hôtel** (migration 30), **C3 Restaurant** (migration 31), **D — rapports par activité** (migration 32), **C4 Salle des fêtes** (migration 33), **C5 Boulangerie** (migration 34) et **C6 Boucherie / vente au poids** (migration 35) livrées : socle `types_espaces_modules` + 3 RPC + page admin « Types d'activités » + grille d'accueil pilotée par les modules (registre des cartes) + profils affinés hôtel/restaurant + lots & péremption (expirations, alertes, blocage configurable) + **hôtel : chambres, réservations, check-in/check-out, réception du jour, facture de séjour** + **restaurant : plan de salle, commandes, écran cuisine, encaissement via la caisse** + **rapports filtrés par modules actifs, page « À propos » officielle (éditeur Biashara Tech · développeur Andre Lukengu · La Perle Corp collaborateur marketing) et guide d'utilisation par module (bouton ? partout)** + **salle des fêtes : salles, calendrier, prestations, avances & soldes** + **boulangerie : matières premières, productions, pertes & coût de revient (entrée en stock automatique)** + **boucherie : articles vendus au poids (prix/kg, pas de 0,5 kg, ticket au kg)** + **mode : variantes taille/couleur/marque avec recherche par variante (migration 36)** + **packs par modules : modules effectifs = profil ∩ pack, écran « Modules du pack » (migration 37)**. **TOUTES les phases de la roadmap sont livrées ✅ — il reste : (1) l'utilisateur exécute les migrations 30→37 dans le SQL Editor, (2) tests live, (3) release finale unique (bump pubspec + vX.Y.Z).***

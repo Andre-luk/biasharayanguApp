@@ -345,6 +345,7 @@ class ReferentielService {
     required int dureeAbonnementJours,
     required double prixParCollaborateur,
     int maxEspaces = 1,
+    Set<String> modules = const <String>{},
   }) {
     return _executer(
       () async {
@@ -375,6 +376,8 @@ class ReferentielService {
                 'prix_par_collaborateur': prixParCollaborateur,
                 // 🏢 MODULE 15 — pack multi-entreprises (1 par défaut).
                 'max_espaces': maxEspaces,
+                // 🧩 MODULE 16 E — modules autorisés ([] = aucun filtre).
+                'modules': modules.toList(growable: false),
                 'created_at': maintenant.toIso8601String(),
               })
               .select()
@@ -407,6 +410,7 @@ class ReferentielService {
     required int dureeAbonnementJours,
     required double prixParCollaborateur,
     int maxEspaces = 1,
+    Set<String> modules = const <String>{},
   }) {
     return _executer(
       () async {
@@ -434,6 +438,8 @@ class ReferentielService {
                 'prix_par_collaborateur': prixParCollaborateur,
                 // 🏢 MODULE 15 — pack multi-entreprises.
                 'max_espaces': maxEspaces,
+                // 🧩 MODULE 16 E — modules autorisés ([] = aucun filtre).
+                'modules': modules.toList(growable: false),
               })
               .eq('id', id)
               .select()

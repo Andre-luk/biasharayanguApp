@@ -1,4 +1,5 @@
 // lib/models/groupe_tarifaire.dart
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// Grille tarifaire d'une activité — table `public.groupes_tarifaires`.
@@ -20,6 +21,10 @@ class GroupeTarifaire {
   /// (1 = mono-entreprise, 3 = pack avancé multi-entreprises…).
   final int maxEspaces;
 
+  /// 🧩 MODULE 16 E (packs par modules) — modules autorisés par le pack.
+  /// Vide = AUCUN filtre : tous les modules du profil de l'activité.
+  final Set<String> modules;
+
   final DateTime? createdAt;
 
   const GroupeTarifaire({
@@ -32,6 +37,7 @@ class GroupeTarifaire {
     this.dureeAbonnementJours = 0,
     this.prixParCollaborateur = 0,
     this.maxEspaces = 1,
+    this.modules = const <String>{},
     this.createdAt,
   });
 
@@ -48,6 +54,8 @@ class GroupeTarifaire {
       dureeAbonnementJours: parseInt(map['duree_abonnement_jours']),
       prixParCollaborateur: parseDouble(map['prix_par_collaborateur']),
       maxEspaces: max < 1 ? 1 : max,
+      // 🧩 MODULE 16 E — modules du pack ([] = aucun filtre).
+      modules: ProfilModules.modulesDepuisJson(map['modules']),
       createdAt: parseDateTimeOrNull(map['created_at']),
     );
   }
@@ -63,6 +71,7 @@ class GroupeTarifaire {
       'duree_abonnement_jours': dureeAbonnementJours,
       'prix_par_collaborateur': prixParCollaborateur,
       'max_espaces': maxEspaces,
+      'modules': modules.toList(growable: false),
       'created_at': createdAt?.toIso8601String(),
     };
   }
@@ -78,6 +87,13 @@ class GroupeTarifaire {
   /// 🏢 MODULE 15 — ce pack autorise-t-il plusieurs entreprises ?
   bool get packMulti => maxEspaces > 1;
 
+  /// 🧩 MODULE 16 E — ce pack limite-t-il les modules ?
+  bool get filtreModules => modules.isNotEmpty;
+
+  /// Résumé lisible des modules du pack (« 5 modules » / « tous »).
+  String get resumeModules =>
+      modules.isEmpty ? 'Tous modules' : '${modules.length} modules';
+
   GroupeTarifaire copyWith({
     String? id,
     String? activiteId,
@@ -88,6 +104,7 @@ class GroupeTarifaire {
     int? dureeAbonnementJours,
     double? prixParCollaborateur,
     int? maxEspaces,
+    Set<String>? modules,
     DateTime? createdAt,
   }) {
     return GroupeTarifaire(
@@ -100,6 +117,7 @@ class GroupeTarifaire {
       dureeAbonnementJours: dureeAbonnementJours ?? this.dureeAbonnementJours,
       prixParCollaborateur: prixParCollaborateur ?? this.prixParCollaborateur,
       maxEspaces: maxEspaces ?? this.maxEspaces,
+      modules: modules ?? this.modules,
       createdAt: createdAt ?? this.createdAt,
     );
   }

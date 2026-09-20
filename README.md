@@ -84,6 +84,7 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0034          Module 16 phase C5 — boulangerie (matières, productions)
 0035          Module 16 phase C6 — boucherie (articles vendus au poids)
 0036          Module 16 phase C8 — variantes (taille, couleur, marque)
+0037          Module 16 phase E — packs par modules (groupes tarifaires)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
@@ -97,6 +98,11 @@ se terminent par des requêtes de vérification.
 |---|---|---|
 | `ventes` | `{"bloquer_produits_expires": true}` | Bloque la vente d'un article dont la date de péremption est dépassée (pharmacie). Passer à `false` pour l'autoriser |
 | `permissions_roles` | `{"roles": {"VENDEUR": {"ventes": ["voir","creer"]}}}` | Personnalisation des permissions par rôle (écran Super Admin → Permissions) ; remplace la matrice par défaut |
+
+**Packs par modules (Module 16 E)** — un groupe tarifaire peut limiter les
+modules : `groupes_tarifaires.modules` (`[]` = aucun filtre). Les modules
+effectifs d'une entreprise = **profil de l'activité ∩ modules du pack**
+(écran admin → Groupes tarifaires → « Modules du pack »).
 
 ### 3.3 Réglages dans l'application
 

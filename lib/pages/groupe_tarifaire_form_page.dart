@@ -16,6 +16,7 @@ import 'package:flutter/services.dart';
 
 import 'package:biashara_yangu/models/activite.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/services/referentiel_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
@@ -71,6 +72,10 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
   /// 🏢 MODULE 15 — entreprises autorisées par ce pack (1 = standard,
   /// 3+ = pack multi-entreprises).
   int _maxEspaces = 1;
+
+  /// 🧩 MODULE 16 E — modules autorisés par le pack.
+  /// Vide = aucun filtre : tous les modules du profil de l'activité.
+  Set<String> _modules = <String>{};
 
   bool _chargement = true;
   bool _enregistrement = false;
@@ -178,6 +183,8 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
       _prixCollaborateurController.text =
           _formatSaisie(groupe?.prixParCollaborateur ?? 0.5);
       _maxEspaces = groupe?.maxEspaces ?? 1;
+      // 🧩 MODULE 16 E — modules du pack (vide = aucun filtre).
+      _modules = Set<String>.from(groupe?.modules ?? const <String>{});
     });
   }
 
@@ -374,6 +381,7 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
           dureeAbonnementJours: dureeAbonnementJours,
           prixParCollaborateur: prixParCollaborateur,
           maxEspaces: _maxEspaces,
+          modules: _modules,
         );
       } else {
         await _service.modifierGroupeTarifaire(
@@ -386,6 +394,7 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
           dureeAbonnementJours: dureeAbonnementJours,
           prixParCollaborateur: prixParCollaborateur,
           maxEspaces: _maxEspaces,
+          modules: _modules,
         );
       }
     } on ReferentielServiceException catch (e) {
@@ -764,8 +773,94 @@ class _GroupeTarifaireFormPageState extends State<GroupeTarifaireFormPage> {
               validator: _validerPrixCollaborateur,
             ),
             const SizedBox(height: 24),
+            // 🧩 MODULE 16 E — MODULES DU PACK : les modules effectifs d'un
+            // espace = profil de l'activité ∩ modules du pack. Aucun
+            // module coché = aucun filtre (tous les modules du profil).
+            _sectionModules(theme),
+            const SizedBox(height: 24),
             _apercu(theme),
             const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Section « Modules du pack » (phase E) — cases à cocher groupées par
+  /// catégorie. Vide = pack sans restriction de modules.
+  Widget _sectionModules(ThemeData theme) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(Icons.extension_rounded, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Modules du pack',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (_modules.isNotEmpty)
+                  TextButton(
+                    onPressed: () => setState(() => _modules.clear()),
+                    child: const Text('Tout décocher'),
+                  ),
+              ],
+            ),
+            Text(
+              'Les modules effectifs d\'une entreprise = modules du type '
+              'd\'activité ∩ modules cochés ici. Aucun module coché = '
+              'AUCUN filtre (tous les modules de l\'activité). '
+              'Sélection actuelle : ${_modules.isEmpty ? 'tous' : '${_modules.length} module(s)'}.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            for (final ModuleCategorie categorie in ModuleCategorie.values)
+              if (ModuleActivite.catalogue
+                  .any((ModuleActivite m) => m.categorie == categorie)) ...<Widget>[
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 2),
+                  child: Text(
+                    categorie.libelle,
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: ModuleActivite.catalogue
+                      .where((ModuleActivite m) => m.categorie == categorie)
+                      .map(
+                        (ModuleActivite module) => FilterChip(
+                          label: Text(module.libelle),
+                          selected: _modules.contains(module.code),
+                          onSelected: (bool selectionne) {
+                            setState(() {
+                              if (selectionne) {
+                                _modules.add(module.code);
+                              } else {
+                                _modules.remove(module.code);
+                              }
+                            });
+                          },
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ],
           ],
         ),
       ),
