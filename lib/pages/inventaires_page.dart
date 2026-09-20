@@ -1,5 +1,5 @@
 // lib/pages/inventaires_page.dart
-import 'dart:io';
+// 🌐 PHASE F (web) — import `dart:io` retiré (non nécessaire).
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';

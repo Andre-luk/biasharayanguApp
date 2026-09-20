@@ -1,6 +1,6 @@
 // lib/pages/new_sale_page.dart
 import 'dart:async';
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -639,11 +639,11 @@ class _NewSalePageState extends State<NewSalePage> {
                   color: theme.colorScheme.surface,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: p.photo != null && File(p.photo!).existsSync()
+                child: p.photo != null && imageLocaleExiste(p.photo!)
                     ? ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(p.photo!),
+                  child: imageFichierLocal(
+                    p.photo!,
                     fit: BoxFit.cover,
                   ),
                 )

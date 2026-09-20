@@ -1,5 +1,5 @@
 // lib/pages/profile_page.dart
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
@@ -51,9 +51,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
-    final avatarImage = (utilisateur?.avatar != null && utilisateur!.avatar!.isNotEmpty)
-        ? FileImage(File(utilisateur!.avatar!)) as ImageProvider
-        : const AssetImage('assets/user.jpg');
+    final avatarImage =
+        (utilisateur?.avatar != null && utilisateur!.avatar!.isNotEmpty)
+            ? (imageProviderLocalSiExiste(utilisateur!.avatar!) ??
+                const AssetImage('assets/user.jpg'))
+            : const AssetImage('assets/user.jpg');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profil Utilisateur')),

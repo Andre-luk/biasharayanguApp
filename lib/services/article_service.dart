@@ -11,7 +11,7 @@
 // Toutes les méthodes publiques lèvent [ArticleServiceException] : les écrans
 // n'ont donc jamais à manipuler une `PostgrestException`.
 
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -803,20 +803,23 @@ class ArticleService {
           );
         }
 
-        final File fichier = File(cheminLocal);
-        if (!await fichier.exists()) {
+        final Uint8List? octets = await lireOctetsFichierLocal(cheminLocal);
+        if (octets == null) {
           throw const ArticleServiceException(
-            "Le fichier photo n'existe plus sur l'appareil. Choisissez une autre image.",
+            "Le fichier photo n'est plus accessible. Choisissez une autre image.",
           );
         }
 
-        final String extension = cheminLocal.contains('.')
-            ? cheminLocal.split('.').last.toLowerCase()
+        // 🌐 PHASE F (web) — l'extension vient du chemin quand il en a une
+        // (fichier natif) ; sinon « jpg » (blob navigateur).
+        final String brut = cheminLocal.split('.').last.toLowerCase();
+        final String extension = cheminLocal.contains('.') &&
+                brut.length <= 5 &&
+                !brut.contains('/')
+            ? brut
             : 'jpg';
         final String chemin =
             '$utilisateurId/${DateTime.now().millisecondsSinceEpoch}.$extension';
-
-        final Uint8List octets = await fichier.readAsBytes();
         await _client.storage.from(bucketPhotos).uploadBinary(
               chemin,
               octets,

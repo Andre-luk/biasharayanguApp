@@ -1,12 +1,11 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'dart:io';
-import 'dart:ffi';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqlite3/open.dart' as sqlite_open;
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show debugPrint;
+
+import 'utils/sqlite_local.dart';
+import 'utils/fichiers_locaux.dart';
 
 import 'models/ajustement.dart';
 import 'models/depense.dart';
@@ -43,13 +42,18 @@ class DBHelper {
   }
 
   Future<Database> _initDB() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      _chargerSqlite3Embrique();
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
+    // 🌐 PHASE F (web) — SQLite local indisponible dans un navigateur :
+    // l'application web travaille uniquement avec Supabase.
+    if (!sqliteLocalDisponible) {
+      throw UnsupportedError(
+        'La base locale (SQLite) est indisponible sur le web. '
+        "Utilisez l'application Android, Windows ou Linux.",
+      );
     }
 
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    preparerSqliteLocal();
+
+    final documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, "biashara_yangu.db");
 
     return await openDatabase(
@@ -60,34 +64,9 @@ class DBHelper {
     );
   }
 
-  /// 🐧🪟 SQLite EMBARQUÉ — le paquet Linux/Windows fournit sa propre
-  /// bibliothèque (`lib/libsqlite3.so` sur Linux, `sqlite3.dll` à côté du
-  /// programme sur Windows). On la charge en PRIORITÉ : l'application
-  /// fonctionne donc sans rien installer sur l'ordinateur (sans quoi :
-  /// « Failed to load dynamic library 'libsqlite3.so' »).
-  /// Si elle est absente, on retombe sur la bibliothèque du système.
-  static void _chargerSqlite3Embrique() {
-    if (kIsWeb) return;
-    try {
-      final String dossier = File(Platform.resolvedExecutable).parent.path;
-      final String? candidat = Platform.isLinux
-          ? join(dossier, 'lib', 'libsqlite3.so')
-          : Platform.isWindows
-              ? join(dossier, 'sqlite3.dll')
-              : null;
-      if (candidat == null || !File(candidat).existsSync()) return;
-
-      sqlite_open.open.overrideFor(
-        Platform.isLinux
-            ? sqlite_open.OperatingSystem.linux
-            : sqlite_open.OperatingSystem.windows,
-        () => DynamicLibrary.open(candidat),
-      );
-      debugPrint('SQLite embarqué chargé : $candidat');
-    } catch (e) {
-      debugPrint('SQLite embarqué non chargé (bibliothèque système utilisée) : $e');
-    }
-  }
+  // 🌐 PHASE F (web) — le chargement de SQLite embarqué vit désormais dans
+  // `utils/sqlite_local_native.dart` (inaccessible au web) et est déclenché
+  // par `preparerSqliteLocal()`.
 
 
   // ========================= CREATION & MIGRATION =========================
@@ -337,8 +316,7 @@ CREATE TABLE approvisionnements (
 
   Future<String> backupDatabase() async {
     final databasePath = await getDatabasePathFile();
-    final databaseFile = File(databasePath);
-    if (!await databaseFile.exists()) {
+    if (!await fichierLocalExiste(databasePath)) {
       throw Exception("Fichier de base de données introuvable.");
     }
     final appDocDir = await getApplicationDocumentsDirectory();
@@ -346,18 +324,17 @@ CREATE TABLE approvisionnements (
     final backupFileName = 'biashara_yangu_backup_$timestamp.db';
     final backupPath = join(appDocDir.path, backupFileName);
     await close();
-    await databaseFile.copy(backupPath);
+    await copierFichierLocal(depuis: databasePath, vers: backupPath);
     return backupPath;
   }
 
   Future<void> restoreDatabase(String backupFilePath) async {
-    final backupFile = File(backupFilePath);
-    if (!await backupFile.exists()) {
+    if (!await fichierLocalExiste(backupFilePath)) {
       throw Exception("Fichier de sauvegarde introuvable à: $backupFilePath.");
     }
     final databasePath = await getDatabasePathFile();
     await close();
-    await backupFile.copy(databasePath);
+    await copierFichierLocal(depuis: backupFilePath, vers: databasePath);
     _db = await _initDB();
   }
 

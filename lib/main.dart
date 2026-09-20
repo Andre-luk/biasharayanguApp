@@ -4,7 +4,6 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:window_manager/window_manager.dart';
 
 // Config & Utils
 import 'config/app_router.dart';
@@ -15,6 +14,7 @@ import 'utils/language_manager.dart';
 import 'utils/theme_manager.dart';
 import 'utils/accessibilite_manager.dart';
 import 'utils/session_manager.dart';
+import 'utils/fenetre_bureau.dart';
 
 // Pages
 import 'pages/splash_screen.dart';
@@ -34,8 +34,6 @@ import 'services/permission_service.dart';
 import 'db_helper.dart';
 
 import 'dart:async' show unawaited;
-import 'dart:io' show Platform, Directory, File;
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 late final SupabaseClient supabase;
 
@@ -51,6 +49,28 @@ Future<void> _initialiserSupabase() async {
     supabase = Supabase.instance.client;
   } catch (e) {
     debugPrint('Erreur Supabase Init: $e');
+  }
+}
+
+/// Utilisateur local (SQLite) — `null` si la base locale est indisponible
+/// (cas du web : PHASE F) : le démarrage continue sans bloquer.
+Future<dynamic> _premierUtilisateurLocal() async {
+  try {
+    return await DBHelper.instance.getFirstUtilisateur();
+  } catch (e) {
+    debugPrint('Base locale indisponible (premier utilisateur) : $e');
+    return null;
+  }
+}
+
+/// Utilisateur local par identifiant — `null` si indisponible (web).
+Future<dynamic> _utilisateurLocal(String? uid) async {
+  if (uid == null) return null;
+  try {
+    return await DBHelper.instance.getUtilisateurById(uid);
+  } catch (e) {
+    debugPrint('Base locale indisponible (utilisateur $uid) : $e');
+    return null;
   }
 }
 
@@ -100,35 +120,8 @@ void main() async {
     debugPrint('Vérification globale des abonnements ignorée: $e');
   }
 
-  // 4. Configuration Desktop
-  if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
-    await windowManager.ensureInitialized();
-    final windowOptions = const WindowOptions(
-      size: Size(1200, 800),
-      minimumSize: Size(900, 600),
-      center: true,
-      titleBarStyle: TitleBarStyle.normal,
-    );
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-
-      // 🖼️ Icône de la fenêtre — Linux : le logo est chargé depuis le paquet
-      // (Windows utilise directement l'icône .ico du .exe).
-      if (Platform.isLinux) {
-        try {
-          final String icone =
-              '${Directory(Platform.resolvedExecutable).parent.path}'
-              '/data/flutter_assets/assets/Biashara_app_off-.png';
-          if (File(icone).existsSync()) {
-            await windowManager.setIcon(icone);
-          }
-        } catch (e) {
-          debugPrint('Icône de fenêtre ignorée : $e');
-        }
-      }
-    });
-  }
+  // 4. Configuration Desktop (Windows / Linux / macOS — no-op sur le web).
+  await configurerFenetreBureau();
 
   runApp(
     MultiProvider(
@@ -186,7 +179,7 @@ class _BiasharaAppState extends State<BiasharaApp> {
       final results = await Future.wait([
         SessionManager.getUserId(),
         SessionManager.getUserRole(),
-        DBHelper.instance.getFirstUtilisateur(),
+        _premierUtilisateurLocal(),
       ]);
 
       final String? savedUserId = results[0] as String?;
@@ -215,9 +208,8 @@ class _BiasharaAppState extends State<BiasharaApp> {
           );
           targetRoute = '/admin';
         } else {
-          final localUser = uid != null
-              ? await DBHelper.instance.getUtilisateurById(uid)
-              : null;
+          final localUser =
+              await _utilisateurLocal(uid);
           _checkSubscriptionInBackground(localUser?.parentId ?? uid);
 
           final RoleUtilisateur roleProfil =

@@ -22,14 +22,12 @@
 // `rapports`, reçoit DROIT_REFUSE même s'il contournait l'interface.
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:excel/excel.dart' as xls;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -38,6 +36,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:biashara_yangu/models/rapport.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart' show reponseRpcEnMap;
 import 'package:biashara_yangu/services/supabase_service.dart';
+import 'package:biashara_yangu/utils/fichiers_locaux.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 /// Nature d'une erreur de rapport (pour adapter l'interface).
@@ -357,7 +356,7 @@ class RapportService {
       reference: reference,
     );
 
-    final File fichier = await _ecrireFichier(
+    final String chemin = await _ecrireFichier(
       octets,
       nomFichierRapport(
         type: resultat.donnees.type,
@@ -365,6 +364,7 @@ class RapportService {
         fin: resultat.donnees.fin,
         extension: 'pdf',
       ),
+      mimeType: 'application/pdf',
     );
 
     await _tracer(
@@ -378,7 +378,7 @@ class RapportService {
       parametres: resultat.donnees.parametres,
     );
 
-    return fichier.path;
+    return chemin;
   }
 
   /// Partage le PDF (feuille de partage du système) — tracé `partage`.
@@ -586,7 +586,7 @@ class RapportService {
       reference: reference,
     );
 
-    final File fichier = await _ecrireFichier(
+    final String chemin = await _ecrireFichier(
       octets,
       nomFichierRapport(
         type: resultat.donnees.type,
@@ -594,6 +594,7 @@ class RapportService {
         fin: resultat.donnees.fin,
         extension: 'xlsx',
       ),
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
 
     await _tracer(
@@ -607,7 +608,7 @@ class RapportService {
       parametres: resultat.donnees.parametres,
     );
 
-    return fichier.path;
+    return chemin;
   }
 
   // ---------------------------------------------------------------------------
@@ -766,29 +767,22 @@ class RapportService {
     return reponseRpcEnMap(reponse);
   }
 
-  /// Dossier d'export des rapports (`…/rapports`), créé si nécessaire.
-  Future<Directory> _dossierRapports() async {
-    Directory? base;
+  /// Enregistre le fichier dans « Téléchargements/rapports » (Android /
+  /// Windows / Linux) ou le télécharge via le navigateur (web — PHASE F).
+  /// Renvoie le chemin complet (natif) ou le nom du fichier (web).
+  Future<String> _ecrireFichier(
+    Uint8List octets,
+    String nomFichier, {
+    String mimeType = 'application/octet-stream',
+  }) async {
     try {
-      base = await getDownloadsDirectory();
-    } catch (e) {
-      debugPrint('RapportService (Téléchargements indisponibles): $e');
-    }
-    base ??= await getApplicationDocumentsDirectory();
-
-    final Directory dossier = Directory('${base.path}/rapports');
-    if (!await dossier.exists()) {
-      await dossier.create(recursive: true);
-    }
-    return dossier;
-  }
-
-  Future<File> _ecrireFichier(Uint8List octets, String nomFichier) async {
-    try {
-      final Directory dossier = await _dossierRapports();
-      final File fichier = File('${dossier.path}/$nomFichier');
-      await fichier.writeAsBytes(octets, flush: true);
-      return fichier;
+      return await enregistrerDansTelechargements(
+            sousDossier: 'rapports',
+            nomFichier: nomFichier,
+            octets: octets,
+            mimeType: mimeType,
+          ) ??
+          nomFichier;
     } catch (e, st) {
       debugPrint('RapportService (écriture fichier): $e\n$st');
       throw const RapportServiceException(

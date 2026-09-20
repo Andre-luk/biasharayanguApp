@@ -17,7 +17,7 @@
 // abonnement (Module 3), panier/scanner (Module 7) et statistiques locales.
 
 import 'dart:async';
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -529,11 +529,10 @@ class _HomePageState extends State<HomePage> {
     if (avatarPath != null && avatarPath.isNotEmpty) {
       if (avatarPath.startsWith('http')) {
         return NetworkImage(avatarPath);
-      } else {
-        final file = File(avatarPath);
-        if (file.existsSync()) {
-          return FileImage(file);
-        }
+      }
+      final ImageProvider? local = imageProviderLocalSiExiste(avatarPath);
+      if (local != null) {
+        return local;
       }
     }
     return const AssetImage('assets/utilisateur.jpg');

@@ -7,7 +7,7 @@
 //   • section « Conditionnements » : liste des emballages existants + bouton
 //     « Ajouter un conditionnement ».
 
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -250,8 +250,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     if (_photoLocale != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          File(_photoLocale!),
+        child: imageFichierLocal(
+          _photoLocale!,
           width: taille,
           height: taille,
           fit: BoxFit.cover,

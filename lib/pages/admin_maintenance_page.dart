@@ -1,8 +1,8 @@
 // lib/pages/admin_maintenance_page.dart
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' show basename, dirname;
+import 'package:path/path.dart' show basename;
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/utils/fichiers_locaux.dart';
 
 class AdminMaintenancePage extends StatefulWidget {
   const AdminMaintenancePage({super.key});
@@ -71,8 +71,7 @@ class _AdminMaintenancePageState extends State<AdminMaintenancePage> {
     // Simuler la sélection d'un fichier de backup (ou utiliser FilePicker)
     final String simulatedBackupPath = await _getTestFilePath();
 
-    final backupFile = File(simulatedBackupPath);
-    final exists = await backupFile.exists();
+    final bool exists = await fichierLocalExiste(simulatedBackupPath);
     if (!exists) {
       _showSnackBar("Fichier de backup introuvable: $simulatedBackupPath", isError: true);
       return;
@@ -126,27 +125,9 @@ class _AdminMaintenancePageState extends State<AdminMaintenancePage> {
   // Cherche un fichier backup créé précédemment (méthode utilitaire)
   // ====================================================================
   Future<String> _getTestFilePath() async {
-    try {
-      final String dbPath = await _dbHelper.getDatabasePathFile();
-      final databaseDir = Directory(dirname(dbPath));
-
-      final List<FileSystemEntity> children = databaseDir.existsSync() ? databaseDir.listSync() : [];
-      final backups = children
-          .whereType<File>()
-          .where((f) => f.path.endsWith('.db') && basename(f.path).startsWith('biashara_yangu_backup'))
-          .toList();
-
-      if (backups.isNotEmpty) {
-        // On choisit le plus récent selon la date de modification si possible
-        backups.sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
-        return backups.first.path;
-      }
-    } catch (_) {
-      // ignore et fallback
-    }
-
-    // Fallback : retourner le chemin principal de la BD (plutôt que rien)
-    return await _dbHelper.getDatabasePathFile();
+    // 🌐 PHASE F (web) — la recherche de sauvegarde locale vit dans le shim.
+    final String dbPath = await _dbHelper.getDatabasePathFile();
+    return await trouverDernierBackupLocal(dbPath) ?? dbPath;
   }
 
   // ====================================================================

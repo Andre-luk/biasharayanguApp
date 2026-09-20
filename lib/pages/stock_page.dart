@@ -4,7 +4,7 @@
 // L'écran Stock officiel est `stock_gestion_page.dart` (Module 9, Supabase) :
 // route `/main/stock`. Fichier conservé pour référence uniquement.
 import 'dart:async';
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -211,10 +211,8 @@ class _StockPageState extends State<StockPage> {
     final unitLabel =
     product.uniteMesure.isNotEmpty ? product.uniteMesure : T.productUnitDefault;
 
-    final image = product.photo != null &&
-        product.photo!.isNotEmpty &&
-        File(product.photo!).existsSync()
-        ? FileImage(File(product.photo!))
+    final image = (product.photo != null && product.photo!.isNotEmpty)
+        ? imageProviderLocalSiExiste(product.photo!)
         : null;
 
     return Card(

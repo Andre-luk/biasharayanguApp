@@ -16,18 +16,17 @@
 // volontairement AUCUNE fonction de modification ou de suppression.
 
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/audit.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart' show reponseRpcEnMap;
+import 'package:biashara_yangu/utils/fichiers_locaux.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -239,9 +238,10 @@ class AuditService {
       },
     );
 
-    final File fichier = await _ecrireFichier(
+    final String chemin = await _ecrireFichier(
       octets,
       'journal_audit_${dateCompacte(DateTime.now())}.pdf',
+      mimeType: 'application/pdf',
     );
 
     // Trace de l'export (action RAPPORT → niveau INFO côté serveur).
@@ -264,7 +264,7 @@ class AuditService {
       entrepriseId: entrepriseId,
     );
 
-    return fichier.path;
+    return chemin;
   }
 
   /// Construit le PDF du journal (séparé pour être testable sans écriture).
@@ -420,29 +420,21 @@ class AuditService {
     }
   }
 
-  /// Dossier d'export du journal (`…/audit`), créé si nécessaire.
-  Future<Directory> _dossierAudit() async {
-    Directory? base;
+  /// Enregistre le fichier dans « Téléchargements/audit » (Android /
+  /// Windows / Linux) ou le télécharge via le navigateur (web — PHASE F).
+  Future<String> _ecrireFichier(
+    Uint8List octets,
+    String nomFichier, {
+    String mimeType = 'application/octet-stream',
+  }) async {
     try {
-      base = await getDownloadsDirectory();
-    } catch (e) {
-      debugPrint('AuditService (Téléchargements indisponibles) : $e');
-    }
-    base ??= await getApplicationDocumentsDirectory();
-
-    final Directory dossier = Directory('${base.path}/audit');
-    if (!await dossier.exists()) {
-      await dossier.create(recursive: true);
-    }
-    return dossier;
-  }
-
-  Future<File> _ecrireFichier(Uint8List octets, String nomFichier) async {
-    try {
-      final Directory dossier = await _dossierAudit();
-      final File fichier = File('${dossier.path}/$nomFichier');
-      await fichier.writeAsBytes(octets, flush: true);
-      return fichier;
+      return await enregistrerDansTelechargements(
+            sousDossier: 'audit',
+            nomFichier: nomFichier,
+            octets: octets,
+            mimeType: mimeType,
+          ) ??
+          nomFichier;
     } catch (e, st) {
       debugPrint('AuditService (écriture fichier) : $e\n$st');
       throw const AuditServiceException(

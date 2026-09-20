@@ -1,0 +1,117 @@
+# ============================================================================
+#  PUBLICATION DE LA VERSION WEB — Flutter Web (PHASE F)
+#
+#  POURQUOI CE WORKFLOW
+#    Le navigateur n'a ni SQLite local ni fichiers système : la compilation
+#    web est donc validée ici (les shims conditionnels neutralisent dart:io).
+#    GitHub compile à ta place et publie l'archive du site.
+#
+#  COMMENT LANCER
+#    1. automatique — chaque push sur `main` (si lib/, web/ ou pubspec change)
+#    2. manuel — Actions → « Publier le web (Flutter Web) » → Run workflow
+#       (champ `release_tag` : ex. v2.0.0 pour joindre le zip au release)
+#    3. un tag `v*` pousse aussi le zip dans le release correspondant.
+#
+#  OÙ RÉCUPÉRER LE SITE
+#    1. onglet « Actions » → le run → « Artifacts » → biashara-yangu-web.zip
+#    2. si joint à un release : page du release → biashara-yangu-web.zip
+#       (décompresser puis servir le dossier avec n'importe quel hébergeur :
+#        GitHub Pages, Netlify, Vercel, un simple dossier Apache…)
+# ============================================================================
+
+name: Publier le web (Flutter Web)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths:
+      - 'lib/**'
+      - 'web/**'
+      - 'pubspec.yaml'
+      - 'l10n.yaml'
+      - '.github/workflows/build-web.yml'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag de release à compléter (ex. v2.0.0) — laisser vide pour un simple test'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  # ==========================================================================
+  #  ÉTAPE 1 — LA QUALITÉ D'ABORD : analyse + tous les tests (comme le desktop).
+  # ==========================================================================
+  qualite:
+    name: Analyse & tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      - name: Analyse statique
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Tests
+        run: flutter test
+
+  # ==========================================================================
+  #  ÉTAPE 2 — COMPILATION WEB (release) + ARCHIVE ZIP.
+  # ==========================================================================
+  web:
+    name: Compiler le web
+    needs: qualite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          cache: true
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      - name: Compiler le site (release)
+        run: flutter build web --release
+
+      - name: Empaqueter le site (zip)
+        run: cd build/web && zip -r "$GITHUB_WORKSPACE/biashara-yangu-web.zip" .
+
+      - name: Envoyer l'archive (artéfact 30 jours)
+        uses: actions/upload-artifact@v4
+        with:
+          name: biashara-yangu-web
+          path: biashara-yangu-web.zip
+          retention-days: 30
+
+      # --- Tag poussé (v*) : joindre le zip au release du tag -------------
+      - name: Joindre au release (tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: biashara-yangu-web.zip
+
+      # --- Lancement manuel avec release_tag : joindre au release visé ----
+      - name: Joindre au release (manuel)
+        if: github.event_name == 'workflow_dispatch' && inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: biashara-yangu-web.zip

@@ -1,5 +1,5 @@
 // lib/widgets/product_image_picker.dart
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../utils/permissions.dart';
@@ -61,7 +61,7 @@ class _ProductImagePickerState extends State<ProductImagePicker> {
           child: _path != null && _path!.isNotEmpty
               ? ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.file(File(_path!), width: widget.size, height: widget.size, fit: BoxFit.cover),
+            child: imageFichierLocal(_path!, width: widget.size, height: widget.size, fit: BoxFit.cover),
           )
               : Container(
             width: widget.size,

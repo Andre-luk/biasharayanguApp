@@ -1,5 +1,8 @@
 // lib/services/image_service.dart
-import 'dart:io';
+//
+// 🌐 PHASE F (web) — plus d'import `dart:io` : le service renvoie des
+// chemins gérés par `image_picker` (fichier natif ou blob navigateur).
+
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 

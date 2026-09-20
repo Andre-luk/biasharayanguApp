@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart'; // Utilisé pour context.pop(true)
 import 'package:image_picker/image_picker.dart';
@@ -37,7 +37,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   Utilisateur? _user;
 
   // Avatar
-  File? _avatarFile;
+  String? _avatarChemin;
   // 💡 L'avatar URL stockera désormais soit le chemin Cloud existant (si chargé),
   // soit le chemin LOCAL du nouveau fichier.
   String? _avatarUrl;
@@ -114,7 +114,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
-        _avatarFile = File(pickedFile.path);
+        _avatarChemin = pickedFile.path;
         // Mettre à jour _avatarUrl avec le chemin local pour l'affichage immédiat
         _avatarUrl = pickedFile.path;
       });
@@ -136,8 +136,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
     try {
       // 1) Gestion de l'image (Chemin Local)
-      if (_avatarFile != null) {
-        newAvatarPath = _avatarFile!.path;
+      if (_avatarChemin != null) {
+        newAvatarPath = _avatarChemin;
       }
 
       // 2) Mettre à jour l'Auth Supabase si l'email a changé
@@ -201,23 +201,25 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   ImageProvider _getDisplayImage(ThemeData theme) {
     const defaultAssetPath = 'assets/user.jpg'; // Chemin d'image par défaut
 
-    if (_avatarFile != null) {
-      // 1. Nouvelle image sélectionnée
-      return FileImage(_avatarFile!);
-    } else if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
-      if (_avatarUrl!.startsWith('http')) {
-        // 2a. Ancienne URL Cloud
-        return NetworkImage(_avatarUrl!);
-      } else {
-        // 2b. Chemin de fichier local enregistré
-        final localFile = File(_avatarUrl!);
-        if (localFile.existsSync()) {
-          return FileImage(localFile);
-        }
+    // 1. Nouvelle image sélectionnée (fichier natif ou blob navigateur).
+    if (_avatarChemin != null && _avatarChemin!.isNotEmpty) {
+      if (_avatarChemin!.startsWith('http')) {
+        return NetworkImage(_avatarChemin!);
       }
+      final ImageProvider? local = imageProviderLocalSiExiste(_avatarChemin!);
+      if (local != null) return local;
     }
 
-    // 3. Fallback: Asset par défaut
+    // 2. Avatar déjà enregistré.
+    if (_avatarUrl != null && _avatarUrl!.isNotEmpty) {
+      if (_avatarUrl!.startsWith('http')) {
+        return NetworkImage(_avatarUrl!);
+      }
+      final ImageProvider? local = imageProviderLocalSiExiste(_avatarUrl!);
+      if (local != null) return local;
+    }
+
+    // 3. Fallback : Asset par défaut.
     return const AssetImage(defaultAssetPath);
   }
 
@@ -233,7 +235,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     final ImageProvider displayImage = _getDisplayImage(theme);
 
     // Vérifier si nous devons afficher l'icône de l'appareil photo dans l'avatar
-    final bool showCameraIcon = (_avatarFile == null && (_avatarUrl == null || _avatarUrl!.isEmpty || displayImage is AssetImage));
+    final bool showCameraIcon = (_avatarChemin == null && (_avatarUrl == null || _avatarUrl!.isEmpty || displayImage is AssetImage));
 
     return Scaffold(
       appBar: AppBar(

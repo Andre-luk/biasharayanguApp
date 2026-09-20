@@ -15,7 +15,6 @@
 //  (Windows : silencieusement ignoré pour l'instant.)
 
 import 'dart:async';
-import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -189,8 +188,10 @@ class NotificationService {
       debugPrint('NotificationService (préférences) : $e');
     }
 
-    _supporte =
-        !kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isLinux);
+    _supporte = !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android ||
+            defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.linux);
     if (!_supporte) {
       debugPrint(
           'NotificationService : plateforme sans notifications locales.');

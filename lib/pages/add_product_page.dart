@@ -1,5 +1,5 @@
 // lib/pages/add_product_page.dart
-import 'dart:io';
+import 'package:biashara_yangu/utils/image_locale.dart';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -437,7 +437,7 @@ class _AddProductPageState extends State<AddProductPage> {
           if (_photoPath != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.file(File(_photoPath!), fit: BoxFit.cover),
+              child: imageFichierLocal(_photoPath!, fit: BoxFit.cover),
             ),
 
           Positioned.fill(

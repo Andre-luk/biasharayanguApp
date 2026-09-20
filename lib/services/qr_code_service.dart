@@ -12,12 +12,11 @@
 // dans la base de données au moment du scan : il peut donc changer sans
 // invalider les étiquettes déjà imprimées.
 
-import 'dart:io';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -28,6 +27,7 @@ import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/etiquette_qr.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/fichiers_locaux.dart';
 
 /// Erreur métier du module « QR codes ».
 ///
@@ -292,10 +292,8 @@ class QrCodeService {
   }) {
     return _executer(
       () async {
-        final Directory dossier = await _dossierQrCodes();
-        final String chemin =
-            '${dossier.path}/${etiquette.nomFichierBase}.${format.extension}';
-        final File fichier = File(chemin);
+        final String nomFichier =
+            '${etiquette.nomFichierBase}.${format.extension}';
 
         switch (format) {
           case QrFormatFichier.png:
@@ -303,15 +301,24 @@ class QrCodeService {
               etiquette.code,
               taillePixels: pixelsPourMillimetres(tailleMm),
             );
-            await fichier.writeAsBytes(bytes, flush: true);
-          case QrFormatFichier.svg:
-            await fichier.writeAsString(
-              genererSvgQrCode(etiquette.code, tailleMm: tailleMm),
-              flush: true,
+            final String? chemin = await enregistrerDansTelechargements(
+              sousDossier: 'qrcodes',
+              nomFichier: nomFichier,
+              octets: bytes,
+              mimeType: 'image/png',
             );
+            return chemin ?? nomFichier;
+          case QrFormatFichier.svg:
+            final String? chemin = await enregistrerDansTelechargements(
+              sousDossier: 'qrcodes',
+              nomFichier: nomFichier,
+              octets: utf8.encode(
+                genererSvgQrCode(etiquette.code, tailleMm: tailleMm),
+              ),
+              mimeType: 'image/svg+xml',
+            );
+            return chemin ?? nomFichier;
         }
-
-        return chemin;
       },
       actionLibelle: 'le téléchargement du QR code',
       messageEchec:
@@ -353,23 +360,6 @@ class QrCodeService {
       messageEchec:
           "Impossible d'enregistrer les QR codes sur l'appareil. Vérifiez l'espace de stockage puis réessayez.",
     );
-  }
-
-  /// Dossier d'export des QR codes (`…/qrcodes`), créé si nécessaire.
-  Future<Directory> _dossierQrCodes() async {
-    Directory? base;
-    try {
-      base = await getDownloadsDirectory();
-    } catch (e) {
-      debugPrint('QrCodeService (Téléchargements indisponibles): $e');
-    }
-    base ??= await getApplicationDocumentsDirectory();
-
-    final Directory dossier = Directory('${base.path}/qrcodes');
-    if (!await dossier.exists()) {
-      await dossier.create(recursive: true);
-    }
-    return dossier;
   }
 
   // ---------------------------------------------------------------------------
