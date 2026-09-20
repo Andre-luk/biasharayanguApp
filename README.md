@@ -29,9 +29,12 @@ du Congo. Collaborateur marketing : **La Perle Corp**. Développeur principal :
 | **Notifications** | Alerte à chaque vente + rapport de fin de journée (heure configurable) |
 | **Légal** | Politique de confidentialité et Conditions d'utilisation intégrées (droit congolais, juridiction de Lubumbashi) |
 
-Plateformes : **Android, Windows, Linux** (Flutter). Les données sont
-synchronisées en ligne via **Supabase** ; une base **SQLite locale** sert de
-repli hors ligne.
+Plateformes : **Android, Windows, Linux** et **Web** (Flutter). Les données
+sont synchronisées en ligne via **Supabase** ; une base **SQLite locale** sert
+de repli hors ligne sur les applications natives. Sur le web, l'application
+fonctionne entièrement avec Supabase (la base locale SQLite n'est pas
+disponible dans un navigateur — les shims `lib/utils/*_stub.dart` neutralisent
+ces fonctions).
 
 ---
 
@@ -135,7 +138,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 479 tests — doit rester 100 % vert
+flutter test             # 567 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -148,6 +151,7 @@ flutter test             # 479 tests — doit rester 100 % vert
 |---|---|---|
 | `.github/workflows/build-apk.yml` | push sur `main` | APK de test (vérification continue) |
 | `.github/workflows/build-release.yml` | tag `v*` | Analyse & tests → **APK signé + Linux + Windows (zip + installer)** → création de la release GitHub avec les 4 fichiers |
+| `.github/workflows/build-web.yml` | push sur `main`, tag `v*`, manuel | Analyse & tests → **site web (Flutter Web)** → archive `biashara-yangu-web.zip` (artéfact 30 j + release) |
 
 ```bash
 git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
@@ -155,10 +159,12 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **1.6.0+15**
+- Flutter **3.47.4** / Dart **3.13.3**, app **2.0.0+16**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`
   (avec *core library desugaring* Android), `sqlite3` + `sqflite_common_ffi`
   (SQLite embarquée), `pdf`/`printing` (exports), `mobile_scanner` (scanner)
+- Web : `flutter build web --release` validé par la CI ; exports de fichiers et
+  impressions disponibles, base SQLite locale réservée aux apps natives
 
 ---
 
