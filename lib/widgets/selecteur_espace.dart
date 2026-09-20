@@ -22,14 +22,24 @@ IconData iconePourTypeEspace(TypeEspace type) {
   switch (type) {
     case TypeEspace.boutique:
       return Icons.storefront_rounded;
+    case TypeEspace.depot:
+      return Icons.warehouse_rounded;
     case TypeEspace.hotel:
       return Icons.hotel_rounded;
     case TypeEspace.pharmacie:
       return Icons.local_pharmacy_rounded;
     case TypeEspace.restaurant:
       return Icons.restaurant_rounded;
-    case TypeEspace.depot:
-      return Icons.warehouse_rounded;
+    case TypeEspace.salleFetes:
+      return Icons.celebration_rounded;
+    case TypeEspace.boulangerie:
+      return Icons.bakery_dining_rounded;
+    case TypeEspace.boucherie:
+      return Icons.lunch_dining_rounded;
+    case TypeEspace.mode:
+      return Icons.checkroom_rounded;
+    case TypeEspace.salon:
+      return Icons.content_cut_rounded;
     case TypeEspace.autre:
       return Icons.business_rounded;
   }

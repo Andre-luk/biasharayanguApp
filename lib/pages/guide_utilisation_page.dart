@@ -37,11 +37,13 @@ class GuideUtilisationPage extends StatelessWidget {
             icone: Icons.person_add_alt_1_rounded,
             points: <String>[
               'Écran d\'accueil → « Créer un compte » : nom complet, email, '
-                  'mot de passe, nom de la boutique (optionnel), téléphone et '
-                  'ville.',
+                  'mot de passe, CATÉGORIE D\'ACTIVITÉ, nom de votre '
+                  'entreprise (optionnel), téléphone et ville.',
               'Votre compte passe par DEUX vérifications : le service comptes '
                   'contrôle vos informations, puis la finance confirme votre '
                   'paiement.',
+              'Pendant ce temps, les opérations sont verrouillées 🔒 : vous '
+                  'consultez, mais vous ne vendez pas encore.',
               'Paiement TOTAL : 30 jours d\'accès immédiats. Paiement '
                   'PARTIEL : 7 jours d\'essai, puis le solde complète '
                   'l\'activation.',
@@ -52,12 +54,18 @@ class GuideUtilisationPage extends StatelessWidget {
             titre: 'Choisir votre activité',
             icone: Icons.storefront_rounded,
             points: <String>[
-              'Votre type d\'activité (boutique, hôtel, pharmacie, '
-                  'restaurant…) détermine les modules affichés : chambres, '
-                  'commandes, lots & péremption…',
+              'Choisissez votre métier DÈS L\'INSCRIPTION : Hôtel, '
+                  'Restaurant, Pharmacie, Boutique, Salle des fêtes, '
+                  'Boulangerie, Boucherie, Mode… L\'application s\'adapte '
+                  'automatiquement.',
+              'Votre type d\'activité détermine les modules affichés : '
+                  'chambres, commandes, lots & péremption…',
               'Un hôtel voit « Chambres, Réservations, Réception » ; un '
                   'restaurant voit « Tables, Commandes, Cuisine » ; tout le '
                   'monde garde les ventes, le stock et la caisse.',
+              'Entreprise déjà créée ? Accueil → « Mes entreprises » → icône '
+                  '✏️ sur la carte pour corriger sa catégorie (les écrans '
+                  'suivent immédiatement).',
               'Pour créer plusieurs entreprises (pack multi-entreprises) : '
                   'accueil → « Mes entreprises ».',
             ],
@@ -439,6 +447,11 @@ class GuideUtilisationPage extends StatelessWidget {
                   'résumés) — les quotas se rechargent par packs de 10 à 100.',
               'Mon abonnement : suivez votre dossier d\'activation, vos '
                   'montants et vos échéances.',
+              'Compte pas encore activé : un cadenas 🔒 couvre « Nouvelle '
+                  'vente », « Scanner », « Ajouter un produit » et '
+                  '« Collaborateurs ». Il disparaît AUTOMATIQUEMENT dès la '
+                  'validation de la finance (reconnectez-vous ou tirez l\'écran '
+                  'vers le bas pour rafraîchir).',
               'En cas d\'impayé : le compte est restreint mais RIEN n\'est '
                   'supprimé — tout revient après régularisation.',
             ],

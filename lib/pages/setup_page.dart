@@ -5,12 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase_auth;
 
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/espace.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
+import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 
 class SetupPage extends StatefulWidget {
   final bool adminCreating;
@@ -34,6 +36,17 @@ class _SetupPageState extends State<SetupPage> {
   bool _saving = false;
   bool _obscurePassword = true;
 
+  /// 🧩 MODULE 17 — catégorie d'activité choisie à la création du compte
+  /// (Hôtel, Restaurant, Pharmacie…). Elle détermine l'environnement du
+  /// client (modules, tableaux de bord, fonctionnalités).
+  String _categorieActivite = 'boutique';
+  List<({String code, String libelle})> _categories = const [];
+  bool _chargementCategories = true;
+
+  /// Un code boutique est saisi → le compte rejoint une entreprise : la
+  /// catégorie est celle du patron, le sélecteur disparaît.
+  bool _aCodeBoutique = false;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +55,61 @@ class _SetupPageState extends State<SetupPage> {
       _emailCtrl.text = widget.editUser!.email;
       _role = widget.editUser!.role;
     }
+    if (!widget.adminCreating) {
+      _chargerCategories();
+      _codeBoutiqueCtrl.addListener(_onCodeBoutiqueChange);
+    }
+  }
+
+  void _onCodeBoutiqueChange() {
+    final bool aCode = _codeBoutiqueCtrl.text.trim().isNotEmpty;
+    if (aCode == _aCodeBoutique) return;
+    setState(() => _aCodeBoutique = aCode);
+  }
+
+  /// 🧩 MODULE 17 — catégories d'activité proposées à l'inscription.
+  ///
+  /// Source : `rpc_types_espaces_publics()` (référentiel administré par la
+  /// plateforme). Repli hors ligne : les types standards du module 15.
+  Future<void> _chargerCategories() async {
+    final Set<String> vus = <String>{};
+    final List<({String code, String libelle})> liste =
+        <({String code, String libelle})>[];
+
+    try {
+      final dynamic reponse = await SupabaseService.instance.client
+          .rpc('rpc_types_espaces_publics');
+
+      if (reponse is List) {
+        for (final dynamic element in reponse) {
+          if (element is! Map) continue;
+          final String code = (element['type'] ?? '').toString().trim();
+          final String libelle =
+              (element['libelle'] ?? '').toString().trim();
+          if (code.isEmpty || libelle.isEmpty || !vus.add(code)) continue;
+          liste.add((code: code, libelle: libelle));
+        }
+      }
+    } catch (e) {
+      debugPrint('setup_page: catégories indisponibles ($e) — repli local');
+    }
+
+    if (liste.isEmpty) {
+      for (final TypeEspace type in TypeEspace.values) {
+        if (type == TypeEspace.autre) continue;
+        liste.add((code: type.code, libelle: type.libelle));
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _categories = liste;
+      _chargementCategories = false;
+      if (!liste.any((({String code, String libelle}) c) =>
+          c.code == _categorieActivite)) {
+        _categorieActivite = liste.isEmpty ? 'boutique' : liste.first.code;
+      }
+    });
   }
 
   @override
@@ -49,6 +117,7 @@ class _SetupPageState extends State<SetupPage> {
     _nomCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _codeBoutiqueCtrl.removeListener(_onCodeBoutiqueChange);
     _codeBoutiqueCtrl.dispose(); // AJOUT : Libération du contrôleur
     _boutiqueCtrl.dispose(); // 🏪 Libération du contrôleur
     _telephoneCtrl.dispose(); // 📞 Libération du contrôleur
@@ -187,6 +256,9 @@ class _SetupPageState extends State<SetupPage> {
               params: <String, dynamic>{
                 if (nomBoutique.isNotEmpty) 'p_nom': nomBoutique,
                 if (telephone.isNotEmpty) 'p_telephone': telephone,
+                // 🧩 MODULE 17 — la CATÉGORIE choisie détermine
+                // l'environnement du client (Hôtel → chambres…).
+                'p_type': _categorieActivite,
               },
             );
           } catch (e) {
@@ -309,21 +381,63 @@ class _SetupPageState extends State<SetupPage> {
                       ),
                       const SizedBox(height: 20), // AJOUT : Espacement
 
+                      // 🧩 MODULE 17 — CATÉGORIE D'ACTIVITÉ : l'environnement
+                      // du client (modules, tableaux de bord) suit ce choix.
+                      if (!widget.adminCreating &&
+                          !_aCodeBoutique &&
+                          (_chargementCategories || _categories.isNotEmpty)) ...[
+                        const SizedBox(height: 20),
+                        _buildFieldTitle("Catégorie d'activité"),
+                        if (_chargementCategories)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: LinearProgressIndicator(minHeight: 3),
+                          )
+                        else
+                          AppDropdownField<String>(
+                            label: "Type d'activité",
+                            value: _categorieActivite,
+                            prefixIcon: Icons.category_outlined,
+                            items: <DropdownMenuItem<String>>[
+                              for (final ({String code, String libelle}) c
+                                  in _categories)
+                                DropdownMenuItem<String>(
+                                  value: c.code,
+                                  child: Text(c.libelle),
+                                ),
+                            ],
+                            onChanged: (String? v) {
+                              if (v == null) return;
+                              setState(() => _categorieActivite = v);
+                            },
+                          ),
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8.0, left: 4.0),
+                          child: Text(
+                            "Choisissez votre métier : Hôtel, Restaurant, Pharmacie, Boutique… L'application s'adapte automatiquement.",
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                      ],
+
                       // 🏪 Nom de la boutique (entreprise) — pour le patron.
                       if (!widget.adminCreating) ...[
                         const SizedBox(height: 20),
-                        _buildFieldTitle("Nom de la boutique (Optionnel)"),
+                        _buildFieldTitle("Nom de votre entreprise (Optionnel)"),
                         TextFormField(
                           controller: _boutiqueCtrl,
                           decoration: _buildInputDecoration(
                             Icons.storefront_outlined,
-                            "ex : Boutique Étoile",
+                            "ex : Étoile",
                           ),
                         ),
                         const Padding(
                           padding: EdgeInsets.only(top: 8.0, left: 4.0),
                           child: Text(
-                            "C'est le nom de votre entreprise (essai de 7 jours). Laissez vide pour « Boutique <votre nom> ».",
+                            "C'est le nom de votre entreprise (essai de 7 jours). Laissez vide pour « votre catégorie + votre nom ».",
                             style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
                           ),
                         ),

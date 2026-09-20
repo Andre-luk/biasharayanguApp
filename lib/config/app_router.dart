@@ -15,12 +15,15 @@ import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
 
 // ================== SERVICES ==================
+import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 
 // ================== PAGES ==================
 import 'package:biashara_yangu/pages/login_page.dart';
 import 'package:biashara_yangu/pages/setup_page.dart';
 import 'package:biashara_yangu/pages/home_page.dart';
+// 🧾 MODULE 17 — page « compte verrouillé » (activation en attente, échu…).
+import 'package:biashara_yangu/pages/compte_verrouille_page.dart';
 // 📊 MODULE 11 — RAPPORTS & EXPORTS. L'ancien écran `reports_page.dart`
 // (SQLite) est débranché ; le fichier est conservé comme pour les Modules 9/10.
 import 'package:biashara_yangu/pages/rapports_page.dart';
@@ -195,6 +198,12 @@ final GoRouter appRouter = GoRouter(
   //      que le rôle est inconnu (écran de connexion, session restaurée en
   //      cours d'initialisation), on ne bloque RIEN : il vaut mieux laisser
   //      passer que verrouiller l'application sur un état transitoire ;
+  //    • 🔒 MODULE 17 — un compte NON OPÉRATIONNEL (activation en attente de
+  //      la finance, abonnement échu, compte restreint ou suspendu) ne peut
+  //      pas ouvrir les ÉCRANS COMMERCIAUX, même par lien direct : il est
+  //      renvoyé vers `/main/compte-verrouille` qui explique la situation.
+  //      La consultation (accueil, rapports, stock, caisse, finance…) reste
+  //      toujours accessible ;
   //    • une URL sans règle (connexion, inscription, pages libres) est
   //      toujours autorisée ;
   //    • en cas de refus, l'utilisateur est ramené sur la première page de
@@ -206,6 +215,20 @@ final GoRouter appRouter = GoRouter(
     if (!permissions.pret || role == RoleUtilisateur.inconnu) return null;
 
     final String location = state.uri.path;
+
+    // 🔒 MODULE 17 — verrou commercial : même par lien direct, un compte non
+    // opérationnel n'accède pas aux écrans d'opération.
+    if (location != '/main/compte-verrouille' &&
+        AbonnementService.instance.operationsVerrouillees &&
+        AbonnementService.cheminVerrouille(location)) {
+      return '/main/compte-verrouille';
+    }
+
+    // La page de verrou est purement informative : accessible à TOUS les
+    // rôles de l'entreprise (sinon les rôles sans tableau de bord
+    // rebondiraient en boucle entre leur accueil verrouillé et cette page).
+    if (location == '/main/compte-verrouille') return null;
+
     if (permissions.routeAutorisee(location)) return null;
 
     final String? accueil = permissions.accueilPour(role);
@@ -543,6 +566,14 @@ final GoRouter appRouter = GoRouter(
               name: 'home',
               builder: (context, state) => const HomePage(),
               routes: [
+                // 🧾 MODULE 17 — page « compte verrouillé » (activation en
+                // attente, abonnement échu…). Toujours accessible.
+                GoRoute(
+                  path: 'compte-verrouille',
+                  name: 'compte-verrouille',
+                  builder: (context, state) => const CompteVerrouillePage(),
+                ),
+
                 GoRoute(
                   path: 'new-sale',
                   name: 'new-sale',

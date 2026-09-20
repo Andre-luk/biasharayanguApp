@@ -66,7 +66,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   static const int _lowStockThreshold = 5;
 
   /// Fenêtre minimale entre deux rechargements des statistiques : évite de
@@ -134,17 +134,42 @@ class _HomePageState extends State<HomePage> {
     // d'entreprise), la grille se reconstruit : les cartes hors activité
     // disparaissent (masquage uniquement — jamais de blocage).
     ModulesService.instance.modules.addListener(_onModulesChange);
+    // 🧾 MODULE 17 — les cadenas de l'accueil suivent l'état d'accès du
+    // compte : ils disparaissent AUTOMATIQUEMENT dès l'activation par la
+    // finance (ou la régularisation d'un abonnement échu).
+    AbonnementService.instance.acces.addListener(_onAccesChange);
+    WidgetsBinding.instance.addObserver(this);
+    // L'état a pu évoluer pendant que l'application était fermée.
+    AbonnementService.instance.rafraichirSilencieux();
   }
 
   @override
   void dispose() {
     EspaceService.instance.etat.removeListener(_onEspaceChange);
     ModulesService.instance.modules.removeListener(_onModulesChange);
+    AbonnementService.instance.acces.removeListener(_onAccesChange);
+    WidgetsBinding.instance.removeObserver(this);
     _minuteurRealtime?.cancel();
     if (_dashboardChannel != null) {
       Supabase.instance.client.removeChannel(_dashboardChannel!);
     }
     super.dispose();
+  }
+
+  /// 🧾 MODULE 17 — retour au premier plan : l'activation a pu être validée
+  /// pendant que l'application était en arrière-plan.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      AbonnementService.instance.rafraichirSilencieux();
+    }
+  }
+
+  /// 🧾 MODULE 17 — l'état d'accès a changé (activation, régularisation…) :
+  /// l'accueil se reconstruit automatiquement (cadenas ↔ boutons actifs).
+  void _onAccesChange() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   /// 🏢 MODULE 15 — bascule d'entreprise depuis le sélecteur.
@@ -166,6 +191,15 @@ class _HomePageState extends State<HomePage> {
     await _loadUserContext();
     await _loadStats(force: true);
     if (mounted) setState(() => _loading = false);
+  }
+
+  /// 🧾 MODULE 17 — tirer vers le bas rejoue aussi la vérification d'accès :
+  /// si la finance vient d'activer le compte, les cadenas tombent.
+  Future<void> _rafraichirTout() async {
+    await Future.wait(<Future<void>>[
+      _initialLoad(),
+      AbonnementService.instance.rafraichirSilencieux(),
+    ]);
   }
 
   /// Active l'écoute en temps réel pour mettre à jour l'interface automatiquement.
@@ -462,34 +496,14 @@ class _HomePageState extends State<HomePage> {
     context.go('/login');
   }
 
-  /// Chemins réservés aux fonctionnalités commerciales : bloqués lorsque
-  /// l'abonnement de l'entreprise est échu (lecture seule, Module 3).
-  static const List<String> _cheminsCommerciaux = <String>[
-    '/main/new-sale',
-    '/main/add-product',
-    '/main/edit-product',
-    // 🗂️ MODULE 5 — créer un article est une écriture commerciale ; la
-    // consultation du catalogue reste, elle, toujours possible.
-    '/main/articles/new',
-    '/main/commercial',
-    // 💰 MODULE 10 — seules les ÉCRITURES de la finance sont bloquées en
-    // lecture seule : consulter la caisse, les dépenses et les dettes reste
-    // possible (la clôture, elle, est une validation).
-    '/main/depenses/new',
-    '/main/dettes/new',
-    '/main/caisse/cloture',
-    '/main/clients',
-    '/main/inventaires',
-    // 🏬 MODULE 9 — les écritures de stock (entrée, ajustement, clôture)
-    // sont bloquées en lecture seule ; la consultation du stock reste ouverte.
-    '/main/stock/approvisionnement',
-    '/main/stock/ajustement',
-    '/main/stock/inventaire',
-  ];
-
+  /// 🧾 MODULE 17 — les ÉCRANS COMMERCIAUX sont verrouillés tant que le
+  /// compte n'est pas opérationnel (activation en attente de la finance,
+  /// abonnement échu ou compte restreint). La liste de référence vit dans
+  /// [AbonnementService.cheminVerrouille] : le routeur s'appuie dessus pour
+  /// refuser AUSSI l'accès par lien direct.
   Future<void> _navTo(String path) async {
     if (_isCollaborator) {
-      // � MODULE 4 — le collaborateur ne peut ouvrir que les écrans de son
+      // 🔐 MODULE 4 — le collaborateur ne peut ouvrir que les écrans de son
       // rôle : mêmes règles que le middleware de navigation (source unique
       // de vérité), au lieu d'une liste figée qui bloquait ses nouvelles
       // cartes d'accueil (« Mes ventes » — phase B du module 16).
@@ -505,11 +519,12 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    // 🔒 MODULE 3 — Abonnement échu : accès en lecture seule.
-    // Les fonctionnalités commerciales sont bloquées ; la consultation
-    // (tableau de bord, rapports, stock) reste possible.
-    if (AbonnementService.instance.lectureSeule &&
-        _cheminsCommerciaux.contains(path)) {
+    // 🔒 MODULE 3/17 — compte non opérationnel : opérations commerciales
+    // bloquées ; la consultation (tableau de bord, rapports, stock) reste
+    // possible.
+    if (AbonnementService.instance.operationsVerrouillees &&
+        AbonnementService.cheminVerrouille(path)) {
+      if (!mounted) return;
       afficherDialogueLectureSeule(context);
       return;
     }
@@ -582,9 +597,11 @@ class _HomePageState extends State<HomePage> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
+                  // 🧩 MODULE 16/17 — la catégorie d'activité de l'entreprise
+                  // active (Hôtel, Pharmacie…) remplace le libellé générique.
                   _isCollaborator && _parentBusinessName.isNotEmpty
                       ? _parentBusinessName.toUpperCase()
-                      : 'Espace entreprise',
+                      : _sousTitreActivite(),
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
@@ -634,6 +651,10 @@ class _HomePageState extends State<HomePage> {
   Widget _buildActionsRapides(AppLocalizations T) {
     final PermissionService permissions = PermissionService.instance;
 
+    // 🔒 MODULE 17 — cadenas tant que le compte n'est pas opérationnel
+    // (activation en attente de la finance, abonnement échu, suspension).
+    final bool verrouille = AbonnementService.instance.operationsVerrouillees;
+
     return Row(
       children: [
         Expanded(
@@ -642,6 +663,7 @@ class _HomePageState extends State<HomePage> {
             icone: Icons.point_of_sale_rounded,
             degrade: AppDegrades.hero,
             couleurTexte: Colors.white,
+            verrouille: verrouille,
             onTap: () => _navTo('/main/new-sale'),
           ),
         ),
@@ -653,6 +675,7 @@ class _HomePageState extends State<HomePage> {
                   icone: Icons.qr_code_scanner_rounded,
                   degrade: AppDegrades.accent,
                   couleurTexte: Colors.white,
+                  verrouille: verrouille,
                   onTap: () => _navTo('/scanner'),
                 )
               : _ActionRapide(
@@ -661,6 +684,7 @@ class _HomePageState extends State<HomePage> {
                   couleur: Theme.of(context).colorScheme.surface,
                   couleurTexte: Theme.of(context).colorScheme.primary,
                   bordure: Theme.of(context).colorScheme.outlineVariant,
+                  verrouille: verrouille,
                   onTap: () => _navTo('/main/commercial'),
                 ),
         ),
@@ -771,28 +795,45 @@ class _HomePageState extends State<HomePage> {
       return const SizedBox.shrink();
     }
 
+    // 🔒 MODULE 17 — même avec les droits, les boutons restent VISIBLES mais
+    // CADENASSÉS tant que le compte n'est pas activé : l'utilisateur
+    // comprend pourquoi ils sont indisponibles (au lieu de ne rien voir).
+    final bool verrouille = AbonnementService.instance.operationsVerrouillees;
+
     return Row(
       children: [
         if (peutAjouterProduit)
           Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _navTo('/main/add-product'),
-              icon: const Icon(Icons.add_circle_outline_rounded),
-              label: Text(T.buttonAddProduct),
+            child: _BoutonSecondaire(
+              libelle: T.buttonAddProduct,
+              icone: Icons.add_circle_outline_rounded,
+              verrouille: verrouille,
+              onTap: () => _navTo('/main/add-product'),
             ),
           ),
         if (peutAjouterProduit && peutGererCollaborateurs)
           const SizedBox(width: 12),
         if (peutGererCollaborateurs)
           Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _navTo('/settings/manage-users'),
-              icon: const Icon(Icons.group_outlined),
-              label: const Text('Collaborateurs'),
+            child: _BoutonSecondaire(
+              libelle: 'Collaborateurs',
+              icone: Icons.group_outlined,
+              verrouille: verrouille,
+              onTap: () => _navTo('/settings/manage-users'),
             ),
           ),
       ],
     );
+  }
+
+  /// 🧩 MODULE 16/17 — sous-titre de l'AppBar : la catégorie d'activité
+  /// (profil de modules de l'espace actif), sinon le libellé générique.
+  String _sousTitreActivite() {
+    final String? libelle = ModulesService.instance.libelle;
+    if (libelle != null && libelle.trim().isNotEmpty) {
+      return libelle.trim().toUpperCase();
+    }
+    return 'Espace entreprise';
   }
 
   /// Squelettes affichés pendant le tout premier chargement : la page paraît
@@ -853,7 +894,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: _buildAppBar(T),
       body: RefreshIndicator(
-        onRefresh: _initialLoad,
+        onRefresh: _rafraichirTout,
         edgeOffset: 90,
         color: Theme.of(context).colorScheme.primary,
         child: _loading
@@ -1094,6 +1135,10 @@ class _Pastille extends StatelessWidget {
 }
 
 /// Bouton d'action rapide (dégradé ou fond plein) avec effet d'appui.
+///
+/// 🧾 MODULE 17 — quand [verrouille] est vrai (compte non activé ou échu),
+/// le bouton s'affiche grisé avec un CADENAS : l'utilisateur voit que la
+/// fonctionnalité existe mais qu'elle attend la validation de son compte.
 class _ActionRapide extends StatelessWidget {
   const _ActionRapide({
     required this.libelle,
@@ -1103,6 +1148,7 @@ class _ActionRapide extends StatelessWidget {
     this.couleur,
     this.couleurTexte = Colors.white,
     this.bordure,
+    this.verrouille = false,
   });
 
   final String libelle;
@@ -1112,29 +1158,37 @@ class _ActionRapide extends StatelessWidget {
   final Color? couleur;
   final Color couleurTexte;
   final Color? bordure;
+  final bool verrouille;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+
+    final Widget contenu = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           decoration: BoxDecoration(
-            gradient: degrade,
-            color: degrade == null ? couleur : null,
+            gradient: verrouille ? null : degrade,
+            color: verrouille
+                ? scheme.surfaceContainerHighest
+                : (degrade == null ? couleur : null),
             borderRadius: BorderRadius.circular(18),
-            border: bordure == null ? null : Border.all(color: bordure!),
-            boxShadow: degrade == null
-                ? null
-                : <BoxShadow>[
+            border: verrouille
+                ? Border.all(color: scheme.outlineVariant)
+                : (bordure == null ? null : Border.all(color: bordure!)),
+            boxShadow: (!verrouille && degrade != null)
+                ? <BoxShadow>[
                     BoxShadow(
                       color: AppCouleurs.marine.withValues(alpha: 0.22),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
-                  ],
+                  ]
+                : null,
           ),
           child: Container(
             height: 62,
@@ -1142,7 +1196,11 @@ class _ActionRapide extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Row(
               children: <Widget>[
-                Icon(icone, color: couleurTexte, size: 22),
+                Icon(
+                  icone,
+                  color: verrouille ? scheme.onSurfaceVariant : couleurTexte,
+                  size: 22,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -1150,7 +1208,8 @@ class _ActionRapide extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: couleurTexte,
+                      color:
+                          verrouille ? scheme.onSurfaceVariant : couleurTexte,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                     ),
@@ -1159,13 +1218,123 @@ class _ActionRapide extends StatelessWidget {
                 Icon(
                   Icons.arrow_forward_rounded,
                   size: 16,
-                  color: couleurTexte.withValues(alpha: 0.85),
+                  color: verrouille
+                      ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
+                      : couleurTexte.withValues(alpha: 0.85),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+
+    if (!verrouille) return contenu;
+
+    // Cadenas : petit médaillon centré au-dessus du bouton grisé (même
+    // langage visuel que la maquette validée par le client).
+    return Stack(
+      alignment: Alignment.center,
+      children: <Widget>[
+        contenu,
+        IgnorePointer(
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: AppCouleurs.marine.withValues(alpha: 0.78),
+              shape: BoxShape.circle,
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.lock_rounded,
+              size: 15,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bouton secondaire (outline) verrouillable — « Ajouter un produit »,
+/// « Collaborateurs » : visible mais cadenassé tant que le compte n'est pas
+/// opérationnel (module 17).
+class _BoutonSecondaire extends StatelessWidget {
+  const _BoutonSecondaire({
+    required this.libelle,
+    required this.icone,
+    required this.onTap,
+    this.verrouille = false,
+  });
+
+  final String libelle;
+  final IconData icone;
+  final VoidCallback onTap;
+  final bool verrouille;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget bouton = OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icone, size: 18),
+      label: Text(
+        libelle,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+
+    if (!verrouille) return bouton;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: <Widget>[
+        Opacity(opacity: 0.55, child: IgnorePointer(child: bouton)),
+        IgnorePointer(
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: AppCouleurs.marine.withValues(alpha: 0.78),
+              shape: BoxShape.circle,
+              boxShadow: <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.lock_rounded,
+              size: 15,
+              color: Colors.white.withValues(alpha: 0.95),
+            ),
+          ),
+        ),
+        // La zone tactile reste active : le clic ouvre le dialogue explicatif.
+        Positioned.fill(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(26),
+              onTap: onTap,
+              child: Tooltip(
+                message: 'Verrouillé — compte non activé',
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

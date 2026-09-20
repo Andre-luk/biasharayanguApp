@@ -8,9 +8,12 @@
 // bloquées. Ces widgets affichent l'information et expliquent le blocage.
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 
 /// Bannière persistante affichée en haut de l'application lorsque
 /// l'abonnement de l'entreprise est échu.
@@ -27,10 +30,13 @@ class BanniereAbonnement extends StatelessWidget {
       builder: (BuildContext context, EtatAccesAbonnement etat, Widget? child) {
         if (!etat.lectureSeule) return const SizedBox.shrink();
 
+        // 🧾 MODULE 17 — trois situations : complément attendu (orange),
+        // dossier pas encore activé (indigo) et abonnement échu (rouge).
         final bool attente =
             etat.statut == StatutAbonnement.enAttenteComplement;
-        final Color couleur =
-            attente ? Colors.orange.shade800 : Colors.red.shade700;
+        final Color couleur = etat.enAttenteActivation
+            ? Colors.indigo.shade600
+            : (attente ? Colors.orange.shade800 : Colors.red.shade700);
 
         return Material(
           color: couleur.withValues(alpha: 0.10),
@@ -83,7 +89,9 @@ class BanniereAbonnement extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'Lecture seule',
+                      etat.enAttenteActivation
+                          ? 'En attente'
+                          : 'Lecture seule',
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
@@ -102,25 +110,48 @@ class BanniereAbonnement extends StatelessWidget {
   }
 }
 
-/// Affiche le dialogue expliquant que l'action est bloquée car l'abonnement
-/// est échu (mode lecture seule).
+/// Affiche le dialogue expliquant que l'action est bloquée car le compte
+/// n'est pas opérationnel (activation en attente, abonnement échu ou compte
+/// restreint).
 ///
 /// Fonction volontairement synchrone : le dialogue s'affiche pendant que
 /// l'appelant interrompt son action, sans introduire de rupture asynchrone.
 void afficherDialogueLectureSeule(BuildContext context) {
   final EtatAccesAbonnement etat = AbonnementService.instance.acces.value;
 
+  final bool activation = etat.enAttenteActivation;
+
   showDialog<void>(
     context: context,
     builder: (BuildContext ctx) {
+      final bool voitTableau =
+          PermissionService.instance.peutVoir(PageAccess.dashboard);
+
       return AlertDialog(
-        title: const Text('Action indisponible'),
-        content: Text(
-          '${etat.message ?? "L'abonnement de votre entreprise est échu."}\n\n'
-          'Cette action est réservée aux abonnements actifs. Vos données sont '
-          'intactes : elles redeviendront modifiables dès la régularisation.',
+        title: Text(
+          activation
+              ? 'Compte en attente de validation'
+              : 'Action indisponible',
         ),
-        actions: [
+        content: Text(
+          activation
+              ? '${etat.message ?? "Votre compte est en attente de validation."}\n\n'
+                  'Les cadenas disparaîtront automatiquement dès la validation '
+                  'de votre paiement par notre équipe.'
+              : '${etat.message ?? "L'abonnement de votre entreprise est échu."}\n\n'
+                  'Cette action est réservée aux comptes opérationnels. Vos '
+                  'données sont intactes : elles redeviendront modifiables dès '
+                  'la régularisation.',
+        ),
+        actions: <Widget>[
+          if (activation && voitTableau)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go('/main/mon-activation');
+              },
+              child: const Text('Mon dossier'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Compris'),

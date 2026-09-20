@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/espace.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -151,6 +152,78 @@ class EspaceService {
       'la création de votre entreprise',
       'Impossible de créer cette entreprise. Vérifiez votre connexion internet.',
     );
+  }
+
+  /// 🧩 MODULE 17 — change la CATÉGORIE D'ACTIVITÉ d'une entreprise
+  /// (Hôtel, Restaurant, Pharmacie…).
+  ///
+  /// Réservé au PROPRIÉTAIRE (vérifié côté serveur). L'environnement suit
+  /// immédiatement : si l'entreprise modifiée est l'espace actif, le profil
+  /// de modules est rechargé (`rpc_mes_modules` lit `espaces.type`).
+  Future<void> definirType({
+    required String espaceId,
+    required String type,
+  }) {
+    return _executer(
+      () async {
+        await _client.rpc(
+          'rpc_espace_type_definir',
+          params: <String, dynamic>{
+            'p_espace_id': espaceId,
+            'p_type': type,
+          },
+        );
+
+        // Recharge la liste (le type affiché change) puis, si c'est l'espace
+        // actif, les modules de l'activité.
+        await charger();
+
+        final Espace? actif = etat.value?.actif;
+        if (actif != null && actif.id == espaceId) {
+          await ModulesService.instance.chargerSilencieux();
+        }
+      },
+      'le changement de catégorie',
+      'Impossible de changer la catégorie de cette entreprise. '
+          'Vérifiez votre connexion internet.',
+    );
+  }
+
+  /// 🧩 MODULE 17 — catégories d'activité proposées par la plateforme
+  /// (`rpc_types_espaces_publics`) : code + libellé, y compris les types
+  /// créés par l'Expert (ex. « Salon de coiffure »).
+  ///
+  /// Repli hors ligne : les types standards du module 15. Ne lève jamais.
+  Future<List<({String code, String libelle})>> listerCategories() async {
+    final Set<String> vus = <String>{};
+    final List<({String code, String libelle})> liste =
+        <({String code, String libelle})>[];
+
+    try {
+      final dynamic reponse =
+          await _client.rpc('rpc_types_espaces_publics');
+
+      if (reponse is List) {
+        for (final dynamic element in reponse) {
+          if (element is! Map) continue;
+          final String code = (element['type'] ?? '').toString().trim();
+          final String libelle =
+              (element['libelle'] ?? '').toString().trim();
+          if (code.isEmpty || libelle.isEmpty || !vus.add(code)) continue;
+          liste.add((code: code, libelle: libelle));
+        }
+      }
+    } catch (e) {
+      debugPrint('EspaceService.listerCategories (repli local) : $e');
+    }
+
+    if (liste.isEmpty) {
+      for (final TypeEspace type in TypeEspace.values) {
+        liste.add((code: type.code, libelle: type.libelle));
+      }
+    }
+
+    return liste;
   }
 
   /// Vide le cache (déconnexion, changement de compte).

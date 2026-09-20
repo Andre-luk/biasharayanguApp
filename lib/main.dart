@@ -226,8 +226,31 @@ class _BiasharaAppState extends State<BiasharaApp> {
           // réseau (le mode standard reste actif tant que rien n'est chargé).
           unawaited(ModulesService.instance.chargerSilencieux());
 
-          targetRoute =
-              PermissionService.instance.accueilPour(roleEffectif) ?? '/main';
+          // 🔒 MODULE 3/17 — état d'accès du compte (activation en attente,
+          // abonnement échu, compte restreint ou suspendu). Calculé AVANT le
+          // routage : un compte non opérationnel ne doit pas ouvrir un écran
+          // commercial après la restauration d'une session. Fail-open : toute
+          // erreur laisse l'accès complet (jamais de blocage accidentel).
+          final String? identifiant = uid;
+          if (identifiant != null) {
+            final EtatAccesAbonnement accesCompte =
+                await AbonnementService.instance
+                    .verifierAccesUtilisateur(identifiant);
+
+            final String? accueilRole =
+                PermissionService.instance.accueilPour(roleEffectif);
+
+            targetRoute = accueilRole ?? '/main';
+
+            if (!accesCompte.accesComplet &&
+                targetRoute == '/main/new-sale' &&
+                PermissionService.instance.peutVoir(PageAccess.dashboard)) {
+              targetRoute = '/main';
+            }
+          } else {
+            targetRoute = PermissionService.instance.accueilPour(roleEffectif) ??
+                '/main';
+          }
         }
 
         // 🚀 SYNCHRONISATION CRITIQUE (Pour Lukengu et après réinstallation)

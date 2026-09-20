@@ -30,13 +30,34 @@ class _MesEntreprisesPageState extends State<MesEntreprisesPage> {
   bool _chargement = true;
   String? _erreur;
 
+  /// 🧩 MODULE 17 — catégories d'activité du référentiel (code + libellé),
+  /// y compris celles créées par l'Expert.
+  List<({String code, String libelle})> _categories =
+      const <({String code, String libelle})>[];
+
   /// Entreprise en cours de bascule (désactive les boutons de sa carte).
   String? _enBascule;
 
   @override
   void initState() {
     super.initState();
+    _chargerCategories();
     _charger();
+  }
+
+  Future<void> _chargerCategories() async {
+    final List<({String code, String libelle})> liste =
+        await EspaceService.instance.listerCategories();
+    if (!mounted) return;
+    setState(() => _categories = liste);
+  }
+
+  /// Libellé lisible de la catégorie d'un espace (référentiel, repli énuméré).
+  String _libelleCategorie(Espace espace) {
+    for (final ({String code, String libelle}) categorie in _categories) {
+      if (categorie.code == espace.codeType) return categorie.libelle;
+    }
+    return espace.type.libelle;
   }
 
   Future<void> _charger() async {
@@ -122,15 +143,101 @@ class _MesEntreprisesPageState extends State<MesEntreprisesPage> {
         type: saisie.type,
       );
       if (!mounted) return;
+
+      // 🧩 MODULE 17 — l'entreprise créée avec une catégorie (Hôtel, …)
+      // devient directement l'espace ACTIF : le client voit immédiatement
+      // l'environnement correspondant à sa catégorie.
+      try {
+        await EspaceService.instance.basculer(espace.id);
+      } catch (e) {
+        debugPrint('Bascule automatique ignorée : $e');
+      }
+
+      if (!mounted) return;
       setState(() => _etat = EspaceService.instance.etat.value);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Entreprise « ${espace.nom} » créée. Utilisez « Basculer » pour y accéder.',
+            'Entreprise « ${espace.nom} » créée — environnement '
+            '${espace.type.libelle} activé.',
           ),
           backgroundColor: Colors.green.shade700,
           duration: const Duration(seconds: 5),
+        ),
+      );
+    } on EspaceServiceException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  /// 🧩 MODULE 17 — corriger la catégorie d'activité d'une entreprise
+  /// (l'environnement — modules, tableaux de bord — suit automatiquement).
+  Future<void> _changerCategorie(Espace espace) async {
+    final List<({String code, String libelle})> liste = _categories.isNotEmpty
+        ? _categories
+        : <({String code, String libelle})>[
+            for (final TypeEspace type in TypeEspace.values)
+              (code: type.code, libelle: type.libelle),
+          ];
+
+    final ({String code, String libelle})? choix =
+        await showModalBottomSheet<({String code, String libelle})>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text(
+                  'Catégorie d\'activité',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
+              const Divider(height: 1),
+              for (final ({String code, String libelle}) categorie in liste)
+                ListTile(
+                  leading: Icon(iconePourTypeEspace(
+                      TypeEspace.fromCode(categorie.code))),
+                  title: Text(categorie.libelle),
+                  trailing: categorie.code == espace.codeType
+                      ? const Icon(Icons.check_circle_rounded)
+                      : null,
+                  onTap: () => Navigator.of(context).pop(categorie),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (choix == null || choix.code == espace.codeType) return;
+
+    try {
+      await EspaceService.instance.definirType(
+        espaceId: espace.id,
+        type: choix.code,
+      );
+      if (!mounted) return;
+      setState(() => _etat = EspaceService.instance.etat.value);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Catégorie de « ${espace.nom} » : ${choix.libelle}. '
+            "L'application s'adapte automatiquement.",
+          ),
+          backgroundColor: Colors.green.shade700,
         ),
       );
     } on EspaceServiceException catch (e) {
@@ -343,10 +450,33 @@ class _MesEntreprisesPageState extends State<MesEntreprisesPage> {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    espace.type.libelle,
-                    style: TextStyle(
-                        fontSize: 12, color: Colors.grey.shade700),
+                  Row(
+                    children: <Widget>[
+                      Flexible(
+                        child: Text(
+                          _libelleCategorie(espace),
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      // 🧩 MODULE 17 — corriger la catégorie (le propriétaire
+                      // seul voit l'action ; le serveur revérifie).
+                      InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        onTap: enCours ? null : () => _changerCategorie(espace),
+                        child: Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: Icon(
+                            Icons.edit_outlined,
+                            size: 14,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

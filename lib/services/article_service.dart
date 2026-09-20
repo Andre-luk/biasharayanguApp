@@ -961,6 +961,21 @@ class ArticleService {
       return 'Connexion impossible. Vérifiez votre accès internet puis réessayez.';
     }
 
+    // 🧾 MODULE 17 — les refus du serveur suivent la convention du projet
+    // « CODE|message français » (ACTIVATION_REQUISE, ABONNEMENT_EXPIRE…,
+    // PRODUIT_EXPIRE…). On affiche directement la partie rédigée.
+    final String texte = messageErreur(e.message);
+    if (texte != e.message && texte.isNotEmpty) return texte;
+
     return 'Erreur lors de $actionLibelle : ${e.message}';
+  }
+
+  /// Extrait le message utilisateur d'une erreur serveur préfixée
+  /// (`CODE|message`), comme les autres services du projet.
+  static String messageErreur(String brut) {
+    final String texte = brut.trim();
+    final int separateur = texte.indexOf('|');
+    if (separateur < 0 || separateur == texte.length - 1) return texte;
+    return texte.substring(separateur + 1).trim();
   }
 }

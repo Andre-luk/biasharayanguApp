@@ -85,6 +85,7 @@ class EtatAccesAbonnement {
   const EtatAccesAbonnement({
     required this.bloque,
     required this.lectureSeule,
+    this.enAttenteActivation = false,
     this.message,
     this.statut,
   });
@@ -93,6 +94,7 @@ class EtatAccesAbonnement {
   const EtatAccesAbonnement.ouvert()
       : bloque = false,
         lectureSeule = false,
+        enAttenteActivation = false,
         message = null,
         statut = null;
 
@@ -103,13 +105,23 @@ class EtatAccesAbonnement {
   /// désactivées, la consultation reste possible.
   final bool lectureSeule;
 
+  /// 🧾 MODULE 17 — `true` quand le dossier d'activation n'est pas encore
+  /// ACTIF (en attente de vérification, de la finance, ou rejeté) : le
+  /// compte n'est PAS opérationnel — toutes les opérations commerciales
+  /// sont verrouillées (cadenas) jusqu'à la validation.
+  ///
+  /// Implique [lectureSeule] : les écrans qui bloquent déjà les écritures
+  /// en lecture seule protègent aussi ce cas, avec un message dédié.
+  final bool enAttenteActivation;
+
   /// Message explicatif à afficher (bannière / dialogue), si nécessaire.
   final String? message;
 
   /// Statut de l'entreprise à l'origine de la décision, si connue.
   final StatutAbonnement? statut;
 
-  bool get accesComplet => !bloque && !lectureSeule;
+  bool get accesComplet =>
+      !bloque && !lectureSeule && !enAttenteActivation;
 }
 
 class AbonnementService {
@@ -132,6 +144,10 @@ class AbonnementService {
 
   /// Raccourci : l'application est-elle en lecture seule ?
   bool get lectureSeule => acces.value.lectureSeule;
+
+  /// 🧾 MODULE 17 — les opérations commerciales sont-elles verrouillées ?
+  /// (`true` quand le compte attend son activation, est échu ou suspendu.)
+  bool get operationsVerrouillees => !acces.value.accesComplet;
 
   // ---------------------------------------------------------------------------
   // RÈGLES MÉTIER PURES (testables sans réseau)
@@ -191,7 +207,12 @@ class AbonnementService {
   ///
   /// - Aucune entreprise rattachée → accès ouvert (fail-open) ;
   /// - au moins une entreprise valide → accès complet ;
+  /// - dossier d'activation non ACTIF (module 17) → lecture seule avec le
+  ///   message « compte en attente de validation » ;
   /// - sinon : suspendue → bloqué ; échue → lecture seule.
+  ///
+  /// ⚠️ `activation_etape` (colonne renvoyée par la RPC depuis le module 17)
+  /// est ignorée si absente : comportement historique conservé.
   static EtatAccesAbonnement evaluerAcces(
     List<Map<String, dynamic>> lignes, {
     DateTime? maintenant,
@@ -203,8 +224,22 @@ class AbonnementService {
     bool aSuspendu = false;
     bool aAttente = false;
     bool aExpire = false;
+    bool aActivation = false;
 
     for (final Map<String, dynamic> ligne in lignes) {
+      // 🧾 MODULE 17 — double validation : tant que le gestionnaire n'a pas
+      // vérifié ET que la finance n'a pas validé le paiement, le compte
+      // n'est pas opérationnel (cadenas sur les opérations commerciales).
+      final String etape =
+          (parseStringOrNull(ligne['activation_etape']) ?? '').toLowerCase();
+
+      if (etape == 'en_attente_verification' ||
+          etape == 'verifie' ||
+          etape == 'rejete') {
+        aActivation = true;
+        continue;
+      }
+
       final StatutAbonnement statut =
           StatutAbonnement.fromCode(parseStringOrNull(ligne['statut']));
 
@@ -220,6 +255,13 @@ class AbonnementService {
         soldeRestant: parseDouble(ligne['solde_restant']),
         maintenant: reference,
       );
+
+      // Compte restreint (solde impayé à l'échéance, module 14) : même
+      // verrouillage que l'abonnement échu.
+      if (etape == 'restreint') {
+        aExpire = true;
+        continue;
+      }
 
       if (effectif == StatutAbonnement.essai7j ||
           effectif == StatutAbonnement.actif) {
@@ -241,6 +283,18 @@ class AbonnementService {
             "L'accès de votre entreprise a été suspendu par l'administrateur. "
             'Contactez-le pour le réactiver.',
         statut: StatutAbonnement.suspendu,
+      );
+    }
+
+    if (aActivation) {
+      return const EtatAccesAbonnement(
+        bloque: false,
+        lectureSeule: true,
+        enAttenteActivation: true,
+        message:
+            'Votre compte est en attente de validation. Votre paiement doit '
+            'être vérifié et votre compte approuvé par notre équipe avant de '
+            'pouvoir utiliser les fonctionnalités de votre entreprise.',
       );
     }
 
@@ -269,6 +323,80 @@ class AbonnementService {
     }
 
     return const EtatAccesAbonnement.ouvert();
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🧾 MODULE 17 — CHEMINS RÉSERVÉS AUX OPÉRATIONS COMMERCIALES
+  // ---------------------------------------------------------------------------
+  //  Tant que le compte n'est pas OPÉRATIONNEL (activation en attente,
+  //  abonnement échu ou compte restreint), ces écrans sont inaccessibles —
+  //  y compris par lien direct (le middleware du routeur s'appuie dessus).
+  //  Les écrans de CONSULTATION (accueil, rapports, stock, caisse, finance,
+  //  ventes, dossier d'activation…) restent, eux, toujours accessibles.
+  static const List<String> prefixesVerrouilles = <String>[
+    // Ventes & encaissement.
+    '/main/new-sale',
+    '/main/panier',
+    '/scanner',
+    '/main/commercial',
+    // Catalogue (écritures ; la consultation reste ouverte).
+    '/main/add-product',
+    '/main/edit-product',
+    '/main/articles/new',
+    '/main/articles/categories',
+    '/import-produits',
+    '/settings/manage-categories',
+    // Équipe / configuration.
+    '/settings/manage-users',
+    // Stock (écritures ; l'écran de consultation reste ouvert).
+    '/main/stock/approvisionnement',
+    '/main/stock/ajustement',
+    '/main/stock/inventaire',
+    '/main/inventaires',
+    // Finance (écritures ; caisse et rapports restent consultables).
+    '/main/caisse/cloture',
+    '/main/depenses/new',
+    '/main/dettes/new',
+    // Clients.
+    '/main/clients',
+    // Hôtel.
+    '/main/hotel/chambres',
+    '/main/hotel/reservations',
+    '/main/hotel/reception',
+    // Restaurant.
+    '/main/restaurant/tables',
+    '/main/restaurant/commandes',
+    '/main/restaurant/cuisine',
+    // Salle des fêtes.
+    '/main/evenements',
+    '/main/evenements/salles',
+    // Boulangerie.
+    '/main/production',
+    '/main/production/matieres',
+  ];
+
+  /// Écritures « dynamiques » : `/…/:id/edit`, `/…/new`, etc.
+  static final RegExp _motifEcriture = RegExp(r'/(new|edit)(/|$)');
+
+  /// L'écran [location] est-il réservé aux comptes opérationnels ?
+  ///
+  /// Fonction PURE (testable sans réseau).
+  static bool cheminVerrouille(String location) {
+    final String chemin = location.trim();
+    if (chemin.isEmpty) return false;
+
+    for (final String prefixe in prefixesVerrouilles) {
+      if (chemin == prefixe || chemin.startsWith('$prefixe/')) return true;
+    }
+
+    // Écritures à identifiant : /main/articles/:id/edit,
+    // /main/articles/:id/conditionnements/new, …
+    if (chemin.startsWith('/main/articles/') &&
+        _motifEcriture.hasMatch(chemin)) {
+      return true;
+    }
+
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -547,12 +675,22 @@ class AbonnementService {
     EtatAccesAbonnement etat;
 
     try {
-      final List<Map<String, dynamic>> lignes = parseMapList(
+      List<Map<String, dynamic>> lignes = parseMapList(
         await _client.rpc(
           'rpc_entreprises_de_utilisateur',
           params: {'p_user_id': userId},
         ),
       );
+
+      // 🧾 MODULE 17 — filet de sécurité : sur certaines bases, la RPC
+      // historique ne renvoie AUCUNE ligne alors que le compte possède bien
+      // une entreprise (vérifié en production) → l'application restait
+      // « fail-open » et laissait commercer un compte non validé. On déduit
+      // alors l'état du DOSSIER D'ACTIVATION (module 14), qui répond
+      // toujours pour le compte connecté.
+      if (lignes.isEmpty) {
+        lignes = await _lignesDepuisDossierActivation();
+      }
 
       etat = evaluerAcces(lignes);
     } catch (e) {
@@ -562,6 +700,65 @@ class AbonnementService {
 
     acces.value = etat;
     return etat;
+  }
+
+  /// 🧾 MODULE 17 — construit une « ligne d'accès » à partir du dossier
+  /// d'activation (`rpc_activation_etat`, module 14).
+  ///
+  /// Renvoie une liste vide quand le compte n'a pas de dossier lisible :
+  /// l'appelant reste alors fail-open (comportement historique).
+  Future<List<Map<String, dynamic>>> _lignesDepuisDossierActivation() async {
+    try {
+      final Map<String, dynamic>? dossier = parseMap(
+        await _client.rpc(
+          'rpc_activation_etat',
+          params: <String, dynamic>{'p_entreprise_id': null},
+        ),
+      );
+
+      if (dossier == null) return const <Map<String, dynamic>>[];
+
+      // Dossier réellement exploitable ? (entreprise + étape connues)
+      final String etape = parseStringOrNull(dossier['etape']) ?? '';
+      final String entreprise =
+          parseStringOrNull(dossier['entreprise_id']) ?? '';
+      if (etape.isEmpty || entreprise.isEmpty) {
+        return const <Map<String, dynamic>>[];
+      }
+
+      return <Map<String, dynamic>>[
+        <String, dynamic>{
+          'statut': dossier['statut'],
+          'date_expiration': dossier['date_expiration'],
+          'montant_deja_paye': dossier['montant_deja_paye'],
+          'solde_restant': dossier['solde_restant'],
+          'activation_etape': etape,
+        },
+      ];
+    } catch (e) {
+      debugPrint(
+        'AbonnementService._lignesDepuisDossierActivation (ignoré): $e',
+      );
+      return const <Map<String, dynamic>>[];
+    }
+  }
+
+  /// 🧾 MODULE 17 — actualise silencieusement l'état d'accès de la session
+  /// courante (retour au premier plan, rafraîchissement de l'accueil…).
+  ///
+  /// Les cadenas de l'interface disparaissent ainsi AUTOMATIQUEMENT dès que
+  /// la finance active le compte — sans reconnexion.
+  /// Best-effort : un incident laisse l'état précédent en place.
+  Future<EtatAccesAbonnement> rafraichirSilencieux() async {
+    final String? utilisateur = _client.auth.currentUser?.id;
+    if (utilisateur == null) return acces.value;
+
+    try {
+      return await verifierAccesUtilisateur(utilisateur);
+    } catch (e) {
+      debugPrint('AbonnementService.rafraichirSilencieux (ignoré): $e');
+      return acces.value;
+    }
   }
 
   /// Réinitialise l'état d'accès (déconnexion).

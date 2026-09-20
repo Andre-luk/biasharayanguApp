@@ -12,12 +12,22 @@
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// Type d'activité d'une entreprise (affichage + filtre).
+///
+/// 🧩 MODULE 16/17 — la liste reprend les profils seedés du référentiel
+/// `types_espaces_modules` (l'Expert peut en créer d'autres : les codes
+/// inconnus retombent sur [autre], les modules de l'application suivant, eux,
+/// toujours le référentiel côté serveur).
 enum TypeEspace {
   boutique('boutique', 'Boutique'),
+  depot('depot', 'Dépôt / Entrepôt'),
   hotel('hotel', 'Hôtel'),
   pharmacie('pharmacie', 'Pharmacie'),
   restaurant('restaurant', 'Restaurant'),
-  depot('depot', 'Dépôt / Entrepôt'),
+  salleFetes('salle_fetes', 'Salle des fêtes'),
+  boulangerie('boulangerie', 'Boulangerie'),
+  boucherie('boucherie', 'Boucherie'),
+  mode('mode', 'Mode & vêtements'),
+  salon('salon_de_coiffure', 'Salon de coiffure'),
   autre('autre', 'Autre activité');
 
   const TypeEspace(this.code, this.libelle);
@@ -46,6 +56,7 @@ class Espace {
     required this.id,
     required this.nom,
     this.type = TypeEspace.boutique,
+    this.typeCode,
     this.actif = true,
     this.estActif = false,
     this.createdAt,
@@ -55,6 +66,11 @@ class Espace {
   final String nom;
   final TypeEspace type;
 
+  /// 🧩 MODULE 17 — code BRUT du type (`espaces.type`) : conserve les
+  /// catégories créées par l'Expert (ex. `salon_de_coiffure`) que l'énuméré
+  /// ne connaît pas encore. `null` → repli sur [type].code.
+  final String? typeCode;
+
   /// `false` = entreprise désactivée (n'apparaît plus dans le sélecteur).
   final bool actif;
 
@@ -63,11 +79,20 @@ class Espace {
 
   final DateTime? createdAt;
 
+  /// Code à envoyer au serveur pour cette entreprise.
+  String get codeType =>
+      (typeCode != null && typeCode!.trim().isNotEmpty)
+          ? typeCode!.trim()
+          : type.code;
+
   factory Espace.fromMap(Map<String, dynamic> map) {
+    final String? brut = parseStringOrNull(map['type']);
+
     return Espace(
       id: parseString(map['id']),
       nom: parseString(map['nom']),
-      type: TypeEspace.fromCode(parseStringOrNull(map['type'])),
+      type: TypeEspace.fromCode(brut),
+      typeCode: brut,
       actif: map['actif'] == null ? true : map['actif'] == true,
       estActif: map['est_actif'] == true,
       createdAt: parseDateTimeOrNull(map['created_at']),
@@ -79,6 +104,7 @@ class Espace {
       id: id,
       nom: nom,
       type: type,
+      typeCode: typeCode,
       actif: actif,
       estActif: estActif ?? this.estActif,
       createdAt: createdAt,

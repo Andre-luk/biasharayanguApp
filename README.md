@@ -51,8 +51,8 @@ lib/
   ui/accueil/          → registre des cartes du tableau de bord (modules)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 32 migrations SQL idempotentes (0000 → 0031)
-test/                  → 479 tests purs (modèles, permissions, rapports, modules)
+supabase/migrations/   → 39 migrations SQL idempotentes (0000 → 0038)
+test/                  → 584 tests purs (modèles, permissions, rapports, modules)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android : setup_signature.sh)
 ```
@@ -88,6 +88,8 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0035          Module 16 phase C6 — boucherie (articles vendus au poids)
 0036          Module 16 phase C8 — variantes (taille, couleur, marque)
 0037          Module 16 phase E — packs par modules (groupes tarifaires)
+0038          Module 17 — verrouillage des comptes non activés + catégorie
+              d'activité respectée à la création (p_type, triggers, verrou)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
@@ -106,6 +108,16 @@ se terminent par des requêtes de vérification.
 modules : `groupes_tarifaires.modules` (`[]` = aucun filtre). Les modules
 effectifs d'une entreprise = **profil de l'activité ∩ modules du pack**
 (écran admin → Groupes tarifaires → « Modules du pack »).
+
+**Verrou des comptes (Module 17)** — un compte n'est OPÉRATIONNEL qu'après
+la vérification du gestionnaire des comptes ET la validation du paiement par
+la finance. Avant : consultation seule, cadenas sur les écrans commerciaux
+(« Nouvelle vente », « Scanner », « Ajouter produit », « Collaborateurs »…),
+et **refus côté serveur** (triggers + RPC) même par lien direct. Abonnement
+échu ou compte restreint : même verrouillage, levé automatiquement dès la
+validation du paiement (module 14). Vérifier l'état d'un compte :
+`select nom, statut, activation_etape, public.abonnement_etat(id) from
+public.entreprises;` (`OK` / `ACTIVATION` / `LECTURE_SEULE` / `BLOQUE`).
 
 ### 3.3 Réglages dans l'application
 
