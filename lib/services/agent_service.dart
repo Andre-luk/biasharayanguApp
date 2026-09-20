@@ -103,10 +103,28 @@ class AgentService {
         throw exceptionDepuis(map);
       }
       if (e.status == 404) {
+        // ⚠️ Cas VÉRIFIÉ le 20/09/2026 : la passerelle Supabase répond
+        // `{"code":"NOT_FOUND","message":"Requested function was not found"}`
+        // tant que la fonction n'est pas PUBLIÉE. Une fonction visible dans le
+        // Dashboard mais jamais déployée donne exactement ce 404.
         throw const AgentServiceException(
-          "L'assistant n'est pas encore déployé (Edge Function « agent-ia » "
-          'absente ou non publiée).',
+          "L'assistant n'est pas encore publié sur le serveur : "
+          'l\'administrateur doit déployer la fonction « agent-ia » '
+          '(Supabase → Edge Functions → agent-ia → Deploy, ou '
+          'tools/deploy_agent_ia.sh) et définir le secret DEEPSEEK_API_KEY. '
+          'Le reste de l\'application fonctionne normalement.',
           code: 'NON_DEPLOYE',
+          type: TypeErreurAgent.assistant,
+        );
+      }
+      if (e.status == 503 || e.status == 500) {
+        // La fonction existe mais son serveur refuse : le secret manque le
+        // plus souvent (clé IA absente ou invalide).
+        throw const AgentServiceException(
+          "L'assistant est publié mais son serveur a refusé la demande : "
+          'vérifiez la clé IA (secret DEEPSEEK_API_KEY) dans Supabase → '
+          'Project Settings → Edge Functions → Secrets.',
+          code: 'SECRET_MANQUANT',
           type: TypeErreurAgent.assistant,
         );
       }

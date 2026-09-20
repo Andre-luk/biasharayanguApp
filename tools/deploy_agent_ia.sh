@@ -59,14 +59,31 @@ fi
 echo "✅ npx $(npx --version) détecté"
 echo
 
-# --- 3. Jeton d'accès (saisie INVISIBLE) -------------------------------
-echo "Il faut un « Personal Access Token » Supabase (commence par sbp_) :"
-echo "  Dashboard → votre compte → Access Tokens → Generate new token."
-echo
-read -rsp "Collez le jeton (la saisie reste invisible) : " SB_TOKEN
-echo
+# --- 3. Jeton d'accès (fichier privé OU saisie INVISIBLE) --------------
+#  Deux façons de fournir le jeton, dans les deux cas il ne s'affiche JAMAIS
+#  et n'est transmis à personne :
+#    a) le déposer une fois dans un fichier privé (permissions 600) :
+#         read -rsp "Jeton Supabase : " T; printf '%s' "$T" > ~/.supabase_token
+#         chmod 600 ~/.supabase_token; unset T
+#    b) le saisir au clavier quand ce script le demande (saisie masquée).
+JETON_FICHIER="$HOME/.supabase_token"
+
+if [ -f "$JETON_FICHIER" ]; then
+  SB_TOKEN="$(tr -d '\r\n' < "$JETON_FICHIER")"
+  echo "✅ Jeton lu dans $JETON_FICHIER (fichier privé, contenu non affiché)"
+else
+  echo "Il faut un « Personal Access Token » Supabase (commence par sbp_) :"
+  echo "  Dashboard → votre compte → Access Tokens → Generate new token."
+  echo
+  echo "Astuce pour ne plus le ressaisir (fichier privé, jamais affiché) :"
+  echo "  read -rsp \"Jeton Supabase : \" T; printf '%s' \"\$T\" > ~/.supabase_token; chmod 600 ~/.supabase_token; unset T"
+  echo
+  read -rsp "Collez le jeton (la saisie reste invisible) : " SB_TOKEN
+  echo
+fi
+
 if [ -z "$SB_TOKEN" ]; then
-  echo "❌ Aucun jeton saisi — rien n'a été fait."
+  echo "❌ Aucun jeton — rien n'a été fait."
   exit 1
 fi
 case "$SB_TOKEN" in
