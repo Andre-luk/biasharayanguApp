@@ -45,7 +45,10 @@ class ScaffoldWithNavBar extends StatefulWidget {
 }
 
 class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
-  static const List<_BrancheNav> _toutesLesBranches = <_BrancheNav>[
+  // ⚠️ `final` (et non `const`) : les conditions d'ACTIVITÉ des branches
+  // (module 16) sont des références de méthode — `ReglesActivite.module(...)`
+  // est un APPEL, interdit dans une expression constante.
+  static final List<_BrancheNav> _toutesLesBranches = <_BrancheNav>[
     _BrancheNav(
       index: 0,
       pages: <PageAccess>[
