@@ -27,7 +27,9 @@
 --    • `taux_change_effectif(entreprise)` = entreprise → plateforme → 2 800.
 --
 --  CONTENU
---    1. colonnes `entreprises.devise` + `entreprises.taux_usd_cdf` ;
+--    1. colonnes `entreprises.devise` (défaut du compte) et
+--       `espaces.devise` (devise propre à chaque entreprise du compte)
+--       + `entreprises.taux_usd_cdf` ;
 --    2. réglage plateforme `app_settings['devises']` ;
 --    3. helpers `devise_libelle()`, `devise_symbole()`, `taux_change_effectif()` ;
 --    4. `rpc_devise_etat()`        — état + taux + simulateur (client) ;
@@ -64,7 +66,25 @@ begin
 end $$;
 
 comment on column public.entreprises.devise is
-  'Module 18 — Devise de travail de l''entreprise (CDF / USD) : tous ses montants sont exprimés dans cette devise.';
+  'Module 18 — Devise de travail par défaut du compte (CDF / USD) : héritée par les espaces qui n''ont pas la leur.';
+
+-- Dévise PROPRE À UN ESPACE (module 15) : un patron qui gère une boutique en
+-- CDF ET un hôtel en USD peut régler chaque espace séparément. `null` (défaut)
+-- = devise du compte (`entreprises.devise`).
+alter table public.espaces
+  add column if not exists devise text;
+
+do $$
+begin
+  alter table public.espaces
+    drop constraint if exists chk_espaces_devise;
+  alter table public.espaces
+    add constraint chk_espaces_devise
+    check (devise is null or devise in ('CDF', 'USD'));
+end $$;
+
+comment on column public.espaces.devise is
+  'Module 18 — Devise de travail de CET espace (CDF/USD). NULL = devise du compte.';
 
 -- Taux de conversion propre à l'entreprise (optionnel).
 alter table public.entreprises
@@ -125,12 +145,12 @@ immutable
 as $$
   select case upper(btrim(coalesce(p_devise, 'CDF')))
     when 'USD' then '$'
-    else 'FC'
+    else 'CDF'
   end;
 $$;
 
 comment on function public.devise_symbole(text) is
-  'Module 18 — Symbole d''affichage d''une devise (FC / $). Miroir de Devise.symbole côté Dart.';
+  'Module 18 — Unité d''affichage d''une devise (CDF / $). Miroir de Devise.symbole côté Dart.';
 
 -- Taux effectif : entreprise → plateforme → 2 800 (jamais NULL, jamais 0).
 create or replace function public.taux_change_effectif(p_entreprise uuid)
@@ -166,7 +186,6 @@ comment on function public.taux_change_effectif(uuid) is
   'Module 18 — Taux de change « 1 USD = X CDF » applicable : entreprise, sinon plateforme, sinon 2 800.';
 
 revoke all on function public.devise_libelle(text) from public;
-revoke all on function public.devise_symbol(text) from public;
 revoke all on function public.devise_symbole(text) from public;
 revoke all on function public.taux_change_effectif(uuid) from public;
 revoke all on function public.taux_change_effectif(uuid) from anon;
@@ -190,8 +209,10 @@ set search_path = public
 as $$
 declare
   v_user      uuid := auth.uid();
+  v_espace    uuid;
   v_ent       uuid;
   v_devise    text;
+  v_dev_esp   text;
   v_taux_ent  numeric;
   v_taux_plat numeric;
   v_defaut    text := 'CDF';
@@ -201,14 +222,26 @@ begin
     raise exception 'SESSION_ABSENTE|Connectez-vous pour consulter votre devise.';
   end if;
 
-  -- Entreprise de travail (espace actif → entreprise).
-  v_ent := public.entreprise_de_proprietaire(public.mon_proprietaire());
+  -- Espace de travail actif → entreprise du compte.
+  v_espace := public.mon_proprietaire();
+  v_ent := public.entreprise_de_proprietaire(v_espace);
 
   if v_ent is not null then
-    select coalesce(e.devise, 'CDF'), e.taux_usd_cdf
-      into v_devise, v_taux_ent
+    select e.taux_usd_cdf into v_taux_ent
       from public.entreprises e
      where e.id = v_ent;
+
+    select nullif(upper(btrim(coalesce(e.devise, ''))), '') into v_devise
+      from public.entreprises e
+     where e.id = v_ent;
+  end if;
+
+  -- Devise propre à l'espace actif (prioritaire).
+  if v_espace is not null then
+    select nullif(upper(btrim(coalesce(s.devise, ''))), '') into v_dev_esp
+      from public.espaces s
+     where s.id = v_espace;
+    v_devise := coalesce(v_dev_esp, v_devise);
   end if;
 
   begin
@@ -222,11 +255,12 @@ begin
     v_defaut := 'CDF';
   end;
 
-  v_devise := coalesce(nullif(upper(btrim(coalesce(v_devise, ''))), ''), v_defaut, 'CDF');
+  v_devise := coalesce(nullif(v_devise, ''), v_defaut, 'CDF');
 
   return jsonb_build_object(
     'ok',              true,
     'entreprise_id',   v_ent,
+    'espace_id',       v_espace,
     'devise',          v_devise,
     'devise_libelle',  public.devise_libelle(v_devise),
     'symbole',         public.devise_symbole(v_devise),
@@ -237,7 +271,7 @@ begin
     'peut_modifier',   v_ent is not null
                        and (v_role = 'PROPRIETAIRE' or public.est_plateforme()),
     'devises', jsonb_build_array(
-      jsonb_build_object('code', 'CDF', 'libelle', 'Franc congolais', 'symbole', 'FC'),
+      jsonb_build_object('code', 'CDF', 'libelle', 'Franc congolais', 'symbole', 'CDF'),
       jsonb_build_object('code', 'USD', 'libelle', 'Dollar américain', 'symbole', '$')
     )
   );
@@ -276,6 +310,7 @@ declare
   v_user   uuid := auth.uid();
   v_role   text := public.mon_role();
   v_ent    uuid;
+  v_espace uuid;
   v_devise text;
   v_avant  text;
 begin
@@ -288,7 +323,8 @@ begin
   if public.est_plateforme() and p_entreprise_id is not null then
     v_ent := p_entreprise_id;
   else
-    v_ent := public.entreprise_de_proprietaire(public.mon_proprietaire());
+    v_espace := public.mon_proprietaire();
+    v_ent := public.entreprise_de_proprietaire(v_espace);
   end if;
 
   if v_ent is null then
@@ -308,10 +344,12 @@ begin
     raise exception 'TAUX_INVALIDE|Le taux de change doit être un nombre positif (1 USD = X CDF).';
   end if;
 
-  select coalesce(e.devise, 'CDF') into v_avant
+  select coalesce(nullif(upper(btrim(coalesce(e.devise, ''))), ''), 'CDF')
+    into v_avant
     from public.entreprises e
    where e.id = v_ent;
 
+  -- Devise du COMPTE (défaut hérité par les nouveaux espaces) + taux.
   update public.entreprises
      set devise = v_devise,
          taux_usd_cdf = case
@@ -321,6 +359,16 @@ begin
                         end,
          updated_at = now()
    where id = v_ent;
+
+  -- Devise PROPRE À L'ESPACE DE TRAVAIL (le patron règle l'entreprise qu'il
+  -- est en train d'utiliser : une boutique peut rester en CDF, un hôtel en
+  -- USD).
+  if v_espace is not null and not (public.est_plateforme() and p_entreprise_id is not null) then
+    update public.espaces
+       set devise = v_devise,
+           updated_at = now()
+     where id = v_espace;
+  end if;
 
   -- Trace (best-effort).
   begin
@@ -539,24 +587,27 @@ comment on function public.audit_niveau(text) is
 --  8. VÉRIFICATIONS (à relire après exécution)
 -- ============================================================================
 
--- 8.a Colonnes de devise (attendu : 2 lignes : CDF par défaut, taux NULL).
-select column_name, data_type, column_default, is_nullable
+-- 8.a Colonnes de devise (attendu : entreprises.devise = CDF par défaut,
+--     entreprises.taux_usd_cdf NULL, espaces.devise NULL).
+select table_name, column_name, data_type, column_default, is_nullable
   from information_schema.columns
  where table_schema = 'public'
-   and table_name = 'entreprises'
-   and column_name in ('devise', 'taux_usd_cdf')
- order by column_name;
+   and ((table_name = 'entreprises' and column_name in ('devise', 'taux_usd_cdf'))
+        or (table_name = 'espaces' and column_name = 'devise'))
+ order by table_name, column_name;
 
 -- 8.b Réglage plateforme (attendu : {"taux_usd_cdf": 2800, ...}).
 select key, value
   from public.app_settings
  where key = 'devises';
 
--- 8.c Devise des dernières entreprises + taux applicable.
+-- 8.c Devise des dernières entreprises + devise de leurs espaces.
 select e.nom,
-       e.devise,
+       e.devise as devise_compte,
        e.taux_usd_cdf as taux_entreprise,
-       public.taux_change_effectif(e.id) as taux_applique
+       public.taux_change_effectif(e.id) as taux_applique,
+       (select count(*) from public.espaces s where s.entreprise_id = e.id and s.devise is not null)
+         as espaces_avec_devise_propre
   from public.entreprises e
  order by e.created_at desc
  limit 10;

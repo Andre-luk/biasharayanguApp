@@ -565,6 +565,23 @@ class AdminSettingsPage extends StatelessWidget {
             ),
           ),
 
+          // 🪙 MODULE 18 — taux de change par défaut de la plateforme et
+          // configuration d'une entreprise (Super Admin).
+          PermissionGate(
+            page: PageAccess.parametres,
+            action: ActionAccess.modifier,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.currency_exchange_rounded,
+              color: Colors.green.shade700,
+              title: 'Devises & taux',
+              subtitle:
+                  'Taux de change par défaut (1 USD = X CDF) et devise d\'une entreprise.',
+              onTap: () => GoRouter.of(context).push('/admin/devises'),
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           // 🛡️ Section Maintenance

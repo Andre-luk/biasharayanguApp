@@ -5,17 +5,41 @@
 // Le formatage est volontairement manuel : il ne dépend ni de la locale
 // initialisée dans `main.dart`, ni du fuseau horaire de l'appareil.
 
-/// Devise utilisée par l'application.
+/// Devise de la PLATEFORME (abonnements, tarifs, back-office).
 const String deviseParDefaut = 'CDF';
 
-/// Formate un montant avec séparateur de milliers (espace) et la devise.
+/// 🪙 MODULE 18 — DEVISE ACTIVE de l'entreprise connectée.
 ///
-/// Exemple : `15000.0` devient `15 000 CDF`.
-String formatMontant(double montant, {String devise = deviseParDefaut}) {
-  final int arrondi = montant.round();
-  final bool negatif = arrondi < 0;
-  final String chiffres = arrondi.abs().toString();
+/// Mise à jour par `DeviseService` dès que l'état de la devise est chargé
+/// (démarrage, connexion, bascule d'entreprise). Comme tous les écrans
+/// passent par [formatMontant], la devise choisie se propage AUTOMATIQUEMENT
+/// aux prix d'achat / de vente, ventes, dépenses, caisse, rapports, reçus…
+class FormatMonetaire {
+  FormatMonetaire._();
 
+  static String _code = deviseParDefaut;
+  static String _symbole = 'CDF';
+
+  /// Code de la devise active (`CDF`, `USD`).
+  static String get code => _code;
+
+  /// Unité affichée (`CDF`, `$`).
+  static String get symbole => _symbole;
+
+  /// Applique la devise de l'entreprise (`code` + `symbole`).
+  static void definir({required String code, required String symbole}) {
+    _code = code;
+    _symbole = symbole;
+  }
+
+  /// Revient au comportement historique (CDF) — déconnexion.
+  static void reinitialiser() {
+    definir(code: deviseParDefaut, symbole: 'CDF');
+  }
+}
+
+/// Sépare les milliers par une espace : `1234567` → `1 234 567`.
+String _milliers(String chiffres) {
   final StringBuffer buffer = StringBuffer();
   for (int i = 0; i < chiffres.length; i++) {
     if (i > 0 && (chiffres.length - i) % 3 == 0) {
@@ -23,8 +47,31 @@ String formatMontant(double montant, {String devise = deviseParDefaut}) {
     }
     buffer.write(chiffres[i]);
   }
+  return buffer.toString();
+}
 
-  return '${negatif ? '-' : ''}$buffer $devise';
+/// Signe éventuel d'un montant négatif.
+String _signe(double montant) => montant < 0 ? '-' : '';
+
+/// Formate un montant avec séparateur de milliers (espace) et la devise.
+///
+/// Exemples :
+///   • `15000` → `15 000 CDF` (franc congolais, entier) ;
+///   • `12.5`  → `12,50 $`   (dollar américain, les cents comptent).
+///
+/// [devise] permet de forcer l'unité affichée (back-office plateforme :
+/// `devise: deviseParDefaut`), sinon la devise active est utilisée.
+String formatMontant(double montant, {String? devise}) {
+  final String unite = devise ?? FormatMonetaire.symbole;
+
+  if (unite == r'$') {
+    final String fixe = montant.abs().toStringAsFixed(2);
+    final List<String> parties = fixe.split('.');
+    return '${_signe(montant)}${_milliers(parties.first)},${parties.last} $unite';
+  }
+
+  final String chiffres = montant.abs().round().toString();
+  return '${_signe(montant)}${_milliers(chiffres)} $unite';
 }
 
 /// Formate une date au format `jj/mm/aaaa`.

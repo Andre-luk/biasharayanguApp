@@ -22,6 +22,8 @@ import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+// 🪙 MODULE 18 — montants formatés dans la devise de l'entreprise.
+import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
 import '../ui/widgets/primary_loader.dart';
@@ -665,7 +667,7 @@ class _NewSalePageState extends State<NewSalePage> {
                     maxLines: 1,
                   ),
                   Text(
-                    '${p.prixVente.toStringAsFixed(0)} ${T.currencyUnit} / ${p.uniteMesure}',
+                    '${formatMontant(p.prixVente)} / ${p.uniteMesure}',
                     style: TextStyle(
                       color: theme.colorScheme.secondary,
                       fontSize: 13,
@@ -810,7 +812,7 @@ class _NewSalePageState extends State<NewSalePage> {
               children: [
                 Text('TOTAL', style: theme.textTheme.bodySmall),
                 Text(
-                  '${total.toStringAsFixed(0)} ${T.currencyUnit}',
+                  formatMontant(total),
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
                     color: theme.colorScheme.primary,

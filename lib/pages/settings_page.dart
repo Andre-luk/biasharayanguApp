@@ -346,6 +346,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: _showLanguageDialog,
               ),
               _TuileParametre(
+                icone: Icons.currency_exchange_rounded,
+                titre: 'Devise & conversion',
+                sousTitre:
+                    'Devise de travail (CDF/USD) et taux de change 1 USD = X CDF',
+                onTap: () => context.pushNamed('devise'),
+              ),
+              _TuileParametre(
                 icone: Icons.category_rounded,
                 titre: T.manageCategories,
                 sousTitre: T.manageCategoriesSubtitle,

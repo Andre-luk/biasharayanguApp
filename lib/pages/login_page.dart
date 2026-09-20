@@ -13,6 +13,8 @@ import 'package:biashara_yangu/services/abonnement_service.dart';
 // 🧾 MODULE 14 — synchronisation du workflow d'activation (restriction /
 // réactivation automatiques) après chaque connexion.
 import 'package:biashara_yangu/services/activation_service.dart';
+// 🪙 MODULE 18 — devise de travail (CDF/USD) chargée à la connexion.
+import 'package:biashara_yangu/services/devise_service.dart';
 // 🏢 MODULE 15 — chargement des entreprises du compte (sélecteur).
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🏪 Correctif 21 — auto-réparation : patron sans entreprise.
@@ -278,6 +280,10 @@ class _LoginPageState extends State<LoginPage> {
     // multi-entreprises). Best-effort : jamais bloquant.
     await EspaceService.instance.chargerSilencieux();
 
+    // 🪙 MODULE 18 — devise de travail de l'entreprise (CDF/USD) : appliquée
+    // à l'affichage de tous les montants. Best-effort.
+    await DeviseService.instance.chargerSilencieux();
+
     final EtatAccesAbonnement etatAbonnement =
         await AbonnementService.instance.verifierAccesUtilisateur(userId);
 
@@ -303,6 +309,8 @@ class _LoginPageState extends State<LoginPage> {
                 await SupabaseService.instance.signOut();
                 await SessionManager.clearSession();
                 AbonnementService.instance.reinitialiserAcces();
+                // 🪙 MODULE 18 — retour à la devise par défaut (CDF).
+                DeviseService.instance.reinitialiser();
                 // 🔳 MODULE 7 — session terminée : panier et historique vidés.
                 PanierService.instance.vider();
                 ScannerService.instance.viderHistorique();

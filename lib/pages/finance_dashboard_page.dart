@@ -15,6 +15,8 @@ import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/finance_stats.dart';
 import 'package:biashara_yangu/models/permission.dart';
+// 🪙 MODULE 18 — devise de travail et équivalences de change.
+import 'package:biashara_yangu/services/devise_service.dart';
 import 'package:biashara_yangu/services/finance_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -216,6 +218,16 @@ class _FinanceDashboardPageState extends State<FinanceDashboardPage> {
                   _ligneDetail('Marge brute', formatMontant(stats.margeBrute)),
                   const Divider(height: 16),
                   _ligneDetail('Nombre de ventes', '${stats.nbVentes}'),
+                  // 🪙 MODULE 18 — équivalence dans l'autre devise.
+                  if (DeviseService.instance
+                      .equivalent(stats.beneficeNet)
+                      .isNotEmpty) ...<Widget>[
+                    const Divider(height: 16),
+                    _ligneDetail(
+                      'Bénéfice net (${DeviseService.instance.configuration.deviseOpposee.symbole})',
+                      DeviseService.instance.equivalent(stats.beneficeNet),
+                    ),
+                  ],
                 ],
               ),
             ),

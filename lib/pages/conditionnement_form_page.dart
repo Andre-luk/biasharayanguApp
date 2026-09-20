@@ -21,6 +21,8 @@ import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+// 🪙 MODULE 18 — devise de travail (symbole affiché dans les champs prix).
+import 'package:biashara_yangu/services/devise_service.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 class ConditionnementFormPage extends StatefulWidget {
@@ -440,7 +442,7 @@ class _ConditionnementFormPageState extends State<ConditionnementFormPage> {
                         ],
                         decoration: InputDecoration(
                           labelText: 'Prix de vente *',
-                          suffixText: 'CDF',
+                          suffixText: DeviseService.instance.symbole,
                           prefixIcon: const Icon(Icons.payments_outlined),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),

@@ -15,7 +15,10 @@
 import 'package:flutter/material.dart';
 
 import 'package:biashara_yangu/models/activation.dart';
+// 🪙 MODULE 18 — devise de travail et taux de change (équivalences).
+import 'package:biashara_yangu/models/devise.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
+import 'package:biashara_yangu/services/devise_service.dart';
 
 class MonActivationPage extends StatefulWidget {
   const MonActivationPage({super.key});
@@ -349,6 +352,12 @@ class _MonActivationPageState extends State<MonActivationPage> {
               '${(etat.tauxPaiement * 100).toStringAsFixed(0)} % réglé',
               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
             ),
+            // 🪙 MODULE 18 — taux de change utilisé pour les équivalences.
+            Text(
+              'Équivalences au taux 1 USD = '
+              '${DeviseService.instance.taux.toStringAsFixed(0)} CDF',
+              style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500),
+            ),
           ],
         ),
       ),
@@ -356,6 +365,11 @@ class _MonActivationPageState extends State<MonActivationPage> {
   }
 
   Widget _montantBloc(String titre, double valeur, Color couleur) {
+    // 🪙 MODULE 18 — l'abonnement est facturé en CDF par la plateforme :
+    // on affiche l'équivalent dans l'autre devise (taux de change).
+    final String equivalent =
+        DeviseService.instance.equivalent(valeur, depuis: Devise.cdf);
+
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,6 +382,14 @@ class _MonActivationPageState extends State<MonActivationPage> {
             style: TextStyle(
                 fontSize: 13.5, fontWeight: FontWeight.w700, color: couleur),
           ),
+          if (equivalent.isNotEmpty)
+            Text(
+              equivalent,
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
         ],
       ),
     );

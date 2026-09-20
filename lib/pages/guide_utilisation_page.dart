@@ -66,6 +66,12 @@ class GuideUtilisationPage extends StatelessWidget {
               'Entreprise déjà créée ? Accueil → « Mes entreprises » → icône '
                   '✏️ sur la carte pour corriger sa catégorie (les écrans '
                   'suivent immédiatement).',
+              'DEVISE DE TRAVAIL — Paramètres → « Devise & conversion » : '
+                  'travaillez en CDF (franc congolais) ou USD (dollar). Tous '
+                  'vos montants (prix, ventes, caisse, rapports, reçus) '
+                  's\'affichent dans votre devise ; un simulateur et un taux '
+                  '« 1 USD = X CDF » donnent les équivalences. ⚠️ Changer de '
+                  'devise ne convertit pas les montants déjà enregistrés.',
               'Pour créer plusieurs entreprises (pack multi-entreprises) : '
                   'accueil → « Mes entreprises ».',
             ],
@@ -446,7 +452,9 @@ class GuideUtilisationPage extends StatelessWidget {
               'Assistant IA : posez vos questions (ventes du jour, conseils, '
                   'résumés) — les quotas se rechargent par packs de 10 à 100.',
               'Mon abonnement : suivez votre dossier d\'activation, vos '
-                  'montants et vos échéances.',
+                  'montants et vos échéances (montants d\'abonnement facturés '
+                  'en CDF, avec l\'équivalent dans votre devise au taux '
+                  '« 1 USD = X CDF »).',
               'Compte pas encore activé : un cadenas 🔒 couvre « Nouvelle '
                   'vente », « Scanner », « Ajouter un produit » et '
                   '« Collaborateurs ». Il disparaît AUTOMATIQUEMENT dès la '

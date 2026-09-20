@@ -360,6 +360,10 @@ class PermissionService {
     _RegleRoute('/audit', PageAccess.audit),
     _RegleRoute('/securite', PageAccess.securite),
     _RegleRoute('/import-produits', PageAccess.articles, ActionAccess.creer),
+    // 🪙 MODULE 18 — taux de change de la plateforme (Super Admin : mêmes
+    // droits que la configuration de l'assistant IA).
+    _RegleRoute(
+        '/admin/devises', PageAccess.parametres, ActionAccess.modifier),
 
     // 🤖 MODULE 13 — assistant IA (chat + quotas) et configuration IA
     // (réservée au Super Admin via `parametres/modifier`, revérifié serveur).
@@ -444,6 +448,10 @@ class PermissionService {
     _RegleRoute('/settings/manage-users', PageAccess.collaborateurs),
     _RegleRoute('/settings/manage-categories', PageAccess.articles,
         ActionAccess.modifier),
+    // 🪙 MODULE 18 — devise de travail de l'entreprise (consultation pour
+    // tous ; la modification est réservée au propriétaire, revérifié par la
+    // RPC `rpc_devise_configurer`).
+    _RegleRoute('/settings/devise', PageAccess.parametres),
     _RegleRoute('/settings/collaborateurs-stats', PageAccess.collaborateurs),
     _RegleRoute('/settings', PageAccess.parametres),
   ];

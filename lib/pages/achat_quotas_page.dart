@@ -72,6 +72,11 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
     super.dispose();
   }
 
+  /// 🪙 MODULE 18 — les quotas IA sont facturés en CDF par la plateforme :
+  /// ces montants s'affichent toujours en CDF (pas dans la devise du client).
+  static String _montant(double valeur) =>
+      formatMontant(valeur, devise: deviseParDefaut);
+
   // ---------------------------------------------------------------------------
   // CHARGEMENT
   // ---------------------------------------------------------------------------
@@ -127,7 +132,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
         icon: const Icon(Icons.shopping_cart_checkout_rounded),
         title: const Text('Envoyer la demande ?'),
         content: Text(
-          'Pack de ${pack.quotas} quotas — ${formatMontant(pack.prix)}\n'
+          'Pack de ${pack.quotas} quotas — ${_montant(pack.prix)}\n'
           'Paiement : ${_modesPaiement[_mode] ?? _mode}\n\n'
           'Le Super Admin va recevoir votre demande. Une fois approuvée, les '
           'quotas arrivent dans le pool de l\'entreprise, puis le paiement '
@@ -169,7 +174,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
         ),
         title: Text(approuver ? 'Approuver la demande ?' : 'Refuser la demande ?'),
         content: Text(
-          '${achat.nombreQuotas} quotas — ${formatMontant(achat.montantCdf)}'
+          '${achat.nombreQuotas} quotas — ${_montant(achat.montantCdf)}'
           '${achat.utilisateurNom.isEmpty ? '' : ' (${achat.utilisateurNom})'}\n\n'
           '${approuver ? 'Les quotas seront crédités dans le pool de l\'entreprise.' : 'La demande sera refusée.'}',
           style: const TextStyle(fontSize: 13.5),
@@ -208,7 +213,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
         icon: Icon(Icons.payments_rounded, color: Colors.green.shade700),
         title: const Text('Marquer ce paiement payé ?'),
         content: Text(
-          'Montant : ${formatMontant(achat.montantCdf)} — ${achat.nombreQuotas} quotas.\n\n'
+          'Montant : ${_montant(achat.montantCdf)} — ${achat.nombreQuotas} quotas.\n\n'
           '${estProprietaire ? 'Une dépense « Quotas IA » sera écrite dans la caisse de l\'entreprise.' : 'Vous confirmez que la plateforme a bien encaissé ce montant.'}',
           style: const TextStyle(fontSize: 13.5),
         ),
@@ -435,9 +440,9 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Tarif : ${formatMontant(etat.config.tarifParQuota)} / quota '
+            'Tarif : ${_montant(etat.config.tarifParQuota)} / quota '
             '· 1 quota = ${etat.config.caracteresParQuota} caractères de réponse '
-            '· pack de 10 = ${formatMontant(etat.config.prixPack10Quotas)}',
+            '· pack de 10 = ${_montant(etat.config.prixPack10Quotas)}',
             style: TextStyle(
               fontSize: 11.5,
               color: theme.colorScheme.onSurfaceVariant,
@@ -544,7 +549,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  formatMontant(pack.prix),
+                  _montant(pack.prix),
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: theme.colorScheme.primary,
@@ -621,7 +626,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.send_rounded),
-              label: Text('Envoyer la demande — ${formatMontant(pack.prix)}'),
+              label: Text('Envoyer la demande — ${_montant(pack.prix)}'),
             ),
           ),
           if (!etat.config.actif)
@@ -785,7 +790,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
           Row(
             children: <Widget>[
               Text(
-                formatMontant(achat.montantCdf),
+                _montant(achat.montantCdf),
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
                   fontSize: 15,

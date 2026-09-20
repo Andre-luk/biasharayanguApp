@@ -12,6 +12,9 @@ import 'package:biashara_yangu/models/approvisionnement.dart';
 import 'package:biashara_yangu/services/image_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+// 🪙 MODULE 18 — devise de travail (suffixes des champs de prix).
+import 'package:biashara_yangu/services/devise_service.dart';
+import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 
 // 🔑 NOTE: Ce fichier utilise toujours DBHelper (SQLite).
@@ -513,7 +516,7 @@ class _AddProductPageState extends State<AddProductPage> {
                   controller: _prixAchatNewController,
                   decoration: InputDecoration(
                     labelText: T.labelNewPurchasePrice,
-                    suffixText: T.currencyUnit,
+                    suffixText: DeviseService.instance.symbole,
                     border: const OutlineInputBorder(),
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -583,7 +586,7 @@ class _AddProductPageState extends State<AddProductPage> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                '${T.labelPurchasePrice}: ${appro.prixAchatUnitaire.toStringAsFixed(2)} ${T.currencyUnit}',
+                '${T.labelPurchasePrice}: ${formatMontant(appro.prixAchatUnitaire)}',
               ),
               trailing: Text(formattedDate, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
             ),
@@ -696,7 +699,7 @@ class _AddProductPageState extends State<AddProductPage> {
                       decoration: InputDecoration(
                         labelText: T.productPriceCost + ' (${T.optionalLabel})',
                         prefixIcon: const Icon(Icons.money_off),
-                        suffixText: T.currencyUnit,
+                        suffixText: DeviseService.instance.symbole,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -716,7 +719,7 @@ class _AddProductPageState extends State<AddProductPage> {
                       decoration: InputDecoration(
                         labelText: T.productPriceSell,
                         prefixIcon: const Icon(Icons.attach_money),
-                        suffixText: T.currencyUnit,
+                        suffixText: DeviseService.instance.symbole,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),

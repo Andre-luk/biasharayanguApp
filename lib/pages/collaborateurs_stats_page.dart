@@ -11,6 +11,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:biashara_yangu/models/collaborateur_stats.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/models/vente.dart';
+// 🪙 MODULE 18 — montants formatés dans la devise de l'entreprise.
+import 'package:biashara_yangu/utils/format_utils.dart';
 
 enum StatsPeriod { today, thisWeek, thisMonth, custom }
 
@@ -393,7 +395,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text('Montant total'),
-                      pw.Text('${totalAmount.toStringAsFixed(0)} FC'),
+                      pw.Text(formatMontant(totalAmount)),
                     ],
                   ),
                 ],
@@ -421,7 +423,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                     d.produitNom,
                     _formatQty(d.quantite),
                     time,
-                    '${d.prixTotal.toStringAsFixed(0)} FC',
+                    formatMontant(d.prixTotal),
                   ];
                 }).toList(),
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
@@ -558,7 +560,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                           ),
                         ),
                         Text(
-                          "${d.prixTotal.toStringAsFixed(0)} FC",
+                          formatMontant(d.prixTotal),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -717,7 +719,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
               Expanded(
                 child: _buildStatCard(
                   label: 'Montant total',
-                  value: '${totalSales.toStringAsFixed(0)} FC',
+                  value: formatMontant(totalSales),
                   color: Colors.green,
                   icon: Icons.payments_outlined,
                 ),
@@ -771,7 +773,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                   ),
                   const SizedBox(width: 8), // Petit espace de sécurité
                   Text(
-                    '${ownerAmount.toStringAsFixed(0)} FC',
+                    formatMontant(ownerAmount),
                     style: const TextStyle(
                       color: Colors.deepPurple,
                       fontWeight: FontWeight.bold,

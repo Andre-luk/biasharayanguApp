@@ -24,6 +24,8 @@ import 'package:biashara_yangu/pages/setup_page.dart';
 import 'package:biashara_yangu/pages/home_page.dart';
 // 🧾 MODULE 17 — page « compte verrouillé » (activation en attente, échu…).
 import 'package:biashara_yangu/pages/compte_verrouille_page.dart';
+// 🪙 MODULE 18 — devises de travail et taux de conversion.
+import 'package:biashara_yangu/pages/devise_page.dart';
 // 📊 MODULE 11 — RAPPORTS & EXPORTS. L'ancien écran `reports_page.dart`
 // (SQLite) est débranché ; le fichier est conservé comme pour les Modules 9/10.
 import 'package:biashara_yangu/pages/rapports_page.dart';
@@ -296,6 +298,14 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/qr-codes',
       name: 'admin-qr-codes',
       builder: (context, state) => const QrCodesPage(modePlateforme: true),
+    ),
+
+    // 🪙 MODULE 18 — devises : taux de change par défaut de la plateforme et
+    // configuration ponctuelle d'une entreprise (Super Admin).
+    GoRoute(
+      path: '/admin/devises',
+      name: 'admin-devises',
+      builder: (context, state) => const DevisePage(modePlateforme: true),
     ),
 
     // 🧾 MODULE 14 — workflow d'activation à double validation.
@@ -1140,6 +1150,14 @@ final GoRouter appRouter = GoRouter(
                   path: 'about',
                   name: 'about',
                   builder: (context, state) => const AboutPage(),
+                ),
+
+                // 🪙 MODULE 18 — devise de travail de l'entreprise (CDF/USD)
+                // et taux de conversion.
+                GoRoute(
+                  path: 'devise',
+                  name: 'devise',
+                  builder: (context, state) => const DevisePage(),
                 ),
 
                 // 👥 GESTION DES VENDEURS

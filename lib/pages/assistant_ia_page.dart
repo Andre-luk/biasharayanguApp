@@ -530,7 +530,7 @@ class _AssistantIaPageState extends State<AssistantIaPage> {
               const SizedBox(height: 7),
               Text(
                 '${message.quotasConsommes} quota(s) · '
-                '${formatMontant(message.montantCdf)}',
+                '${formatMontant(message.montantCdf, devise: deviseParDefaut)}',
                 style: TextStyle(
                   fontSize: 10.5,
                   color: theme.colorScheme.onSurfaceVariant,

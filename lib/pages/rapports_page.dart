@@ -25,6 +25,8 @@ import 'package:biashara_yangu/models/rapport.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/rapport_service.dart';
+// 🪙 MODULE 18 — devise de travail des montants du rapport.
+import 'package:biashara_yangu/services/devise_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
@@ -547,6 +549,10 @@ class _RapportsPageState extends State<RapportsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: <Widget>[
+          // 🪙 MODULE 18 — devise des montants du rapport (et taux utilisé
+          // pour les équivalences).
+          _bandeauDevise(),
+          const SizedBox(height: 12),
           _carteSelection(),
           if (_typeUtilisePeriode) ...<Widget>[
             const SizedBox(height: 12),
@@ -598,6 +604,54 @@ class _RapportsPageState extends State<RapportsPage> {
   }
 
   // ------------------------------------------------------------- type de rapport
+
+  /// 🪙 MODULE 18 — rappel de la devise de travail des montants du rapport.
+  Widget _bandeauDevise() {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final String equivalent = DeviseService.instance.equivalent(1000);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.currency_exchange_rounded,
+              size: 18, color: scheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Montants en ${DeviseService.instance.devise.libelle} '
+                  '(${DeviseService.instance.symbole})',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
+                ),
+                if (equivalent.isNotEmpty)
+                  Text(
+                    'Taux : 1 USD = '
+                    '${DeviseService.instance.taux.toStringAsFixed(0)} CDF — '
+                    'ex. 1 000 ${DeviseService.instance.symbole} '
+                    '${DeviseService.instance.equivalent(1000)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _carteSelection() {
     final TypeRapport? type = _type;

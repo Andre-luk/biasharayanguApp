@@ -51,8 +51,8 @@ lib/
   ui/accueil/          → registre des cartes du tableau de bord (modules)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 39 migrations SQL idempotentes (0000 → 0038)
-test/                  → 584 tests purs (modèles, permissions, rapports, modules)
+supabase/migrations/   → 40 migrations SQL idempotentes (0000 → 0039)
+test/                  → 607 tests purs (modèles, permissions, rapports, modules, devises)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android : setup_signature.sh)
 ```
@@ -90,6 +90,7 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0037          Module 16 phase E — packs par modules (groupes tarifaires)
 0038          Module 17 — verrouillage des comptes non activés + catégorie
               d'activité respectée à la création (p_type, triggers, verrou)
+0039          Module 18 — devises de travail (CDF/USD) et taux de conversion
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
@@ -103,6 +104,17 @@ se terminent par des requêtes de vérification.
 |---|---|---|
 | `ventes` | `{"bloquer_produits_expires": true}` | Bloque la vente d'un article dont la date de péremption est dépassée (pharmacie). Passer à `false` pour l'autoriser |
 | `permissions_roles` | `{"roles": {"VENDEUR": {"ventes": ["voir","creer"]}}}` | Personnalisation des permissions par rôle (écran Super Admin → Permissions) ; remplace la matrice par défaut |
+| `devises` | `{"taux_usd_cdf": 2800, "devise_defaut": "CDF"}` | Taux de change par défaut de la plateforme (Module 18) et devise proposée aux nouvelles entreprises ; réglable par le Super Admin (écran **Devises & taux**) |
+
+**Devises (Module 18)** — chaque entreprise travaille en **CDF** (défaut) ou
+**USD** : tous ses montants (prix, ventes, dépenses, caisse, rapports, reçus,
+paiements) s'affichent dans son unité (`15 000 CDF` / `12,50 $`). Le patron
+choisit sa devise et, s'il le souhaite, son propre taux de change dans
+**Paramètres → Devise & conversion** (l'écran comprend un simulateur
+« 1 USD = X CDF »). La devise est **propre à chaque espace** du compte
+(`espaces.devise`), avec héritage de la devise du compte
+(`entreprises.devise`) puis de celle de la plateforme. ⚠️ Changer de devise
+change l'UNITÉ d'affichage, **pas** les montants déjà enregistrés.
 
 **Packs par modules (Module 16 E)** — un groupe tarifaire peut limiter les
 modules : `groupes_tarifaires.modules` (`[]` = aucun filtre). Les modules

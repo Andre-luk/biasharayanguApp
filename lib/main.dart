@@ -30,6 +30,8 @@ import 'services/activation_service.dart';
 import 'services/notification_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités, phase A).
 import 'services/modules_service.dart';
+// 🪙 MODULE 18 — devises de travail (CDF/USD) et taux de conversion.
+import 'services/devise_service.dart';
 import 'services/permission_service.dart';
 import 'db_helper.dart';
 
@@ -104,6 +106,11 @@ void main() async {
   // Chaque bascule d'espace recharge les modules de la nouvelle activité
   // (best-effort — un échec laisse l'application en mode standard).
   ModulesService.instance.demarrerSurveillance();
+
+  // 🪙 MODULE 18 — DEVISE : la devise appartient à l'entreprise ; chaque
+  // bascule d'espace la recharge (et met à jour l'affichage global des
+  // montants). Best-effort : en cas d'échec, l'application reste en CDF.
+  DeviseService.instance.demarrerSurveillance();
 
   // 💳 MODULE 3 — Vérification globale des abonnements au démarrage.
   // Best-effort : si une session est restaurée, on demande à la base de
@@ -225,6 +232,10 @@ class _BiasharaAppState extends State<BiasharaApp> {
           // l'entreprise). En arrière-plan : l'écran s'ouvre sans attendre le
           // réseau (le mode standard reste actif tant que rien n'est chargé).
           unawaited(ModulesService.instance.chargerSilencieux());
+
+          // 🪙 MODULE 18 — devise de travail de l'entreprise (CDF/USD) :
+          // appliquée à l'affichage de TOUS les montants de l'application.
+          unawaited(DeviseService.instance.chargerSilencieux());
 
           // 🔒 MODULE 3/17 — état d'accès du compte (activation en attente,
           // abonnement échu, compte restreint ou suspendu). Calculé AVANT le

@@ -499,6 +499,13 @@ class RapportService {
       ligne++;
     }
 
+    // 🪙 MODULE 18 — devise de travail des montants du rapport.
+    feuille.appendRow(<xls.CellValue?>[
+      xls.TextCellValue(
+          'Devise : ${FormatMonetaire.code} (${FormatMonetaire.symbole})'),
+    ]);
+    ligne++;
+
     feuille.appendRow(<xls.CellValue?>[
       xls.TextCellValue('Généré le ${formatDateHeure(genereLe)}'),
     ]);
@@ -889,6 +896,14 @@ class RapportService {
                     'Période : ${donnees.periodeTexte}',
                     style: const pw.TextStyle(fontSize: 9),
                   ),
+                // 🪙 MODULE 18 — devise de travail (toutes les colonnes
+                // monétaires du rapport sont exprimées dans cette devise).
+                pw.Text(
+                  'Devise : ${FormatMonetaire.code} '
+                  '(${FormatMonetaire.symbole})',
+                  style: const pw.TextStyle(
+                      fontSize: 8, color: PdfColors.grey600),
+                ),
                 pw.Text(
                   'Généré le ${formatDateHeure(genereLe)}',
                   style: const pw.TextStyle(

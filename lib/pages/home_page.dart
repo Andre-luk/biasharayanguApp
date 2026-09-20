@@ -47,6 +47,8 @@ import 'package:biashara_yangu/services/production_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
 import 'package:biashara_yangu/services/modules_service.dart';
+// 🪙 MODULE 18 — devise de travail (CDF/USD) affichée dans l'entête.
+import 'package:biashara_yangu/services/devise_service.dart';
 import 'package:biashara_yangu/widgets/selecteur_espace.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -138,6 +140,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // compte : ils disparaissent AUTOMATIQUEMENT dès l'activation par la
     // finance (ou la régularisation d'un abonnement échu).
     AbonnementService.instance.acces.addListener(_onAccesChange);
+    // 🪙 MODULE 18 — la devise de l'entreprise peut changer (écran Devise,
+    // bascule d'entreprise) : les montants affichés se remettent à jour.
+    DeviseService.instance.etat.addListener(_onDeviseChange);
     WidgetsBinding.instance.addObserver(this);
     // L'état a pu évoluer pendant que l'application était fermée.
     AbonnementService.instance.rafraichirSilencieux();
@@ -148,6 +153,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     EspaceService.instance.etat.removeListener(_onEspaceChange);
     ModulesService.instance.modules.removeListener(_onModulesChange);
     AbonnementService.instance.acces.removeListener(_onAccesChange);
+    DeviseService.instance.etat.removeListener(_onDeviseChange);
     WidgetsBinding.instance.removeObserver(this);
     _minuteurRealtime?.cancel();
     if (_dashboardChannel != null) {
@@ -165,7 +171,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  /// 🧾 MODULE 17 — l'état d'accès a changé (activation, régularisation…) :
+  /// � MODULE 18 — la devise de l'entreprise a changé : les montants
+  /// affichés (héro, cartes, listes) se reformatent.
+  void _onDeviseChange() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// �🧾 MODULE 17 — l'état d'accès a changé (activation, régularisation…) :
   /// l'accueil se reconstruit automatiquement (cadenas ↔ boutons actifs).
   void _onAccesChange() {
     if (!mounted) return;
@@ -488,6 +501,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     AbonnementService.instance.reinitialiserAcces();
     // 🏢 MODULE 15 — la liste des entreprises ne survit pas à la déconnexion.
     EspaceService.instance.reinitialiser();
+    // 🪙 MODULE 18 — retour à la devise par défaut (CDF) pour le prochain
+    // utilisateur de l'appareil.
+    DeviseService.instance.reinitialiser();
     // 🔳 MODULE 7 — la session de vente se termine : le panier partagé et
     // l'historique du scanner ne doivent pas survivre à la déconnexion.
     PanierService.instance.vider();
@@ -634,8 +650,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   /// Carte « hero » : profil + ventes du jour sur un dégradé de marque.
   Widget _buildCarteHero(AppLocalizations T) {
+    // 🪙 MODULE 18 — la devise de l'entreprise remplace « CDF ».
     final String montantJour =
-        '${dailyTotalVentesAmount.toStringAsFixed(0)} ${T.currencyUnit}';
+        '${dailyTotalVentesAmount.toStringAsFixed(0)} ${DeviseService.instance.symbole}';
 
     return _CarteHero(
       sousTitre: T.homeSummaryGreeting(_displayName),
@@ -827,13 +844,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   /// 🧩 MODULE 16/17 — sous-titre de l'AppBar : la catégorie d'activité
-  /// (profil de modules de l'espace actif), sinon le libellé générique.
+  /// (profil de modules de l'espace actif) et la devise de travail.
   String _sousTitreActivite() {
     final String? libelle = ModulesService.instance.libelle;
-    if (libelle != null && libelle.trim().isNotEmpty) {
-      return libelle.trim().toUpperCase();
-    }
-    return 'Espace entreprise';
+    final String activite = (libelle != null && libelle.trim().isNotEmpty)
+        ? libelle.trim().toUpperCase()
+        : 'ESPACE ENTREPRISE';
+
+    // 🪙 MODULE 18 — devise de travail (CDF / USD), toujours visible.
+    return '$activite · ${DeviseService.instance.code}';
   }
 
   /// Squelettes affichés pendant le tout premier chargement : la page paraît

@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:biashara_yangu/utils/format_utils.dart';
 
 class InvoiceItem {
   final String name;
@@ -127,7 +128,7 @@ class InvoiceService {
                       child: pw.Text(item.name,
                           style: pw.TextStyle(
                               fontSize: 9, fontWeight: pw.FontWeight.bold))),
-                  pw.Text("${item.total.toStringAsFixed(0)} ${T.currencyUnit}",
+                  pw.Text("${formatMontant(item.total)}",
                       style: pw.TextStyle(fontSize: 9)),
                 ],
               ),
@@ -143,7 +144,7 @@ class InvoiceService {
           children: [
             pw.Text(T.invoiceTotal.toUpperCase(),
                 style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
-            pw.Text("${totalAmount.toStringAsFixed(0)} ${T.currencyUnit}",
+            pw.Text("${formatMontant(totalAmount)}",
                 style:
                 pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
           ],
@@ -208,8 +209,8 @@ class InvoiceService {
             i.name,
             i.quantity.toStringAsFixed(0),
             i.unit,
-            '${i.pricePerUnit.toStringAsFixed(0)} ${T.currencyUnit}',
-            '${i.total.toStringAsFixed(0)} ${T.currencyUnit}'
+            '${formatMontant(i.pricePerUnit)}',
+            '${formatMontant(i.total)}'
           ])
               .toList(),
           border: pw.TableBorder.all(color: PdfColors.grey400),
