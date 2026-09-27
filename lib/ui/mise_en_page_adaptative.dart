@@ -11,8 +11,10 @@
 //   • la grille de l'accueil ajoute des colonnes quand la place le permet
 //     ([colonnesGrille]) au lieu de gonfler les cartes.
 //
-// Helpers PURS (aucun widget, aucun accès réseau) : testables directement et
+// Helpers PURS (aucune dépendance aux données) : testables directement et
 // réutilisables par n'importe quel écran.
+
+import 'package:flutter/widgets.dart';
 
 /// Règles de largeur de l'application (miroir des valeurs de l'accueil).
 abstract final class MiseEnPageAdaptative {
@@ -58,5 +60,36 @@ abstract final class MiseEnPageAdaptative {
     if (colonnes < 2) colonnes = 2;
     if (colonnes > maxColonnes) colonnes = maxColonnes;
     return colonnes;
+  }
+
+  /// Proportion (largeur / hauteur) d'une carte de grille CORRIGÉE de
+  /// l'échelle de texte choisie par l'utilisateur (♿ Réglages → jusqu'à 1,3).
+  ///
+  /// Une proportion figée tronquait les libellés dès que le texte était
+  /// agrandi (bandes de débordement jaunes/noires). Plus le texte est grand,
+  /// plus la carte doit être HAUTE : la proportion diminue donc, sans jamais
+  /// descendre sous [minimum] pour ne pas obtenir des cartes interminables.
+  ///
+  /// Version PURE (testable sans widget) : le facteur est fourni.
+  static double proportionCartePour(
+    double base,
+    double facteurTexte, {
+    double minimum = 0.45,
+  }) {
+    if (!base.isFinite || base <= 0) return base;
+    if (!facteurTexte.isFinite || facteurTexte <= 1) return base;
+    final double ajustee = base / facteurTexte;
+    return ajustee < minimum ? minimum : ajustee;
+  }
+
+  /// Même règle, en lisant directement l'échelle de texte de l'application.
+  /// À utiliser dans les `GridView` pour éviter toute proportion figée.
+  static double proportionCarte(
+    BuildContext context,
+    double base, {
+    double minimum = 0.45,
+  }) {
+    final double facteur = MediaQuery.textScalerOf(context).scale(1);
+    return proportionCartePour(base, facteur, minimum: minimum);
   }
 }

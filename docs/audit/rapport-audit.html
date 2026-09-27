@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BIASHARA YANGU — Rapport final d'audit et de mise à niveau</title>
+<link rel="stylesheet" href="../_build/theme.css">
+<style>
+  .constat { border-left:1mm solid var(--danger); background:#fff7f7; padding:3.5mm 4mm; border-radius:2mm; margin-bottom:3.5mm; page-break-inside:avoid; }
+  .constat .titre { font-weight:800; color:var(--marine); margin-bottom:1mm; }
+  .constat .etat { font-size:8.5pt; color:var(--gris); }
+  .corrige { border-left:1mm solid var(--succes); background:#f5fdf8; padding:3.5mm 4mm; border-radius:2mm; margin-bottom:3.5mm; page-break-inside:avoid; }
+  .corrige .titre { font-weight:800; color:var(--marine); margin-bottom:1mm; }
+  .reste { border-left:1mm solid var(--alerte); background:#fffbf3; padding:3.5mm 4mm; border-radius:2mm; margin-bottom:3.5mm; page-break-inside:avoid; }
+</style>
+</head>
+<body>
+
+<section class="couverture">
+  <div class="marque">
+    <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+    <span class="nom">Biashara&nbsp;Yangu</span>
+  </div>
+  <div class="etiquette">Rapport d'audit · Version 2.3.0</div>
+
+  <div class="bloc-titre">
+    <h1>Rapport final d'audit<br><em>et de mise à niveau</em></h1>
+    <p class="sous-titre">
+      Ce qui a été examiné, ce qui était incohérent, ce qui a été corrigé,
+      ce qui a été ajouté — et ce qui reste à traiter, sans complaisance.
+    </p>
+    <div class="pastilles">
+      <span>20 modules</span><span>119 écrans</span><span>42 migrations</span>
+      <span>0 erreur d'analyse</span><span>Suite de tests verte</span>
+    </div>
+  </div>
+
+  <div class="pied-couverture">
+    <div><strong>Biashara Tech</strong>Lubumbashi, RDC</div>
+    <div style="text-align:right"><strong>Édition de septembre 2026</strong>Document interne — revue de qualité</div>
+  </div>
+</section>
+
+<section class="sommaire">
+  <h2><span class="num">§</span>Sommaire</h2>
+  <ol>
+    <li><strong>Méthode d'audit</strong><span>Ce qui a été examiné et comment.</span></li>
+    <li><strong>État initial</strong><span>Ce qui a été trouvé, y compris ce qui allait bien.</span></li>
+    <li><strong>Incohérences découvertes</strong><span>Les écarts réels, classés par gravité.</span></li>
+    <li><strong>Corrections appliquées</strong><span>Ce qui a été corrigé, et comment.</span></li>
+    <li><strong>Administration plateforme</strong><span>Nouveaux accès, nouvelles fonctions serveur, nouveaux écrans.</span></li>
+    <li><strong>Base de données</strong><span>Migration ajoutée, tables et politiques concernées.</span></li>
+    <li><strong>Sécurité</strong><span>Contrôles vérifiés et renforcés.</span></li>
+    <li><strong>Tests et vérifications</strong><span>Ce qui a été exécuté et avec quel résultat.</span></li>
+    <li><strong>Responsive et expérience</strong><span>Contrôles d'affichage et corrections.</span></li>
+    <li><strong>Documentation produite</strong><span>Liste des documents générés.</span></li>
+    <li><strong>Points restant à traiter</strong><span>Dette technique assumée et étapes à la charge de l'exploitant.</span></li>
+  </ol>
+</section>
+
+<!-- 1 -->
+<section class="section">
+  <h2><span class="num">1.</span>Méthode d'audit</h2>
+
+  <p class="intro">
+    L'audit a porté sur l'application entière — pas seulement sur le module
+    marketplace développé juste avant — et a croisé trois lectures
+    indépendantes.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:26%">Axe d'audit</th><th>Ce qui a été passé en revue</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Administration et permissions</strong></td>
+        <td>Toutes les routes d'administration, leur écran, la permission exigée ; la matrice des rôles ; le comportement du middleware de navigation ; l'existence réelle — ou l'absence — de chaque capacité attendue d'une administration de plateforme ; les fonctions serveur présentes mais jamais appelées.</td>
+      </tr>
+      <tr>
+        <td><strong>Cohérence visuelle et technique</strong></td>
+        <td>Écart entre les écrans récents et les écrans historiques : palette, composants de chargement, dialogues, champs de sélection, états vides, états d'erreur, proportion des grilles.</td>
+      </tr>
+      <tr>
+        <td><strong>Responsive, langue et robustesse</strong></td>
+        <td>Risques de débordement sur petit écran et sur grand écran, grilles à proportion figée, lignes à contenu variable sans souplesse, état réel de l'internationalisation, gestion des erreurs, journalisation, synchronisation et fonctionnement hors connexion.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Ce que l'audit n'a pas fait</h3>
+  <ul>
+    <li>Aucun fichier n'a été modifié pendant la phase d'analyse : les trois lectures ont été menées en lecture seule, puis les corrections ont été appliquées séparément.</li>
+    <li>Aucune fonctionnalité existante n'a été retirée, aucune architecture parallèle créée.</li>
+    <li>Aucune donnée n'a été supprimée ni transformée.</li>
+  </ul>
+</section>
+
+<!-- 2 -->
+<section class="section">
+  <h2><span class="num">2.</span>État initial</h2>
+
+  <p class="intro">
+    L'application était déjà fonctionnelle et cohérente sur l'essentiel. Le
+    socle était solide ; les faiblesses se concentraient sur l'administration
+    de la plateforme, l'harmonisation des anciens écrans et l'honnêteté de
+    quelques promesses d'interface.
+  </p>
+
+  <h3>Ce qui était déjà en bon état</h3>
+  <ul>
+    <li><strong>Sécurité côté serveur</strong> : contrôle des droits refait dans chaque fonction serveur, cloisonnement par entreprise au niveau des lignes, catalogue public servi exclusivement par des fonctions à liste blanche.</li>
+    <li><strong>Gestion des erreurs métier</strong> : chaque service dispose de son type d'erreur et d'un décodeur de message serveur ; le motif « chargement / erreur / réessayer » est systématique sur les modules récents.</li>
+    <li><strong>Fonctionnement hors connexion</strong> : base locale, marqueurs de synchronisation, reprise réseau, rafraîchissement temps réel, déduplication des événements.</li>
+    <li><strong>Marché local</strong> : architecture publiée sur le principe de la liste blanche, y compris la séparation stricte entre résultats organiques et publicité.</li>
+    <li><strong>Mise en page adaptative</strong> : un utilitaire de largeur centrée et de colonnes existait déjà et fonctionnait sur l'accueil.</li>
+  </ul>
+
+  <h3>Où se situaient les faiblesses</h3>
+  <div class="grille-3">
+    <div class="kpi orange"><div class="valeur">3</div><div class="libelle">capacités d'administration réellement absentes</div></div>
+    <div class="kpi"><div class="valeur">1</div><div class="libelle">suppression de compte non sécurisée</div></div>
+    <div class="kpi"><div class="valeur">5</div><div class="libelle">grilles à proportion figée</div></div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="section">
+  <h2><span class="num">3.</span>Incohérences découvertes</h2>
+
+  <p class="intro">
+    Classées par gravité réelle : d'abord ce qui pouvait faire perdre des
+    données ou laisser passer une action non souhaitée, ensuite ce qui
+    dégradait l'expérience.
+  </p>
+
+  <h3>Gravité haute</h3>
+
+  <div class="constat">
+    <div class="titre">1. Suppression d'un utilisateur sans analyse des dépendances</div>
+    <p>
+      L'écran d'administration supprimait directement la ligne de l'utilisateur.
+      Or un compte peut porter des ventes, des paiements, des dettes, des
+      dépenses, des clôtures de caisse ou des traces d'audit. Selon les cas,
+      l'opération échouait sur une contrainte, laissait des données orphelines,
+      ou détruisait un historique qu'un commerçant peut avoir à justifier.
+    </p>
+    <div class="etat">Conséquence : risque de perte d'historique et de rapport d'audit incomplet.</div>
+  </div>
+
+  <div class="constat">
+    <div class="titre">2. Aucune modération du catalogue public</div>
+    <p>
+      Il n'existait ni fonction serveur ni écran permettant de retirer du
+      catalogue public un article illicite, dangereux ou trompeur. La
+      plateforme n'avait donc aucun moyen d'agir sur le contenu qu'elle expose
+      aux visiteurs — alors même qu'elle en est responsable.
+    </p>
+    <div class="etat">Conséquence : impossibilité de retirer un contenu signalé.</div>
+  </div>
+
+  <div class="constat">
+    <div class="titre">3. Aucun écran d'administration des boutiques</div>
+    <p>
+      La table des espaces et ses règles d'accès existaient, mais aucune
+      interface ne permettait de lister l'ensemble du parc, de comprendre
+      pourquoi une boutique n'apparaissait pas, ni de suspendre une seule
+      boutique sans passer par la fiche de son entreprise.
+    </p>
+    <div class="etat">Conséquence : aveuglement sur le parc et réponses lentes au support.</div>
+  </div>
+
+  <h3>Gravité moyenne</h3>
+
+  <div class="constat">
+    <div class="titre">4. Aucun filet de sécurité global sur les erreurs d'interface</div>
+    <p>
+      Aucun gestionnaire d'erreur n'était installé au démarrage. Une exception
+      non interceptée remplaçait donc l'écran par le panneau rouge
+      « Unhandled Exception », illisible pour un utilisateur et donnant
+      l'impression d'une application cassée.
+    </p>
+  </div>
+
+  <div class="constat">
+    <div class="titre">5. Cinq grilles à proportion figée provoquaient des débordements</div>
+    <p>
+      L'application permet d'agrandir le texte jusqu'à 1,3 fois dans les
+      réglages d'accessibilité. Cinq grilles gardaient une proportion fixe
+      (accueil, sécurité, hub commercial, plan de salle, résultats de
+      recherche) : les libellés débordaient ou étaient tronqués dès que le
+      texte était agrandi.
+    </p>
+  </div>
+
+  <div class="constat">
+    <div class="titre">6. Lignes de facture sans souplesse d'affichage</div>
+    <p>
+      Dans la facture de séjour, plusieurs lignes alignaient un libellé et un
+      montant sans laisser au libellé la possibilité de se réduire : un libellé
+      long poussait le montant hors de l'écran.
+    </p>
+  </div>
+
+  <div class="constat">
+    <div class="titre">7. Trois langues annoncées, une seule traduite</div>
+    <p>
+      L'interface proposait le français, l'anglais et le swahili, alors que
+      seules 26 clés étaient réellement traduites : le choix d'une autre langue
+      laissait la quasi-totalité de l'interface en français. La promesse était
+      donc fausse pour l'utilisateur qui la faisait.
+    </p>
+  </div>
+
+  <h3>Gravité faible (relevée, non corrigée — voir section 11)</h3>
+  <ul>
+    <li>Une centaine d'écrans historiques utilisent encore des couleurs codées en dur et un indicateur de chargement nu, là où les écrans récents utilisent la palette et l'indicateur de la maison.</li>
+    <li>Une centaine de dialogues de confirmation sont écrits à la main, faute d'assistant central.</li>
+    <li>Environ 390 appels de journalisation de développement sont sans garde de mode.</li>
+    <li>Deux règles de navigation protégeaient des adresses n'existant pas encore ; l'une d'elles a été rendue effective par l'ajout de l'écran correspondant.</li>
+  </ul>
+</section>
+
+<!-- 4 -->
+<section class="section">
+  <h2><span class="num">4.</span>Corrections appliquées</h2>
+
+  <div class="corrige">
+    <div class="titre">1. Retrait de compte sécurisé (gravité haute)</div>
+    <p>
+      La suppression directe a été remplacée par un processus en trois temps :
+      <strong>analyse serveur des dépendances</strong>, <strong>affichage
+      chiffré de l'impact</strong>, puis <strong>choix d'une stratégie</strong>
+      — désactivation réversible, anonymisation conservant les historiques, ou
+      suppression réelle réservée aux comptes sans aucune attache. La règle est
+      recalculée côté serveur : une décision périmée envoyée par l'application
+      ne peut pas contourner une contrainte. Un propriétaire d'entreprise ne
+      peut pas être anonymisé tant que la propriété n'a pas été transférée, et
+      toute décision est journalisée avec son motif.
+    </p>
+    <p>
+      Si l'analyse n'est pas disponible (migration non exécutée), l'opération
+      est <strong>refusée</strong> avec une explication — jamais remplacée
+      silencieusement par l'ancien comportement destructeur.
+    </p>
+  </div>
+
+  <div class="corrige">
+    <div class="titre">2. Filet de sécurité global (gravité moyenne)</div>
+    <p>
+      Le démarrage installe désormais trois protections : un gestionnaire
+      d'erreur d'interface, un écran de repli autonome (sans dépendance au
+      thème ni aux données, remplaçant le panneau rouge), et un gestionnaire
+      d'erreurs asynchrones afin qu'une tâche de fond ne fasse plus tomber
+      l'application. La cause reste journalisée pour le diagnostic.
+    </p>
+  </div>
+
+  <div class="corrige">
+    <div class="titre">3. Débordements d'affichage (gravité moyenne)</div>
+    <p>
+      Un utilitaire unique calcule désormais la proportion d'une carte de
+      grille en fonction de l'échelle de texte choisie par l'utilisateur : plus
+      le texte est grand, plus la carte est haute, avec un plancher pour éviter
+      des cartes démesurées. Les cinq grilles concernées l'utilisent. Les
+      lignes de la facture de séjour laissent au libellé la place de se
+      réduire, le montant restant toujours lisible.
+    </p>
+  </div>
+
+  <div class="corrige">
+    <div class="titre">4. Langues : promesse alignée sur la réalité</div>
+    <p>
+      Seule la locale réellement traduite est déclarée, et le sélecteur de
+      langue présente l'anglais et le swahili comme « traduction en
+      préparation » plutôt que de les proposer. Une langue déjà enregistrée sur
+      un appareil est ramenée au français sans erreur.
+    </p>
+  </div>
+
+  <div class="corrige">
+    <div class="titre">5. Cohérence des permissions et des routes</div>
+    <p>
+      Les deux nouvelles pages de permission ont été intégrées à la matrice des
+      rôles (gestionnaire des comptes et assistance, avec des portées
+      différentes : le support consulte le parc mais ne modère pas), aux règles
+      de navigation, aux icônes et aux onglets de l'administration. Une règle
+      de route sans écran a été rendue effective par la création de l'écran
+      correspondant.
+    </p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="section">
+  <h2><span class="num">5.</span>Administration plateforme</h2>
+
+  <h3>Ce qui a été ajouté</h3>
+  <table>
+    <thead><tr><th style="width:30%">Capacité</th><th>Ce que l'administration peut faire désormais</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Parc des boutiques</strong></td>
+        <td>Lister toutes les boutiques de la plateforme, rechercher par nom, entreprise, ville ou quartier, filtrer (actives, désactivées, dans le catalogue, hors catalogue), voir pour chacune le nombre d'articles publiés et <strong>la raison exacte de son invisibilité</strong> (vitrine non publiée, position non confirmée, dossier rejeté, entreprise suspendue). Activer, désactiver, afficher au catalogue ou en retirer, avec motif obligatoire en cas de désactivation.</td>
+      </tr>
+      <tr>
+        <td><strong>Modération du catalogue</strong></td>
+        <td>Parcourir l'ensemble du catalogue public avec recherche et filtres, retirer un article de la vue des clients ou le remettre en ligne. Le <strong>motif est obligatoire</strong> et transmis au commerçant ; la décision est horodatée, attribuée et journalisée. Rien n'est supprimé : l'article reste dans la boutique.</td>
+      </tr>
+      <tr>
+        <td><strong>Retrait maîtrisé d'un compte</strong></td>
+        <td>Diagnostic chiffré des dépendances, puis choix parmi trois stratégies, avec refus automatique de toute opération qui détruirait un historique.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Permissions accordées</h3>
+  <table class="compact">
+    <thead><tr><th style="width:30%">Rôle</th><th>Boutiques</th><th>Modération</th><th>Justification</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Super Administrateur</strong></td><td><span class="badge vert">Complet</span></td><td><span class="badge vert">Complet</span></td><td>Accès intégral à la plateforme.</td></tr>
+      <tr><td><strong>Gestionnaire des comptes</strong></td><td><span class="badge vert">Voir, modifier</span></td><td><span class="badge vert">Voir, modifier</span></td><td>Il traite les dossiers et le support au quotidien : il doit pouvoir agir sans dépendre d'un accès supérieur.</td></tr>
+      <tr><td><strong>Assistance</strong></td><td><span class="badge bleu">Consultation</span></td><td><span class="badge rouge">Aucun</span></td><td>Le support constate et oriente ; la modération du catalogue reste une décision commerciale.</td></tr>
+      <tr><td><strong>Finance plateforme</strong></td><td><span class="badge rouge">Aucun</span></td><td><span class="badge rouge">Aucun</span></td><td>Périmètre financier, sans intervention sur le contenu.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart principe">
+    <h4>Une permission n'est jamais seulement cachée dans l'interface</h4>
+    <p>
+      Chaque nouvelle fonction serveur commence par vérifier que l'appelant
+      appartient bien au personnel de la plateforme, et les nouvelles routes
+      sont déclarées dans le middleware de navigation. Les deux niveaux sont
+      donc couverts : l'écran ne s'ouvre pas, et l'action est refusée par le
+      serveur même si l'écran était forcé.
+    </p>
+  </div>
+
+  <div class="encart alerte">
+    <h4>Capacités encore absentes (signalées, non implémentées)</h4>
+    <ul>
+      <li>Un <strong>écran consolidé de suspension d'entreprise</strong> : la suspension existe sur la fiche entreprise, mais il n'existe pas de vue multi-espaces groupée par entreprise.</li>
+      <li>Les écrans historiques de <strong>sauvegarde/restauration</strong> et de <strong>catégories</strong> travaillent sur la base locale de l'appareil, ce qui peut laisser croire à une sauvegarde serveur : c'est un point à clarifier dans l'interface (voir section 11).</li>
+      <li>Aucune gestion des <strong>incidents</strong> ou <strong>quotas</strong> par entreprise au-delà de ce qui existait déjà.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="section">
+  <h2><span class="num">6.</span>Base de données</h2>
+
+  <h3>Migration ajoutée</h3>
+  <p>
+    <code>supabase/migrations/20260916000041_admin_plateforme.sql</code> —
+    migration <strong>additive et idempotente</strong>, validée syntaxiquement
+    (SQL et corps de fonctions) avant livraison. Elle se termine par des
+    requêtes de vérification qui affichent des compteurs attendus.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:34%">Élément</th><th>Détail</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Colonnes ajoutées</strong></td><td><code>moderation_note</code>, <code>moderation_le</code>, <code>moderation_par</code> sur <code>produits_publications</code> — un retrait doit dire pourquoi et par qui, et rester visible du commerçant.</td></tr>
+      <tr><td><strong>Index ajouté</strong></td><td>Index partiel sur la date de modération, pour lister les décisions récentes sans parcourir la table.</td></tr>
+      <tr><td><strong>Pages de permission</strong></td><td><code>boutiques</code> et <code>moderation</code> ajoutées à la liste officielle, et attribuées aux rôles concernés dans la matrice par défaut.</td></tr>
+      <tr><td><strong>Fonctions serveur</strong></td><td>Six fonctions réservées au personnel de la plateforme : parc des boutiques, changement de statut d'une boutique, inventaire du catalogue, modération d'un article, diagnostic des dépendances d'un utilisateur, retrait d'un compte.</td></tr>
+      <tr><td><strong>Sécurité des droits</strong></td><td>Exécution retirée au rôle public et au rôle anonyme ; seule la session authentifiée peut appeler, et le contrôle de rôle est refait dans chaque fonction.</td></tr>
+      <tr><td><strong>Tables supprimées</strong></td><td><strong>Aucune.</strong> Aucune donnée existante n'est transformée.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart danger">
+    <h4>À exécuter avant utilisation</h4>
+    <p>
+      Cette migration — comme celle du module marketplace qui la précède — doit
+      être exécutée dans l'éditeur SQL du projet. L'application ne peut pas
+      créer de tables par l'API qu'elle utilise. Tant que ce n'est pas fait,
+      les écrans concernés affichent un message explicite et refusent les
+      opérations, sans jamais échouer silencieusement.
+    </p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="section">
+  <h2><span class="num">7.</span>Sécurité</h2>
+
+  <h3>Contrôles vérifiés</h3>
+  <table class="compact">
+    <thead><tr><th style="width:32%">Contrôle</th><th>Vérification</th></tr></thead>
+    <tbody>
+      <tr><td>Cloisonnement par entreprise</td><td>Les règles d'accès au niveau des lignes empêchent la lecture des données d'une autre entreprise ; les fonctions recalculent la propriété à chaque appel.</td></tr>
+      <tr><td>Catalogue public en liste blanche</td><td>Aucune requête du public ne lit une table ; le rôle anonyme n'a aucun privilège sur les tables du module.</td></tr>
+      <tr><td>Vue publique non exposée</td><td>La vue des boutiques est révoquée pour les rôles publics et authentifiés : elle n'est utilisable qu'à l'intérieur des fonctions serveur.</td></tr>
+      <tr><td>Permissions à deux niveaux</td><td>Vérification de la règle de navigation et revérification serveur, y compris sur les six nouvelles fonctions.</td></tr>
+      <tr><td>Journal d'audit</td><td>Modération, changement de statut de boutique et retrait de compte écrivent une trace horodatée avec motif et auteur.</td></tr>
+      <tr><td>Données de visiteurs</td><td>Aucune position, adresse réseau ni identifiant d'appareil conservé ; la distance n'est enregistrée qu'en tranche.</td></tr>
+      <tr><td>Suppression non destructive</td><td>Le serveur refuse une suppression réelle dès qu'une donnée dépend du compte ; le refus est explicite.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart danger">
+    <h4>Point de vigilance à conserver dans la mémoire d'équipe</h4>
+    <p>
+      La protection de navigation autorise par défaut une adresse qui n'est
+      couverte par aucune règle. Ce choix rend possibles les routes publiques
+      du catalogue, mais il implique qu'une nouvelle route sensible doit être
+      <strong>explicitement déclarée</strong> dans la liste des règles. Les six
+      nouvelles fonctions serveur restent, elles, protégées indépendamment de
+      ce comportement.
+    </p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="section">
+  <h2><span class="num">8.</span>Tests et vérifications</h2>
+
+  <h3>Ce qui a été exécuté</h3>
+  <table>
+    <thead><tr><th style="width:38%">Vérification</th><th>Outil</th><th>Résultat</th></tr></thead>
+    <tbody>
+      <tr><td>Analyse statique de l'application</td><td><code>dart analyze lib</code></td><td><span class="badge vert">0 erreur</span> (183 observations préexistantes, aucune introduite)</td></tr>
+      <tr><td>Analyse avec la sévérité de l'intégration continue</td><td><code>flutter analyze --no-fatal-infos --no-fatal-warnings</code></td><td><span class="badge vert">Conforme</span></td></tr>
+      <tr><td>Suite de tests complète</td><td><code>flutter test</code></td><td><span class="badge vert">698 tests, tous verts</span> (dont les nouveaux cas du module d'administration)</td></tr>
+      <tr><td>Tests du module d'administration</td><td><code>test/admin_plateforme_test.dart</code></td><td><span class="badge vert">20 nouveaux cas</span> : visibilité effective d'une boutique, raisons d'invisibilité, distinction entre retrait par la plateforme et retrait par le commerçant, stratégies de retrait, tri des dépendances par volume, extraction des messages d'erreur, proportion de grille selon l'échelle de texte.</td></tr>
+      <tr><td>Tests de permissions</td><td><code>test/permission_test.dart</code></td><td><span class="badge vert">Passent</span> après ajout des deux pages et des règles de route.</td></tr>
+      <tr><td>Validation de la migration</td><td>Analyse syntaxique SQL et corps de fonctions</td><td><span class="badge vert">Intégralement valide</span></td></tr>
+      <tr><td>Génération des documents</td><td>Conversion HTML vers PDF, vérification du nombre de pages de chaque fichier</td><td><span class="badge vert">Documents produits</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ce qui n'a pas pu être vérifié ici, et pourquoi</h3>
+  <div class="encart alerte">
+    <ul>
+      <li><strong>Compilation d'un paquet Android</strong> : volontairement non exécutée sur le poste de développement, dont la mémoire est insuffisante ; la production des paquets est déléguée à l'intégration continue.</li>
+      <li><strong>Exécution des nouvelles fonctions serveur</strong> : impossible tant que la migration n'a pas été exécutée dans la base. La logique est couverte par la validation syntaxique et par les tests des modèles et des règles de décision côté application.</li>
+      <li><strong>Parcours réel sur téléphone</strong> : nécessite un appareil et une base à jour ; les points de contrôle sont listés en fin de rapport.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="section">
+  <h2><span class="num">9.</span>Responsive et expérience</h2>
+
+  <h3>Contrôles réalisés</h3>
+  <table class="compact">
+    <thead><tr><th style="width:26%">Point contrôlé</th><th>Constat</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td>Petits écrans (téléphone)</td><td>Les grilles à proportion figée débordaient dès que le texte était agrandi.</td><td>Proportion calculée selon l'échelle de texte, avec plancher.</td></tr>
+      <tr><td>Grands écrans (Windows, Linux, Web)</td><td>L'utilitaire de largeur centrée n'était utilisé que sur l'accueil ; les nouvelles pages d'administration l'appliquent également.</td><td>Application de l'utilitaire aux nouveaux écrans ; généralisation recommandée aux anciens (section 11).</td></tr>
+      <tr><td>Lignes à contenu variable</td><td>Facture de séjour : le montant pouvait sortir de l'écran.</td><td>Libellé compressible, écart fixe, montant toujours visible.</td></tr>
+      <tr><td>États vides</td><td>Les nouveaux écrans d'administration distinguent l'absence de données de l'absence de résultat après filtre.</td><td>Messages distincts, avec explication de ce qui fera apparaître des données.</td></tr>
+      <tr><td>États de chargement</td><td>Indicateur de la maison utilisé sur les nouveaux écrans.</td><td>Harmonisation progressive des anciens écrans recommandée.</td></tr>
+      <tr><td>États d'erreur</td><td>Chaque nouvel écran affiche un message lisible et un bouton de nouvelle tentative ; un écran de repli global couvre le reste.</td><td>Plus aucun écran rouge technique visible de l'utilisateur.</td></tr>
+      <tr><td>Accessibilité du texte</td><td>L'échelle de texte utilisateur est respectée par les grilles corrigées.</td><td>Vérifié par test unitaire sur le calcul de proportion.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cohérence visuelle</h3>
+  <p>
+    Les nouveaux écrans d'administration reprennent strictement le système de
+    design : palette de marque, encarts de principe, badges d'état, cartes à
+    coins arrondis, indicateur de chargement, messages d'erreur et de succès
+    cohérents avec le reste de l'application. La documentation générée utilise
+    la même identité, de sorte qu'un document remis à un partenaire ressemble à
+    l'application qu'il présente.
+  </p>
+</section>
+
+<!-- 10 -->
+<section class="section">
+  <h2><span class="num">10.</span>Documentation produite</h2>
+
+  <p class="intro">
+    Tous les documents sont générés depuis l'état réel du projet et rangés dans
+    <code>docs/</code> par public destinataire.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:30%">Document</th><th>Emplacement</th><th>Destinataires</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Présentation officielle de la plateforme</strong></td><td><code>docs/officiel/</code></td><td>Partenaires, institutions, prospects, nouveaux utilisateurs.</td></tr>
+      <tr><td><strong>Politique de la plateforme</strong></td><td><code>docs/politique/</code></td><td>Utilisateurs, commerçants, service juridique.</td></tr>
+      <tr><td><strong>Guide officiel d'utilisation</strong></td><td><code>docs/utilisateur/</code></td><td>Commerçants, caissiers, magasiniers, comptables, administration.</td></tr>
+      <tr><td><strong>Dossier commercial</strong></td><td><code>docs/commercial/</code></td><td>Commerçants, entreprises, partenaires, prospects.</td></tr>
+      <tr><td><strong>Document marketing</strong></td><td><code>docs/marketing/</code></td><td>Équipe commerciale, communication, partenaires de distribution.</td></tr>
+      <tr><td><strong>Documentation technique</strong></td><td><code>docs/technique/</code></td><td>Équipe de développement et de maintenance.</td></tr>
+      <tr><td><strong>Rapport final d'audit</strong></td><td><code>docs/audit/</code></td><td>Direction, revue de qualité.</td></tr>
+      <tr><td><strong>Dépliants imprimables</strong></td><td><code>docs/depliants/</code></td><td>Terrain, affichage, distribution.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Outils de production documentaire</h3>
+  <ul>
+    <li><code>docs/_build/theme.css</code> — identité d'impression commune (couverture, sommaire, tableaux, encarts, images, pieds de page).</li>
+    <li><code>docs/_build/build_pdf.sh</code> — conversion de tous les documents HTML en PDF et contrôle du nombre de pages de chaque fichier.</li>
+    <li>Les documents réutilisent les <strong>captures réelles de l'application</strong> présentes dans le projet, plutôt que des illustrations génériques.</li>
+  </ul>
+</section>
+
+<!-- 11 -->
+<section class="section">
+  <h2><span class="num">11.</span>Points restant à traiter</h2>
+
+  <h3>À la charge de l'exploitant (bloquants pour l'usage complet)</h3>
+  <div class="reste">
+    <p><strong>1. Exécuter les deux migrations</strong> — <code>…0040_module19_marketplace.sql</code> puis <code>…0041_admin_plateforme.sql</code> — dans l'éditeur SQL du projet. Sans elles, le catalogue public et les écrans d'administration affichent un message d'installation manquante et refusent les opérations sensibles.</p>
+  </div>
+  <div class="reste">
+    <p><strong>2. Faire publier au moins une boutique</strong> — le catalogue public est correct mais vide tant qu'aucun commerçant n'a publié sa vitrine et confirmé sa position.</p>
+  </div>
+  <div class="reste">
+    <p><strong>3. Vérifier les autorisations de localisation sur un appareil réel</strong> — l'autorisation n'est demandée qu'au moment où le visiteur touche « Autour de moi » ; le repli « choisir une ville » doit être testé sur un appareil où l'autorisation a été refusée.</p>
+  </div>
+  <div class="reste">
+    <p><strong>4. Validation juridique de la politique</strong> — le document indique explicitement les points à confirmer par un conseil juridique : durées de conservation, base légale du traitement, mentions légales, obligations propres aux produits réglementés.</p>
+  </div>
+
+  <h3>Dette technique assumée (non bloquante, planifiable)</h3>
+  <table class="compact">
+    <thead><tr><th style="width:34%">Sujet</th><th>Ampleur</th><th>Recommandation</th></tr></thead>
+    <tbody>
+      <tr><td>Uniformisation des écrans historiques</td><td>Environ une centaine de fichiers utilisent encore des couleurs codées en dur et un indicateur nu.</td><td>Migrer module par module, en commençant par les écrans les plus consultés (accueil, caisse, collaborateurs, référentiels).</td></tr>
+      <tr><td>Regroupement des dialogues</td><td>Une centaine de confirmations écrites à la main.</td><td>Créer une aide centrale de dialogue puis l'appliquer aux modules récents d'abord.</td></tr>
+      <tr><td>Journalisation de développement</td><td>Environ 390 appels sans garde de mode.</td><td>Encadrer par un contrôle de mode lors d'une passe dédiée.</td></tr>
+      <tr><td>Internationalisation</td><td>26 clés traduites pour trois langues annoncées.</td><td>Externaliser progressivement, ou maintenir les langues non traduites désactivées (état actuel, désormais honnête).</td></tr>
+      <tr><td>Écrans de sauvegarde historique</td><td>Ils agissent sur la base locale de l'appareil.</td><td>Rendre la portée explicite dans l'interface et renvoyer à la procédure de sauvegarde serveur documentée.</td></tr>
+      <tr><td>Résolution de conflits de synchronisation</td><td>Heuristiques « dernière écriture gagnante ».</td><td>Suffisant aujourd'hui ; prévoir une version par ligne si la concurrence entre postes s'intensifie.</td></tr>
+      <tr><td>Attribution des conversions à la caisse</td><td>Codes enregistrés mais non consommés par le module de vente.</td><td>Évolution dédiée, avec tests d'accompagnement, sans toucher au chemin de vente existant.</td></tr>
+      <tr><td>Écran consolidé des entreprises et suspensions</td><td>Absent : l'action existe sur la fiche entreprise.</td><td>À planifier si le nombre d'entreprises suspendues à suivre augmente.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Revue finale</h3>
+  <div class="encart succes">
+    <p><strong>Les modules sont-ils cohérents entre eux ?</strong>
+    Oui sur le socle : permissions, sécurité, gestion d'erreurs, synchronisation
+    et identité visuelle des écrans récents. Les écarts restants sont
+    d'ordre esthétique sur d'anciens écrans, et ils sont listés plutôt que
+    dissimulés — c'est la seule façon de les traiter.</p>
+    <p style="margin-top:2mm"><strong>L'application donne-t-elle l'impression d'un produit moderne ?</strong>
+    Sur les parcours principaux (accueil, vente, stock, crèdits, marketplace,
+    administration), oui : les écrans sont courts, les états sont traités, les
+    messages sont lisibles et les documents remis aux partenaires sont
+    professionnels. La réserve porte sur la centaine d'écrans historiques
+    encore en décalage visuel : c'est le chantier recommandé pour la suite.</p>
+  </div>
+
+  <div class="pied">
+    <div><strong>BIASHARA YANGU</strong> — Rapport final d'audit et de mise à niveau</div>
+    <div>Version 2.3.0 · Septembre 2026 · Biashara Tech, Lubumbashi</div>
+  </div>
+</section>
+
+</body>
+</html>

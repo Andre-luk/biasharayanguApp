@@ -2,10 +2,13 @@
 import 'package:flutter/material.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/models/admin_plateforme.dart';
+import 'package:biashara_yangu/services/admin_plateforme_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/pages/setup_page.dart';
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // utilitaires
@@ -269,52 +272,287 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     if (res == true) await _loadUsers();
   }
 
-  Future<void> _deleteUser(String userId) async {
+  // ---------------------------------------------------------------------------
+  // 🛡️ MODULE 20 — RETRAIT D'UN COMPTE : ANALYSER AVANT D'AGIR
+  // ---------------------------------------------------------------------------
+  //  L'ancien comportement supprimait la ligne `utilisateurs` sans regarder
+  //  ce qui en dépendait : risque d'échec de contrainte, données orphelines,
+  //  ou perte d'historiques (ventes, paiements, dettes, audit) qu'un
+  //  commerçant peut avoir à justifier des années plus tard.
+  //
+  //  Désormais :
+  //   1. le SERVEUR calcule les dépendances réelles et recommande une
+  //      stratégie (source unique de vérité) ;
+  //   2. l'administrateur VOIT l'impact (volume par table) avant de décider ;
+  //   3. il choisit parmi désactivation (réversible), anonymisation (identité
+  //      effacée, historiques conservés) ou suppression réelle (uniquement
+  //      pour un compte sans aucune attache), avec un motif journalisé.
+  //
+  //  Si la migration 41 n'est pas installée, la suppression est REFUSÉE avec
+  //  une consigne claire : jamais de repli silencieux vers l'ancien `delete`.
+
+  Future<void> _retirerCompte(Utilisateur u) async {
+    if (u.id == null) return;
+
+    final DependancesUtilisateur? dependances =
+        await _analyserDependances(u);
+    if (dependances == null || !mounted) return;
+
+    final StrategieSuppression? choix = await _choisirStrategie(u, dependances);
+    if (choix == null || !mounted) return;
+
+    final String? motif = choix == StrategieSuppression.desactivation
+        ? await _demanderMotifRetrait(u)
+        : '';
+    if (motif == null || !mounted) return;
+
     try {
-      await _supabase_service_deleteUser(userId);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Utilisateur et métadonnées supprimés')),
-        );
-      }
+      await AdminPlateformeService.instance.retirerUtilisateur(
+        utilisateurId: u.id!,
+        strategie: choix,
+        motif: motif,
+      );
+      if (!mounted) return;
+      _messageAdmin(_messageSucces(choix));
       await _loadUsers();
-    } on PostgrestException catch (e) {
-      if (mounted) {
-        final msg = e.message ?? e.toString();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur de BDD lors de la suppression: $msg')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: ${e.toString()}')));
-      }
+    } on AdminPlateformeException catch (e) {
+      if (!mounted) return;
+      _messageAdmin(e.message, erreur: true);
     }
   }
 
-  // wrap real delete call so we keep code cleaner / testable
-  Future<void> _supabase_service_deleteUser(String userId) async {
-    await _supabase_service_deleteUser_impl(userId);
+  String _messageSucces(StrategieSuppression choix) {
+    switch (choix) {
+      case StrategieSuppression.desactivation:
+        return 'Compte désactivé. Aucune donnée n\'a été supprimée.';
+      case StrategieSuppression.anonymisation:
+        return 'Compte anonymisé. Les historiques restent traçables.';
+      case StrategieSuppression.suppression:
+        return 'Compte supprimé définitivement.';
+    }
   }
 
-  Future<void> _supabase_service_deleteUser_impl(String userId) async {
-    await _supabaseService.client.from('utilisateurs').delete().eq('id', userId);
-  }
-
-  void _confirmDelete(Utilisateur u) {
-    showDialog(
+  /// Charge le diagnostic serveur ; affiche l'erreur telle quelle sinon.
+  Future<DependancesUtilisateur?> _analyserDependances(Utilisateur u) async {
+    showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer cet utilisateur ?'),
-        content: Text('Êtes-vous sûr de vouloir supprimer ${u.nom} de façon définitive ?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              if (u.id != null) _deleteUser(u.id!);
-            },
-            child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final DependancesUtilisateur dependances =
+          await AdminPlateformeService.instance.dependancesUtilisateur(u.id!);
+      if (mounted) Navigator.of(context).pop();
+      return dependances;
+    } on AdminPlateformeException catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Analyse impossible'),
+          content: Text(
+            e.type == TypeErreurAdmin.nonDeploye
+                ? '${e.message}\n\nLa suppression est refusée tant que l\'analyse '
+                    'des dépendances n\'est pas disponible : supprimer un compte '
+                    'sans savoir ce qui en dépend ferait perdre des historiques.'
+                : e.message,
           ),
-        ],
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Fermer'),
+            ),
+          ],
+        ),
+      );
+      return null;
+    }
+  }
+
+  /// Boîte de dialogue : impact réel + stratégie à appliquer.
+  Future<StrategieSuppression?> _choisirStrategie(
+    Utilisateur u,
+    DependancesUtilisateur dependances,
+  ) async {
+    final StrategieSuppression recommandee =
+        dependances.recommandation ?? StrategieSuppression.desactivation;
+    StrategieSuppression choix = recommandee;
+
+    return showDialog<StrategieSuppression>(
+      context: context,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setEtat) => AlertDialog(
+          title: Text('Retirer ${u.nom} ?'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Impact sur les données :',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 6),
+                if (dependances.sansImpact)
+                  const Text(
+                    'Aucune donnée de gestion ni boutique n\'est rattachée à ce '
+                    'compte : une suppression réelle est sans conséquence.',
+                  )
+                else ...<Widget>[
+                  for (final MapEntry<String, int> e in dependances.detailTrie)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text('- ${_libelleTable(e.key)} : ${e.value}'),
+                    ),
+                  if (dependances.nbEspaces > 0)
+                    Text('- Boutiques de l\'entreprise : ${dependances.nbEspaces}'),
+                  if (dependances.nbCollaborateurs > 0)
+                    Text('- Collaborateurs rattachés : ${dependances.nbCollaborateurs}'),
+                ],
+                const Divider(height: 22),
+                for (final StrategieSuppression s in StrategieSuppression.values)
+                  RadioListTile<StrategieSuppression>(
+                    value: s,
+                    groupValue: choix,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    enabled: s != StrategieSuppression.suppression ||
+                        dependances.suppressionPossible,
+                    title: Row(
+                      children: <Widget>[
+                        Flexible(child: Text(s.libelle)),
+                        if (s == recommandee) ...<Widget>[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'conseillé',
+                              style: TextStyle(fontSize: 10.5),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    subtitle: Text(s.description,
+                        style: const TextStyle(fontSize: 11.5)),
+                    onChanged: (StrategieSuppression? v) =>
+                        setEtat(() => choix = v ?? choix),
+                  ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, choix),
+              style: FilledButton.styleFrom(
+                backgroundColor: choix == StrategieSuppression.suppression
+                    ? Colors.red
+                    : null,
+              ),
+              child: Text(choix.libelle),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Motif du retrait : le journal d'audit doit expliquer la décision.
+  Future<String?> _demanderMotifRetrait(Utilisateur u) async {
+    final TextEditingController motif = TextEditingController();
+    String? erreurMotif;
+
+    final bool? confirme = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setEtat) => AlertDialog(
+          title: const Text('Motif de la désactivation'),
+          content: TextField(
+            controller: motif,
+            maxLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: 'Motif (obligatoire)',
+              hintText: 'Ex. : départ du collaborateur, demande du client',
+              errorText: erreurMotif,
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (motif.text.trim().length < 4) {
+                  setEtat(() => erreurMotif =
+                      'Indiquez un motif (4 caractères minimum).');
+                  return;
+                }
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Désactiver'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirme != true) {
+      motif.dispose();
+      return null;
+    }
+    final String valeur = motif.text.trim();
+    motif.dispose();
+    return valeur;
+  }
+
+  /// Nom technique de table → libellé lisible par un administrateur.
+  String _libelleTable(String table) {
+    switch (table) {
+      case 'produits':
+        return 'Articles du catalogue interne';
+      case 'produits_publications':
+        return 'Articles publiés sur Biashara';
+      case 'ventes':
+        return 'Ventes';
+      case 'clients':
+        return 'Clients';
+      case 'dettes':
+        return 'Dettes clients';
+      case 'paiements_dette':
+        return 'Remboursements de dettes';
+      case 'depenses':
+        return 'Dépenses';
+      case 'caisse':
+        return 'Mouvements de caisse';
+      case 'clotures_caisse':
+        return 'Clôtures de caisse';
+      case 'publicites':
+        return 'Campagnes publicitaires';
+      case 'liens_attribution':
+        return 'Codes d\'attribution';
+      default:
+        return table;
+    }
+  }
+
+  void _messageAdmin(String texte, {bool erreur = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texte),
+        backgroundColor: erreur ? AppCouleurs.danger : null,
       ),
     );
   }
@@ -681,11 +919,16 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               ),
               ListTile(
                 leading: const Icon(Icons.delete_forever, color: Colors.grey),
-                title: const Text('Supprimer le compte', style: TextStyle(color: Colors.grey)),
-                subtitle: const Text('Suppression définitive de l\'utilisateur et de ses données.'),
+                title: const Text('Retirer le compte',
+                    style: TextStyle(color: Colors.grey)),
+                subtitle: const Text(
+                  'Analyse des dépendances avant toute décision : '
+                  'désactivation, anonymisation ou suppression.',
+                  style: TextStyle(fontSize: 11),
+                ),
                 onTap: () {
                   Navigator.pop(context);
-                  _confirmDelete(user);
+                  _retirerCompte(user);
                 },
               ),
             ],

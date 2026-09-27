@@ -825,7 +825,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.28,
+          // ♿ AUDIT FINAL — proportion corrigée de l'échelle de texte : avec
+          // un texte agrandi (Réglages → Accessibilité, jusqu'à 1,3), les
+          // libellés des cartes d'accueil étaient tronqués.
+          childAspectRatio:
+              MiseEnPageAdaptative.proportionCarte(context, 1.28),
           children: [
             for (final CarteAccueil carte in cartes)
               _CarteStat(

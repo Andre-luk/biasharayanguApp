@@ -51,5 +51,7 @@
 		<false/>
 		<key>NSCameraUsageDescription</key>
 		<string>La caméra permet de scanner les QR codes des articles et des conditionnements pour les ajouter au panier de vente.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Votre position sert uniquement à afficher les boutiques et les produits les plus proches de vous. Elle n'est jamais enregistrée sur nos serveurs et vous pouvez la refuser : il suffira alors de choisir votre ville.</string>
 	</dict>
 </plist>

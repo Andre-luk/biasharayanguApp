@@ -1,0 +1,363 @@
+/* ==========================================================================
+   BIASHARA YANGU — THÈME D'IMPRESSION COMMUN DES DOCUMENTS OFFICIELS
+   Dossier : docs/_build/theme.css
+   --------------------------------------------------------------------------
+   Feuille de style partagée par TOUS les documents PDF générés par l'audit
+   final. Elle reprend strictement l'identité de l'application :
+     • marine  #1F3864 (couleur principale)   • orange #F08A4B (accent)
+     • succes  #16A34A · alerte #F59E0B · danger #DC2626 · info #0EA5E9
+   Ainsi un document remis à un partenaire ressemble à l'application qu'il
+   présente : c'est la condition d'une identité de produit crédible.
+
+   Mise en page : A4 portrait, marges 16 mm, sauts de page contrôlés.
+   Génération : google-chrome --headless=new --print-to-pdf (voir build_pdf.sh)
+   ========================================================================== */
+
+:root {
+  --marine: #1f3864;
+  --marine-clair: #2e5aa8;
+  --marine-profond: #16294a;
+  --orange: #f08a4b;
+  --orange-fonce: #d96e2b;
+  --encre: #151a23;
+  --texte: #2c3446;
+  --gris: #5a6478;
+  --gris-clair: #8a93a6;
+  --fond: #f4f6fb;
+  --trait: #e3e7f0;
+  --succes: #16a34a;
+  --alerte: #f59e0b;
+  --danger: #dc2626;
+  --info: #0ea5e9;
+
+  --police: 'Noto Sans', 'Liberation Sans', 'DejaVu Sans', 'Segoe UI', Arial, sans-serif;
+  --mono: 'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace;
+}
+
+@page {
+  size: A4 portrait;
+  margin: 16mm 15mm 18mm 15mm;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 10.5pt; }
+
+body {
+  font-family: var(--police);
+  color: var(--texte);
+  line-height: 1.5;
+  background: #ffffff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* --------------------------------------------------------------------------
+   COUVERTURE
+   -------------------------------------------------------------------------- */
+.couverture {
+  height: 252mm;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, var(--marine-profond) 0%, var(--marine) 55%, #2a4a83 100%);
+  color: #ffffff;
+  padding: 22mm 18mm;
+  margin: -16mm -15mm 0 -15mm;
+  page-break-after: always;
+  position: relative;
+  overflow: hidden;
+}
+
+.couverture::after {
+  content: '';
+  position: absolute;
+  right: -60mm;
+  bottom: -60mm;
+  width: 170mm;
+  height: 170mm;
+  border-radius: 50%;
+  background: rgba(240, 138, 75, 0.16);
+}
+
+.couverture .marque { display: flex; align-items: center; gap: 5mm; }
+.couverture .marque img { height: 17mm; }
+.couverture .marque .nom {
+  font-size: 19pt;
+  font-weight: 900;
+  letter-spacing: -0.4pt;
+}
+
+.couverture .etiquette {
+  display: inline-block;
+  margin-top: 3mm;
+  padding: 1.4mm 3.5mm;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 0.4mm solid rgba(255, 255, 255, 0.35);
+  font-size: 8.5pt;
+  letter-spacing: 0.6pt;
+  text-transform: uppercase;
+}
+
+.couverture .bloc-titre { margin-top: auto; position: relative; z-index: 2; }
+.couverture h1 {
+  font-size: 31pt;
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: -2.4pt;
+  margin-bottom: 5mm;
+}
+.couverture h1 em {
+  font-style: normal;
+  color: var(--orange);
+  display: block;
+}
+.couverture .sous-titre {
+  font-size: 12pt;
+  line-height: 1.5;
+  max-width: 135mm;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.couverture .pied-couverture {
+  margin-top: 12mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-size: 8.5pt;
+  color: rgba(255, 255, 255, 0.82);
+  border-top: 0.3mm solid rgba(255, 255, 255, 0.25);
+  padding-top: 4mm;
+  position: relative;
+  z-index: 2;
+}
+
+.couverture .pied-couverture strong { display: block; color: #fff; font-size: 9.5pt; }
+
+/* Pastilles de repère sur la couverture */
+.couverture .pastilles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3mm;
+  margin-top: 8mm;
+  position: relative;
+  z-index: 2;
+}
+.couverture .pastilles span {
+  padding: 1.6mm 3.4mm;
+  border-radius: 2mm;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 8.5pt;
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   SOMMAIRE
+   -------------------------------------------------------------------------- */
+.sommaire { page-break-after: always; }
+.sommaire ol { list-style: none; counter-reset: som; margin-top: 6mm; }
+.sommaire li {
+  counter-increment: som;
+  display: flex;
+  gap: 4mm;
+  padding: 2.6mm 0;
+  border-bottom: 0.25mm dotted var(--trait);
+  font-size: 10.5pt;
+}
+.sommaire li::before {
+  content: counter(som, decimal-leading-zero);
+  font-weight: 900;
+  color: var(--orange);
+  min-width: 9mm;
+}
+.sommaire li strong { display: block; font-weight: 700; color: var(--marine); }
+.sommaire li span { color: var(--gris); font-size: 9.5pt; }
+
+/* --------------------------------------------------------------------------
+   TITRES ET SECTIONS
+   -------------------------------------------------------------------------- */
+h2 {
+  font-size: 17pt;
+  font-weight: 900;
+  color: var(--marine);
+  letter-spacing: -0.6pt;
+  margin: 0 0 4mm;
+  padding-bottom: 2.5mm;
+  border-bottom: 1mm solid var(--orange);
+  page-break-after: avoid;
+}
+h2 .num {
+  display: inline-block;
+  min-width: 10mm;
+  color: var(--orange);
+}
+h3 {
+  font-size: 12pt;
+  font-weight: 800;
+  color: var(--marine);
+  margin: 6mm 0 2mm;
+  page-break-after: avoid;
+}
+h4 {
+  font-size: 10.5pt;
+  font-weight: 800;
+  color: var(--marine-clair);
+  margin: 4mm 0 1.5mm;
+  page-break-after: avoid;
+}
+.section { page-break-before: always; }
+.section:first-of-type { page-break-before: auto; }
+
+p { margin-bottom: 2.6mm; }
+p.intro { font-size: 11pt; color: var(--marine); font-weight: 600; }
+ul, ol { margin: 0 0 3mm 5mm; }
+li { margin-bottom: 1.3mm; }
+strong { color: var(--marine); font-weight: 800; }
+code {
+  font-family: var(--mono);
+  font-size: 9pt;
+  background: var(--fond);
+  padding: 0.4mm 1.2mm;
+  border-radius: 1mm;
+  color: var(--marine-profond);
+}
+a { color: var(--marine-clair); text-decoration: none; }
+small { font-size: 8.5pt; color: var(--gris); }
+
+/* --------------------------------------------------------------------------
+   TABLEAUX
+   -------------------------------------------------------------------------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 3mm 0 4mm;
+  font-size: 9.5pt;
+  page-break-inside: avoid;
+}
+thead th {
+  background: var(--marine);
+  color: #fff;
+  text-align: left;
+  padding: 2mm 2.5mm;
+  font-weight: 700;
+  font-size: 9pt;
+}
+tbody td {
+  padding: 2mm 2.5mm;
+  border-bottom: 0.25mm solid var(--trait);
+  vertical-align: top;
+}
+tbody tr:nth-child(even) { background: #fafbfe; }
+table.compact { font-size: 9pt; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* --------------------------------------------------------------------------
+   ENCARTS, BADGES, CHIFFRES CLÉS
+   -------------------------------------------------------------------------- */
+.encart {
+  background: var(--fond);
+  border-left: 1.2mm solid var(--marine-clair);
+  border-radius: 2mm;
+  padding: 3.5mm 4mm;
+  margin: 3mm 0;
+  page-break-inside: avoid;
+}
+.encart.principe { border-left-color: var(--orange); }
+.encart.alerte { border-left-color: var(--alerte); background: #fffaf0; }
+.encart.succes { border-left-color: var(--succes); background: #f3fcf6; }
+.encart.danger { border-left-color: var(--danger); background: #fff5f5; }
+.encart h4 { margin-top: 0; }
+.encart p:last-child { margin-bottom: 0; }
+
+.badge {
+  display: inline-block;
+  padding: 0.8mm 2.4mm;
+  border-radius: 999px;
+  font-size: 8pt;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3pt;
+}
+.badge.vert { background: #e8f7ee; color: var(--succes); }
+.badge.orange { background: #fdf0e7; color: var(--orange-fonce); }
+.badge.rouge { background: #fdeaea; color: var(--danger); }
+.badge.bleu { background: #e9f3fc; color: var(--info); }
+.badge.gris { background: #eef0f6; color: var(--gris); }
+
+.grille-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+.grille-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
+.grille-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5mm; }
+
+.kpi {
+  background: #fff;
+  border: 0.3mm solid var(--trait);
+  border-radius: 2.5mm;
+  padding: 3mm;
+  page-break-inside: avoid;
+}
+.kpi .valeur {
+  font-size: 19pt;
+  font-weight: 900;
+  color: var(--marine);
+  letter-spacing: -0.8pt;
+  line-height: 1.1;
+}
+.kpi .libelle { font-size: 8.5pt; color: var(--gris); margin-top: 0.8mm; }
+.kpi.orange .valeur { color: var(--orange-fonce); }
+
+.carte {
+  border: 0.3mm solid var(--trait);
+  border-radius: 3mm;
+  padding: 4mm;
+  margin-bottom: 3.5mm;
+  page-break-inside: avoid;
+}
+.carte h4 { margin-top: 0; }
+.carte .routes { font-family: var(--mono); font-size: 8.5pt; color: var(--gris); }
+
+/* --------------------------------------------------------------------------
+   IMAGES ET CAPTURES
+   -------------------------------------------------------------------------- */
+figure { margin: 4mm 0; page-break-inside: avoid; }
+figure img {
+  width: 100%;
+  border-radius: 2.5mm;
+  border: 0.3mm solid var(--trait);
+}
+figure.tel img { width: 58mm; display: block; margin: 0 auto; }
+/* Captures de bureau : cadre réduit et centré pour ne pas occuper une page
+   entière et laisser le texte respirer à côté. */
+figure.ecran img { width: 80%; display: block; margin: 0 auto; }
+figure figcaption {
+  font-size: 8.5pt;
+  color: var(--gris);
+  margin-top: 1.6mm;
+  text-align: center;
+  font-style: italic;
+}
+.duo { display: flex; gap: 4mm; align-items: flex-start; }
+.duo figure { flex: 1; }
+
+/* --------------------------------------------------------------------------
+   PIED DE PAGE DOCUMENTAIRE
+   -------------------------------------------------------------------------- */
+.pied {
+  margin-top: 8mm;
+  padding-top: 3mm;
+  border-top: 0.3mm solid var(--trait);
+  display: flex;
+  justify-content: space-between;
+  font-size: 8pt;
+  color: var(--gris-clair);
+}
+.pied strong { color: var(--gris); font-weight: 700; }
+
+.mention-juridique {
+  background: #fffbf5;
+  border: 0.3mm dashed var(--alerte);
+  border-radius: 2mm;
+  padding: 3.5mm 4mm;
+  font-size: 9pt;
+  margin: 4mm 0;
+}
+.mention-juridique strong { color: var(--orange-fonce); }

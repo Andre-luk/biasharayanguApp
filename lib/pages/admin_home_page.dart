@@ -25,6 +25,10 @@ import 'package:biashara_yangu/pages/rapports_page.dart';
 // 🧾 MODULE 14 — workflow d'activation à double validation.
 import 'package:biashara_yangu/pages/activations_finance_page.dart';
 import 'package:biashara_yangu/pages/comptes_verification_page.dart';
+// 🛡️ MODULE 20 — administration plateforme : parc des boutiques et modération
+// du catalogue public (manques relevés par l'audit final).
+import 'package:biashara_yangu/pages/admin_boutiques_page.dart';
+import 'package:biashara_yangu/pages/admin_moderation_page.dart';
 
 
 // ====================================================================
@@ -109,6 +113,22 @@ class _AdminHomePageState extends State<AdminHomePage> {
       icone: Icons.rocket_launch_rounded,
       pages: const <PageAccess>[PageAccess.activationsFinance],
       builder: (_) => const ActivationsFinancePage(),
+    ),
+    _OngletAdmin(
+      label: 'Boutiques',
+      icone: Icons.store_mall_directory_rounded,
+      // 🛡️ MODULE 20 — parc complet des boutiques de la plateforme :
+      // activation/désactivation et retrait du catalogue public.
+      pages: const <PageAccess>[PageAccess.boutiques],
+      builder: (_) => const AdminBoutiquesPage(showAppBar: false),
+    ),
+    _OngletAdmin(
+      label: 'Modération',
+      icone: Icons.gavel_rounded,
+      // 🛡️ MODULE 20 — modération du catalogue public : retrait motivé d'un
+      // article (le motif reste visible du commerçant).
+      pages: const <PageAccess>[PageAccess.moderation],
+      builder: (_) => const AdminModerationPage(showAppBar: false),
     ),
     _OngletAdmin(
       label: 'Référentiels',

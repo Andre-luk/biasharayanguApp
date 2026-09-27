@@ -631,6 +631,11 @@ class _MarketplaceWelcomePageState extends State<MarketplaceWelcomePage> {
             icon: const Icon(Icons.refresh_rounded),
             label: const Text('Réessayer'),
           ),
+          const SizedBox(height: 26),
+          // Le catalogue est injoignable (hors ligne, maintenance…) : on
+          // laisse malgré tout au commerçant le chemin vers son espace ou vers
+          // l'inscription, afin qu'AUCUN écran d'erreur ne soit une impasse.
+          _sectionCommercants(context),
         ],
       ),
     );

@@ -133,6 +133,11 @@ class PermissionService {
           PageAccess.qrCodes,
           PageAccess.assistance,
           PageAccess.notifications,
+          // 🛡️ MODULE 20 — le gestionnaire des comptes administre le parc des
+          // boutiques et modère le catalogue public (le service le fait déjà
+          // au quotidien : il doit pouvoir agir sans être Super Admin).
+          PageAccess.boutiques,
+          PageAccess.moderation,
         ])
           page: const <ActionAccess>{
             ActionAccess.voir,
@@ -178,6 +183,10 @@ class PermissionService {
         PageAccess.entreprises: const <ActionAccess>{ActionAccess.voir},
         PageAccess.utilisateurs: const <ActionAccess>{ActionAccess.voir},
         PageAccess.abonnements: const <ActionAccess>{ActionAccess.voir},
+        // 🛡️ MODULE 20 — le support CONSULTE le parc des boutiques pour
+        // répondre aux appels, mais ne modère rien : la modération du
+        // catalogue public reste une décision commerciale.
+        PageAccess.boutiques: const <ActionAccess>{ActionAccess.voir},
         PageAccess.notifications: const <ActionAccess>{
           ActionAccess.voir,
           ActionAccess.modifier,
@@ -351,6 +360,15 @@ class PermissionService {
     _RegleRoute('/admin/types-activites', PageAccess.activites),
     _RegleRoute('/admin/abonnements', PageAccess.abonnements),
     _RegleRoute('/admin/utilisateurs', PageAccess.utilisateurs),
+    // 🛡️ MODULE 20 — administration plateforme : parc des boutiques et
+    // modération du catalogue public. Zones SENSIBLES : on ne peut pas
+    // compter sur le masquage des tuiles, la route est filtrée ici et le
+    // serveur revérifie `est_plateforme()` dans chaque RPC.
+    _RegleRoute('/admin/boutiques', PageAccess.boutiques),
+    _RegleRoute('/admin/moderation', PageAccess.moderation),
+    // Conservée par précaution : les villes se gèrent aujourd'hui depuis
+    // l'onglet « Référentiels », mais la règle protège l'URL si un écran
+    // dédié est ajouté plus tard (une URL sans règle est autorisée).
     _RegleRoute('/admin/villes', PageAccess.villes),
     // 🧾 MODULE 14 — écrans admin du workflow d'activation (rôles revérifiés
     // par les RPC : le gestionnaire n'active pas, la finance valide.

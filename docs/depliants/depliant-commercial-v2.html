@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Dépliant commercial A4 (3 volets, recto-verso) — version 2</title>
+<style>
+/* ==========================================================================
+   BIASHARA YANGU — DÉPLIANT COMMERCIAL (version 2, revue après audit)
+   A4 paysage 297 × 210 mm — 3 volets de 99 mm — recto / verso
+   Plis : 99 mm et 198 mm.
+   Nouveautés de cette version : place réelle à la MARKETPLACE (absente de la
+   version 1) et à la visibilité mesurée ; un volet entier « pourquoi nous »
+   plutôt qu'une liste de fonctions.
+   ========================================================================== */
+:root{
+  --marine:#1F3864; --marine-p:#16294A; --marine-c:#2E5AA8;
+  --orange:#F08A4B; --orange-f:#D96E2B;
+  --encre:#151A23; --gris:#5A6478; --gris-clair:#8A93A6;
+  --fond:#F4F6FB; --trait:#E3E7F0; --succes:#16A34A;
+  --police:'Noto Sans','Liberation Sans','DejaVu Sans','Segoe UI',Arial,sans-serif;
+}
+@page{ size:A4 landscape; margin:0; }
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{
+  font-family:var(--police); color:var(--encre); background:#fff;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+.face{ width:297mm; height:210mm; display:flex; page-break-after:always; overflow:hidden; }
+.face:last-child{ page-break-after:auto; }
+.volet{ width:99mm; height:210mm; padding:9mm 8mm; position:relative; overflow:hidden; }
+
+/* --- Volet 1 : couverture --- */
+.couv{
+  background:linear-gradient(140deg,var(--marine-p) 0%,var(--marine) 58%,#2a4a83 100%);
+  color:#fff; display:flex; flex-direction:column;
+}
+.couv .marque{ display:flex; align-items:center; gap:3mm; }
+.couv .marque img{ height:12mm; }
+.couv .marque .nom{ font-size:14pt; font-weight:900; letter-spacing:-.4pt; }
+.couv h1{ margin-top:auto; font-size:25pt; font-weight:900; line-height:1.07; letter-spacing:-1.6pt; }
+.couv h1 em{ font-style:normal; color:var(--orange); display:block; }
+.couv p{ margin-top:4mm; font-size:10pt; line-height:1.5; color:rgba(255,255,255,.9); }
+.couv .etiquettes{ margin-top:6mm; display:flex; flex-wrap:wrap; gap:2mm; }
+.couv .etiquettes span{
+  padding:1.2mm 2.6mm; border-radius:1.5mm; background:rgba(255,255,255,.13);
+  font-size:7.6pt; font-weight:700;
+}
+.couv .bas{
+  margin-top:7mm; padding-top:3.5mm; border-top:.3mm solid rgba(255,255,255,.28);
+  font-size:7.6pt; color:rgba(255,255,255,.85); line-height:1.5;
+}
+.couv .bas strong{ color:#fff; }
+
+/* --- Titres de volet --- */
+h2{ font-size:12.5pt; font-weight:900; color:var(--marine); letter-spacing:-.4pt; line-height:1.15; margin-bottom:3.5mm; }
+h2 .filet{ display:block; width:14mm; height:1.1mm; background:var(--orange); margin-top:2mm; border-radius:1mm; }
+h3{ font-size:9.4pt; font-weight:800; color:var(--marine-c); margin:3.5mm 0 1.4mm; }
+p{ font-size:8.6pt; line-height:1.5; }
+ul{ margin:1.5mm 0 0 4mm; }
+li{ font-size:8.6pt; line-height:1.45; margin-bottom:1.1mm; }
+strong{ color:var(--marine); font-weight:800; }
+
+/* --- Blocs --- */
+.bloc{ background:var(--fond); border-radius:2.5mm; padding:3.5mm; margin-bottom:3mm; }
+.bloc.orange{ background:#fdf1e8; }
+.bloc.vert{ background:#f2fbf5; }
+.bloc.dark{ background:var(--marine); color:#fff; }
+.bloc.dark strong{ color:#fff; }
+.bloc.dark p, .bloc.dark li{ color:rgba(255,255,255,.92); }
+.puce{ display:inline-block; width:4.6mm; height:4.6mm; border-radius:1.2mm; background:var(--marine); color:#fff; font-size:7.4pt; font-weight:900; text-align:center; line-height:4.6mm; margin-right:2mm; }
+.puce.o{ background:var(--orange); color:var(--marine-p); }
+
+/* --- Visibilité : les 4 niveaux --- */
+.niveaux{ margin-top:2mm; }
+.niveau{ display:flex; gap:2.5mm; align-items:flex-start; margin-bottom:2.4mm; }
+.niveau .marqueur{ width:2.2mm; border-radius:1mm; align-self:stretch; min-height:8mm; }
+.niveau .txt{ flex:1; }
+.niveau .txt b{ display:block; font-size:8.8pt; color:var(--marine); }
+.niveau .txt span{ font-size:8.1pt; color:var(--gris); line-height:1.4; }
+
+/* --- Chiffres --- */
+.kpis{ display:flex; gap:2mm; margin:3mm 0; }
+.kpis .k{ flex:1; background:#fff; border:.25mm solid var(--trait); border-radius:2mm; padding:2.4mm; text-align:center; }
+.kpis .k b{ display:block; font-size:14pt; font-weight:900; color:var(--marine); letter-spacing:-.8pt; }
+.kpis .k span{ font-size:7pt; color:var(--gris); line-height:1.3; display:block; margin-top:.6mm; }
+
+/* --- Images --- */
+figure{ margin:2.5mm 0; }
+figure img{ width:100%; border-radius:2mm; border:.25mm solid var(--trait); }
+figure figcaption{ font-size:6.9pt; color:var(--gris-clair); margin-top:1mm; text-align:center; font-style:italic; }
+.tel{ width:34mm; margin:0 auto; display:block; }
+.duo{ display:flex; gap:2.5mm; }
+.duo figure{ flex:1; }
+  .duo figure img{ width:100%; }
+/* --- Volet 6 : contact --- */
+.contact{ background:var(--marine-p); color:#fff; }
+.contact h2{ color:#fff; }
+.contact .bloc.dark{ background:rgba(255,255,255,.1); }
+.pied-volet{
+  margin-top:auto; padding-top:3mm; border-top:.25mm solid var(--trait);
+  font-size:6.9pt; color:var(--gris-clair); display:flex; justify-content:space-between;
+}
+.contact .pied-volet{ border-top-color:rgba(255,255,255,.25); color:rgba(255,255,255,.7); }
+.colonne{ height:210mm; display:flex; flex-direction:column; }
+.reperes .plie{ position:absolute; top:0; bottom:0; width:0; border-left:.3mm dashed rgba(0,0,0,.18); }
+.reperes .plie.g{ left:99mm; }
+.reperes .plie.d{ left:198mm; }
+</style>
+</head>
+<body>
+
+<!-- ================== RECTO ================== -->
+<section class="face reperes">
+
+  <!-- Volet 1 — couverture -->
+  <div class="volet couv">
+    <div class="marque">
+      <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+      <span class="nom">Biashara&nbsp;Yangu</span>
+    </div>
+
+    <h1>Vos ventes en ordre.<em>Votre boutique trouvable.</em></h1>
+    <p>
+      Gérez votre commerce au quotidien — caisse, stock, crédits, rapports —
+      et rendez votre boutique visible des clients de votre quartier.
+    </p>
+    <div class="etiquettes">
+      <span>Boutique</span><span>Hôtel</span><span>Restaurant</span>
+      <span>Pharmacie</span><span>Salle des fêtes</span><span>Boulangerie</span>
+    </div>
+
+    <div class="bas">
+      <strong>Android · Windows · Linux · Web</strong><br>
+      Biashara Tech — Lubumbashi, République Démocratique du Congo
+    </div>
+  </div>
+
+  <!-- Volet 2 — le constat -->
+  <div class="volet colonne">
+    <h2>Ce qui vous coûte de l'argent sans se voir<span class="filet"></span></h2>
+
+    <div class="bloc">
+      <p><strong>Combien avez-vous vendu aujourd'hui, réellement ?</strong></p>
+      <p style="margin-top:1.5mm">
+        Si la réponse demande d'ouvrir un cahier, alors vous ne savez pas
+        encore ce que votre commerce gagne. Quatre fuites reviennent toujours :
+      </p>
+    </div>
+
+    <div class="bloc orange">
+      <p><span class="puce o">1</span><strong>Les ventes non tracées.</strong>
+      Une erreur de caisse, un prix mal appliqué : sans trace, cela ne se voit jamais.</p>
+    </div>
+    <div class="bloc orange">
+      <p><span class="puce o">2</span><strong>Les crédits oubliés.</strong>
+      Qui vous doit combien, depuis quand, et combien a déjà été remboursé ?</p>
+    </div>
+    <div class="bloc orange">
+      <p><span class="puce o">3</span><strong>Le stock qui ment.</strong>
+      Rupture sur ce qui se vend, argent dormant sur ce qui ne se vend pas.</p>
+    </div>
+    <div class="bloc orange">
+      <p><span class="puce o">4</span><strong>La boutique invisible.</strong>
+      Un client cherche votre produit à 300 mètres et ne sait pas que vous l'avez.</p>
+    </div>
+
+    <div class="bloc vert">
+      <p><strong>Un produit, deux bénéfices :</strong> de l'ordre dans votre
+      gestion, et une présence là où vos clients cherchent.</p>
+    </div>
+
+    <div class="pied-volet"><span>Biashara Yangu</span><span>Version 2.3</span></div>
+  </div>
+
+  <!-- Volet 3 — la gestion -->
+  <div class="volet colonne">
+    <h2>Gérer votre commerce, simplement<span class="filet"></span></h2>
+
+    <figure>
+      <img src="../../marketing/depliant/assets/ecrans/linux-accueil.png" alt="Accueil de l'application">
+      <figcaption>Un accueil qui n'affiche que les modules de votre activité.</figcaption>
+    </figure>
+
+    <div class="bloc">
+      <p><span class="puce">V</span><strong>Vendre en quelques secondes.</strong>
+      Scan ou recherche, quantité, encaissement, reçu. La clôture de caisse
+      rapproche l'encaissé du théorique et nomme l'écart.</p>
+    </div>
+    <div class="bloc">
+      <p><span class="puce">S</span><strong>Un stock qui ne ment plus.</strong>
+      Entrées, sorties, ajustements, inventaire avec écart calculé, alertes
+      avant la rupture, suivi des péremptions.</p>
+    </div>
+    <div class="bloc">
+      <p><span class="puce">C</span><strong>Des crédits suivis.</strong>
+      Solde, échéance, remboursements partiels : vous relancez avec un chiffre,
+      pas un souvenir.</p>
+    </div>
+    <div class="bloc">
+      <p><span class="puce">R</span><strong>Un résultat lisible.</strong>
+      Recettes, dépenses, marge, valeur du stock, export PDF pour la banque ou
+      le comptable.</p>
+    </div>
+    <div class="bloc dark">
+      <p><strong>Et vos données restent les vôtres :</strong> jamais votre stock
+      exact, jamais vos prix d'achat, jamais vos clients ne sortent vers le
+      public.</p>
+    </div>
+
+    <div class="pied-volet"><span>Recto — gestion</span><span>biasharayangu</span></div>
+  </div>
+</section>
+
+<!-- ================== VERSO ================== -->
+<section class="face reperes">
+
+  <!-- Volet 4 — la marketplace -->
+  <div class="volet colonne">
+    <h2>Et les clients du quartier vous trouvent<span class="filet"></span></h2>
+
+    <div class="bloc dark">
+      <p><strong>Le client n'a pas besoin de compte.</strong> Il ouvre, il
+      cherche, il voit qui vend, à quel prix et à quelle distance. Puis il
+      appelle ou demande l'itinéraire.</p>
+    </div>
+
+    <h3>Ce que vit votre client</h3>
+    <ul>
+      <li>Recherche « riz », « ciment », « téléphone ».</li>
+      <li>Résultats : produit, prix, boutique, distance.</li>
+      <li><strong>Comparaison des prix</strong> entre toutes les boutiques qui vendent l'article.</li>
+      <li>Appel, WhatsApp, itinéraire, partage de la fiche.</li>
+      <li>Carte des boutiques proches — ou simple choix d'une ville.</li>
+    </ul>
+
+    <div class="duo">
+      <figure>
+        <img src="../../marketing/depliant/assets/ecrans/mobile-connexion.png" alt="Catalogue sans compte">
+        <figcaption>Le catalogue s'ouvre sans compte.</figcaption>
+      </figure>
+      <figure>
+        <img src="../../marketing/depliant/assets/ecrans/mobile-creation.png" alt="Création de compte commerçant">
+        <figcaption>Le commerçant, lui, crée son espace.</figcaption>
+      </figure>
+    </div>
+
+    <div class="bloc vert">
+      <p><strong>Sa position n'est ni transmise ni conservée.</strong> Elle
+      sert à calculer une distance, et il peut la refuser : il choisira alors
+      une ville, avec le même résultat.</p>
+    </div>
+
+    <div class="pied-volet"><span>Verso — marketplace</span><span>biasharayangu</span></div>
+  </div>
+
+  <!-- Volet 5 — visibilité et multi-plateformes -->
+  <div class="volet colonne">
+    <h2>Ce que la plateforme vous apporte, chiffré<span class="filet"></span></h2>
+
+    <div class="niveaux">
+      <div class="niveau">
+        <div class="marqueur" style="background:#0EA5E9"></div>
+        <div class="txt"><b>Visibilité</b><span>Vos articles apparaissent dans les recherches de votre zone.</span></div>
+      </div>
+      <div class="niveau">
+        <div class="marqueur" style="background:#16A34A"></div>
+        <div class="txt"><b>Intérêt</b><span>Des personnes ouvrent vos fiches : votre offre attire.</span></div>
+      </div>
+      <div class="niveau">
+        <div class="marqueur" style="background:#F59E0B"></div>
+        <div class="txt"><b>Intention</b><span>Elles demandent l'itinéraire, appellent ou écrivent : elles viennent.</span></div>
+      </div>
+      <div class="niveau">
+        <div class="marqueur" style="background:#DC2626"></div>
+        <div class="txt"><b>Conversion</b><span>Des achats réellement attribués, via les codes et QR fournis.</span></div>
+      </div>
+    </div>
+
+    <p style="margin:2mm 0 3mm">
+      Cette distinction évite de payer pour de belles courbes : elle vous dit
+      <strong>où agir</strong>. Beaucoup d'affiches sans intérêt ? Le titre ou
+      la photo. Beaucoup d'intentions sans vente ? L'accueil, le prix ou la
+      disponibilité.
+    </p>
+
+    <div class="bloc orange">
+      <p><strong>Une petite boutique proche, disponible et bien renseignée
+      passe devant une grande enseigne éloignée.</strong> Le classement ne
+      dépend jamais de la taille de l'entreprise.</p>
+    </div>
+
+    <h3>La même application partout</h3>
+    <div class="kpis">
+      <div class="k"><b>Android</b><span>caisse et terrain</span></div>
+      <div class="k"><b>Windows</b><span>poste de gestion</span></div>
+      <div class="k"><b>Linux</b><span>bureau</span></div>
+      <div class="k"><b>Web</b><span>consultation</span></div>
+    </div>
+
+    <div class="bloc">
+      <p><strong>Plusieurs boutiques, plusieurs métiers,</strong> un seul
+      compte : chaque activité a ses écrans et ses données, cloisonnées.</p>
+    </div>
+
+    <div class="pied-volet"><span>Ce que cela rapporte</span><span>Version 2.3</span></div>
+  </div>
+
+  <!-- Volet 6 — passage à l'action -->
+  <div class="volet couv contact">
+    <div class="marque">
+      <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+      <span class="nom">Biashara&nbsp;Yangu</span>
+    </div>
+
+    <h2 style="margin-top:7mm; padding-right:4mm">Commencez<br>maintenant<span class="filet"></span></h2>
+
+    <div class="bloc dark">
+      <p><strong style="font-size:9.6pt">1. Créez votre compte</strong><br>
+      Choisissez votre activité : les écrans correspondants s'affichent
+      immédiatement.</p>
+    </div>
+    <div class="bloc dark">
+      <p><strong style="font-size:9.6pt">2. Préparez vos articles</strong><br>
+      Saisissez vos produits et vos prix — vous pouvez le faire dès la création
+      du compte, avant même l'activation.</p>
+    </div>
+    <div class="bloc dark">
+      <p><strong style="font-size:9.6pt">3. Publiez votre vitrine</strong><br>
+      Localisez votre boutique, confirmez la position, publiez vos articles.
+      Un aperçu vous montre ce que verra le client.</p>
+    </div>
+    <div class="bloc dark">
+      <p><strong style="font-size:9.6pt">4. Regardez vos premiers chiffres</strong><br>
+      Recherches de votre zone, fiches ouvertes, appels, itinéraires demandés.</p>
+    </div>
+
+    <div class="bloc" style="background:var(--orange); color:var(--marine-p)">
+      <p><strong style="color:var(--marine-p); font-size:9.6pt">
+      Demandez une démonstration sur vos propres articles.</strong><br>
+      Dix minutes suffisent pour vous montrer vos prix, votre stock et votre
+      vitrine à l'écran.</p>
+    </div>
+
+    <div class="bas" style="margin-top:auto">
+      <strong>Biashara Tech</strong><br>
+      Lubumbashi — République Démocratique du Congo<br>
+      Assistance, abonnement et activation : service commercial Biashara Yangu
+    </div>
+
+    <div class="pied-volet"><span>Dépliant commercial — version 2</span><span>Septembre 2026</span></div>
+  </div>
+</section>
+
+</body>
+</html>

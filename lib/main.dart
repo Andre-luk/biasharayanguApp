@@ -10,6 +10,7 @@ import 'config/app_router.dart';
 import 'l10n/app_localizations.dart';
 import 'models/permission.dart';
 import 'ui/theme/app_theme.dart';
+import 'ui/widgets/ecran_erreur_biashara.dart';
 import 'utils/language_manager.dart';
 import 'utils/theme_manager.dart';
 import 'utils/accessibilite_manager.dart';
@@ -36,6 +37,7 @@ import 'services/permission_service.dart';
 import 'db_helper.dart';
 
 import 'dart:async' show unawaited;
+import 'dart:ui' show PlatformDispatcher;
 
 late final SupabaseClient supabase;
 
@@ -80,6 +82,24 @@ void main() async {
   // 1. Initialisation des bindings et Splash Screen
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // 🛡️ FILET DE SÉCURITÉ GLOBAL (audit final de professionnalisation).
+  // Sans lui, une exception non capturée remplaçait l'écran par le panneau
+  // rouge « Unhandled Exception » — illisible et donnant l'image d'une
+  // application cassée. On affiche désormais un message compréhensible et on
+  // journalise la cause pour le diagnostic.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    debugPrint('🛡️ Erreur d\'interface interceptée : ${details.exception}');
+  };
+  ErrorWidget.builder =
+      (FlutterErrorDetails details) => const EcranErreurBiashara();
+  // Les erreurs asynchrones (hors arbre de widgets : appels réseau lancés en
+  // arrière-plan) ne doivent plus faire planter l'application en production.
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    debugPrint('🛡️ Erreur asynchrone non capturée : $error');
+    return true;
+  };
 
   // 2. 🚀 Préparatifs EN PARALLÈLE : formats de date (fix crash PDF/Vivo Y93)
   //    et initialisation Supabase — le lancement est ainsi plus rapide.
@@ -197,8 +217,15 @@ class _BiasharaAppState extends State<BiasharaApp> {
       String targetRoute = '/login';
 
       // Logique de routage intelligente
+      //
+      // 🛍️ MODULE 19 — « Marketplace d'abord » : un téléphone sans compte,
+      // sans session et sans utilisateur local appartient le plus souvent à un
+      // simple client (visiteur). Il découvre donc immédiatement le catalogue
+      // public /biashara, page qui propose ensuite « Se connecter » et
+      // « Enregistrer ma boutique » aux commerçants. Aucun compte n'est
+      // jamais exigé d'un visiteur.
       if (firstUser == null && savedUserId == null && currentSession == null) {
-        targetRoute = '/setup';
+        targetRoute = '/biashara';
       } else if (savedUserId != null || currentSession != null) {
         final uid = savedUserId ?? currentSession?.user.id;
 
@@ -337,7 +364,16 @@ class _BiasharaAppState extends State<BiasharaApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [Locale('fr'), Locale('en'), Locale('sw')],
+      supportedLocales: const [
+        // ⚠️ AUDIT FINAL — vérité de l'interface : seuls les libellés français
+        // sont réellement traduits (26 clés ARB pour 3 langues). Annoncer le
+        // français, l'anglais et le swahili tout en affichant la quasi-totalité
+        // de l'interface en français était une promesse trompeuse. Le
+        // sélecteur de langue explique désormais que les autres langues sont
+        // en préparation, et une locale déjà enregistrée sur un appareil est
+        // ramenée au français par Flutter (aucun plantage).
+        Locale('fr'),
+      ],
       routerConfig: appRouter,
       // ✨ Splash moderne : il recouvre l'application pendant le démarrage
       // (session, base, permissions…) puis disparaît en fondu pour révéler

@@ -6,7 +6,14 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- 🔔 Notifications locales (Android 13+) : ventes + rapport du jour. -->
+    <!-- � MODULE 19 — Boutiques proches. Demandée UNIQUEMENT quand le
+         visiteur touche « Autour de moi » (jamais au démarrage). En cas de
+         refus, l'application propose de choisir une ville ou la carte :
+         aucune fonctionnalité n'est bloquée. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- �🔔 Notifications locales (Android 13+) : ventes + rapport du jour. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />

@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BIASHARA YANGU — Dossier commercial</title>
+<link rel="stylesheet" href="../_build/theme.css">
+<style>
+  /* Le dossier commercial privilégie l'impact visuel : encarts larges,
+     chiffres mis en avant, blocs d'argumentaire. Les règles communes
+     (thème) restent la base. */
+  .argument { display:grid; grid-template-columns: 12mm 1fr; gap:4mm; margin-bottom:4mm; page-break-inside:avoid; }
+  .argument .puce {
+    width:12mm; height:12mm; border-radius:3mm; background:var(--marine);
+    color:#fff; font-weight:900; font-size:13pt; display:flex;
+    align-items:center; justify-content:center;
+  }
+  .argument.orange .puce { background:var(--orange); color:var(--marine-profond); }
+  .argument h4 { margin:0 0 1mm; }
+  .argument p { margin:0; }
+  .citation {
+    background:linear-gradient(135deg,var(--marine) 0%,#2a4a83 100%);
+    color:#fff; border-radius:3mm; padding:6mm; margin:5mm 0;
+    page-break-inside:avoid;
+  }
+  .citation p { font-size:12.5pt; font-weight:700; line-height:1.45; margin:0; }
+  .citation small { color:rgba(255,255,255,.75); display:block; margin-top:3mm; font-size:8.5pt; }
+</style>
+</head>
+<body>
+
+<section class="couverture">
+  <div class="marque">
+    <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+    <span class="nom">Biashara&nbsp;Yangu</span>
+  </div>
+  <div class="etiquette">Dossier commercial · Version 2.3.0</div>
+
+  <div class="bloc-titre">
+    <h1>Vos ventes en ordre.<br><em>Votre boutique trouvable.</em></h1>
+    <p class="sous-titre">
+      Un seul outil pour gérer votre commerce au quotidien — et une
+      marketplace locale qui amène chez vous les clients de votre quartier.
+    </p>
+    <div class="pastilles">
+      <span>Boutique</span><span>Hôtel</span><span>Restaurant</span>
+      <span>Pharmacie</span><span>Salle des fêtes</span><span>Boulangerie</span>
+    </div>
+  </div>
+
+  <div class="pied-couverture">
+    <div><strong>Biashara Tech</strong>Lubumbashi, République Démocratique du Congo</div>
+    <div style="text-align:right"><strong>Édition de septembre 2026</strong>Document destiné aux commerçants et partenaires</div>
+  </div>
+</section>
+
+<!-- ===================== LE CONSTAT ===================== -->
+<section class="section">
+  <h2><span class="num">1.</span>Le constat</h2>
+
+  <p class="intro">
+    La plupart des commerces de quartier travaillent bien. Ce qui leur manque,
+    ce n'est pas le savoir-faire : c'est la trace écrite et la visibilité.
+  </p>
+
+  <div class="grille-2">
+    <div class="carte">
+      <h4>Chaque jour sans trace, une perte invisible</h4>
+      <ul>
+        <li>Combien avez-vous vendu aujourd'hui, réellement ?</li>
+        <li>Quel article vous fait gagner de l'argent, lequel vous en coûte ?</li>
+        <li>Combien vous doit-on, et depuis quand ?</li>
+        <li>Où est passé le stock qui manque à l'inventaire ?</li>
+      </ul>
+      <p>
+        Sans réponse chiffrée, ces questions se règlent « à l'œil ». C'est
+        exactement là que les marges disparaissent.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>Un commerce invisible reste un commerce fragile</h4>
+      <ul>
+        <li>Un client cherche un produit à 300 mètres de votre boutique et ne vous trouve pas.</li>
+        <li>Il appelle trois numéros, se déplace, compare — et vous ignore.</li>
+        <li>Votre vitrine n'existe sur aucun support numérique.</li>
+      </ul>
+      <p>
+        Ce n'est pas un problème de qualité : c'est un problème de
+        <strong>visibilité</strong>.
+      </p>
+    </div>
+  </div>
+
+  <div class="citation">
+    <p>
+      « Vendre plus ne commence pas toujours par travailler plus. Souvent, cela
+      commence par savoir exactement ce qui se passe — et par être trouvable. »
+    </p>
+    <small>Le principe qui guide Biashara Yangu</small>
+  </div>
+
+  <h3>Les quatre pertes les plus fréquentes</h3>
+  <div class="grille-4">
+    <div class="kpi"><div class="valeur">1</div><div class="libelle">Ventes non tracées : les erreurs de caisse ne se voient jamais.</div></div>
+    <div class="kpi"><div class="valeur">2</div><div class="libelle">Crédits clients oubliés, remboursements non enregistrés.</div></div>
+    <div class="kpi"><div class="valeur">3</div><div class="libelle">Stock faux : ruptures sur ce qui se vend, argent dormant sur ce qui ne se vend pas.</div></div>
+    <div class="kpi"><div class="valeur">4</div><div class="libelle">Boutique invisible : les clients du quartier ne savent pas que vous vendez ce produit.</div></div>
+  </div>
+</section>
+
+<!-- ===================== LA SOLUTION ===================== -->
+<section class="section">
+  <h2><span class="num">2.</span>La solution</h2>
+
+  <p class="intro">
+    Biashara Yangu installe chez vous deux choses : de l'ordre dans la gestion,
+    et une présence là où vos clients cherchent.
+  </p>
+
+  <figure class="ecran">
+    <img src="../../marketing/depliant/assets/ecrans/linux-accueil.png" alt="Accueil de l'application">
+    <figcaption>Un accueil qui ne montre que ce dont votre activité a besoin.</figcaption>
+  </figure>
+
+  <div class="argument">
+    <div class="puce">1</div>
+    <div>
+      <h4>Vendre paraît simple — et l'est resté</h4>
+      <p>
+        Scanner ou chercher un article, ajuster une quantité, encaisser, rendre
+        la monnaie. La vente s'enregistre en quelques secondes, même au plus
+        fort de l'affluence. Le reçu se partage ; la caisse du soir se
+        rapproche toute seule.
+      </p>
+    </div>
+  </div>
+
+  <div class="argument orange">
+    <div class="puce">2</div>
+    <div>
+      <h4>Votre stock cesse de mentir</h4>
+      <p>
+        Chaque entrée, sortie et ajustement est daté et attribué. Vous voyez ce
+        qui manque avant la rupture, et vous savez enfin ce qui immobilise votre
+        argent sur les étagères.
+      </p>
+    </div>
+  </div>
+
+  <div class="argument">
+    <div class="puce">3</div>
+    <div>
+      <h4>Les crédits accordés deviennent des créances suivies</h4>
+      <p>
+        Qui vous doit combien, depuis quand, et combien a déjà été remboursé.
+        Le moment venu, vous relancez avec un chiffre précis au lieu d'un
+        souvenir approximatif.
+      </p>
+    </div>
+  </div>
+
+  <div class="argument orange">
+    <div class="puce">4</div>
+    <div>
+      <h4>Vous savez ce que l'activité gagne réellement</h4>
+      <p>
+        Recettes, dépenses, résultat, valeur du stock, encours clients : la même
+        page répond à la question qui compte. Et vous l'exportez en un clic pour
+        votre banque, votre associé ou votre comptable.
+      </p>
+    </div>
+  </div>
+
+  <div class="argument">
+    <div class="puce">5</div>
+    <div>
+      <h4>Votre boutique devient trouvable</h4>
+      <p>
+        Vous publiez votre vitrine, vos horaires et vos articles dans la
+        marketplace Biashara. Un client cherche « riz », vous êtes à 800 mètres,
+        disponible, avec un prix affiché : il vous appelle ou demande
+        l'itinéraire.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== LES MODULES ===================== -->
+<section class="section">
+  <h2><span class="num">3.</span>Tout ce qui est inclus</h2>
+
+  <table class="compact">
+    <thead><tr><th style="width:26%">Domaine</th><th>Ce que vous pouvez faire</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Articles</strong></td><td>Fiches complètes, catégories, photos, unités, poids, variantes, conditionnements, packs, import de catalogue, étiquettes QR et codes-barres.</td></tr>
+      <tr><td><strong>Stock</strong></td><td>Entrées, sorties, ajustements, inventaires avec écart calculé, seuils d'alerte, suivi des expirations.</td></tr>
+      <tr><td><strong>Ventes &amp; caisse</strong></td><td>Panier, scan, paiement partiel, reçus, clôture de caisse et écart du jour.</td></tr>
+      <tr><td><strong>Clients</strong></td><td>Fiches complètes, groupes tarifaires (détail, revendeur, grossiste), historique d'achat.</td></tr>
+      <tr><td><strong>Dettes</strong></td><td>Crédit accordé, échéances, remboursements partiels, ancienneté, total dû.</td></tr>
+      <tr><td><strong>Dépenses &amp; finance</strong></td><td>Saisie des charges, tableau de bord financier, soldes, résultat par période.</td></tr>
+      <tr><td><strong>Collaborateurs</strong></td><td>Un accès par personne, un rôle par métier, statistiques d'activité par vendeur.</td></tr>
+      <tr><td><strong>Rapports</strong></td><td>Ventes, stock, finance, activité ; export PDF et Excel ; historique des documents produits.</td></tr>
+      <tr><td><strong>Audit &amp; sécurité</strong></td><td>Qui a fait quoi, quand ; verrouillage après tentatives d'accès répétées.</td></tr>
+      <tr><td><strong>Multi-boutiques</strong></td><td>Plusieurs espaces, plusieurs activités, une seule connexion, une devise par entreprise.</td></tr>
+      <tr><td><strong>Métiers spécialisés</strong></td><td>Hôtel (chambres, réservations, réception, séjour), restaurant (salles, commandes, cuisine), salle des fêtes, pharmacie (lots, péremptions), boulangerie (recettes, production), boucherie (découpe, rendement).</td></tr>
+      <tr><td><strong>Marketplace</strong></td><td>Vitrine géolocalisée, publications, visibilité mesurée, campagnes publicitaires.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart principe">
+    <h4>Vous ne payez pas pour ce que vous n'utilisez pas</h4>
+    <p>
+      L'application n'affiche que les modules de l'activité que vous avez
+      réellement déclarée. Une boutique ne voit pas les écrans d'hôtel ; un
+      restaurant ne voit pas ceux de la pharmacie. L'interface reste courte et
+      l'apprentissage rapide — y compris pour un caissier qui n'a jamais
+      utilisé un logiciel.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== MARKETPLACE ===================== -->
+<section class="section">
+  <h2><span class="num">4.</span>La marketplace : votre vitrine dans le quartier</h2>
+
+  <p class="intro">
+    C'est la partie que vos concurrents n'ont pas : être trouvable par un
+    client qui cherche, justement maintenant, ce que vous vendez.
+  </p>
+
+  <h3>Ce que vit le client — sans compte</h3>
+  <ol>
+    <li>Il ouvre l'application ou le site : le catalogue s'affiche immédiatement.</li>
+    <li>Il cherche un produit ou touche « Autour de moi ».</li>
+    <li>Il voit <strong>qui vend, à quel prix, à quelle distance</strong>.</li>
+    <li>Il compare les prix entre boutiques sur une même fiche produit.</li>
+    <li>Il appelle, écrit sur WhatsApp, ou demande l'itinéraire.</li>
+  </ol>
+
+  <div class="encart succes">
+    <h4>Aucune inscription exigée du client</h4>
+    <p>
+      Un client n'installera pas cinq applications ni ne créera un compte pour
+      chercher un sac de riz. Le catalogue est donc ouvert sans compte : c'est
+      cette absence de friction qui fait que des clients réels — et non des
+      utilisateurs théoriques — arrivent jusqu'à votre boutique.
+    </p>
+  </div>
+
+  <h3>Ce que vous y gagnez, mesuré</h3>
+  <table class="compact">
+    <thead><tr><th style="width:26%">Niveau</th><th>Ce que cela veut dire pour vous</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge bleu">Visibilité</span></td><td>Vos articles apparaissent dans les recherches des clients de votre zone.</td></tr>
+      <tr><td><span class="badge vert">Intérêt</span></td><td>Des gens ouvrent vos fiches : votre offre attire l'attention.</td></tr>
+      <tr><td><span class="badge orange">Intention</span></td><td>Des gens demandent l'itinéraire, appellent ou écrivent : ils viennent ou sont sur le point de venir.</td></tr>
+      <tr><td><span class="badge rouge">Conversion</span></td><td>Des achats sont réellement attribués à la plateforme, grâce aux codes et QR posés sur votre vitrine.</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Cette distinction est essentielle : elle vous évite de payer pour de
+    « belles courbes » et vous montre <strong>où agir</strong>. Beaucoup
+    d'affichages sans intérêt ? Le titre ou la photo sont à revoir. Beaucoup
+    d'intentions sans vente ? L'accueil, la disponibilité ou le prix.
+  </p>
+
+  <h3>Publicité : un emplacement, pas un classement</h3>
+  <p>
+    Vous pouvez promouvoir un produit auprès des clients d'une ville, d'un
+    quartier, d'un rayon autour de votre boutique ou d'une catégorie. Votre
+    annonce apparaît dans un emplacement dédié, toujours marquée
+    <strong>« PUBLICITÉ »</strong>, et ne perturbe jamais les résultats : le
+    classement des produits reste fondé sur la pertinence, la proximité, la
+    disponibilité et la qualité de la fiche.
+  </p>
+
+  <figure class="ecran">
+    <img src="../../marketing/depliant/images/partage-social.png" alt="Partage d'une fiche boutique">
+    <figcaption>Chaque boutique et chaque produit disposent d'un lien partageable — par WhatsApp, par SMS, sur une affiche ou un QR.</figcaption>
+  </figure>
+</section>
+
+<!-- ===================== AVANTAGES ===================== -->
+<section class="section">
+  <h2><span class="num">5.</span>Pourquoi choisir Biashara Yangu</h2>
+
+  <div class="grille-2">
+    <div class="carte">
+      <h4>Pensé pour le commerce congolais</h4>
+      <p>
+        Franc congolais et dollar comme devises de travail, vente à l'unité et
+        au poids, crédits clients fréquents, coupures multiples pour la
+        monnaie, rupture de réseau à gérer : ces réalités sont dans le produit,
+        pas dans un module optionnel.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>Utilisable sans informaticien</h4>
+      <p>
+        Un caissier est opérationnel en quelques minutes. Les écrans sont courts,
+        les mots sont ceux du commerce, et les actions importantes sont
+        visibles immédiatement — sans menu à plusieurs niveaux.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>Vos données restent les vôtres</h4>
+      <p>
+        Votre stock exact, vos prix d'achat, vos clients, vos dettes et vos
+        dépenses ne sont <strong>jamais</strong> visibles des visiteurs de la
+        marketplace. Le catalogue public ne peut techniquement atteindre que
+        les informations que vous destinez au public.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>La même application partout</h4>
+      <p>
+        Android pour la caisse et les déplacements, Windows et Linux pour le
+        bureau, Web pour la consultation : les mêmes données, la même logique,
+        sur l'appareil dont vous disposez déjà.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>Un seul compte pour plusieurs boutiques</h4>
+      <p>
+        Ouvrir une deuxième activité ne veut pas dire un deuxième logiciel ni
+        une deuxième facture : vous ajoutez un espace, et les écrans de la
+        nouvelle activité apparaissent.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>Une visibilité qui n'achète pas son classement</h4>
+      <p>
+        Une petite boutique proche, disponible et bien renseignée passe devant
+        une grande enseigne éloignée. Le classement ne dépend jamais de la
+        taille de l'entreprise : c'est la promesse qui rend la marketplace
+        crédible pour les petits commerces.
+      </p>
+    </div>
+  </div>
+
+  <h3>Ce que vos clients aiment aussi</h3>
+  <ul>
+    <li>Ils trouvent un produit <strong>sans se déplacer à l'aveugle</strong> et voient le prix avant d'y aller.</li>
+    <li>Ils comparent plusieurs boutiques sur une même fiche produit.</li>
+    <li>Ils appellent d'un geste, écrivent sur WhatsApp, ou demandent l'itinéraire.</li>
+    <li>Ils partagent une fiche boutique à un proche — c'est votre publicité la moins chère.</li>
+    <li>Leur position <strong>n'est ni transmise ni conservée</strong> ; ils peuvent refuser et choisir une ville.</li>
+  </ul>
+</section>
+
+<!-- ===================== MISE EN ŒUVRE ===================== -->
+<section class="section">
+  <h2><span class="num">6.</span>Mise en œuvre</h2>
+
+  <table class="compact">
+    <thead><tr><th style="width:16%">Étape</th><th>Ce qui se passe</th><th style="width:26%">Durée ressentie</th></tr></thead>
+    <tbody>
+      <tr><td><strong>1. Création</strong></td><td>Vous créez votre compte et choisissez votre activité. Les écrans correspondants s'affichent immédiatement.</td><td>Quelques minutes</td></tr>
+      <tr><td><strong>2. Vérification</strong></td><td>Votre dossier est examiné, puis le paiement de l'abonnement est confirmé. L'activation devient automatique.</td><td>Selon le traitement du dossier</td></tr>
+      <tr><td><strong>3. Préparation</strong></td><td><em>Même avant l'activation</em>, vous saisissez vos articles et préparez votre vitrine : localisation, horaires, contacts, visuels.</td><td>À votre rythme</td></tr>
+      <tr><td><strong>4. Publication</strong></td><td>Vous publiez votre vitrine et choisissez vos articles. Un aperçu vous montre exactement ce que verra un client.</td><td>Quelques minutes</td></tr>
+      <tr><td><strong>5. Exploitation</strong></td><td>Vous vendez, vous suivez votre stock et vos crédits, et vous regardez votre visibilité se remplir.</td><td>En continu</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart">
+    <h4>Rien n'est publié sans votre accord</h4>
+    <p>
+      La publication de la vitrine est un acte volontaire, que vous pouvez
+      reprendre à tout moment. Vous pouvez également retirer un article du
+      catalogue public sans le supprimer de votre gestion — utile pour un
+      produit momentanément indisponible.
+    </p>
+  </div>
+
+  <h3>Questions fréquentes</h3>
+  <table class="compact">
+    <thead><tr><th style="width:38%">Question</th><th>Réponse</th></tr></thead>
+    <tbody>
+      <tr><td>Faut-il internet en permanence ?</td><td>Non. Les ventes s'enregistrent sur l'appareil et remontent dès que la connexion revient.</td></tr>
+      <tr><td>Mes concurrents voient-ils mon stock ?</td><td>Non. Seule une disponibilité déclarée est publiée ; les quantités exactes ne sortent jamais.</td></tr>
+      <tr><td>Mes clients doivent-ils créer un compte ?</td><td>Non. Le catalogue est ouvert à tous, sans inscription.</td></tr>
+      <tr><td>Puis-je publier un prix promotionnel ?</td><td>Oui, distinct de votre prix de vente interne, sans casser vos calculs de marge.</td></tr>
+      <tr><td>Mes données restent-elles accessibles si je ferme mon compte ?</td><td>Exportez-les avant fermeture : le système propose l'export, et les historiques ne sont jamais détruits par le départ d'un collaborateur.</td></tr>
+      <tr><td>Combien de personnes peuvent travailler en même temps ?</td><td>Autant que nécessaire, avec un accès et un rôle par personne, et une trace de chaque action sensible.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pied">
+    <div><strong>BIASHARA YANGU</strong> — Dossier commercial</div>
+    <div>Version 2.3.0 · Septembre 2026 · Biashara Tech, Lubumbashi</div>
+  </div>
+</section>
+
+</body>
+</html>

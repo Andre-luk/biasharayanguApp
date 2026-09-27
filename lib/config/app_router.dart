@@ -154,6 +154,10 @@ import 'package:biashara_yangu/pages/politique_confidentialite_page.dart';
 
 // ========== MODULE 14 : ACTIVATION À DOUBLE VALIDATION ==========
 import 'package:biashara_yangu/pages/activations_finance_page.dart';
+// 🛡️ MODULE 20 — administration plateforme (audit final) : parc des boutiques
+// et modération du catalogue public.
+import 'package:biashara_yangu/pages/admin_boutiques_page.dart';
+import 'package:biashara_yangu/pages/admin_moderation_page.dart';
 import 'package:biashara_yangu/pages/comptes_verification_page.dart';
 import 'package:biashara_yangu/pages/mon_activation_page.dart';
 // ========== MODULE 15 : PACK MULTI-ENTREPRISES ==========
@@ -354,6 +358,21 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/activations-finance',
       name: 'admin-activations-finance',
       builder: (context, state) => const ActivationsFinancePage(),
+    ),
+
+    // 🛡️ MODULE 20 — ADMINISTRATION PLATEFORME (audit final) : parc des
+    // boutiques de toutes les entreprises et modération du catalogue public.
+    // Le middleware exige `boutiques/voir` (resp. `moderation/voir`) et
+    // chaque RPC revérifie `est_plateforme()` côté serveur.
+    GoRoute(
+      path: '/admin/boutiques',
+      name: 'admin-boutiques',
+      builder: (context, state) => const AdminBoutiquesPage(),
+    ),
+    GoRoute(
+      path: '/admin/moderation',
+      name: 'admin-moderation',
+      builder: (context, state) => const AdminModerationPage(),
     ),
 
     // ========== MODULE 13 : ASSISTANT IA (DEEPSEEK) ==========

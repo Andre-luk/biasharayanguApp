@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BIASHARA YANGU — Présentation officielle de la plateforme</title>
+<link rel="stylesheet" href="../_build/theme.css">
+</head>
+<body>
+
+<!-- ============================ COUVERTURE ============================ -->
+<section class="couverture">
+  <div class="marque">
+    <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+    <span class="nom">Biashara&nbsp;Yangu</span>
+  </div>
+  <div class="etiquette">Document officiel · Version 2.3.0</div>
+
+  <div class="bloc-titre">
+    <h1>Présentation officielle<br><em>de la plateforme</em></h1>
+    <p class="sous-titre">
+      Gestion commerciale complète et marketplace géolocalisée pour les
+      commerçants, les entreprises et les clients de la République
+      Démocratique du Congo.
+    </p>
+    <div class="pastilles">
+      <span>Ventes &amp; caisse</span>
+      <span>Stock &amp; inventaire</span>
+      <span>Dettes &amp; dépenses</span>
+      <span>Multi-activités</span>
+      <span>Marketplace géolocalisée</span>
+      <span>Android · Windows · Linux · Web</span>
+    </div>
+  </div>
+
+  <div class="pied-couverture">
+    <div>
+      <strong>Biashara Tech</strong>
+      Lubumbashi, République Démocratique du Congo
+    </div>
+    <div style="text-align:right">
+      <strong>Édition de septembre 2026</strong>
+      Document public — diffusion libre
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SOMMAIRE ============================ -->
+<section class="sommaire">
+  <h2><span class="num">§</span>Sommaire</h2>
+  <ol>
+    <li><strong>Ce qu'est Biashara Yangu</strong><span>Objectif, vision et promesse faite au commerçant.</span></li>
+    <li><strong>Qui utilise la plateforme</strong><span>Les huit rôles, du Super Administrateur au vendeur de comptoir.</span></li>
+    <li><strong>Le socle de gestion commerciale</strong><span>Articles, stock, ventes, caisse, clients, dettes, dépenses, rapports.</span></li>
+    <li><strong>Les activités spécialisées</strong><span>Hôtel, restaurant, salle des fêtes, pharmacie, boulangerie, boucherie, packs.</span></li>
+    <li><strong>L'organisation multi-entreprises</strong><span>Une équipe, plusieurs boutiques, une seule vue.</span></li>
+    <li><strong>Biashara — la marketplace locale géolocalisée</strong><span>Recherche de proximité, comparaison des prix, visibilité mesurée.</span></li>
+    <li><strong>L'administration de la plateforme</strong><span>Modération, parc des boutiques, gestion des comptes.</span></li>
+    <li><strong>Sécurité, confidentialité et exploitation</strong><span>Rôles, permissions, RLS, synchronisation, plateformes disponibles.</span></li>
+  </ol>
+  <div class="encart principe">
+    <h4>Comment lire ce document</h4>
+    <p>
+      Toutes les fonctions décrites ici sont <strong>effectivement présentes
+      dans l'application livrée</strong> : ce document a été rédigé à partir du
+      code source et de la base de données de la version 2.3.0, et non à partir
+      d'un cahier des charges. Lorsqu'une fonction dépend d'une étape restant à
+      la charge de l'exploitant (installation de la base, validation d'un
+      dossier commerçant), cela est indiqué explicitement.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 1. PRÉSENTATION ============================ -->
+<section class="section">
+  <h2><span class="num">1.</span>Ce qu'est Biashara Yangu</h2>
+
+  <p class="intro">
+    Biashara Yangu est une plateforme de gestion commerciale conçue pour les
+    réalités du commerce congolais : petits commerces de quartier, boutiques
+    multi-rayons, pharmacies, hôtels, restaurants, salles des fêtes et
+    ateliers de production.
+  </p>
+
+  <h3>Le problème que la plateforme résout</h3>
+  <p>
+    Un commerçant gère aujourd'hui son activité avec un cahier, une
+    calculatrice et sa mémoire. Les conséquences sont connues et coûteuses :
+    les ventes ne sont pas tracées, le stock réel est inconnu, les crédits
+    accordés aux clients se perdent, les dépenses ne sont pas rapprochées des
+    recettes, et le commerçant découvre ses pertes à la fin du mois — sans
+    pouvoir dire d'où elles viennent.
+  </p>
+  <p>
+    Par ailleurs, un commerce de quartier reste <strong>invisible</strong> :
+    même à trois cents mètres de ses clients potentiels, il n'existe sur aucun
+    support numérique. Le client, lui, doit se déplacer de boutique en boutique
+    pour comparer un prix.
+  </p>
+
+  <h3>La réponse de Biashara Yangu</h3>
+  <div class="grille-2">
+    <div class="carte">
+      <h4>1. Tenir la gestion, simplement</h4>
+      <p>
+        Enregistrer une vente en quelques secondes, suivre le stock rayon par
+        rayon, savoir qui doit de l'argent, mesurer ce que rapporte réellement
+        chaque journée — sans formation comptable.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>2. Rendre la boutique visible</h4>
+      <p>
+        Publier sa vitrine et ses articles dans une marketplace locale où les
+        clients cherchent par produit et trouvent la boutique la plus proche,
+        avec le prix réellement pratiqué.
+      </p>
+    </div>
+  </div>
+
+  <h3>Ce qui distingue la plateforme</h3>
+  <table>
+    <thead>
+      <tr><th style="width:34%">Principe</th><th>Ce que cela change concrètement</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Un visiteur n'a jamais besoin de compte</strong></td>
+        <td>Le catalogue public s'ouvre sans inscription : c'est la condition pour que des clients réels utilisent la marketplace, et donc pour que la visibilité vendue au commerçant ait une valeur.</td>
+      </tr>
+      <tr>
+        <td><strong>Les données privées ne sortent jamais</strong></td>
+        <td>Le catalogue public ne lit <em>aucune table</em> directement : il passe par des fonctions serveur qui n'exposent qu'une liste blanche de colonnes. Prix d'achat, stock exact, clients, dettes et dépenses ne sont pas atteignables par un visiteur, même en cas d'erreur de l'application.</td>
+      </tr>
+      <tr>
+        <td><strong>La visibilité est mesurée, pas affirmée</strong></td>
+        <td>Quatre niveaux distincts — visibilité, intérêt, intention, conversion — permettent au commerçant de voir ce que la plateforme lui apporte réellement. Un simple affichage n'est jamais compté comme un achat.</td>
+      </tr>
+      <tr>
+        <td><strong>Le classement n'est pas lié à la taille</strong></td>
+        <td>Une petite boutique bien renseignée et proche passe devant une grande enseigne éloignée : le critère de pertinence ne dépend jamais du chiffre d'affaires ni de l'ancienneté.</td>
+      </tr>
+      <tr>
+        <td><strong>La publicité est séparée et annoncée</strong></td>
+        <td>Une annonce est servie dans un emplacement dédié, toujours marquée « PUBLICITÉ ». Elle n'est jamais insérée dans les résultats organiques.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <figure class="ecran">
+    <img src="../../marketing/depliant/assets/ecrans/linux-accueil.png" alt="Écran d'accueil de l'application">
+    <figcaption>Accueil de l'application : les modules affichés s'adaptent automatiquement à l'activité réellement déclarée par l'entreprise.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ 2. UTILISATEURS ============================ -->
+<section class="section">
+  <h2><span class="num">2.</span>Qui utilise la plateforme</h2>
+
+  <p class="intro">
+    Huit rôles, chacun avec des droits précis. Une même personne peut gérer
+    plusieurs boutiques, et chaque collaborateur ne voit que ce que son métier
+    exige.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th style="width:28%">Rôle</th><th>Ce qu'il fait dans Biashara Yangu</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Super Administrateur</strong></td><td>Accès complet à la plateforme : entreprises, utilisateurs, référentiels, abonnements, paramètres, modération du catalogue public, parc des boutiques, journal d'audit.</td></tr>
+      <tr><td><strong>Gestionnaire des comptes</strong></td><td>Vérifie les dossiers des nouvelles entreprises, les transmet à la finance avec son avis, administre le parc des boutiques et modère le catalogue public.</td></tr>
+      <tr><td><strong>Finance plateforme</strong></td><td>Confirme les paiements d'abonnement, valide l'activation des comptes, suit les impayés et les rapports financiers de la plateforme.</td></tr>
+      <tr><td><strong>Assistance</strong></td><td>Consulte les comptes et le parc pour répondre aux appels ; ne modifie ni les tarifs ni le catalogue public.</td></tr>
+      <tr><td><strong>Propriétaire</strong></td><td>Patron de l'entreprise : ventes, caisse, articles, stock, clients, dettes, dépenses, finance, collaborateurs, rapports, vitrine marketplace, visibilité et campagnes publicitaires.</td></tr>
+      <tr><td><strong>Vendeur / caissier</strong></td><td>Encaisse, gère le panier et le scanner. Il ne peut ni modifier un prix ni consulter la finance.</td></tr>
+      <tr><td><strong>Magasinier</strong></td><td>Stock, articles, inventaires, production. Il voit les quantités, jamais les marges.</td></tr>
+      <tr><td><strong>Comptable</strong></td><td>Dépenses, caisse, rapports et dettes — en lecture plus saisie, sans toucher aux prix de vente.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart">
+    <h4>Le rôle détermine l'écran, et le serveur revérifie</h4>
+    <p>
+      Masquer un bouton ne protège rien. Chaque action sensible est contrôlée
+      une seconde fois côté serveur : une interface détournée ne permet jamais
+      d'écrire dans une base où le rôle n'y autorise pas.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 3. GESTION ============================ -->
+<section class="section">
+  <h2><span class="num">3.</span>Le socle de gestion commerciale</h2>
+
+  <p class="intro">
+    Le cœur de la plateforme : ce qui se passe du matin au soir dans une
+    boutique, sans jargon comptable.
+  </p>
+
+  <div class="grille-2">
+    <div class="carte">
+      <h4>Articles et catalogue</h4>
+      <p class="routes">Création, catégories, variantes, conditionnements, packs, import en masse</p>
+      <p>Un article porte son prix de vente, son unité (pièce, kilo, sac, litre), sa photo, son code-barres ou QR, et un seuil d'alerte. Les variantes couvrent les tailles et couleurs ; les conditionnements gèrent les conversions (un carton de 12) ; les packs composent des offres groupées.</p>
+    </div>
+    <div class="carte">
+      <h4>Stock et inventaire</h4>
+      <p class="routes">Entrées, sorties, ajustements, inventaires, alertes, approvisionnements</p>
+      <p>Chaque mouvement est tracé et daté. Les seuils d'alerte font remonter ce qui manque. L'inventaire se clôture avec l'écart calculé automatiquement, sans ressaisie.</p>
+    </div>
+    <div class="carte">
+      <h4>Ventes et caisse</h4>
+      <p class="routes">Panier, encaissement, scanner QR, reçus, clôture de caisse</p>
+      <p>La vente s'enregistre en quelques secondes, à l'unité ou au poids. La clôture de caisse rapproche l'encaissé du théorique et rend l'écart visible, en le nommant.</p>
+    </div>
+    <div class="carte">
+      <h4>Clients, dettes et remboursements</h4>
+      <p class="routes">Fiche client, crédit, échéances, paiements partiels, historique</p>
+      <p>Le crédit accordé n'est plus une parole : le solde est calculé, les remboursements partiels sont enregistrés et l'ancienneté de la dette est affichée.</p>
+    </div>
+    <div class="carte">
+      <h4>Dépenses et finance</h4>
+      <p class="routes">Dépenses, comptes, soldes, tableau de bord financier</p>
+      <p>Les charges sont rattachées à l'activité, comparées aux recettes de la période, et deviennent lisibles : ce qui rentre, ce qui sort, ce qui reste.</p>
+    </div>
+    <div class="carte">
+      <h4>Rapports et journal d'audit</h4>
+      <p class="routes">Rapports de vente, de stock, financiers, export PDF / Excel, audit</p>
+      <p>Les rapports sortent en documents partageables. Le journal d'audit conserve qui a fait quoi et quand — indispensable quand plusieurs personnes touchent à la caisse.</p>
+    </div>
+  </div>
+
+  <figure class="ecran">
+    <img src="../../marketing/depliant/assets/ecrans/linux-rapports.png" alt="Rapports de la plateforme">
+    <figcaption>Rapports : les indicateurs sont calculés à partir des données réelles, jamais estimés.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ 4. ACTIVITÉS ============================ -->
+<section class="section">
+  <h2><span class="num">4.</span>Les activités spécialisées</h2>
+
+  <p class="intro">
+    Biashara Yangu n'est pas un logiciel de boutique appliqué à tout. Chaque
+    métier dispose de ses propres écrans, parce qu'un hôtel ne se gère pas
+    comme une boulangerie.
+  </p>
+
+  <table class="compact">
+    <thead>
+      <tr><th style="width:24%">Activité</th><th>Écrans dédiés</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Hôtel</strong></td><td>Chambres, types et tarifs, planning des réservations, réception, arrivées et départs, check-in / check-out, facture de séjour, tableau d'occupation.</td></tr>
+      <tr><td><strong>Restaurant</strong></td><td>Plan de salle, tables et zones, prise de commande, suivi des commandes, écran cuisine, addition.</td></tr>
+      <tr><td><strong>Salle des fêtes</strong></td><td>Salles, disponibilité, réservations d'événements, devis, calendrier des occupations.</td></tr>
+      <tr><td><strong>Pharmacie</strong></td><td>Lots, dates de péremption, alertes d'expiration, traçabilité des produits sensibles.</td></tr>
+      <tr><td><strong>Boulangerie / production</strong></td><td>Matières premières, recettes, ordres de production, consommation automatique des matières, coût de revient.</td></tr>
+      <tr><td><strong>Boucherie</strong></td><td>Découpe, rendement, vente au poids.</td></tr>
+      <tr><td><strong>Commerce de détail</strong></td><td>Variantes, conditionnements, packs, prix par groupe de clients.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart principe">
+    <h4>Une seule application, une seule facture</h4>
+    <p>
+      Le commerçant qui ajoute une activité ne change pas de logiciel : les
+      écrans correspondants apparaissent dans son espace, et les données de
+      chaque activité restent strictement cloisonnées entre elles.
+    </p>
+  </div>
+
+  <figure class="ecran">
+    <img src="../../marketing/depliant/assets/ecrans/linux-chambres.png" alt="Gestion des chambres d'hôtel">
+    <figcaption>Module hôtel : les chambres, leur état et leur occupation du jour.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================ 5. MULTI-ENTREPRISES ============================ -->
+<section class="section">
+  <h2><span class="num">5.</span>L'organisation multi-entreprises</h2>
+
+  <p class="intro">
+    Un patron, plusieurs boutiques, une seule vue. La séparation des données
+    est une règle technique, pas une convention.
+  </p>
+
+  <h3>Espaces et bascule d'activité</h3>
+  <p>
+    Chaque entreprise dispose d'un ou plusieurs <strong>espaces</strong> —
+    une boutique, un hôtel, un restaurant, une salle. Une barre de sélection
+    permanente indique l'espace actif et permet d'en changer instantanément :
+    les écrans, les modules et même la devise de travail se rechargent pour la
+    nouvelle activité.
+  </p>
+
+  <h3>Cloisonnement réel</h3>
+  <ul>
+    <li>Un collaborateur ne voit que les données de l'espace auquel il est rattaché.</li>
+    <li>Un patron peut consulter l'ensemble de ses espaces, jamais ceux d'une autre entreprise.</li>
+    <li>Le personnel de la plateforme agit dans le cadre de ses permissions, et chaque intervention est journalisée.</li>
+  </ul>
+
+  <h3>Devises et groupes de prix</h3>
+  <p>
+    La devise de travail (franc congolais, dollar) appartient à l'entreprise :
+    tous les montants affichés la respectent, sans conversion implicite. Les
+    groupes tarifaires permettent d'appliquer des prix différents selon le type
+    de client (détail, revendeur, grossiste).
+  </p>
+
+  <div class="grille-3">
+    <div class="kpi"><div class="valeur">8</div><div class="libelle">rôles distincts</div></div>
+    <div class="kpi"><div class="valeur">8</div><div class="libelle">activités métier couvertes</div></div>
+    <div class="kpi orange"><div class="valeur">1</div><div class="libelle">application pour tout gérer</div></div>
+  </div>
+</section>
+
+<!-- ============================ 6. MARKETPLACE ============================ -->
+<section class="section">
+  <h2><span class="num">6.</span>Biashara — la marketplace locale géolocalisée</h2>
+
+  <p class="intro">
+    Le module qui transforme un logiciel de gestion en outil de croissance :
+    la boutique devient trouvable, et le client trouve ce dont il a besoin
+    autour de lui.
+  </p>
+
+  <h3>Du côté du client — sans aucun compte</h3>
+  <ol>
+    <li><strong>Chercher un produit</strong> : « riz », « téléphone », « ciment ».</li>
+    <li><strong>Voir qui le vend, à quel prix et à quelle distance</strong> : chaque résultat affiche produit, prix, boutique et distance.</li>
+    <li><strong>Comparer les prix</strong> : la fiche produit rassemble toutes les boutiques qui vendent l'article, classées du moins cher au plus cher.</li>
+    <li><strong>Agir</strong> : appeler, écrire sur WhatsApp, demander l'itinéraire, partager la fiche.</li>
+    <li><strong>Se situer</strong> : carte interactive des boutiques proches, ou simplement le choix d'une ville.</li>
+  </ol>
+
+  <div class="encart succes">
+    <h4>La localisation est une demande, jamais une surveillance</h4>
+    <p>
+      La position n'est demandée qu'au moment où le visiteur touche
+      « Autour de moi ». Elle n'est <strong>ni transmise, ni enregistrée</strong> :
+      elle sert uniquement à calculer un écart, et disparaît aussitôt. En cas
+      de refus, la plateforme propose une ville ou un point sur la carte — le
+      résultat est identique. Les statistiques ne conservent qu'une
+      <em>tranche</em> de distance (« moins d'1 km », « 1 à 3 km »).
+    </p>
+  </div>
+
+  <h3>Du côté du commerçant — une visibilité qui se mesure</h3>
+  <table class="compact">
+    <thead><tr><th style="width:26%">Niveau</th><th>Ce que le commerçant apprend</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge bleu">Visibilité</span></td><td>Combien de fois sa boutique et ses articles ont été affichés dans les recherches.</td></tr>
+      <tr><td><span class="badge vert">Intérêt</span></td><td>Combien de personnes ont ouvert une fiche, l'ont partagée ou ont cliqué sur une annonce.</td></tr>
+      <tr><td><span class="badge orange">Intention</span></td><td>Combien ont demandé l'itinéraire, ont appelé ou ont écrit sur WhatsApp — le signal d'une visite imminente.</td></tr>
+      <tr><td><span class="badge rouge">Conversion</span></td><td>Combien d'achats ont réellement été attribués à la plateforme, grâce aux codes et QR fournis.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Publication de la vitrine</h3>
+  <p>
+    Le commerçant localise sa boutique de trois façons — sa position actuelle,
+    un point posé sur la carte, ou la recherche de son adresse — puis
+    <strong>confirme</strong> que le point correspond bien à son commerce. Il
+    décrit ensuite ses horaires, ses contacts publics et ses repères, et
+    choisit les articles qu'il publie. Un aperçu montre exactement ce que
+    verront les clients avant l'enregistrement.
+  </p>
+
+  <h3>Publicité : préparation et modération</h3>
+  <p>
+    Le commerçant compose ses campagnes (produit, boutique, promotion ou offre)
+    avec un ciblage par ville, quartier, rayon ou catégorie, puis les soumet.
+    La plateforme active ou refuse. Une annonce porte toujours la mention
+    « PUBLICITÉ » et n'altère jamais le classement des résultats.
+  </p>
+
+  <div class="duo">
+    <figure class="tel">
+      <img src="../../marketing/depliant/assets/ecrans/mobile-connexion.png" alt="Connexion mobile">
+      <figcaption>Un téléphone sans compte ouvre directement le catalogue public.</figcaption>
+    </figure>
+    <figure class="tel">
+      <img src="../../marketing/depliant/assets/ecrans/mobile-creation.png" alt="Création de compte">
+      <figcaption>Le commerçant qui le souhaite crée son compte et enregistre sa boutique.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============================ 7. ADMINISTRATION ============================ -->
+<section class="section">
+  <h2><span class="num">7.</span>L'administration de la plateforme</h2>
+
+  <p class="intro">
+    Une plateforme ouverte a besoin d'être tenue : modération du catalogue,
+    parc des boutiques, gestion des comptes, traçabilité des décisions.
+  </p>
+
+  <h3>Ce que l'administration peut faire</h3>
+  <table class="compact">
+    <thead><tr><th style="width:34%">Domaine</th><th>Actions disponibles</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Entreprises</strong></td><td>Consulter, rechercher, filtrer par ville, activité ou statut ; suspendre, réactiver ; suivre l'abonnement et l'activation.</td></tr>
+      <tr><td><strong>Boutiques &amp; espaces</strong></td><td>Voir le parc complet, savoir pourquoi une boutique n'est pas visible, l'activer ou la désactiver, l'afficher au catalogue ou l'en retirer — avec motif journalisé.</td></tr>
+      <tr><td><strong>Modération du catalogue</strong></td><td>Retirer un article illicite ou trompeur du catalogue public, ou le remettre en ligne. Le motif est obligatoire et reste visible du commerçant.</td></tr>
+      <tr><td><strong>Publicités</strong></td><td>Examiner les campagnes soumises, les activer ou les refuser.</td></tr>
+      <tr><td><strong>Utilisateurs</strong></td><td>Consulter, valider, changer un rôle, et surtout <em>retirer un compte proprement</em> : le système calcule d'abord tout ce qui en dépend.</td></tr>
+      <tr><td><strong>Activation &amp; abonnements</strong></td><td>Double validation : vérification du dossier, puis confirmation du paiement et activation automatique.</td></tr>
+      <tr><td><strong>Paramètres &amp; référentiels</strong></td><td>Villes, activités, groupes tarifaires, types d'activités, devise de la plateforme, permissions par rôle.</td></tr>
+      <tr><td><strong>Audit &amp; sécurité</strong></td><td>Journal des connexions et des opérations sensibles, tableau de bord de sécurité, maintenance assistée.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Retirer un compte : trois stratégies, jamais de perte silencieuse</h3>
+  <p>
+    Supprimer une ligne utilisateur détruirait des ventes, des paiements, des
+    dettes ou des traces d'audit. L'administration choisit donc en connaissance
+    de cause, après avoir vu l'impact chiffré :
+  </p>
+  <table class="compact">
+    <thead><tr><th style="width:26%">Stratégie</th><th>Quand l'utiliser</th><th>Effet</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Désactivation</strong></td><td>Un collaborateur qui quitte l'entreprise.</td><td>Connexion bloquée, données intactes, opération réversible.</td></tr>
+      <tr><td><strong>Anonymisation</strong></td><td>Un compte qui a produit de l'activité et dont on veut effacer l'identité.</td><td>Nom, prénom et photo effacés ; ventes, paiements et audits restent traçables.</td></tr>
+      <tr><td><strong>Suppression réelle</strong></td><td>Un compte créé par erreur, sans aucune donnée.</td><td>Effacement définitif — refusé par le serveur dès qu'une donnée dépend du compte.</td></tr>
+    </tbody>
+  </table>
+  <div class="encart alerte">
+    <h4>Un propriétaire ne s'anonymise pas par accident</h4>
+    <p>
+      Si le compte à retirer est le propriétaire d'une entreprise qui possède
+      des boutiques, la plateforme refuse l'anonymisation et demande un
+      transfert de propriété. Sans cette règle, une entreprise pourrait se
+      retrouver sans responsable.
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 8. SÉCURITÉ ============================ -->
+<section class="section">
+  <h2><span class="num">8.</span>Sécurité, confidentialité et exploitation</h2>
+
+  <h3>Sécurité</h3>
+  <ul>
+    <li><strong>Permissions à deux niveaux</strong> — l'interface masque ce qui n'est pas autorisé, et le serveur revérifie chaque opération sensible.</li>
+    <li><strong>Cloisonnement par entreprise</strong> — les règles d'accès au niveau des lignes empêchent un compte de lire les données d'une autre entreprise, y compris par une requête forgée.</li>
+    <li><strong>Catalogue public en liste blanche</strong> — seules des colonnes explicitement destinées au public sont exposées ; les tables du module marketplace sont inaccessibles aux visiteurs.</li>
+    <li><strong>Journal d'audit</strong> — connexions, changements de statut, modérations, retraits de compte : chaque décision sensible laisse une trace horodatée.</li>
+    <li><strong>Verrouillage de compte</strong> — après plusieurs échecs de connexion, le compte se verrouille temporairement ; les tentatives sont comptabilisées et visibles de l'administration.</li>
+  </ul>
+
+  <h3>Confidentialité des visiteurs</h3>
+  <div class="encart principe">
+    <p>
+      Aucune position de visiteur n'est stockée. Aucune adresse IP, aucun
+      identifiant d'appareil et aucun identifiant de session n'est conservé
+      avec une recherche. Ce qui est mesuré — le texte recherché, la ville, le
+      nombre de résultats, une tranche de distance — ne permet pas de
+      rattacher une recherche à une personne.
+    </p>
+  </div>
+
+  <h3>Synchronisation et fonctionnement hors connexion</h3>
+  <p>
+    L'application travaille d'abord sur l'appareil : les ventes s'enregistrent
+    même sans réseau, puis remontent automatiquement au serveur. Les données
+    partagées entre plusieurs appareils se rafraîchissent en direct, ce qui
+    évite les doubles saisies quand la caisse et le bureau travaillent en même
+    temps.
+  </p>
+
+  <h3>Plateformes disponibles</h3>
+  <table class="compact">
+    <thead><tr><th>Plateforme</th><th>Usage typique</th><th>Points d'attention</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Android</strong></td><td>Caisse, vendeurs, commerçants en déplacement.</td><td>Lecteur de QR, notifications locales, photo des articles.</td></tr>
+      <tr><td><strong>Windows / Linux</strong></td><td>Poste de gestion, bureau, comptabilité.</td><td>Vue élargie, grilles multi-colonnes, impression des rapports.</td></tr>
+      <tr><td><strong>Web</strong></td><td>Consultation et marketplace depuis un navigateur.</td><td>Le catalogue public est consultable sans installation.</td></tr>
+      <tr><td><strong>iOS</strong></td><td>Usage sur iPhone / iPad.</td><td>Nécessite une signature Apple pour la distribution hors App Store.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="pied">
+    <div><strong>BIASHARA YANGU</strong> — Présentation officielle de la plateforme</div>
+    <div>Version 2.3.0 · Septembre 2026 · Biashara Tech, Lubumbashi</div>
+  </div>
+</section>
+
+</body>
+</html>

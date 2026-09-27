@@ -140,13 +140,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
   void _showLanguageDialog() {
     final languageManager = Provider.of<LanguageManager>(context, listen: false);
-    final currentCode = languageManager.appLocale.languageCode;
     final T = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
       builder: (ctx) {
-        String selected = currentCode;
+        // ⚠️ AUDIT FINAL — vérité de l'interface : seuls les libellés français
+        // sont réellement traduits. Proposer l'anglais et le swahili laissait
+        // 99 % de l'application en français : les deux options restent
+        // visibles (l'utilisateur sait que ces langues arrivent) mais sont
+        // désactivées, et toute locale héritée est ramenée au français.
+        String selected = 'fr';
         return StatefulBuilder(
           builder: (contextDialog, setStateDialog) {
             return AlertDialog(
@@ -160,17 +164,21 @@ class _SettingsPageState extends State<SettingsPage> {
                     title: const Text('Français'),
                     onChanged: (v) => setStateDialog(() => selected = v ?? 'fr'),
                   ),
-                  RadioListTile<String>(
+                  const RadioListTile<String>(
                     value: 'en',
-                    groupValue: selected,
-                    title: const Text('English'),
-                    onChanged: (v) => setStateDialog(() => selected = v ?? 'en'),
+                    groupValue: 'fr',
+                    enabled: false,
+                    title: Text('English'),
+                    subtitle: Text('Traduction en préparation'),
+                    onChanged: null,
                   ),
-                  RadioListTile<String>(
+                  const RadioListTile<String>(
                     value: 'sw',
-                    groupValue: selected,
-                    title: const Text('Kiswahili'),
-                    onChanged: (v) => setStateDialog(() => selected = v ?? 'sw'),
+                    groupValue: 'fr',
+                    enabled: false,
+                    title: Text('Kiswahili'),
+                    subtitle: Text('Traduction en préparation'),
+                    onChanged: null,
                   ),
                 ],
               ),

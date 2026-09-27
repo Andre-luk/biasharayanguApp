@@ -50,6 +50,11 @@ IconData iconePourPage(PageAccess page) {
       return Icons.insights_rounded;
     case PageAccess.publicites:
       return Icons.campaign_rounded;
+    // 🛡️ MODULE 20 — administration plateforme.
+    case PageAccess.boutiques:
+      return Icons.store_mall_directory_rounded;
+    case PageAccess.moderation:
+      return Icons.gavel_rounded;
     case PageAccess.notifications:
       return Icons.notifications_active_rounded;
     case PageAccess.assistance:

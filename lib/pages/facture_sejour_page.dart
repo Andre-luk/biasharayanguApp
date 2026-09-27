@@ -92,20 +92,30 @@ class FactureSejourPage extends StatelessWidget {
                   const Divider(height: 24),
                   for (final LigneFactureSejour ligne in facture.lignes)
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Text(ligne.libelle, style: theme.textTheme.bodyMedium),
+                        // ♿ AUDIT FINAL — libellés longs : sans `Expanded`, le
+                        // montant était poussé hors de l'écran sur un téléphone
+                        // étroit (débordement « BOTTOM OVERFLOWED »).
+                        Expanded(
+                          child: Text(ligne.libelle,
+                              style: theme.textTheme.bodyMedium),
+                        ),
+                        const SizedBox(width: 12),
                         Text(formatMontant(ligne.montant),
                             style: theme.textTheme.bodyMedium),
                       ],
                     ),
                   const SizedBox(height: 8),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('TOTAL',
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w800)),
+                      Expanded(
+                        child: Text('TOTAL',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w800)),
+                      ),
+                      const SizedBox(width: 12),
                       Text(
                         formatMontant(facture.total),
                         style: theme.textTheme.titleMedium
@@ -115,9 +125,10 @@ class FactureSejourPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      const Text('Déjà payé'),
+                      const Expanded(child: Text('Déjà payé')),
+                      const SizedBox(width: 12),
                       Text(
                         formatMontant(facture.paye),
                         style: TextStyle(
@@ -129,11 +140,14 @@ class FactureSejourPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('Reste à payer',
-                          style: theme.textTheme.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w700)),
+                      Expanded(
+                        child: Text('Reste à payer',
+                            style: theme.textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(width: 12),
                       Text(
                         facture.solde > 0
                             ? formatMontant(facture.solde)

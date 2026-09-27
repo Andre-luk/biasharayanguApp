@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BIASHARA YANGU — Documentation technique</title>
+<link rel="stylesheet" href="../_build/theme.css">
+<style>
+  pre {
+    background:#f6f8fc; border:0.3mm solid var(--trait); border-radius:2mm;
+    padding:3mm; font-family:var(--mono); font-size:8.4pt; line-height:1.4;
+    overflow-wrap:anywhere; page-break-inside:avoid; margin:2.5mm 0;
+  }
+  .arbo { font-family:var(--mono); font-size:8.6pt; line-height:1.55; }
+</style>
+</head>
+<body>
+
+<section class="couverture">
+  <div class="marque">
+    <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+    <span class="nom">Biashara&nbsp;Yangu</span>
+  </div>
+  <div class="etiquette">Documentation technique · Version 2.3.0</div>
+
+  <div class="bloc-titre">
+    <h1>Documentation<br><em>technique</em></h1>
+    <p class="sous-titre">
+      Architecture, modèle de données, permissions, sécurité, synchronisation,
+      marketplace, migrations, déploiement et maintenance.
+    </p>
+    <div class="pastilles">
+      <span>Flutter 3.x</span><span>Supabase / PostgreSQL</span><span>SQLite local</span>
+      <span>42 migrations</span><span>go_router</span>
+    </div>
+  </div>
+
+  <div class="pied-couverture">
+    <div><strong>Biashara Tech</strong>Lubumbashi, RDC</div>
+    <div style="text-align:right"><strong>Édition de septembre 2026</strong>Destiné à l'équipe de développement</div>
+  </div>
+</section>
+
+<section class="sommaire">
+  <h2><span class="num">§</span>Sommaire</h2>
+  <ol>
+    <li><strong>Vue d'ensemble</strong><span>Pile technique, principes, découpage.</span></li>
+    <li><strong>Structure du code</strong><span>Où trouver quoi dans <code>lib/</code>.</span></li>
+    <li><strong>Modèle de données</strong><span>Tables, relations, conventions.</span></li>
+    <li><strong>Rôles, permissions et RLS</strong><span>Double contrôle, cloisonnement.</span></li>
+    <li><strong>Synchronisation et mode hors connexion</strong><span>SQLite, file implicite, realtime, conflits.</span></li>
+    <li><strong>Marketplace géolocalisée</strong><span>Fonctions serveur, liste blanche, distances, position.</span></li>
+    <li><strong>Statistiques et publicité</strong><span>Quatre niveaux, attribution, ciblage.</span></li>
+    <li><strong>Interface et design system</strong><span>Thème, composants, mise en page adaptative.</span></li>
+    <li><strong>Migrations et déploiement</strong><span>Procédure, intégration continue, publication.</span></li>
+    <li><strong>Maintenance</strong><span>Diagnostic, points de vigilance, dette technique connue.</span></li>
+  </ol>
+</section>
+
+<!-- 1 -->
+<section class="section">
+  <h2><span class="num">1.</span>Vue d'ensemble</h2>
+
+  <p class="intro">
+    Application Flutter multi-plateformes adossée à Supabase (PostgreSQL),
+    avec une base locale SQLite faisant office de tampon hors connexion.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:26%">Élément</th><th>Choix retenu</th><th>Raison</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Interface</strong></td><td>Flutter (Dart), une seule base de code pour Android, iOS, Windows, Linux et Web.</td><td>Un commerçant peut commencer sur téléphone et continuer sur un poste fixe sans second développement.</td></tr>
+      <tr><td><strong>Navigation</strong></td><td><code>go_router</code>, routes déclarées dans <code>lib/config/app_router.dart</code>, middleware de permissions dans <code>GoRouter.redirect</code>.</td><td>Un point unique de contrôle : la protection d'un écran est centralisée, pas dispersée.</td></tr>
+      <tr><td><strong>État</strong></td><td><code>provider</code> pour les gestionnaires transverses (langue, thème, accessibilité) ; services singletons pour le métier.</td><td>Évite la sur-ingénierie : la majorité des écrans lisent des services testables directement.</td></tr>
+      <tr><td><strong>Base distante</strong></td><td>Supabase : PostgreSQL + RLS + fonctions <code>security definer</code> + Storage + Realtime.</td><td>La sécurité est portée par la base, pas par l'application cliente.</td></tr>
+      <tr><td><strong>Base locale</strong></td><td>SQLite (<code>sqflite_common_ffi</code>) via <code>lib/db_helper.dart</code>.</td><td>Le commerce continue de fonctionner pendant une coupure réseau.</td></tr>
+      <tr><td><strong>Géolocalisation</strong></td><td>Haversine en SQL (<code>public.distance_km</code>), pas de PostGIS.</td><td>Évite une extension serveur ; suffisant à l'échelle visée et réversible.</td></tr>
+      <tr><td><strong>Cartographie</strong></td><td><code>flutter_map</code> + tuiles OpenStreetMap.</td><td>Aucune clé d'API, donc aucun coût récurrent par affichage.</td></tr>
+      <tr><td><strong>Codegen</strong></td><td>Aucun : modèles écrits à la main (<code>fromMap</code> / <code>toMap</code> / <code>copyWith</code>).</td><td>Supprime une étape de génération et un risque de dérive entre modèle et schéma.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Principes d'architecture tenus par le code</h3>
+  <ol>
+    <li><strong>Le client ne décide pas de ses droits.</strong> L'interface masque, le serveur refuse.</li>
+    <li><strong>Le public passe par des fonctions serveur, jamais par des tables.</strong> Aucun chemin direct vers une colonne privée.</li>
+    <li><strong>La base locale est un tampon, pas une vérité.</strong> Une donnée non synchronisée est identifiable (<code>is_synced = 0</code>).</li>
+    <li><strong>Chaque module ajoute, ne remplace pas.</strong> Les migrations sont additives et idempotentes.</li>
+    <li><strong>Tout échec est expliqué.</strong> Les messages d'erreur arrivent préfixés d'un code (<code>CODE|texte français</code>), traduit par la couche Dart.</li>
+  </ol>
+</section>
+
+<!-- 2 -->
+<section class="section">
+  <h2><span class="num">2.</span>Structure du code</h2>
+
+<pre class="arbo">lib/
+├── main.dart                  Démarrage : splash, session, permissions, thème, filet d'erreurs global
+├── db_helper.dart             Base locale SQLite (schéma, CRUD, marqueurs de synchronisation)
+├── config/
+│   └── app_router.dart        TOUTES les routes + middleware de permissions (GoRouter)
+├── models/                    Modèles métier sans dépendance Flutter (testables seuls)
+├── services/                  Accès Supabase / Edge Functions / services métier (singletons)
+├── pages/                     Écrans (snake_case_page.dart), un fichier par écran
+├── widgets/                   Composants réutilisables transverses
+├── ui/
+│   ├── theme/app_theme.dart   AppCouleurs, AppDegrades, AppTheme clair/sombre
+│   ├── widgets/               ModernLoader, Squelette, écran d'erreur global
+│   ├── accueil/               Registre des cartes d'accueil (CarteAccueil)
+│   └── mise_en_page_adaptative.dart  Largeur centrée, colonnes, proportions de grille
+├── utils/                     Formatage, sessions, géolocalisation, géo, parsing JSON
+└── l10n/                      Clés ARB + classes générées
+supabase/
+├── migrations/                42 migrations idempotentes (0000 → 0041)
+└── functions/                 Edge Functions (assistant IA)
+test/                          Suite de tests pure Dart (aucun binding requis)</pre>
+
+  <h3>Conventions à respecter pour toute évolution</h3>
+  <ul>
+    <li><code>lib/pages</code> reste <strong>plat</strong> et en <code>snake_case</code>.</li>
+    <li>Un service expose un <code>instance</code> singulier et un type d'erreur métier (<code>TypeErreurXxx</code>) ; les messages serveur sont décodés, jamais affichés bruts.</li>
+    <li>Les modèles n'importent pas Flutter : ils doivent rester testables sans <em>binding</em>.</li>
+    <li>Ajouter une valeur à l'énumération <code>PageAccess</code> impose d'ajouter la case correspondante dans <code>lib/widgets/icones_pages.dart</code> — sans quoi le <code>switch</code> cesse d'être exhaustif et la compilation échoue.</li>
+    <li>Une carte d'accueil ajoutée change le nombre de cartes attendu dans <code>test/accueil_modules_test.dart</code>.</li>
+  </ul>
+</section>
+
+<!-- 3 -->
+<section class="section">
+  <h2><span class="num">3.</span>Modèle de données</h2>
+
+  <p class="intro">
+    Quarante-deux migrations, toutes additives et rejouables. Le détail
+    complet figure dans <code>supabase/migrations/</code>.
+  </p>
+
+  <h3>Tables principales par domaine</h3>
+  <table class="compact">
+    <thead><tr><th style="width:24%">Domaine</th><th>Tables</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Comptes &amp; structure</strong></td><td><code>utilisateurs</code>, <code>entreprises</code>, <code>espaces</code>, <code>villes</code>, <code>activites</code>, <code>groupes_tarifaires</code>, <code>types_espaces_modules</code></td></tr>
+      <tr><td><strong>Abonnement &amp; activation</strong></td><td><code>abonnements</code>, <code>paiements_abonnement</code>, <code>activations_entreprise</code></td></tr>
+      <tr><td><strong>Catalogue</strong></td><td><code>produits</code>, <code>categories</code>, <code>conditionnements</code>, <code>compteurs_vente</code></td></tr>
+      <tr><td><strong>Ventes &amp; caisse</strong></td><td><code>ventes</code>, <code>lignes_vente</code>, <code>caisse</code>, <code>clotures_caisse</code></td></tr>
+      <tr><td><strong>Stock</strong></td><td><code>stock_mouvements</code>, <code>inventaires</code>, <code>matieres_premieres</code>, <code>productions</code>, <code>consommations_production</code></td></tr>
+      <tr><td><strong>Clients &amp; finance</strong></td><td><code>clients</code>, <code>dettes</code>, <code>paiements_dette</code>, <code>depenses</code></td></tr>
+      <tr><td><strong>Métiers</strong></td><td><code>chambres</code>, <code>reservations</code>, <code>tables_salle</code>, <code>commandes</code>, <code>lignes_commande</code>, <code>salles</code>, <code>evenements</code>, <code>lignes_evenement</code></td></tr>
+      <tr><td><strong>Marketplace (M19)</strong></td><td><code>produits_publications</code>, <code>recherches_publiques</code>, <code>biashara_evenements</code>, <code>publicites</code>, <code>publicite_cibles</code>, <code>publicite_evenements</code>, <code>liens_attribution</code>, vue <code>v_biashara_boutiques</code></td></tr>
+      <tr><td><strong>Gouvernance</strong></td><td><code>journal_audit</code>, <code>rapports_generes</code>, <code>agent_ia_*</code>, <code>app_settings</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Conventions structurantes</h3>
+  <ul>
+    <li><strong>Rattachement des données</strong> : la plupart des tables métier portent <code>owner_id</code> (l'espace de travail) ; <code>espaces</code> porte <code>entreprise_id</code> — c'est le pivot du cloisonnement.</li>
+    <li><strong>Absence de <code>owner_id</code> sur <code>espaces</code></strong> : le propriétaire est <em>résolu</em> par jointure sur <code>utilisateurs</code> (<code>parent_id is null</code>), évitant une donnée dupliquée qui pourrait se désynchroniser.</li>
+    <li><strong>Colonnes de synchronisation</strong> : <code>is_synced</code>, <code>updated_at</code>, parfois <code>deleted_at</code> pour les suppressions douces.</li>
+    <li><strong>Colonnes d'audit</strong> : <code>created_at</code> systématique ; <code>moderation_note</code> / <code>moderation_le</code> / <code>moderation_par</code> sur les publications (module 20).</li>
+    <li><strong>Idempotence</strong> : chaque migration utilise <code>if not exists</code>, <code>drop policy if exists</code>, <code>create or replace</code> : elle peut être rejouée sans effet secondaire.</li>
+  </ul>
+
+  <div class="encart alerte">
+    <h4>Deux migrations attendent une exécution manuelle</h4>
+    <p>
+      Le DDL n'est pas réalisable via l'API REST utilisée par l'application.
+      Les migrations <code>20260916000040_module19_marketplace.sql</code> et
+      <code>20260916000041_admin_plateforme.sql</code> doivent être exécutées
+      dans l'éditeur SQL du projet. Tant qu'elles ne le sont pas, l'application
+      fonctionne, mais les écrans concernés affichent un message explicite
+      invitant à les installer — et refuse toute opération sensible plutôt que
+      d'échouer silencieusement.
+    </p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="section">
+  <h2><span class="num">4.</span>Rôles, permissions et RLS</h2>
+
+  <h3>Huit rôles</h3>
+  <p>
+    <code>SUPER_ADMIN</code>, <code>GESTIONNAIRE_COMPTES</code>,
+    <code>FINANCE_LAPERLE</code>, <code>SUPPORT</code> (plateforme) ;
+    <code>PROPRIETAIRE</code>, <code>VENDEUR</code>,
+    <code>MAGASINIER</code>, <code>COMPTABLE_ENTREPRISE</code> (entreprise).
+  </p>
+
+  <h3>Trois niveaux de contrôle</h3>
+  <table class="compact">
+    <thead><tr><th style="width:24%">Niveau</th><th>Où</th><th>Rôle</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Navigation</strong></td><td><code>PermissionService.routeAutorisee()</code> dans le <code>redirect</code> du routeur.</td><td>Empêche l'ouverture d'un écran interdit, même par URL directe.</td></tr>
+      <tr><td><strong>Interface</strong></td><td><code>PermissionGate</code>, <code>CarteAccueil.visibles()</code>.</td><td>N'affiche que les actions possibles : cohérence perçue par l'utilisateur.</td></tr>
+      <tr><td><strong>Serveur</strong></td><td>RLS PostgreSQL + contrôles dans chaque fonction <code>security definer</code> (<code>est_plateforme()</code>, <code>mon_proprietaire()</code>, <code>a_permission()</code>).</td><td>Seul niveau réellement opposable à un client modifié.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="encart danger">
+    <h4>Point de vigilance structurel</h4>
+    <p>
+      <code>routeAutorisee()</code> retourne <code>true</code> lorsqu'aucune
+      règle ne correspond à l'URL. C'est ce qui rend les routes publiques
+      possibles (<code>/biashara*</code>), mais cela signifie aussi qu'
+      <strong>une nouvelle route sensible doit être ajoutée à la liste des
+      règles</strong> dans <code>lib/services/permission_service.dart</code> —
+      sinon elle est ouverte par défaut côté navigation (le serveur restant,
+      lui, protecteur).
+    </p>
+  </div>
+
+  <h3>RLS : ce qui est réellement exposé</h3>
+  <ul>
+    <li>Le rôle <code>anon</code> ne possède <strong>aucun</strong> privilège sur les tables du module marketplace.</li>
+    <li>La vue <code>v_biashara_boutiques</code> est révoquée pour <code>public</code>, <code>anon</code> et <code>authenticated</code> : elle n'est utilisable qu'à l'intérieur des fonctions serveur.</li>
+    <li>Les tables de gestion (ventes, clients, dettes, dépenses, stock) sont filtrées par appartenance à l'entreprise.</li>
+    <li>Les écritures du module marketplace passent par des fonctions qui revérifient la propriété : les <code>insert</code>/<code>update</code> directs sont retirés aux rôles concernés.</li>
+  </ul>
+</section>
+
+<!-- 5 -->
+<section class="section">
+  <h2><span class="num">5.</span>Synchronisation et mode hors connexion</h2>
+
+  <h3>Mécanisme</h3>
+  <ol>
+    <li>L'écriture se fait d'abord en local (SQLite) avec <code>is_synced = 0</code> : l'utilisateur n'attend jamais le réseau.</li>
+    <li><code>SyncService</code> pousse les lignes non synchronisées vers Supabase, puis les marque <code>is_synced = 1</code>.</li>
+    <li>Les modifications provenant d'autres appareils arrivent par <em>Realtime</em> (<code>onPostgresChanges</code>) et sont appliquées localement.</li>
+    <li>Un mécanisme de déduplication (<code>_seenRealtimeEvents</code>, plafonné) évite de réappliquer deux fois le même événement.</li>
+    <li>Les appels réseau passent par une reprise limitée (<code>_withRetry</code>) avant d'abandonner.</li>
+  </ol>
+
+  <h3>Gestion des conflits</h3>
+  <p>
+    Résolution « dernière écriture gagnante » avec heuristiques : une écriture
+    locale plus récente que la version serveur est conservée ; une ligne locale
+    non synchronisée n'est pas écrasée ; un stock serveur inférieur au stock
+    local est ignoré. C'est suffisant pour un usage mono-boutique à faible
+    concurrence, mais <strong>ce n'est pas une résolution transactionnelle</strong> :
+    voir la dette technique en section 10.
+  </p>
+
+  <h3>Limites connues</h3>
+  <table class="compact">
+    <thead><tr><th style="width:30%">Limite</th><th>Conséquence</th><th>Contournement</th></tr></thead>
+    <tbody>
+      <tr><td>Pas de base locale sur le Web</td><td>Le mode hors connexion n'existe pas dans le navigateur.</td><td>Usage Web orienté consultation ; la gestion se fait sur application installée.</td></tr>
+      <tr><td>File d'attente implicite</td><td>Il n'existe pas de table de file dédiée ni de temporisation progressive.</td><td>Une relance manuelle (tirer pour rafraîchir) force la synchronisation.</td></tr>
+      <tr><td>Pas de notification temps réel entre appareils</td><td>Un poste ne « sonne » pas quand une vente est enregistrée ailleurs.</td><td>Nécessiterait un canal par boutique ; non implémenté.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 6 -->
+<section class="section">
+  <h2><span class="num">6.</span>Marketplace géolocalisée</h2>
+
+  <h3>Architecture : liste blanche</h3>
+  <pre>Visiteur (anon)  →  fonction serveur "security definer"  →  vue v_biashara_boutiques (colonnes publiques)
+                                                         ↘  tables internes : INACCESSIBLES</pre>
+  <p>
+    Aucune requête du catalogue public ne lit une table directement. Une
+    vingtaine de fonctions exposent une <strong>liste blanche</strong> de
+    colonnes : nom, description, contacts publics, horaires, adresse, position,
+    prix public, disponibilité déclarée. Les prix d'achat, les quantités
+    exactes, les clients et les dettes ne sont pas atteignables.
+  </p>
+
+  <h3>Fonctions publiques principales (module 19)</h3>
+  <table class="compact">
+    <thead><tr><th style="width:44%">Fonction</th><th>Rôle</th></tr></thead>
+    <tbody>
+      <tr><td><code>rpc_biashara_accueil</code></td><td>Données de la page d'accueil publique en un appel.</td></tr>
+      <tr><td><code>rpc_biashara_rechercher</code></td><td>Recherche de produits avec tri (pertinence / distance / prix) et pagination.</td></tr>
+      <tr><td><code>rpc_biashara_boutique</code></td><td>Fiche d'une boutique par slug ou identifiant.</td></tr>
+      <tr><td><code>rpc_biashara_produit</code></td><td>Fiche d'un produit et comparaison des prix entre boutiques.</td></tr>
+      <tr><td><code>rpc_biashara_boutiques_proches</code></td><td>Boutiques les plus proches ou d'une ville choisie.</td></tr>
+      <tr><td><code>rpc_biashara_categories</code> / <code>_villes</code></td><td>Catégories populaires et villes couvertes.</td></tr>
+      <tr><td><code>rpc_biashara_evenement</code></td><td>Enregistrement d'un événement de visibilité (type contrôlé).</td></tr>
+      <tr><td><code>biashara_publicites_servir</code></td><td>Sélection des annonces pertinentes, renvoyées dans un tableau séparé.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Distances et position</h3>
+  <ul>
+    <li><code>public.distance_km(lat1, lng1, lat2, lng2)</code> : Haversine pur SQL, immuable, testable.</li>
+    <li><code>public.biashara_tranche_distance(km)</code> : convertit une distance en tranche statistique (<code>&lt;1</code>, <code>1-3</code>, <code>3-10</code>, <code>&gt;10</code>) — c'est ce qui est stocké, jamais la distance exacte.</li>
+    <li>La position du visiteur est conservée <strong>en mémoire</strong> dans le service, le temps de la session, et n'est jamais envoyée au serveur.</li>
+    <li>Côté commerçant, la position est confirmée par un acte explicite : <code>statut_localisation = 'verifiee'</code>, sinon <code>'a_verifier'</code>.</li>
+  </ul>
+
+  <h3>Score de pertinence</h3>
+  <pre>score = correspondance(nom recherché)
+      + 8 si disponible réellement
+      + 4 si photo présente
+      + 4 si description non vide
+      + 4 si quartier ET point de repère renseignés
+      + 5 si position confirmée
+  (aucun critère de taille, d'ancienneté ou de chiffre d'affaires)</pre>
+</section>
+
+<!-- 7 -->
+<section class="section">
+  <h2><span class="num">7.</span>Statistiques, attribution et publicité</h2>
+
+  <h3>Quatre catégories d'événements</h3>
+  <table class="compact">
+    <thead><tr><th style="width:22%">Catégorie</th><th>Types d'événements</th><th>Stocké</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge bleu">visibilite</span></td><td>impression produit / boutique / publicité, recherche</td><td>Ville, quartier, tranche de distance — aucune identité.</td></tr>
+      <tr><td><span class="badge vert">interet</span></td><td>vue produit / boutique, partage, clic publicité</td><td>Identifiant d'entité (publication, boutique, annonce).</td></tr>
+      <tr><td><span class="badge orange">intention</span></td><td>clic itinéraire, appel, WhatsApp, site</td><td>Entité concernée + tranche de distance.</td></tr>
+      <tr><td><span class="badge rouge">conversion</span></td><td>achat attribué via code/QR/lien</td><td>Référence du lien d'attribution.</td></tr>
+    </tbody>
+  </table>
+  <p>
+    <code>public.biashara_categorie_evenement(text)</code> classe un type dans
+    sa catégorie. Une fonction de tableau de bord agrège par jour, par type et
+    par produit.
+  </p>
+
+  <h3>Attribution</h3>
+  <p>
+    La table <code>liens_attribution</code> génère des codes de la forme
+    <code>BIA-XXXXXX</code> (QR de vitrine, lien de suivi, code promotionnel).
+    Une conversion n'est comptée que lorsqu'un de ces codes est effectivement
+    utilisé : <strong>une simple consultation n'est jamais convertie en
+    vente</strong>. L'intégration au module d'encaissement n'a volontairement
+    pas été modifiée : elle fera l'objet d'une évolution dédiée afin de ne
+    prendre aucun risque sur le chemin de vente existant.
+  </p>
+
+  <h3>Publicité</h3>
+  <ul>
+    <li>Cycle de vie : <code>brouillon</code> → <code>soumise</code> → <code>active</code> → <code>terminee</code>, avec <code>pause</code> et <code>refusee</code>.</li>
+    <li>Seule la plateforme active ou refuse ; le commerçant soumet, met en pause et termine.</li>
+    <li>Ciblage : ville, quartier, rayon autour d'un point, catégorie. Un ciblage « quartier » ne bloque pas l'affichage faute d'information côté visiteur — choix documenté dans le code.</li>
+    <li>Mention « PUBLICITÉ » portée par le widget d'affichage lui-même, pour ne jamais dépendre de l'écran appelant.</li>
+    <li>Compteurs : impressions, clics, conversions, avec plafond d'impressions.</li>
+  </ul>
+</section>
+
+<!-- 8 -->
+<section class="section">
+  <h2><span class="num">8.</span>Interface et design system</h2>
+
+  <table class="compact">
+    <thead><tr><th style="width:34%">Élément</th><th>Emplacement</th><th>Usage</th></tr></thead>
+    <tbody>
+      <tr><td><code>AppCouleurs</code></td><td><code>lib/ui/theme/app_theme.dart</code></td><td>Palette unique : marine <code>#1F3864</code>, orange <code>#F08A4B</code>, succès, alerte, danger, info.</td></tr>
+      <tr><td><code>AppDegrades</code></td><td><code>lib/ui/theme/app_theme.dart</code></td><td>Dégradés de marque (<code>primaire</code>, <code>hero</code>, <code>accent</code>).</td></tr>
+      <tr><td><code>ModernLoader</code>, <code>Squelette</code></td><td><code>lib/ui/widgets/modern_loader.dart</code></td><td>Chargements : anneau dégradé et squelettes, en remplacement des indicateurs nus.</td></tr>
+      <tr><td><code>EcranErreurBiashara</code></td><td><code>lib/ui/widgets/ecran_erreur_biashara.dart</code></td><td>Repli global branché sur <code>ErrorWidget.builder</code> : plus jamais l'écran rouge « Unhandled Exception ».</td></tr>
+      <tr><td><code>MiseEnPageAdaptative</code></td><td><code>lib/ui/mise_en_page_adaptative.dart</code></td><td>Largeur centrée (max 980 px), colonnes de grille, <strong>proportion de carte corrigée de l'échelle de texte</strong>.</td></tr>
+      <tr><td><code>AppDropdownField</code></td><td><code>lib/widgets/app_dropdown_field.dart</code></td><td>Remplaçant officiel de <code>DropdownButtonFormField</code>.</td></tr>
+      <tr><td><code>PermissionGate</code></td><td><code>lib/widgets/permission_gate.dart</code></td><td>Masquage d'une action selon les permissions.</td></tr>
+      <tr><td><code>PhotoBiashara</code></td><td><code>lib/widgets/photo_biashara.dart</code></td><td>Image tolérante avec repli, utilisée par les cartes du catalogue public.</td></tr>
+      <tr><td><code>CarteAccueil</code></td><td><code>lib/ui/accueil/cartes_accueil.dart</code></td><td>Registre des cartes d'accueil : croisement modules × permissions.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Accessibilité</h3>
+  <ul>
+    <li>Échelle de texte configurable dans Réglages, appliquée à toute l'application, dialogues compris.</li>
+    <li>Les grilles utilisent désormais une proportion calculée à partir de cette échelle : plus de débordement quand le texte est agrandi.</li>
+    <li>Thème clair et thème sombre pris en charge par le gestionnaire de thème.</li>
+  </ul>
+
+  <div class="encart">
+    <h4>Internationalisation : état réel</h4>
+    <p>
+      L'infrastructure existe (fichiers ARB, délégués, gestionnaire de langue),
+      mais seules <strong>26 clés</strong> sont traduites alors que l'interface
+      est en français quasi intégralement. Après l'audit, seules les locales
+      réellement traduites sont déclarées et les autres sont présentées comme
+      « en préparation » : plus de promesse trompeuse. L'externalisation
+      complète reste un chantier identifié (section 10).
+    </p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="section">
+  <h2><span class="num">9.</span>Migrations et déploiement</h2>
+
+  <h3>Procédure d'application d'une migration</h3>
+  <ol>
+    <li>Ouvrir l'éditeur SQL du projet Supabase.</li>
+    <li>Coller le contenu du fichier de migration et l'exécuter. Les migrations sont idempotentes : une réexécution est sans effet.</li>
+    <li>Lire les requêtes de vérification placées en fin de fichier : elles retournent des compteurs attendus (tables créées, colonnes présentes, pages de permission déclarées).</li>
+    <li>Vérifier dans l'application que l'écran concerné charge sans message d'installation manquante.</li>
+  </ol>
+
+  <h3>Migrations récentes</h3>
+  <table class="compact">
+    <thead><tr><th style="width:44%">Fichier</th><th>Contenu</th></tr></thead>
+    <tbody>
+      <tr><td><code>…0038_module17_verrouillage_comptes.sql</code></td><td>Verrouillage temporaire après tentatives de connexion répétées.</td></tr>
+      <tr><td><code>…0039_module18_devises.sql</code></td><td>Devises de travail (CDF/USD) et taux.</td></tr>
+      <tr><td><code>…0040_module19_marketplace.sql</code></td><td>Marketplace : 7 tables, 1 vue, 22 fonctions, bucket de stockage, permissions.</td></tr>
+      <tr><td><code>…0041_admin_plateforme.sql</code></td><td>Administration : 3 colonnes de modération, pages <code>boutiques</code> et <code>moderation</code>, 6 fonctions plateforme.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Intégration continue</h3>
+  <pre>flutter analyze --no-fatal-infos --no-fatal-warnings   # porte d'entrée : 0 erreur
+flutter test                                          # suite complète</pre>
+  <div class="encart danger">
+    <h4>Ne pas compiler localement sur la machine de développement</h4>
+    <p>
+      La compilation d'un paquet Android sur le poste de développement
+      actuel sature la mémoire de la machine. La validation se fait donc par
+      l'analyse statique et les tests ; la production des paquets est déléguée
+      à l'intégration continue (déclenchement par étiquette de version ou
+      manuel).
+    </p>
+  </div>
+
+  <h3>Publication</h3>
+  <ul>
+    <li>La version applicative est déclarée dans <code>pubspec.yaml</code> et rappelée dans la page « À propos ».</li>
+    <li>Signature Android : <code>tools/setup_signature.sh</code> ; le fichier de clés n'est jamais versionné (<code>key.properties.example</code> sert de modèle).</li>
+    <li>Déploiement de la fonction d'assistant : <code>tools/deploy_agent_ia.sh</code>.</li>
+    <li>Procédure de publication détaillée : <code>docs/publication_app.md</code> ; sauvegarde et restauration : <code>docs/backup_restore_supabase.md</code>.</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="section">
+  <h2><span class="num">10.</span>Maintenance et dette technique</h2>
+
+  <h3>Diagnostic rapide</h3>
+  <table class="compact">
+    <thead><tr><th style="width:36%">Symptôme</th><th>Première vérification</th></tr></thead>
+    <tbody>
+      <tr><td>Un écran du marketplace affiche « non installé »</td><td>Migration 40 ou 41 non exécutée dans l'éditeur SQL.</td></tr>
+      <tr><td>« Autour de moi » ne trouve rien</td><td>Autorisation de localisation refusée ; le repli ville/carte doit fonctionner.</td></tr>
+      <tr><td>Une donnée ne remonte pas</td><td><code>is_synced = 0</code> en base locale : réseau ou rejet serveur.</td></tr>
+      <tr><td>Un accès refusé inattendu</td><td>Vérifier la matrice du rôle <em>et</em> la règle de route correspondante.</td></tr>
+      <tr><td>Un écran déborde</td><td>Vérifier l'échelle de texte utilisateur et l'utilisation de <code>MiseEnPageAdaptative.proportionCarte</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Dette technique identifiée (non corrigée, assumée)</h3>
+  <table>
+    <thead><tr><th style="width:34%">Sujet</th><th>État</th><th>Recommandation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Uniformisation visuelle des anciens écrans</td>
+        <td>Une centaine de pages utilisent encore des couleurs codées en dur et un indicateur de chargement nu.</td>
+        <td>Migration progressive vers <code>AppCouleurs</code> et <code>ModernLoader</code>, module par module, en commençant par les écrans les plus utilisés (accueil, caisse, collaborateurs).</td>
+      </tr>
+      <tr>
+        <td>Internationalisation</td>
+        <td>26 clés traduites sur trois langues annoncées.</td>
+        <td>Soit externaliser progressivement, soit maintenir l'anglais et le swahili désactivés (état actuel) jusqu'à traduction effective.</td>
+      </tr>
+      <tr>
+        <td>Journalisation de développement</td>
+        <td>Environ 390 appels de journalisation sans garde de mode.</td>
+        <td>Encadrer par un contrôle de mode <em>debug</em> lors d'une passe dédiée.</td>
+      </tr>
+      <tr>
+        <td>Écrans d'administration historiques</td>
+        <td>La sauvegarde/restauration et la gestion des catégories s'appuient sur la base locale SQLite, ce qui peut donner l'impression d'une sauvegarde serveur.</td>
+        <td>Rendre explicite la portée réelle (locale) et renvoyer vers <code>docs/backup_restore_supabase.md</code> pour la sauvegarde serveur.</td>
+      </tr>
+      <tr>
+        <td>Résolution de conflits de synchronisation</td>
+        <td>Heuristiques « dernière écriture gagnante ».</td>
+        <td>Suffisant en usage mono-boutique ; prévoir un numéro de version par ligne si la concurrence multi-poste s'intensifie.</td>
+      </tr>
+      <tr>
+        <td>Notifications entre appareils</td>
+        <td>Absentes (nécessiterait un canal par boutique).</td>
+        <td>À planifier si plusieurs personnes doivent être alertées en temps réel.</td>
+      </tr>
+      <tr>
+        <td>Attribution des conversions à la caisse</td>
+        <td>Les codes d'attribution sont enregistrés mais ne sont pas encore consommés par le module de vente.</td>
+        <td>Évolution dédiée, à mener sans modifier le chemin de vente existant sans tests d'accompagnement.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="pied">
+    <div><strong>BIASHARA YANGU</strong> — Documentation technique</div>
+    <div>Version 2.3.0 · Septembre 2026 · Biashara Tech, Lubumbashi</div>
+  </div>
+</section>
+
+</body>
+</html>

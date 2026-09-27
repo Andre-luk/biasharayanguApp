@@ -149,6 +149,22 @@ dettes, dépenses, données d'audit, informations internes.
 
 ## 7. Application (Flutter)
 
+### Point d'entrée — « Marketplace d'abord »
+
+Un téléphone **sans compte, sans session et sans utilisateur local** est très
+probablement celui d'un simple client. Au démarrage, `_handleStartup()`
+(`lib/main.dart`) ouvre donc directement **`/biashara`** : le visiteur découvre
+le catalogue sans jamais croiser un formulaire d'inscription. La page publique
+contient elle-même les deux portes commerçant :
+
+- **« Se connecter »** (en-tête) → `/login` ;
+- **« Enregistrer ma boutique »** (bloc commerçants, présent aussi bien dans
+  l'état vide que dans l'état d'erreur réseau) → `/setup`.
+
+Aucun écran public n'est une impasse : si la base n'est pas encore migrée, la
+page affiche le message explicite « *Le catalogue public « Biashara » n'est pas
+encore installé sur la base…* » + **Réessayer**, et laisse les accès commerçant.
+
 ### 7.1 Pages publiques (sans compte)
 
 | Route | Écran |
@@ -189,6 +205,17 @@ montre exactement ce que verront les clients avant l'enregistrement final.
 | `flutter_map` + `latlong2` | Carte interactive (tuiles OpenStreetMap) | Dart pur : mobile, web, Linux, Windows — **aucune clé d'API**. |
 | `geolocator` | Position du visiteur/commerçant | Android/iOS/web/Windows ; **pas d'implémentation Linux** → repli propre (message + choix sur la carte). |
 | `http` | Recherche d'adresse (Nominatim) | Dart pur. |
+
+**Permissions déclarées** (demandées par le système **uniquement** quand le
+visiteur touche « Autour de moi », jamais au démarrage) :
+
+| Plateforme | Fichier | Déclaration |
+|---|---|---|
+| Android | `android/app/src/main/AndroidManifest.xml` | `ACCESS_COARSE_LOCATION`, `ACCESS_FINE_LOCATION` |
+| iOS | `ios/Runner/Info.plist` | `NSLocationWhenInUseUsageDescription` |
+
+Un refus laisse l'application entièrement fonctionnelle : repli « Choisir une
+ville » ou position posée sur la carte.
 
 ---
 
@@ -233,5 +260,7 @@ montre exactement ce que verront les clients avant l'enregistrement final.
 - Migration validée par le parseur `pgsql-parser` + `plpgsql-parser` :
   **251/251 instructions valides** (syntaxe SQL **et** corps PL/pgSQL).
 - `dart analyze lib` : **0 erreur** (183 issues préexistantes, en baisse).
+- `flutter analyze --no-fatal-infos --no-fatal-warnings` : **exit 0, 0 erreur**
+  — exactement le seuil appliqué par l'intégration continue.
 - `flutter test` : **678/678 tests verts**, dont **54 nouveaux** cas dédiés au
   module (`test/marketplace_test.dart`).

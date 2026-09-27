@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/models/commande.dart';
 import 'package:biashara_yangu/models/table_salle.dart';
 import 'package:biashara_yangu/services/restaurant_service.dart';
+import 'package:biashara_yangu/ui/mise_en_page_adaptative.dart';
 import 'package:biashara_yangu/widgets/statut_restaurant_chips.dart';
 
 class TablesSallePage extends StatefulWidget {
@@ -396,11 +397,15 @@ class _TablesSallePageState extends State<TablesSallePage> {
                               padding:
                                   const EdgeInsets.fromLTRB(12, 8, 12, 96),
                               gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  SliverGridDelegateWithMaxCrossAxisExtent(
                                 maxCrossAxisExtent: 220,
                                 mainAxisSpacing: 10,
                                 crossAxisSpacing: 10,
-                                childAspectRatio: 1.45,
+                                // ♿ AUDIT FINAL — cartes à trois lignes de
+                                // texte : la proportion suit l'échelle de
+                                // texte pour éviter tout débordement.
+                                childAspectRatio: MiseEnPageAdaptative
+                                    .proportionCarte(context, 1.45),
                               ),
                               itemCount: _filtrees.length,
                               itemBuilder:

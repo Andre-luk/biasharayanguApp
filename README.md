@@ -52,8 +52,8 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 41 migrations SQL idempotentes (0000 → 0040)
-test/                  → 678 tests purs (modèles, permissions, rapports, modules, devises, marketplace)
+supabase/migrations/   → 42 migrations SQL idempotentes (0000 → 0041)
+test/                  → 698 tests purs (modèles, permissions, rapports, modules, devises, marketplace, administration)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
@@ -198,7 +198,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 678 tests — doit rester 100 % vert
+flutter test             # 698 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -261,7 +261,27 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
   (script `tools/deploy_agent_ia.sh` ou Dashboard ; secret `DEEPSEEK_API_KEY`)
 - `docs/mise_a_jour_v1.x.x.md` — notes de mise à jour pour les fiches store
 - `docs/module12_analyse_actions.md`, `module13_agent_ia.md`, `module14_activation.md`,
-  `module15_multi_entreprises.md` — documentation par module
+  `module15_multi_entreprises.md`, `module17_verrouillage_comptes.md`,
+  `module18_devises.md`, `module19_marketplace.md` — documentation par module
+
+### 7.1 Documents officiels (PDF)
+
+Générés depuis l'état réel du code (pipeline HTML → PDF, script
+`docs/_build/build_pdf.sh`), rangés par public :
+
+| Dossier | Document | Public |
+|---|---|---|
+| `docs/officiel/` | Présentation officielle de la plateforme | Partenaires, prospects |
+| `docs/politique/` | Politique de la plateforme | Utilisateurs, juridique |
+| `docs/utilisateur/` | Guide officiel d'utilisation | Commerçants et équipes |
+| `docs/commercial/` | Dossier commercial | Commerçants, entreprises |
+| `docs/marketing/` | Document marketing | Communication, terrain |
+| `docs/technique/` | Documentation technique | Équipe de développement |
+| `docs/audit/` | Rapport final d'audit et de mise à niveau | Direction, qualité |
+| `docs/depliants/` | Dépliant commercial A4 (3 volets, recto-verso) | Terrain, affichage |
+
+Régénération : `./docs/_build/build_pdf.sh` (ou un seul dossier en argument).
+Les documents réutilisent les captures réelles de l'application.
 
 ---
 

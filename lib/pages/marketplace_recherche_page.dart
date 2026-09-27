@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/models/produit_public.dart';
 import 'package:biashara_yangu/models/publicite_biashara.dart';
 import 'package:biashara_yangu/services/marketplace_service.dart';
+import 'package:biashara_yangu/ui/mise_en_page_adaptative.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -339,7 +340,10 @@ class _MarketplaceRecherchePageState extends State<MarketplaceRecherchePage> {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.72,
+            // ♿ Proportion corrigée de l'échelle de texte : nom + prix +
+            // ville + vendeur sur une carte mobile étroite.
+            childAspectRatio:
+                MiseEnPageAdaptative.proportionCarte(context, 0.72, minimum: 0.5),
             children: <Widget>[
               for (final ProduitPublic produit in _resultats)
                 CarteProduitPublic(

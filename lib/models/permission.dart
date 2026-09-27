@@ -247,7 +247,22 @@ enum PageAccess {
       alias: ['ma_visibilite', 'statistiques_publiques']),
   publicites('publicites', 'Publicités Biashara',
       [EspaceApplication.entreprise, EspaceApplication.plateforme],
-      alias: ['campagnes', 'annonces', 'sponsorise']);
+      alias: ['campagnes', 'annonces', 'sponsorise']),
+
+  // 🛡️ MODULE 20 — ADMINISTRATION PLATEFORME (audit final de
+  // professionnalisation). Deux écrans réservés à l'équipe plateforme :
+  //  • `boutiques`   : parc complet des espaces/boutiques, activation et
+  //    retrait du catalogue public ;
+  //  • `moderation`  : modération du catalogue public (retrait d'un article
+  //    illicite ou trompeur, avec motif visible du commerçant).
+  // Les alias couvrent le vocabulaire employé dans les échanges avec les
+  // utilisateurs (« magasins », « espaces », « signalements »).
+  boutiques('boutiques', 'Boutiques & espaces',
+      [EspaceApplication.plateforme],
+      alias: ['espaces', 'magasins', 'vitrines']),
+  moderation('moderation', 'Modération marketplace',
+      [EspaceApplication.plateforme],
+      alias: ['signalements', 'moderation_marketplace', 'catalogue_public']);
 
   const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
 

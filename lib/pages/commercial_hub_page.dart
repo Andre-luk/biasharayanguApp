@@ -14,6 +14,7 @@ import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/ui/mise_en_page_adaptative.dart';
 
 class CommercialHubPage extends StatelessWidget {
   const CommercialHubPage({super.key});
@@ -203,11 +204,14 @@ class CommercialHubPage extends StatelessWidget {
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
+                              SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
-                            childAspectRatio: 2.1,
+                            // ♿ AUDIT FINAL — proportion corrigée de l'échelle
+                            // de texte (Réglages → Accessibilité).
+                            childAspectRatio: MiseEnPageAdaptative
+                                .proportionCarte(context, 2.1),
                           ),
                           itemCount: cartes.length,
                           itemBuilder: (context, index) => cartes[index],

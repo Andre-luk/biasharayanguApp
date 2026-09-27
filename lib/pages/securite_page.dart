@@ -18,6 +18,7 @@ import 'package:biashara_yangu/models/audit.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/securite_service.dart';
+import 'package:biashara_yangu/ui/mise_en_page_adaptative.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
@@ -230,7 +231,7 @@ class _SecuritePageState extends State<SecuritePage> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                     children: <Widget>[
                       _sectionTitre('Résumé des sessions', Icons.schedule_rounded),
-                      _grilleResume(),
+                      _grilleResume(context),
                       const SizedBox(height: 22),
                       _sectionTitre('Alertes', Icons.notification_important_rounded),
                       _blocAlertes(),
@@ -293,7 +294,7 @@ class _SecuritePageState extends State<SecuritePage> {
     );
   }
 
-  Widget _grilleResume() {
+  Widget _grilleResume(BuildContext context) {
     final ResumeConnexions resume =
         _connexions?.resume ?? ResumeConnexions.vide;
 
@@ -303,7 +304,10 @@ class _SecuritePageState extends State<SecuritePage> {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 2.35,
+      // ♿ AUDIT FINAL — tuiles très plates : elles débordaient dès que
+      // l'utilisateur agrandissait le texte. La proportion suit désormais
+      // l'échelle de texte choisie.
+      childAspectRatio: MiseEnPageAdaptative.proportionCarte(context, 2.35),
       children: <Widget>[
         _carteStat('Connexions (24 h)', resume.reussies24h, Colors.green,
             Icons.check_circle_rounded),
