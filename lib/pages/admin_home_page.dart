@@ -622,7 +622,24 @@ class AdminSettingsPage extends StatelessWidget {
             ),
           ),
 
-          // 🔐 MODULE 12 — écran Sécurité, réservé au personnel plateforme.
+          // � MODULE 19 — modération des campagnes publicitaires : seules les
+          // campagnes ACTIVÉES ici sont diffusées dans le catalogue public.
+          PermissionGate(
+            page: PageAccess.publicites,
+            action: ActionAccess.voir,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.campaign_rounded,
+              color: Colors.deepOrange.shade400,
+              title: 'Publicités Biashara',
+              subtitle:
+                  'Valider, activer ou refuser les campagnes des boutiques (toujours marquées « PUBLICITÉ »).',
+              onTap: () => GoRouter.of(context).push('/admin/publicites'),
+            ),
+          ),
+
+          // �🔐 MODULE 12 — écran Sécurité, réservé au personnel plateforme.
           PermissionGate(
             page: PageAccess.securite,
             action: ActionAccess.voir,

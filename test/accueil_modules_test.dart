@@ -74,7 +74,7 @@ void main() {
   });
 
   group('CarteAccueil.visibles — boutique (comportement historique)', () {
-    test('propriétaire + profil complet => les 9 cartes, dans l\'ordre', () {
+    test('propriétaire + profil complet => les 12 cartes, dans l\'ordre', () {
       final List<CarteAccueil> cartes = CarteAccueil.visibles(
         modules: ModulesService.modulesBase,
         profilCharge: true,
@@ -86,6 +86,10 @@ void main() {
         'stock',
         'ventes',
         'clients',
+        // 🛒 MODULE 19 — marketplace (transverse : aucun module d'activité).
+        'publications',
+        'visibilite',
+        'publicites',
         'caisse',
         'finance',
         'rapports',
@@ -101,7 +105,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 19);
+      expect(cartes.length, 22);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
@@ -117,6 +121,10 @@ void main() {
       expect(idsDe(cartes), contains('evenements'));
       // 🥖 MODULE 16 C5 — la carte boulangerie est désormais codée.
       expect(idsDe(cartes), contains('production'));
+      // 🛒 MODULE 19 — les cartes marketplace sont transverses.
+      expect(idsDe(cartes), contains('publications'));
+      expect(idsDe(cartes), contains('visibilite'));
+      expect(idsDe(cartes), contains('publicites'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -126,7 +134,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 19);
+      expect(cartes.length, 22);
     });
   });
 
@@ -146,6 +154,10 @@ void main() {
         'reservations',
         'checkin',
         'clients',
+        // 🛒 MODULE 19 — cartes marketplace (transverses).
+        'publications',
+        'visibilite',
+        'publicites',
         'caisse',
         'finance',
         'rapports',
@@ -203,6 +215,10 @@ void main() {
         'commandes',
         'cuisine',
         'clients',
+        // 🛒 MODULE 19 — cartes marketplace (transverses).
+        'publications',
+        'visibilite',
+        'publicites',
         'caisse',
         'finance',
         'rapports',
@@ -250,6 +266,10 @@ void main() {
         'evenements',
         'salles',
         'clients',
+        // 🛒 MODULE 19 — cartes marketplace (transverses).
+        'publications',
+        'visibilite',
+        'publicites',
         'caisse',
         'finance',
         'rapports',
@@ -295,6 +315,10 @@ void main() {
       expect(idsDe(cartes), <String>[
         'production',
         'clients',
+        // 🛒 MODULE 19 — cartes marketplace (transverses).
+        'publications',
+        'visibilite',
+        'publicites',
         'caisse',
         'finance',
         'rapports',

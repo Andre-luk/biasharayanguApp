@@ -22,8 +22,8 @@ class AboutPage extends StatelessWidget {
 
   // ── Identité officielle ────────────────────────────────────────────────────
   static const String appName = 'Biashara Yangu';
-  static const String appVersion = '2.1.3';
-  static const String appBuild = '22';
+  static const String appVersion = '2.2.0';
+  static const String appBuild = '23';
   static const String editeur = 'Biashara Tech — Lubumbashi, RDC';
   static const String developpeur = 'Biashara Tech';
   static const String developpeurPrincipal = 'Andre Lukengu';
@@ -91,6 +91,12 @@ class AboutPage extends StatelessWidget {
             '(matières premières, productions, coût de revient) et boucherie '
             '(vente au poids, ticket au kg).\n'
             '• Équipe : 8 rôles et permissions fines par écran et par action.\n'
+            '• Biashara Marketplace : vitrine publique géolocalisée — vos '
+            'produits trouvables autour des clients (recherche SANS compte, '
+            'comparaison des prix, distances, itinéraire), tableau de bord de '
+            'visibilité (affichages, intérêt, itinéraires, appels, ventes '
+            'attribuées) et campagne publicitaire toujours marquée '
+            '« PUBLICITÉ ».\n'
             '• Assistant IA avec quotas et journal d\'audit complet.',
           ),
           _identite(theme),

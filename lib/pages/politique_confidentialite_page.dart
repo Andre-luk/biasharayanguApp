@@ -52,9 +52,29 @@ class PolitiqueConfidentialitePage extends StatelessWidget {
                 '• Sécurité : connexions (date, adresse IP, appareil) et '
                 'journal d\'audit des actions sensibles.\n'
                 '• Assistant IA : questions posées et réponses générées '
-                '(pour le calcul des quotas et la qualité du service).\n\n'
-                'Nous ne collectons ni vos contacts personnels, ni vos '
-                'photos, ni votre position GPS.',
+                '(pour le calcul des quotas et la qualité du service).\n'
+                '• Marketplace « Biashara » (uniquement si VOUS choisissez '
+                'd\'y rendre votre boutique visible) : nom, activité, '
+                'description, adresse, quartier, point de repère, position de '
+                'LA BOUTIQUE, horaires, téléphone/WhatsApp publics, logo et '
+                'photos, articles publiés (nom, photo, prix public, '
+                'disponibilité).\n'
+                '• Mesure de visibilité : affichages, consultations, demandes '
+                'd\'itinéraire, appels, WhatsApp et partages — rattachés à '
+                'VOTRE boutique, jamais à une personne identifiée.\n\n'
+                'POSITION ET VIE PRIVÉE (marketplace) :\n'
+                '• Votre position de VISITEUR n\'est demandée que si vous '
+                'touchez « Autour de moi ». Elle sert uniquement à calculer '
+                'des distances à l\'écran : elle n\'est ni transmise à nos '
+                'serveurs, ni conservée, ni associée à votre identité.\n'
+                '• Vous pouvez refuser ou ne rien faire : « Rechercher dans '
+                'une ville » offre exactement le même service, sans partage '
+                'de position.\n'
+                '• Aucun historique de déplacement n\'est constitué. Les '
+                'statistiques ne retiennent qu\'une TRANCHE de distance '
+                '(moins d\'1 km, 1 à 3 km, 3 à 10 km, plus de 10 km).\n\n'
+                'Nous ne collectons ni vos contacts personnels, ni vos photos '
+                'personnelles, ni votre carnet d\'adresses.',
           ),
           _section(
             context,
@@ -66,6 +86,13 @@ class PolitiqueConfidentialitePage extends StatelessWidget {
                 'actions sensibles (prix, stock, comptes).\n'
                 '• Abonnement : calculer votre solde, vos échéances et vos '
                 'reçus.\n'
+                '• Marketplace : permettre à des clients — y compris sans '
+                'compte — de trouver vos produits autour d\'eux, et vous '
+                'montrer ce que cette visibilité vous apporte (affichages, '
+                'consultations, itinéraires, appels).\n'
+                '• Séparation stricte : vos prix d\'achat, votre stock exact, '
+                'vos clients, vos dettes, vos dépenses et vos marges ne sont '
+                'JAMAIS publiés dans le catalogue public.\n'
                 '• Amélioration : statistiques agrégées et anonymes.',
           ),
           _section(

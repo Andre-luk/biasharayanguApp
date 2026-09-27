@@ -339,7 +339,47 @@ class CarteAccueil {
       couleur: const Color(0xFF0EA5E9),
       route: '/main/clients',
     ),
-    // 💰 MODULE 10 — caisse (encaissements + clôtures).
+    // � MODULE 19 — la vitrine publique de la boutique (position, horaires,
+    // contacts, articles à publier). Volontairement SANS module d'activité :
+    // le marketplace est transverse — une boutique, un hôtel, une pharmacie ou
+    // un salon peuvent y figurer.
+    CarteAccueil(
+      id: 'publications',
+      page: PageAccess.publications,
+      priorite: 45,
+      titre: (AppLocalizations T) => 'Ma vitrine Biashara',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          d.produitsCount == 0 ? 'À préparer' : 'Publier',
+      icone: Icons.storefront_rounded,
+      couleur: const Color(0xFF0EA5E9),
+      route: '/main/vitrine',
+    ),
+    // 🛒 MODULE 19 — tableau de bord « Ma visibilité Biashara » : ce que
+    // Biashara apporte réellement (affichages, intérêt, intentions, ventes
+    // attribuées).
+    CarteAccueil(
+      id: 'visibilite',
+      page: PageAccess.visibilite,
+      priorite: 46,
+      titre: (AppLocalizations T) => 'Ma visibilité',
+      valeur: (DonneesAccueil d, AppLocalizations T) => 'Voir',
+      icone: Icons.insights_rounded,
+      couleur: const Color(0xFF16A34A),
+      route: '/main/visibilite',
+    ),
+    // 🛒 MODULE 19 — campagnes publicitaires (toujours marquées « PUBLICITÉ »
+    // et jamais mélangées aux résultats organiques).
+    CarteAccueil(
+      id: 'publicites',
+      page: PageAccess.publicites,
+      priorite: 47,
+      titre: (AppLocalizations T) => 'Publicités',
+      valeur: (DonneesAccueil d, AppLocalizations T) => 'Gérer',
+      icone: Icons.campaign_rounded,
+      couleur: const Color(0xFFF08A4B),
+      route: '/main/publicites',
+    ),
+    // �💰 MODULE 10 — caisse (encaissements + clôtures).
     CarteAccueil(
       id: 'caisse',
       module: ModuleCode.caisse,

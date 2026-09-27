@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Dépliant commercial A4 (3 volets, recto-verso)</title>
+<meta name="description" content="Dépliant commercial Biashara Yangu — logiciel de gestion de commerce multi-activités (Android, Windows, Linux, Web).">
+<style>
+/* ==========================================================================
+   BIASHARA YANGU — DÉPLIANT COMMERCIAL
+   A4 paysage 297 × 210 mm — 3 volets de 99 mm — recto / verso
+   Plis : 99 mm et 198 mm. Repères de pliage masquables (body.sans-reperes).
+   ========================================================================== */
+
+:root{
+  --marine:#1F3864; --marine-p:#16294A; --marine-c:#2E5AA8; --marine-95:#33549C;
+  --orange:#F08A4B; --orange-f:#D96E2B;
+  --encre:#151A23; --gris:#5A6478; --gris-clair:#8A93A6;
+  --fond:#F4F6FB; --carte:#FFFFFF; --trait:#E3E7F0;
+  --titre:'Noto Sans','Liberation Sans','Segoe UI',Arial,sans-serif;
+  --texte:'Noto Sans','Liberation Sans','Segoe UI',Arial,sans-serif;
+}
+
+@page{ size:A4 landscape; margin:0; }
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+
+html,body{ background:#6B7280; }
+body{
+  font-family:var(--texte); color:var(--encre);
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+
+/* ---------- Impression : règles placées EN FIN de feuille de style ---------- */
+/* ⚠️ Ce bloc doit rester APRÈS les règles d'écran : à spécificité égale,
+   c'est la dernière règle lue qui gagne — placé trop tôt, il était écrasé
+   (feuilles trop hautes → pages vides et volets coupés dans le PDF). */
+
+/* ---------- Aperçu écran (masqué à l'impression) ---------- */
+.barre{
+  position:sticky; top:0; z-index:50; background:#0E1116; color:#E8ECF4;
+  font:600 13px/1.4 var(--texte); padding:12px 18px;
+  display:flex; gap:18px; align-items:center; flex-wrap:wrap;
+}
+.barre b{ color:#fff; font-weight:800; letter-spacing:.02em; }
+.barre span{ color:#9FB0CC; font-weight:500; }
+.barre i{
+  font-style:normal; background:rgba(240,138,75,.18); color:#ffd9bd;
+  padding:3px 9px; border-radius:999px; font-size:12px;
+}
+.barre button{
+  font:700 12px var(--texte); color:#0E1116; background:#F08A4B;
+  border:0; border-radius:8px; padding:8px 12px; cursor:pointer;
+}
+.pile{ display:flex; flex-direction:column; align-items:center; gap:26px; padding:26px 12px 60px; }
+
+/* ---------- La feuille A4 paysage ---------- */
+.feuille{
+  position:relative; width:297mm; height:209.4mm; display:flex;
+  background:var(--carte); overflow:hidden;
+  box-shadow:0 18px 60px rgba(0,0,0,.45);
+  break-inside:avoid; break-after:page;
+}
+.feuille:last-of-type{ break-after:auto; }
+
+/* Un volet = 99 mm, marges intérieures qui ne traversent jamais un pli */
+.volet{
+  position:relative; width:99mm; height:209.4mm; padding:10mm 9mm;
+  overflow:hidden;
+}
+
+/* ---------- Repères de pliage (masquables) ---------- */
+.reperes{ position:absolute; inset:0; pointer-events:none; z-index:20; }
+.reperes .pli{
+  position:absolute; top:0; bottom:0; width:0;
+  border-left:.4pt dashed rgba(31,56,100,.35);
+}
+.reperes .pli::after{
+  content:attr(data-label); position:absolute; bottom:3mm; left:1.6mm;
+  font:600 5.6pt var(--texte); color:rgba(31,56,100,.45); letter-spacing:.06em;
+  white-space:nowrap;
+}
+.reperes .coin{
+  position:absolute; width:7mm; height:7mm; border:.4pt solid rgba(31,56,100,.35);
+}
+.reperes .coin.tl{ top:4mm; left:4mm; border-right:0; border-bottom:0; }
+.reperes .coin.tr{ top:4mm; right:4mm; border-left:0; border-bottom:0; }
+.reperes .coin.bl{ bottom:4mm; left:4mm; border-right:0; border-top:0; }
+.reperes .coin.br{ bottom:4mm; right:4mm; border-left:0; border-top:0; }
+.reperes .face{
+  position:absolute; top:1.5mm; left:0; right:0; text-align:center;
+  font:700 5.6pt var(--texte); letter-spacing:.28em; color:rgba(31,56,100,.40);
+}
+body.sans-reperes .reperes{ display:none; }
+
+/* ---------- Typographie ---------- */
+.kicker{
+  font:700 7pt/1 var(--texte); letter-spacing:.20em; text-transform:uppercase;
+  color:var(--orange-f);
+}
+h2.titre{
+  font:800 15pt/1.12 var(--titre); color:var(--marine); letter-spacing:-.015em;
+  margin:2.6mm 0 2.2mm;
+}
+h3.sous{
+  font:800 8.6pt/1.2 var(--titre); color:var(--marine-p); margin-bottom:.9mm;
+}
+p{
+  font-size:8.3pt; line-height:1.45; color:#2C3444;
+}
+p + p{ margin-top:1.6mm; }
+.filet{ height:.5pt; background:var(--trait); margin:4mm 0; }
+.filet.o{ width:12mm; height:1.4pt; background:var(--orange); border-radius:2px; }
+
+/* ---------- Blocs de contenu ---------- */
+.grille2{ display:grid; grid-template-columns:1fr 1fr; gap:2.6mm 3.4mm; }
+.bloc{ display:flex; gap:2.4mm; align-items:flex-start; }
+.picto{
+  flex:0 0 auto; width:6.6mm; height:6.6mm; border-radius:2mm;
+  display:flex; align-items:center; justify-content:center;
+  background:#EDF1F9; color:var(--marine); font:800 9pt/1 var(--titre);
+}
+.picto.o{ background:rgba(240,138,75,.16); color:var(--orange-f); }
+.bloc .t{ font:700 8.2pt/1.25 var(--titre); color:var(--marine-p); }
+.bloc .d{ font-size:7.6pt; line-height:1.35; color:var(--gris); margin-top:.5mm; }
+
+.fait{ display:flex; gap:2mm; align-items:flex-start; margin-bottom:2.1mm; }
+.fait .p{
+  flex:0 0 auto; width:3.2mm; height:3.2mm; margin-top:1.1mm; border-radius:50%;
+  background:var(--orange);
+}
+.fait .txt{ font-size:8.4pt; line-height:1.4; color:#2C3444; }
+.fait .txt b{ color:var(--marine); }
+
+.carte{
+  background:var(--carte); border:.5pt solid var(--trait); border-radius:2.4mm;
+  padding:3.2mm; box-shadow:0 .6mm 2.4mm rgba(22,41,74,.06);
+}
+.carte.teinte{ background:#F7F9FC; border-color:#E7EBF4; }
+.carte.marine{ background:linear-gradient(160deg,#1F3864,#16294A); border:0; color:#fff; }
+.carte.marine h3{ color:#fff; }
+.carte.marine p{ color:#C9D5EC; }
+
+.chiffres{ display:grid; grid-template-columns:repeat(2,1fr); gap:2mm; }
+.chiffre{
+  background:#F7F9FC; border:.5pt solid #E7EBF4; border-radius:2mm; padding:2.4mm 2.6mm;
+}
+.chiffre b{ display:block; font:800 13pt/1 var(--titre); color:var(--marine); }
+.chiffre span{ font-size:6.9pt; color:var(--gris); letter-spacing:.01em; }
+
+/* ---------- Métiers ---------- */
+.metiers{ display:grid; grid-template-columns:1fr 1fr; gap:1.8mm; }
+.metier{
+  border:.5pt solid var(--trait); border-radius:2mm; padding:2.1mm 2.3mm; background:#fff;
+}
+.metier .n{ font:800 7.9pt/1.2 var(--titre); color:var(--marine); }
+.metier .m{ font-size:6.9pt; line-height:1.3; color:var(--gris); margin-top:.5mm; }
+
+/* ---------- Mockups ---------- */
+.portable{
+  position:relative; width:100%; border-radius:2.4mm;
+  background:#0F1626; padding:1.5mm 1.5mm 0; box-shadow:0 3mm 9mm rgba(10,16,32,.35);
+}
+.portable .ecran{
+  border-radius:1.4mm; overflow:hidden; background:#fff;
+  border:.4pt solid rgba(255,255,255,.14);
+}
+.portable .ecran img{ display:block; width:100%; }
+.portable .socle{
+  height:3.2mm; margin:0 -1.5mm; border-radius:0 0 2mm 2mm;
+  background:linear-gradient(180deg,#2A3550,#1A2338);
+  display:flex; align-items:flex-start; justify-content:center;
+}
+.portable .socle i{
+  display:block; width:16mm; height:1.1mm; border-radius:0 0 2mm 2mm;
+  background:rgba(255,255,255,.18);
+}
+.telephone{
+  width:36mm; border-radius:6mm; background:#0F1626; padding:1.6mm;
+  box-shadow:0 3mm 9mm rgba(10,16,32,.4);
+}
+.telephone .ecran{ border-radius:4.6mm; overflow:hidden; background:#fff; }
+.telephone .ecran img{ display:block; width:100%; }
+
+/* ---------- Contact ---------- */
+.contact{ display:flex; gap:3mm; align-items:center; }
+.contact .qr{
+  flex:0 0 auto; width:24mm; height:24mm; background:#fff; border-radius:2mm; padding:1.2mm;
+}
+.contact .qr img{ width:100%; display:block; }
+.contact .lignes{ font-size:8.4pt; line-height:1.5; }
+.contact .lignes b{ display:block; font:800 11.5pt/1.2 var(--titre); color:#fff; }
+.contact .lignes span{ color:#C9D5EC; }
+.pilule{
+  display:inline-block; background:rgba(255,255,255,.10); border:.4pt solid rgba(255,255,255,.24);
+  color:#fff; font:700 7pt var(--texte); border-radius:999px; padding:1.4mm 2.6mm; letter-spacing:.04em;
+}
+
+/* ---------- Couverture ---------- */
+.couverture{
+  background:
+    radial-gradient(120% 80% at 88% 6%, rgba(240,138,75,.30) 0%, rgba(240,138,75,0) 55%),
+    radial-gradient(90% 70% at 4% 96%, rgba(46,90,168,.45) 0%, rgba(46,90,168,0) 60%),
+    linear-gradient(155deg,#16294A 0%,#1F3864 46%,#33549C 100%);
+  color:#fff; padding:10mm 9mm 9mm; display:flex; flex-direction:column;
+}
+.couverture .logo-carte{
+  width:40mm; background:#fff; border-radius:3mm; padding:2.6mm 3mm; margin-bottom:5.5mm;
+  box-shadow:0 2mm 6mm rgba(8,14,30,.28);
+}
+.couverture .logo{ width:100%; display:block; }
+.couverture .marque{
+  font:800 20pt/1 var(--titre); letter-spacing:-.02em; color:#fff;
+}
+.couverture .baseline{
+  font:600 7.4pt/1.3 var(--texte); letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(255,255,255,.72); margin-top:1.8mm;
+}
+.couverture .slogan{
+  font:800 19.5pt/1.1 var(--titre); letter-spacing:-.02em; margin-top:8mm;
+}
+.couverture .slogan em{ font-style:normal; color:var(--orange); }
+.couverture .accroche{
+  font-size:8.8pt; line-height:1.45; color:#D6DFF2; margin-top:3.4mm; max-width:74mm;
+}
+.couverture .visuel{ margin-top:auto; }
+.couverture .bandeau{
+  margin-top:5mm; padding-top:3mm; border-top:.5pt solid rgba(255,255,255,.22);
+  display:flex; justify-content:space-between; align-items:center; gap:3mm;
+  font:700 6.8pt/1.35 var(--texte); letter-spacing:.06em; color:rgba(255,255,255,.86);
+}
+.couverture .bandeau span{ color:rgba(255,255,255,.6); font-weight:600; }
+
+.dos{ background:linear-gradient(160deg,#1F3864,#16294A); color:#fff; }
+.dos .kicker{ color:var(--orange); }
+.dos h2.titre{ color:#fff; }
+.dos p{ color:#C9D5EC; }
+.dos .carte{ background:rgba(255,255,255,.07); border:.4pt solid rgba(255,255,255,.16); }
+.dos .filet{ background:rgba(255,255,255,.16); }
+
+.mini{ font-size:6.9pt; line-height:1.4; color:var(--gris-clair); }
+
+/* ---------- Démarrage en trois étapes (volet 1 du recto) ---------- */
+.etapes{ margin-top:.6mm; }
+.etape{ display:flex; gap:2.4mm; align-items:flex-start; padding:1.05mm 0; }
+.etape> b{
+  flex:0 0 5.2mm; height:5.2mm; border-radius:50%; background:var(--marine);
+  color:#fff; font:800 7pt/5.2mm var(--titre); text-align:center;
+}
+.etape span{ font-size:7.9pt; line-height:1.38; color:#2C3444; }
+.etape span i{ font-style:normal; font-weight:800; color:var(--marine-p); }
+.etape span em{ font-style:normal; color:var(--orange-f); font-weight:700; }
+
+/* ==========================================================================
+   IMPRESSION — A4 paysage, 2 feuilles exactement (placé EN DERNIER)
+   ========================================================================== */
+@media print{
+  html,body{ background:#fff; margin:0; padding:0; }
+  .barre{ display:none !important; }
+  .pile{ display:block; padding:0; gap:0; }
+  .feuille{
+    width:297mm; height:209mm; margin:0; box-shadow:none;
+    break-inside:avoid; page-break-inside:avoid; break-after:page;
+    page-break-after:always;
+  }
+  .feuille:last-of-type{ break-after:auto; page-break-after:auto; }
+  .volet{ height:209mm; }
+  .reperes{ display:block; }
+  body.sans-reperes .reperes{ display:none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== BARRE D'APERÇU (écran uniquement) ===================== -->
+<div class="barre">
+  <b>BIASHARA YANGU</b>
+  <span>Dépliant commercial — A4 paysage, 3 volets, recto-verso</span>
+  <i>Face 1 : Reçu 1 · Reçu 2 · COUVERTURE</i>
+  <i>Face 2 : Métiers · Multiplateforme · Contact</i>
+  <span>Impression : A4 paysage, marges « aucune », recto-verso bord court, échelle 100 %</span>
+  <button onclick="document.body.classList.toggle('sans-reperes')">Repères de pliage : on / off</button>
+</div>
+
+<div class="pile">
+
+<!-- ==========================================================================
+     FACE 1 (recto de la feuille) — de gauche à droite :
+       Volet 1 « Le constat »  ·  Volet 2 « Les fonctions »  ·  Volet 3 « COUVERTURE »
+     ========================================================================== -->
+<section class="feuille" id="face-1">
+
+  <!-- ---------- VOLET 1 : LE CONSTAT ---------- -->
+  <article class="volet">
+    <div class="kicker">Le constat</div>
+    <h2 class="titre">Le cahier ne suffit plus.</h2>
+    <p>Au comptoir, tout va vite : la vente est notée, le client promet de payer plus tard, le
+       stock se vide sans qu’on le voie. Le soir, personne ne sait vraiment ce qui est entré
+       ni ce qui reste.</p>
+
+    <div class="filet o"></div>
+
+    <div class="fait"><span class="p"></span><span class="txt">
+      <b>Ventes dispersées</b> — cahiers, calculs de tête, tickets perdus.</span></div>
+    <div class="fait"><span class="p"></span><span class="txt">
+      <b>Stock à l’aveugle</b> — la rupture se découvre devant le client.</span></div>
+    <div class="fait"><span class="p"></span><span class="txt">
+      <b>Crédits oubliés</b> — les dettes clients ne se retrouvent plus.</span></div>
+    <div class="fait"><span class="p"></span><span class="txt">
+      <b>Aucun chiffre fiable</b> — impossible de savoir si le mois a été bon.</span></div>
+
+    <div class="filet"></div>
+
+    <h3 class="sous">Une réponse simple</h3>
+    <p><b>Biashara Yangu</b> réunit les ventes, les articles, le stock, la caisse, les dettes,
+       les dépenses et les rapports dans une seule application, en français, avec des montants
+       en <b>CDF</b> ou en <b>USD</b> selon la devise de travail de l’entreprise.</p>
+
+    <div class="filet"></div>
+
+    <div class="chiffres">
+      <div class="chiffre"><b>11</b><span>catégories d’activité prises en charge</span></div>
+      <div class="chiffre"><b>22</b><span>modules métier activables</span></div>
+      <div class="chiffre"><b>14</b><span>types de rapports exportables</span></div>
+      <div class="chiffre"><b>8</b><span>rôles avec permissions fines</span></div>
+    </div>
+
+    <div class="filet"></div>
+
+    <h3 class="sous">Démarrer en trois étapes</h3>
+    <div class="etapes">
+      <div class="etape"><b>1</b><span><i>Créer votre compte</i> — <em>essai de 7 jours</em>.</span></div>
+      <div class="etape"><b>2</b><span><i>Choisir votre activité</i> — vos écrans s'adaptent.</span></div>
+      <div class="etape"><b>3</b><span><i>Vendre</i> — stock, caisse et rapports suivent.</span></div>
+    </div>
+  </article>
+
+  <!-- ---------- VOLET 2 : LES FONCTIONS ---------- -->
+  <article class="volet">
+    <div class="kicker">Les fonctions</div>
+    <h2 class="titre">Tout le quotidien<br>de votre commerce</h2>
+
+    <div class="grille2">
+      <div class="bloc"><div class="picto">▣</div><div>
+        <div class="t">Vendre &amp; encaisser</div>
+        <div class="d">Panier, scanner d’articles par QR code, espèces, mobile money, carte,
+          virement ou crédit. Reçu imprimé et numéro de vente.</div></div></div>
+
+      <div class="bloc"><div class="picto">◧</div><div>
+        <div class="t">Gérer les articles</div>
+        <div class="d">Catalogue, catégories, conditionnements (farde, carton…), prix d’achat
+          et de vente, étiquettes QR à imprimer.</div></div></div>
+
+      <div class="bloc"><div class="picto">⇪</div><div>
+        <div class="t">Suivre le stock</div>
+        <div class="d">Seuils d’alerte par article, approvisionnements, ajustements motivés,
+          inventaires quotidiens avec écarts.</div></div></div>
+
+      <div class="bloc"><div class="picto">☰</div><div>
+        <div class="t">Tenir la caisse</div>
+        <div class="d">Encaissements, clôtures de caisse, dépenses, dettes, tableau de bord
+          chiffre d’affaires et bénéfice.</div></div></div>
+
+      <div class="bloc"><div class="picto">☺</div><div>
+        <div class="t">Suivre les clients</div>
+        <div class="d">Fiches clients, crédits, remboursements et relance WhatsApp ou SMS
+          depuis l’application.</div></div></div>
+
+      <div class="bloc"><div class="picto">▤</div><div>
+        <div class="t">Éditer les rapports</div>
+        <div class="d">Ventes, articles, vendeurs, finance, stock, caisse, dépenses, dettes,
+          péremptions… export <b>PDF</b> et <b>Excel</b>.</div></div></div>
+
+      <div class="bloc"><div class="picto o">⌘</div><div>
+        <div class="t">Encadrer l’équipe</div>
+        <div class="d">Collaborateurs, 8 rôles, permissions par écran et par action,
+          journal d’audit de chaque opération.</div></div></div>
+
+      <div class="bloc"><div class="picto o">✦</div><div>
+        <div class="t">Assistant IA</div>
+        <div class="d">Posez vos questions en français (« mes ventes du jour ? ») :
+          les actions proposées restent soumises à vos droits.</div></div></div>
+    </div>
+
+    <div class="filet"></div>
+
+    <div class="carte marine">
+      <h3 class="sous" style="font-size:8.2pt">Pensé pour le terrain</h3>
+      <p style="font-size:7.8pt">Alerte à chaque vente, rapport de fin de journée à l’heure de
+        votre choix, taille de texte réglable, guide d’utilisation intégré — et un écran qui
+        s’adapte au téléphone comme à l’ordinateur.</p>
+    </div>
+  </article>
+
+  <!-- ---------- VOLET 3 : COUVERTURE ---------- -->
+  <article class="volet couverture">
+    <div class="logo-carte"><img class="logo" src="assets/logo-biashara.png" alt="Biashara Yangu"></div>
+    <div class="marque">BIASHARA YANGU</div>
+    <div class="baseline">Gestion de commerce multi-activités</div>
+
+    <div class="slogan">Une seule application pour <em>vendre, encaisser</em> et piloter votre commerce.</div>
+    <div class="accroche">Boutique, hôtel, pharmacie, restaurant, boulangerie, salle des fêtes…
+      vous choisissez votre activité : l’application n’affiche que les écrans utiles à votre métier.</div>
+
+    <div class="visuel">
+      <div class="portable">
+        <div class="ecran"><img src="assets/ecrans/linux-accueil.png" alt="Tableau de bord Biashara Yangu"></div>
+        <div class="socle"><i></i></div>
+      </div>
+    </div>
+
+    <div class="bandeau">
+      <div>ANDROID · WINDOWS · LINUX · WEB</div>
+      <div><span>Version 2.1.3 — édité par Biashara Tech, Lubumbashi (RDC)</span></div>
+    </div>
+  </article>
+
+  <div class="reperes">
+    <div class="face">FACE 1 / RECTO</div>
+    <div class="pli" style="left:99mm" data-label="PLI 1 — 99 mm"></div>
+    <div class="pli" style="left:198mm" data-label="PLI 2 — 198 mm"></div>
+    <div class="coin tl"></div><div class="coin tr"></div>
+    <div class="coin bl"></div><div class="coin br"></div>
+  </div>
+</section>
+
+<!-- ==========================================================================
+     FACE 2 (verso de la feuille) — de gauche à droite :
+       Volet 4 « Les métiers »  ·  Volet 5 « Multiplateforme »  ·  Volet 6 « Contact »
+     ========================================================================== -->
+<section class="feuille" id="face-2">
+
+  <!-- ---------- VOLET 4 : LES MÉTIERS ---------- -->
+  <article class="volet" style="background:#F7F9FC">
+    <div class="kicker">Les métiers</div>
+    <h2 class="titre">Une application,<br>tous les métiers</h2>
+    <p style="font-size:8pt">Chaque activité active son propre jeu de modules : le tableau de bord,
+      les menus et les rapports suivent votre métier.</p>
+
+    <div class="filet"></div>
+
+    <div class="metiers">
+      <div class="metier"><div class="n">Boutique &amp; dépôt</div>
+        <div class="m">Ventes, articles, stock, caisse, clients</div></div>
+      <div class="metier"><div class="n">Hôtel</div>
+        <div class="m">Chambres, réservations, réception, check-in/out, facture de séjour</div></div>
+      <div class="metier"><div class="n">Restaurant</div>
+        <div class="m">Tables, commandes, écran cuisine, encaissement</div></div>
+      <div class="metier"><div class="n">Pharmacie</div>
+        <div class="m">Lots, dates de péremption, blocage de vente expirée</div></div>
+      <div class="metier"><div class="n">Salle des fêtes</div>
+        <div class="m">Salles, événements, prestations, avances et soldes</div></div>
+      <div class="metier"><div class="n">Boulangerie</div>
+        <div class="m">Matières premières, productions, pertes, coût de revient</div></div>
+      <div class="metier"><div class="n">Boucherie</div>
+        <div class="m">Vente au poids (kg), ticket au kilo</div></div>
+      <div class="metier"><div class="n">Mode &amp; vêtements</div>
+        <div class="m">Variantes taille, couleur, marque</div></div>
+    </div>
+
+    <div class="filet"></div>
+
+    <h3 class="sous">Ce que ça change</h3>
+    <div class="fait"><span class="p"></span><span class="txt"><b>Moins de pertes</b> : le stock
+      et les péremptions sont surveillés, les écarts d’inventaire tracés.</span></div>
+    <div class="fait"><span class="p"></span><span class="txt"><b>Encaissement plus rapide</b> :
+      le prix est relu en base, le reçu est produit automatiquement.</span></div>
+    <div class="fait"><span class="p"></span><span class="txt"><b>Dettes maîtrisées</b> :
+      chaque crédit est suivi, chaque relance est enregistrée.</span></div>
+    <div class="fait"><span class="p"></span><span class="txt"><b>Décisions sur des chiffres</b> :
+      chiffre d’affaires, marge, dépenses et bénéfice au même endroit.</span></div>
+    <div class="fait"><span class="p"></span><span class="txt"><b>Équipe encadrée</b> :
+      chacun voit ce que son rôle autorise, chaque action sensible est journalisée.</span></div>
+
+    <div class="carte teinte" style="margin-top:2.6mm">
+      <p style="font-size:7.6pt"><b>Un hôtel ne voit ni « Nouvelle vente » ni « Stock »</b> :
+        uniquement ses chambres, ses réservations, sa réception et sa caisse. Le profil de
+        l’activité décide, l’administrateur peut créer de nouvelles catégories.</p>
+    </div>
+  </article>
+
+  <!-- ---------- VOLET 5 : MULTIPLATEFORME ---------- -->
+  <article class="volet">
+    <div class="kicker">Partout avec vous</div>
+    <h2 class="titre">La même application,<br>sur 4 plateformes</h2>
+
+    <div class="grille2" style="gap:2.2mm">
+      <div class="carte" style="padding:2.6mm">
+        <h3 class="sous" style="font-size:7.8pt">Android</h3>
+        <p style="font-size:7.2pt">Application mobile (APK signé) — vente au comptoir,
+          scanner QR, notifications.</p>
+      </div>
+      <div class="carte" style="padding:2.6mm">
+        <h3 class="sous" style="font-size:7.8pt">Windows</h3>
+        <p style="font-size:7.2pt">Installateur <b>.exe</b> ou archive — poste de caisse
+          et bureau du patron.</p>
+      </div>
+      <div class="carte" style="padding:2.6mm">
+        <h3 class="sous" style="font-size:7.8pt">Linux</h3>
+        <p style="font-size:7.2pt">Archive prête à l’emploi, base SQLite embarquée —
+          poste économique.</p>
+      </div>
+      <div class="carte" style="padding:2.6mm">
+        <h3 class="sous" style="font-size:7.8pt">Web</h3>
+        <p style="font-size:7.2pt">Dans le navigateur, sans installation — consultation
+          et gestion directement en ligne.</p>
+      </div>
+    </div>
+
+    <div style="display:flex; justify-content:center; gap:4mm; align-items:flex-end; margin-top:4mm">
+      <div class="telephone" style="width:31mm">
+        <div class="ecran"><img src="assets/ecrans/mobile-creation.png" alt="Choix de l’activité sur mobile"></div>
+      </div>
+      <div style="flex:1">
+        <div class="portable">
+          <div class="ecran"><img src="assets/ecrans/linux-chambres.png" alt="Écran Chambres (hôtel) sur ordinateur"></div>
+          <div class="socle"><i></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="filet" style="margin:3.4mm 0"></div>
+
+    <p style="font-size:7.4pt"><b>Vos données en ligne, sécurisées</b> — les informations sont
+      enregistrées dans une base <b>Supabase</b> et consultables depuis chaque appareil autorisé.
+      Sur Android, Windows et Linux, une base <b>SQLite locale</b> sert de repli hors ligne ;
+      dans le navigateur, l’application travaille directement en ligne.</p>
+    <p style="font-size:7.4pt"><b>Même logique sur chaque écran</b> — les écrans s’adaptent à la
+      taille de l’appareil (grille resserrée sur téléphone, contenu centré sur ordinateur) :
+      les écrans, les rapports et les droits restent les mêmes.</p>
+
+    <div class="filet"></div>
+    <p class="mini">Version 2.1.3 · 4 plateformes · mises à jour récupérées au format de votre
+      appareil : APK, installateur Windows, archive Linux, version web.</p>
+  </article>
+
+  <!-- ---------- VOLET 6 : CONTACT (dos du dépliant) ---------- -->
+  <article class="volet dos">
+    <div class="kicker">Prochaine étape</div>
+    <h2 class="titre">Parlons de <em style="color:var(--orange);font-style:normal">votre</em> commerce</h2>
+    <p>Demandez une démonstration : nous vous présentons les écrans de votre métier
+      (boutique, hôtel, pharmacie, restaurant…) et nous répondons à vos questions.</p>
+
+    <div class="filet"></div>
+
+    <div class="carte" style="margin-bottom:3.4mm">
+      <div class="contact">
+        <div class="qr"><img src="assets/qr-whatsapp.png" alt="QR code WhatsApp +243 974 084 668"></div>
+        <div class="lignes">
+          <span style="font-size:7pt;letter-spacing:.14em;text-transform:uppercase;color:#F08A4B;font-weight:700">WhatsApp</span>
+          <b>+243 974 084 668</b>
+          <span>Scannez le QR code ou écrivez-nous directement.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="carte" style="margin-bottom:3.4mm">
+      <div class="lignes" style="font-size:8.2pt;line-height:1.6">
+        <span style="font-size:7pt;letter-spacing:.14em;text-transform:uppercase;color:#F08A4B;font-weight:700">Email</span>
+        <div style="color:#fff;font-weight:700">andrelukengu67@gmail.com</div>
+        <div style="color:#C9D5EC">Assistance &amp; support : support@biasharayangu.cd</div>
+      </div>
+    </div>
+
+    <div class="carte">
+      <div class="lignes" style="font-size:8.2pt;line-height:1.6">
+        <span style="font-size:7pt;letter-spacing:.14em;text-transform:uppercase;color:#F08A4B;font-weight:700">Adresse</span>
+        <div style="color:#fff;font-weight:700">Lubumbashi, Haut-Katanga</div>
+        <div style="color:#C9D5EC">République Démocratique du Congo</div>
+      </div>
+    </div>
+
+    <div style="margin-top:4mm;display:flex;flex-wrap:wrap;gap:1.6mm">
+      <span class="pilule">Démonstration sur rendez-vous</span>
+      <span class="pilule">Installation accompagnée</span>
+      <span class="pilule">Formation de l’équipe</span>
+    </div>
+
+    <div style="margin-top:auto;padding-top:4mm">
+      <div class="filet" style="margin:0 0 3mm"></div>
+      <p style="font-size:6.9pt;line-height:1.5;color:#9FB0CC">
+        <b style="color:#fff">Biashara Yangu</b> — version 2.1.3.<br>
+        Édité par <b style="color:#fff">Biashara Tech</b>, Lubumbashi (RDC). Développement :
+        Andre Lukengu. Collaborateur marketing : La Perle Corp.<br>
+        © 2026 Biashara Tech — tous droits réservés.
+      </p>
+    </div>
+  </article>
+
+  <div class="reperes">
+    <div class="face">FACE 2 / VERSO</div>
+    <div class="pli" style="left:99mm" data-label="PLI 1 — 99 mm"></div>
+    <div class="pli" style="left:198mm" data-label="PLI 2 — 198 mm"></div>
+    <div class="coin tl"></div><div class="coin tr"></div>
+    <div class="coin bl"></div><div class="coin br"></div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

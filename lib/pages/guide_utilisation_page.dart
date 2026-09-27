@@ -465,6 +465,51 @@ class GuideUtilisationPage extends StatelessWidget {
             ],
           ),
           _Etape(
+            numero: '29',
+            titre: 'Biashara : être trouvé par les clients autour de vous',
+            icone: Icons.storefront_rounded,
+            points: <String>[
+              'Ma vitrine Biashara : indiquez la position de votre boutique '
+                  '(ma position GPS, choix sur la carte, ou recherche '
+                  'd\'adresse), puis RÉPONDEZ à la question « Cette position '
+                  'correspond-elle bien à l\'emplacement de votre boutique ? ». '
+                  'Tant que vous n\'avez pas confirmé, la position reste '
+                  '« à confirmer ».',
+              'Ajoutez ce qu\'un client étranger doit savoir : quartier, '
+                  'avenue, point de repère (souvent plus utile qu\'un numéro), '
+                  'horaires, téléphone et WhatsApp publics, logo et photo de '
+                  'la devanture. Touchez 👁 « Aperçu public » pour voir '
+                  'exactement ce que verront les clients.',
+              'Mes publications : choisissez les articles visibles dans le '
+                  'catalogue public. Une fiche complète (photo, courte '
+                  'description, disponibilité, boutique bien renseignée) est '
+                  'mieux classée — sans avoir à payer quoi que ce soit.',
+              'Ma visibilité Biashara : suivez ce que Biashara vous apporte — '
+                  'VISIBILITÉ (affichages), INTÉRÊT (fiches consultées), '
+                  'INTENTION (itinéraires, appels, WhatsApp) et CONVERSION '
+                  '(uniquement les ventes réellement attribuées à un code). '
+                  'Une simple visite n\'est jamais comptée comme un achat.',
+              'Codes & attribution : créez un code (BIA-XXXXXX) ou son QR, '
+                  'affichez-le sur la vitrine ou le ticket : il permet de '
+                  'rattacher une vente réelle à Biashara.',
+              'Publicités Biashara : préparez une campagne (produit, '
+                  'promotion, offre, boutique), ciblez votre ville, un '
+                  'quartier, une catégorie ou un rayon autour de votre '
+                  'boutique, puis soumettez-la. Une annonce porte TOUJOURS la '
+                  'mention « PUBLICITÉ » et n\'est jamais mélangée aux '
+                  'résultats normaux.',
+              'Ce que les clients NE VOIENT JAMAIS : vos prix d\'achat, votre '
+                  'stock exact, vos clients, vos dettes, vos dépenses et vos '
+                  'marges. Seuls la vitrine, les prix publics, la '
+                  'disponibilité et vos contacts publics sont diffusés.',
+              'Côté client, la page publique « Biashara » (bouton « Explorer '
+                  'les boutiques sans compte ») permet de chercher un produit, '
+                  'comparer les prix, voir les boutiques les plus proches et '
+                  'demander l\'itinéraire — SANS compte et SANS partager sa '
+                  'position s\'il ne le souhaite pas.',
+            ],
+          ),
+          _Etape(
             numero: '28',
             titre: 'Notifications, confort et légal',
             icone: Icons.settings_applications_rounded,

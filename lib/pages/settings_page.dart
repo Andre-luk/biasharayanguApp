@@ -338,6 +338,54 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
 
+          // 🛒 MODULE 19 — MARKETPLACE PUBLIC « BIASHARA ».
+          //  Le patron gère SA présence publique : vitrine (position, horaires,
+          //  contacts), articles publiés, tableau de bord de visibilité et
+          //  campagnes publicitaires. Chaque écran n'apparaît que si le rôle a
+          //  la permission correspondante (le vendeur, par exemple, ne voit
+          //  rien ici : la vitrine engage la responsabilité du patron).
+          if (permissions.peutVoir(PageAccess.publications))
+            _SectionParametres(
+              titre: 'Ma vitrine Biashara',
+              tuiles: <Widget>[
+                _TuileParametre(
+                  icone: Icons.storefront_rounded,
+                  titre: 'Vitrine & localisation',
+                  sousTitre:
+                      'Position de la boutique, adresse, horaires et contacts publics',
+                  onTap: () => context.pushNamed('ma-vitrine'),
+                ),
+                _TuileParametre(
+                  icone: Icons.checklist_rounded,
+                  titre: 'Mes publications',
+                  sousTitre:
+                      'Choisir les articles visibles dans le catalogue public',
+                  onTap: () => context.pushNamed('mes-publications'),
+                ),
+              ],
+            ),
+          if (permissions.peutVoir(PageAccess.visibilite))
+            _SectionParametres(
+              titre: 'Résultats Biashara',
+              tuiles: <Widget>[
+                _TuileParametre(
+                  icone: Icons.insights_rounded,
+                  titre: 'Ma visibilité Biashara',
+                  sousTitre:
+                      'Affichages, intérêt, itinéraires, appels et ventes attribuées',
+                  onTap: () => context.pushNamed('ma-visibilite'),
+                ),
+                if (permissions.peutVoir(PageAccess.publicites))
+                  _TuileParametre(
+                    icone: Icons.campaign_rounded,
+                    titre: 'Publicités Biashara',
+                    sousTitre:
+                        'Promouvoir un produit, une promotion ou votre boutique',
+                    onTap: () => context.pushNamed('publicites'),
+                  ),
+              ],
+            ),
+
           _SectionParametres(
             titre: 'Application',
             tuiles: <Widget>[

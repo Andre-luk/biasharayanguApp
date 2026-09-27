@@ -218,6 +218,11 @@ class PermissionService {
         PageAccess.evenements,
         // 🥖 MODULE 16 C5 — boulangerie : matières, productions (tout).
         PageAccess.production,
+        // 🛒 MODULE 19 — marketplace : vitrine, publications, visibilité,
+        // publicités (le patron seul gère sa présence publique).
+        PageAccess.publications,
+        PageAccess.visibilite,
+        PageAccess.publicites,
       ],
       ActionAccess.values, // tout, sauf l'administration de la plateforme
     ),
@@ -440,6 +445,19 @@ class PermissionService {
     // 🥖 MODULE 16 C5 — BOULANGERIE : matières et productions.
     _RegleRoute('/main/production/matieres', PageAccess.production),
     _RegleRoute('/main/production', PageAccess.production),
+
+    // 🛒 MODULE 19 — MARKETPLACE LOCAL : vitrine publique du commerçant,
+    // ses publications, son tableau de bord de visibilité et ses campagnes.
+    // L'écran public `/biashara` n'a AUCUNE règle : il est ouvert à tous,
+    // connecté ou non (le middleware autorise les URL sans règle).
+    _RegleRoute('/main/vitrine', PageAccess.publications),
+    _RegleRoute('/main/publications', PageAccess.publications),
+    _RegleRoute('/main/visibilite', PageAccess.visibilite),
+    _RegleRoute('/main/publicites/new', PageAccess.publicites,
+        ActionAccess.creer),
+    _RegleRoute('/main/publicites', PageAccess.publicites),
+    _RegleRoute('/admin/publicites', PageAccess.publicites),
+
     _RegleRoute('/main', PageAccess.dashboard),
 
     _RegleRoute('/reports', PageAccess.rapports),
@@ -839,6 +857,10 @@ class PermissionService {
     PageAccess.evenements: '/main/evenements',
     // 🥖 MODULE 16 C5 — boulangerie.
     PageAccess.production: '/main/production',
+    // 🛒 MODULE 19 — marketplace.
+    PageAccess.publications: '/main/publications',
+    PageAccess.visibilite: '/main/visibilite',
+    PageAccess.publicites: '/main/publicites',
   };
 
   // ---------------------------------------------------------------------------

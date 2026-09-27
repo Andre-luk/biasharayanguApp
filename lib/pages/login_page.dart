@@ -613,15 +613,39 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildFooter() {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        const Text("Pas encore de compte ?"),
-        TextButton(
-            onPressed: () => context.go('/setup'),
-            child: const Text('S\'inscrire',
-                style: TextStyle(fontWeight: FontWeight.bold))),
+    return Column(
+      children: <Widget>[
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            const Text("Pas encore de compte ?"),
+            TextButton(
+                onPressed: () => context.go('/setup'),
+                child: const Text('S\'inscrire',
+                    style: TextStyle(fontWeight: FontWeight.bold))),
+          ],
+        ),
+        // 🛒 MODULE 19 — la marketplace publique est ouverte à TOUS : un
+        // visiteur qui n'a pas de compte doit pouvoir chercher un produit et
+        // découvrir les boutiques autour de lui, sans aucune inscription.
+        const SizedBox(height: 4),
+        OutlinedButton.icon(
+          onPressed: () => context.go('/biashara'),
+          icon: const Icon(Icons.explore_rounded, size: 18),
+          label: const Text('Explorer les boutiques sans compte'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(46),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Recherchez un produit et découvrez où l\'acheter autour de vous.',
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
       ],
     );
   }

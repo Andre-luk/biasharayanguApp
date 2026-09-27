@@ -52,8 +52,8 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 40 migrations SQL idempotentes (0000 → 0039)
-test/                  → 624 tests purs (modèles, permissions, rapports, modules, devises)
+supabase/migrations/   → 41 migrations SQL idempotentes (0000 → 0040)
+test/                  → 678 tests purs (modèles, permissions, rapports, modules, devises, marketplace)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
@@ -93,6 +93,11 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0038          Module 17 — verrouillage des comptes non activés + catégorie
               d'activité respectée à la création (p_type, triggers, verrou)
 0039          Module 18 — devises de travail (CDF/USD) et taux de conversion
+0040          Module 19 — Biashara Marketplace local géolocalisé :
+              vitrine publique des boutiques, catalogue public (recherche
+              sans compte), comparaison des prix, carte, mesure de
+              visibilité, codes d'attribution et publicités (7 tables,
+              22 RPC, aucune donnée privée exposée)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
@@ -193,7 +198,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 624 tests — doit rester 100 % vert
+flutter test             # 678 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -215,7 +220,10 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 ### Versions actuelles
 
 - Flutter **3.47.4** / Dart **3.13.3**, app **2.1.1+20**
-- Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`
+- Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`,
+  `flutter_map` + `latlong2` (carte OpenStreetMap, **aucune clé d'API**),
+  `geolocator` (position du visiteur, avec consentement), `http` (recherche
+  d'adresse Nominatim)
   (avec *core library desugaring* Android), `sqlite3` + `sqflite_common_ffi`
   (SQLite embarquée), `pdf`/`printing` (exports), `mobile_scanner` (scanner)
 - Web : `flutter build web --release` validé par la CI ; exports de fichiers et

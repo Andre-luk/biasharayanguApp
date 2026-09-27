@@ -231,7 +231,23 @@ enum PageAccess {
       alias: ['calendrier', 'reservations_salles']),
   // 🥖 MODULE 16 C5 — BOULANGERIE : matières premières et productions.
   production('production', 'Production', [EspaceApplication.entreprise],
-      alias: ['boulangerie', 'atelier', 'fabrication']);
+      alias: ['boulangerie', 'atelier', 'fabrication']),
+  // 🛒 MODULE 19 — MARKETPLACE LOCAL GÉOLOCALISÉ.
+  //  • `publications` : quels articles de la boutique apparaissent dans le
+  //    catalogue public (et la vitrine : position, horaires, contacts) ;
+  //  • `visibilite`   : « Ma visibilité Biashara » (impressions, intérêt,
+  //    intentions, conversions attribuées) ;
+  //  • `publicites`   : campagnes publicitaires (espace entreprise) et
+  //    modération (espace plateforme).
+  publications('publications', 'Publications Biashara',
+      [EspaceApplication.entreprise],
+      alias: ['vitrine', 'ma_vitrine', 'catalogue_public']),
+  visibilite('visibilite', 'Visibilité Biashara',
+      [EspaceApplication.entreprise],
+      alias: ['ma_visibilite', 'statistiques_publiques']),
+  publicites('publicites', 'Publicités Biashara',
+      [EspaceApplication.entreprise, EspaceApplication.plateforme],
+      alias: ['campagnes', 'annonces', 'sponsorise']);
 
   const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
 

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biashara Yangu — dépliant commercial</title>
+<meta name="description" content="Biashara Yangu : une seule application pour vendre, encaisser et piloter votre commerce. Android, Windows, Linux et Web.">
+<style>
+:root{
+  --marine:#1F3864; --marine-p:#16294A; --orange:#F08A4B; --encre:#151A23;
+  --gris:#5A6478; --carte:#fff; --fond:#EEF2F9;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'Noto Sans','Segoe UI',Roboto,Arial,sans-serif;color:var(--encre);
+  background:var(--fond);line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+header{
+  background:linear-gradient(135deg,var(--marine-p),var(--marine) 55%,#2E5AA8);
+  color:#fff;padding:34px 22px 30px;
+}
+.enveloppe{max-width:1080px;margin:0 auto;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+header img{width:74px;height:74px;border-radius:16px;background:#fff;padding:6px;object-fit:contain}
+h1{font-size:clamp(22px,4.4vw,34px);font-weight:800;letter-spacing:-.02em}
+.slogan{color:#C9D5EC;font-size:clamp(14px,2.4vw,18px);margin-top:4px}
+.etiquettes{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.etiquettes span{
+  background:rgba(240,138,75,.18);color:#FFD9BD;border:.5pt solid rgba(240,138,75,.45);
+  padding:4px 11px;border-radius:999px;font-size:12.5px;font-weight:700;
+}
+main{max-width:1080px;margin:0 auto;padding:26px 18px 60px}
+.intro{background:var(--carte);border-radius:16px;padding:20px 22px;box-shadow:0 10px 30px rgba(21,42,74,.08);margin-bottom:22px}
+.intro h2{color:var(--marine);font-size:19px;margin-bottom:8px}
+.intro p{color:#2C3444;font-size:15px}
+.faces{display:flex;flex-direction:column;gap:26px}
+.face{background:var(--carte);border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(21,42,74,.10)}
+.face figcaption{
+  display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+  padding:13px 18px;border-bottom:1px solid #E3E7F0;font-size:13px;color:var(--gris)
+}
+.face figcaption b{color:var(--marine);font-size:14.5px}
+.face img{display:block;width:100%;height:auto}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin:28px 0 6px}
+a.bouton{
+  text-decoration:none;font-weight:700;font-size:15px;border-radius:12px;padding:13px 20px;
+  display:inline-flex;align-items:center;gap:9px;
+}
+a.principale{background:var(--orange);color:#231006}
+a.secondaire{background:var(--marine);color:#fff}
+a.lien{background:#fff;color:var(--marine);border:1px solid #D7DEF0}
+.infos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:26px}
+.carte{background:var(--carte);border-radius:14px;padding:18px;box-shadow:0 8px 22px rgba(21,42,74,.07)}
+.carte h3{color:var(--marine);font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}
+.carte p{font-size:14.5px;color:#2C3444}
+footer{color:#4A5468;font-size:12.5px;text-align:center;padding:22px 18px 40px;line-height:1.7}
+@media print{
+  header,footer,.actions,.intro{display:none}
+  main{padding:0;max-width:none} .faces{gap:0} .face{box-shadow:none;border-radius:0}
+  .face figcaption{display:none} .face{break-after:page;page-break-after:always}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="enveloppe">
+    <img src="assets/logo-biashara.png" alt="Logo Biashara Yangu">
+    <div>
+      <h1>Biashara Yangu</h1>
+      <div class="slogan">Une seule application pour <b>vendre</b>, <b>encaisser</b> et
+        <b>piloter</b> votre commerce.</div>
+      <div class="etiquettes">
+        <span>Android</span><span>Windows</span><span>Linux</span><span>Web</span>
+        <span>11 activités</span><span>Montants en CDF ou USD</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="intro">
+    <h2>Le cahier ne suffit plus.</h2>
+    <p>Biashara Yangu réunit les ventes, les articles, le stock, la caisse, les dettes, les
+      dépenses et les rapports dans une seule application, en français. Chaque activité
+      (boutique, hôtel, pharmacie, restaurant, salle des fêtes, boulangerie, boucherie,
+      mode…) dispose de ses propres écrans, et l’équipe de 8 rôles travaille avec des
+      permissions précises et un journal d’audit.</p>
+  </section>
+
+  <div class="faces">
+    <figure class="face">
+      <figcaption><b>Face 1 — recto</b><span>Volet 1 : le constat · Volet 2 : les fonctions · Volet 3 : couverture</span></figcaption>
+      <img src="images/web/face-1.jpg" alt="Face 1 du dépliant : constat, fonctions et couverture" loading="lazy">
+    </figure>
+    <figure class="face">
+      <figcaption><b>Face 2 — verso</b><span>Volet 4 : les métiers · Volet 5 : multiplateforme · Volet 6 : contact</span></figcaption>
+      <img src="images/web/face-2.jpg" alt="Face 2 du dépliant : activités, plateformes et contact" loading="lazy">
+    </figure>
+  </div>
+
+  <div class="actions">
+    <a class="bouton principale" href="https://wa.me/243974084668">Demander une démonstration</a>
+    <a class="bouton secondaire" href="mailto:andrelukengu67@gmail.com?subject=Démonstration%20Biashara%20Yangu">Écrire un e-mail</a>
+    <a class="bouton lien" href="Biashara-Yangu-Depliant-A4.pdf" download>Télécharger le PDF imprimable</a>
+  </div>
+
+  <section class="infos">
+    <div class="carte"><h3>WhatsApp</h3><p>+243 974 084 668</p></div>
+    <div class="carte"><h3>E-mail</h3><p>andrelukengu67@gmail.com<br>support@biasharayangu.cd</p></div>
+    <div class="carte"><h3>Éditeur</h3><p>Biashara Tech — Lubumbashi, Haut-Katanga,<br>République démocratique du Congo</p></div>
+    <div class="carte"><h3>Version présentée</h3><p>Biashara Yangu 2.1.3 — Android, Windows, Linux, Web</p></div>
+  </section>
+</main>
+
+<footer>
+  Biashara Yangu — version 2.1.3. Édité par <b>Biashara Tech</b>, Lubumbashi (RDC).
+  Développement : Andre Lukengu. Collaborateur marketing : La Perle Corp.<br>
+  © 2026 Biashara Tech — tous droits réservés.
+</footer>
+</body>
+</html>

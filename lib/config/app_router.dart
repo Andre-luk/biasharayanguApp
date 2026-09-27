@@ -12,6 +12,8 @@ import 'package:biashara_yangu/models/groupe_tarifaire.dart';
 import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
+// 🛒 MODULE 19 — campagne publicitaire passée en `extra` pour l'édition.
+import 'package:biashara_yangu/models/publicite_biashara.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
 
 // ================== SERVICES ==================
@@ -156,6 +158,25 @@ import 'package:biashara_yangu/pages/comptes_verification_page.dart';
 import 'package:biashara_yangu/pages/mon_activation_page.dart';
 // ========== MODULE 15 : PACK MULTI-ENTREPRISES ==========
 import 'package:biashara_yangu/pages/mes_entreprises_page.dart';
+
+// ===== MODULE 19 : MARKETPLACE LOCAL GÉOLOCALISÉ (« BIASHARA ») =====
+//
+//  • Pages PUBLIQUES (aucune règle de permission : accessibles sans compte) :
+//    page d'accueil publique, recherche, fiche boutique partageable, fiche
+//    produit avec comparaison des prix, carte interactive.
+//  • Pages COMMERÇANT (permissions `publications`, `visibilite`, `publicites`) :
+//    vitrine/localisation, publications, tableau de bord de visibilité et
+//    campagnes publicitaires.
+import 'package:biashara_yangu/pages/ma_vitrine_page.dart';
+import 'package:biashara_yangu/pages/marketplace_boutique_page.dart';
+import 'package:biashara_yangu/pages/marketplace_carte_page.dart';
+import 'package:biashara_yangu/pages/marketplace_produit_page.dart';
+import 'package:biashara_yangu/pages/marketplace_recherche_page.dart';
+import 'package:biashara_yangu/pages/marketplace_welcome_page.dart';
+import 'package:biashara_yangu/pages/mes_publications_page.dart';
+import 'package:biashara_yangu/pages/publicite_biashara_form_page.dart';
+import 'package:biashara_yangu/pages/publicites_biashara_page.dart';
+import 'package:biashara_yangu/pages/visibilite_biashara_page.dart';
 
 // ========== MODULE 8 : PANIER & VALIDATION DE VENTE ==========
 import 'package:biashara_yangu/pages/panier_page.dart';
@@ -308,6 +329,15 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const DevisePage(modePlateforme: true),
     ),
 
+    // 🛒 MODULE 19 — modération des campagnes publicitaires (plateforme) :
+    // seules les campagnes ACTIVÉES ici sont diffusées dans le catalogue.
+    GoRoute(
+      path: '/admin/publicites',
+      name: 'admin-publicites',
+      builder: (context, state) =>
+          const PublicitesBiasharaPage(modePlateforme: true),
+    ),
+
     // 🧾 MODULE 14 — workflow d'activation à double validation.
     //  • « Comptes à vérifier » (GESTIONNAIRE DES COMPTES) : première
     //    validation, transmission à la finance ou rejet motivé ;
@@ -368,6 +398,49 @@ final GoRouter appRouter = GoRouter(
       path: '/conditions-utilisation',
       name: 'conditions-utilisation',
       builder: (context, state) => const ConditionsUtilisationPage(),
+    ),
+
+    // ==========================================================================
+    //  🛒 MODULE 19 — MARKETPLACE PUBLIC « BIASHARA » (SANS COMPTE)
+    // ==========================================================================
+    //  Ces routes n'ont AUCUNE règle dans le middleware de permissions : un
+    //  visiteur qui n'a jamais créé de compte doit pouvoir chercher un produit
+    //  et découvrir les boutiques autour de lui. C'est une exigence explicite
+    //  du module : la visibilité des petites boutiques passe par l'ouverture.
+    GoRoute(
+      path: '/biashara',
+      name: 'biashara',
+      builder: (context, state) => const MarketplaceWelcomePage(),
+    ),
+    GoRoute(
+      path: '/biashara/recherche',
+      name: 'biashara-recherche',
+      builder: (context, state) => MarketplaceRecherchePage(
+        requeteInitiale: state.uri.queryParameters['q'],
+        categorieInitiale: state.uri.queryParameters['categorie'],
+        triInitial: state.uri.queryParameters['tri'],
+      ),
+    ),
+    GoRoute(
+      path: '/biashara/carte',
+      name: 'biashara-carte',
+      builder: (context, state) => MarketplaceCartePage(
+        requete: state.uri.queryParameters['q'],
+      ),
+    ),
+    GoRoute(
+      path: '/biashara/boutique/:slug',
+      name: 'biashara-boutique',
+      builder: (context, state) => MarketplaceBoutiquePage(
+        slugOuId: state.pathParameters['slug'] ?? '',
+      ),
+    ),
+    GoRoute(
+      path: '/biashara/produit/:id',
+      name: 'biashara-produit',
+      builder: (context, state) => MarketplaceProduitPage(
+        publicationId: state.pathParameters['id'] ?? '',
+      ),
     ),
 
     // ============== MODULE 8 : CONFIRMATION DE VENTE ==============
@@ -955,7 +1028,50 @@ final GoRouter appRouter = GoRouter(
                   ],
                 ),
 
-                // 🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)
+                // � MODULE 19 — MARKETPLACE : la vitrine publique de la
+                // boutique (position guidée, adresse lisible par un visiteur
+                // étranger, horaires, contacts publics, aperçu avant
+                // publication), les articles publiés, le tableau de bord
+                // « Ma visibilité Biashara » et les campagnes publicitaires.
+                GoRoute(
+                  path: 'vitrine',
+                  name: 'ma-vitrine',
+                  builder: (context, state) => const MaVitrinePage(),
+                ),
+                GoRoute(
+                  path: 'publications',
+                  name: 'mes-publications',
+                  builder: (context, state) => const MesPublicationsPage(),
+                ),
+                GoRoute(
+                  path: 'visibilite',
+                  name: 'ma-visibilite',
+                  builder: (context, state) => const VisibiliteBiasharaPage(),
+                ),
+                GoRoute(
+                  path: 'publicites',
+                  name: 'publicites',
+                  builder: (context, state) => const PublicitesBiasharaPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'publicite-new',
+                      builder: (context, state) =>
+                          const PubliciteBiasharaFormPage(),
+                    ),
+                    GoRoute(
+                      path: ':id',
+                      name: 'publicite-edit',
+                      builder: (context, state) => PubliciteBiasharaFormPage(
+                        publicite: state.extra is PubliciteBiashara
+                            ? state.extra as PubliciteBiashara
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // �🗂️ MODULE 5 — ARTICLES & CATALOGUE (multi-conditionnements)
                 //
                 // Liste, création / modification, détail (QR codes +
                 // historique des mouvements) et gestion des catégories.

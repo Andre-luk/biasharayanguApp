@@ -43,6 +43,13 @@ IconData iconePourPage(PageAccess page) {
       return Icons.security_rounded;
     case PageAccess.assistantIa:
       return Icons.smart_toy_rounded;
+    // 🛒 MODULE 19 — marketplace local géolocalisé.
+    case PageAccess.publications:
+      return Icons.storefront_rounded;
+    case PageAccess.visibilite:
+      return Icons.insights_rounded;
+    case PageAccess.publicites:
+      return Icons.campaign_rounded;
     case PageAccess.notifications:
       return Icons.notifications_active_rounded;
     case PageAccess.assistance:
