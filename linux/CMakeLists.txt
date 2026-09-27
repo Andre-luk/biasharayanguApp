@@ -79,7 +79,17 @@ include(flutter/generated_plugins.cmake)
 # By default, "installing" just makes a relocatable bundle in the build
 # directory.
 set(BUILD_BUNDLE_DIR "${PROJECT_BINARY_DIR}/bundle")
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+# ⚠️ CORRECTION DURABLE (audit final) — Flutter ne bascule le préfixe
+# d'installation vers le dossier « bundle » que lors de la PREMIÈRE
+# configuration du dossier de compilation. Si cette première configuration
+# échoue (paquet système manquant, par exemple), elle laisse un cache avec le
+# préfixe par défaut « /usr/local » ; à la reprise, la condition ci-dessous
+# est fausse et l'installation tente d'écrire dans /usr/local, ce qui échoue
+# avec « Permission denied » sur un compte utilisateur normal.
+# On couvre donc explicitement ce cas : le préfixe est TOUJOURS ramené au
+# dossier « bundle » du projet, jamais vers un chemin système.
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT
+   OR CMAKE_INSTALL_PREFIX STREQUAL "/usr/local")
   set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
 endif()
 
