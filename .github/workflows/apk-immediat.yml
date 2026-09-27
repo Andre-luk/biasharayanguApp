@@ -1,0 +1,131 @@
+# ============================================================================
+#  APK IMMÉDIAT — publication SANS artéfacts (dépannage)
+#  ---------------------------------------------------------------------------
+#  POURQUOI CE WORKFLOW EXISTE
+#  Les workflows principaux (`build-release.yml`, `build-web.yml`) publient
+#  leurs paquets via `actions/upload-artifact`. Or le quota de stockage
+#  d'artéfacts du compte a été saturé :
+#
+#      ##[error]Failed to CreateArtifact: Artifact storage quota has been hit.
+#      Usage is recalculated every 6-12 hours.
+#
+#  Conséquence : les jobs APK / Linux / Windows / Web échouaient à l'étape
+#  d'envoi du paquet, et la release entière était bloquée.
+#
+#  Les FICHIERS ATTACHÉS À UNE RELEASE ne consomment PAS ce quota : ce
+#  workflow compile donc l'APK et l'attache directement à une release, sans
+#  jamais appeler `upload-artifact`. Objectif : disposer tout de suite d'un
+#  APK installable, en attendant que GitHub recalcule son compteur (6-12 h)
+#  pour publier la release complète (APK + Linux + Windows + web).
+#
+#  Ce workflow ne remplace pas `build-release.yml` : il le complète.
+#  Il reprend EXACTEMENT la logique de signature de `build-release.yml`
+#  (mêmes secrets, mêmes noms de fichiers, même repli sur la clé debug).
+# ============================================================================
+
+name: APK immédiat (sans artéfacts)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: APK installable
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Installer Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+
+      - name: Récupérer les dépendances
+        run: flutter pub get
+
+      # ----------------------------------------------------------------------
+      #  SIGNATURE — identique à build-release.yml : si les 4 secrets existent,
+      #  l'APK est signé avec la clé officielle (donc installable PAR-DESSUS
+      #  les versions déjà publiées) ; sinon repli explicite sur la clé debug.
+      # ----------------------------------------------------------------------
+      - name: Restaurer le keystore release (si configuré)
+        shell: bash
+        env:
+          B64_PRINCIPAL: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          B64_ALT: ${{ secrets.ANDROID_KEYSTOR_BIASHARA_YANGU }}
+          STORE_PWD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          B64="$B64_PRINCIPAL"
+          if [ -z "$B64" ]; then B64="$B64_ALT"; fi
+
+          if [ -z "$B64" ]; then
+            echo "::warning::Aucun keystore configuré : l'APK sera signé avec la clé DEBUG."
+            echo "   (Il ne pourra pas s'installer par-dessus une version signée officiellement.)"
+            exit 0
+          fi
+
+          printf '%s' "$B64" | base64 -d > android/upload-keystore.jks 2>/dev/null || true
+          TAILLE=$(wc -c < android/upload-keystore.jks 2>/dev/null || echo 0)
+          if [ "$TAILLE" -lt 500 ]; then
+            echo "::error::Le secret keystore ($TAILLE octets décodés) ne contient pas un .jks en base64."
+            exit 1
+          fi
+
+          if [ -z "$STORE_PWD" ] || [ -z "$KEY_PWD" ] || [ -z "$KEY_ALIAS" ]; then
+            echo "::error::Secrets de signature incomplets (ANDROID_STORE_PASSWORD / ANDROID_KEY_PASSWORD / ANDROID_KEY_ALIAS)."
+            exit 1
+          fi
+
+          printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=../upload-keystore.jks\n' \
+            "$STORE_PWD" "$KEY_PWD" "$KEY_ALIAS" > android/key.properties
+          echo "✅ Keystore release installé ($TAILLE octets) — APK signé officiellement."
+
+      - name: Compiler l'APK release
+        run: flutter build apk --release
+
+      - name: Lire la version déclarée
+        id: version
+        shell: bash
+        run: |
+          V=$(grep '^version:' pubspec.yaml | cut -d' ' -f2 | cut -d'+' -f1)
+          echo "valeur=$V" >> "$GITHUB_OUTPUT"
+          echo "Version compilée : $V"
+
+      # ----------------------------------------------------------------------
+      #  PUBLICATION — attachment direct (pas d'artéfact, donc pas de quota).
+      # ----------------------------------------------------------------------
+      - name: Attacher l'APK à une release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v${{ steps.version.outputs.valeur }}-immediat
+          name: APK ${{ steps.version.outputs.valeur }} — publication immédiate
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            APK de la version ${{ steps.version.outputs.valeur }} (module 20 —
+            administration plateforme + audit final), publié immédiatement.
+
+            Cette release existe parce que le quota d'artéfacts GitHub Actions
+            était saturé (`Artifact storage quota has been hit`, recalculé
+            toutes les 6-12 h). Les fichiers de release ne consomment pas ce
+            quota : l'APK est donc attaché ici directement.
+
+            La release complète (APK + Linux + Windows + site web) sera
+            publiée séparément avec le tag `v${{ steps.version.outputs.valeur }}`
+            dès que le compteur sera recalculé.
+
+            Installation : télécharger `app-release.apk` ci-dessous, puis
+            autoriser l'installation depuis cette source sur le téléphone.
+          files: build/app/outputs/flutter-apk/app-release.apk
