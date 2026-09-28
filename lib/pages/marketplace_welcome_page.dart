@@ -229,21 +229,45 @@ class _MarketplaceWelcomePageState extends State<MarketplaceWelcomePage> {
                   ),
                 ),
                 const Spacer(),
-                TextButton.icon(
+                // Accès au compte : discret mais explicite. Le visiteur peut
+                // consulter tout le catalogue SANS se connecter ; ce bouton
+                // sert uniquement aux commerçants et aux personnes déjà
+                // inscrites (publication, gestion, favoris synchronisés).
+                OutlinedButton.icon(
                   onPressed: () => context.go('/login'),
-                  icon: const Icon(Icons.login_rounded,
+                  icon: const Icon(Icons.person_outline_rounded,
                       size: 18, color: Colors.white),
                   label: const Text(
-                    'Se connecter',
+                    'Mon compte',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.55),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
+            // Accroche de marque : elle donne l'identité du marketplace avant
+            // la promesse fonctionnelle qui suit.
+            Text(
+              'Achetez. Vendez. Grandissez.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.94),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+              ),
+            ),
+            const SizedBox(height: 6),
             Text(
               'Trouvez ce dont vous avez besoin près de vous.',
               style: theme.textTheme.headlineSmall?.copyWith(
@@ -283,14 +307,10 @@ class _MarketplaceWelcomePageState extends State<MarketplaceWelcomePage> {
             const SizedBox(height: 12),
             Row(
               children: <Widget>[
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _rechercher(),
-                    icon: const Icon(Icons.search_rounded, size: 18),
-                    label: const Text('Rechercher'),
-                  ),
-                ),
-                const SizedBox(width: 10),
+                // Le champ de recherche ci-dessus possède déjà son bouton de
+                // validation : un second bouton « Rechercher » faisait doublon
+                // et consommait la largeur utile sur téléphone. L'espace gagné
+                // revient à l'action propre au marketplace : la proximité.
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _localisationEnCours ? null : _autourDeMoi,

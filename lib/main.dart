@@ -213,20 +213,36 @@ class _BiasharaAppState extends State<BiasharaApp> {
       final String? role = results[1] as String?;
       final firstUser = results[2];
 
+      // Trace de démarrage : elle indique au support SI une session a été
+      // restaurée et si une base locale existe déjà sur l'appareil. C'est
+      // exactement ce qui détermine la porte d'entrée (marketplace ou espace
+      // de travail), donc la première question posée lors d'un diagnostic.
+      debugPrint(
+        'Démarrage — session restaurée : ${savedUserId != null || supabase.auth.currentSession != null}'
+        ' | utilisateur local : ${firstUser != null}'
+        ' | rôle enregistré : ${role ?? "aucun"}',
+      );
+
       final currentSession = supabase.auth.currentSession;
       String targetRoute = '/login';
 
       // Logique de routage intelligente
       //
-      // 🛍️ MODULE 19 — « Marketplace d'abord » : un téléphone sans compte,
-      // sans session et sans utilisateur local appartient le plus souvent à un
-      // simple client (visiteur). Il découvre donc immédiatement le catalogue
-      // public /biashara, page qui propose ensuite « Se connecter » et
-      // « Enregistrer ma boutique » aux commerçants. Aucun compte n'est
-      // jamais exigé d'un visiteur.
-      if (firstUser == null && savedUserId == null && currentSession == null) {
+      // 🛍️ MODULE 19 — « LE MARKETPLACE EST LA PORTE D'ENTRÉE »
+      // La condition est volontairement fondée sur l'ÉTAT DE CONNEXION, et
+      // non sur l'existence d'un compte local :
+      //   • aucune session restaurée (non connecté, y compris après une
+      //     déconnexion, ou premier lancement) → catalogue public /biashara ;
+      //   • session restaurée → espace de travail habituel (tableau de bord).
+      // Ainsi, un visiteur n'est jamais accueilli par un formulaire de
+      // connexion : il découvre le catalogue, et la connexion n'est demandée
+      // que pour une action privée (publier, gérer sa boutique, son compte).
+      final bool sessionRestauree =
+          savedUserId != null || currentSession != null;
+
+      if (!sessionRestauree) {
         targetRoute = '/biashara';
-      } else if (savedUserId != null || currentSession != null) {
+      } else {
         final uid = savedUserId ?? currentSession?.user.id;
 
         // 🔐 MODULE 4 — rôle effectif + permissions, chargés AVANT le premier

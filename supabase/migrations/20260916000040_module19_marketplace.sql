@@ -1528,7 +1528,12 @@ begin
            'boutique_slug',  o.boutique_slug,
            'quartier',       o.quartier,
            'ville',          o.ville,
-           'distance_km',    o.distance_km
+           -- ⚠️ La sous-requête ci-dessous aliase cette colonne « distance »
+           -- (et non « distance_km ») : référencer `o.distance_km` ici levait
+           -- l'erreur « column o.distance_km does not exist » à l'ouverture de
+           -- la page publique. On expose la clé JSON `distance_km` (celle que
+           -- lit l'application) à partir de la colonne réellement calculée.
+           'distance_km',    round(o.distance::numeric, 2)
          ) order by o.distance asc nulls last, o.nom), '[]'::jsonb)
     into v_produits
     from (
