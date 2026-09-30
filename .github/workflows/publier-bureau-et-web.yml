@@ -47,23 +47,11 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # 1. La release doit exister avant d'y déposer les fichiers.
-  # ---------------------------------------------------------------------------
-  preparer:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Vérification
-        run: |
-          echo "Tag ciblé : ${{ inputs.tag }}"
-          echo "La release est créée (ou actualisée) automatiquement par l'étape"
-          echo "de publication de chaque job — aucune commande gh n'est utilisée."
-          git --version
-
-  # ---------------------------------------------------------------------------
-  # 2. LINUX — archive .tar.gz
+  # 1. LINUX — archive .tar.gz
+  #    Les trois jobs sont INDÉPENDANTS : la release est créée par la première
+  #    publication qui arrive, les suivantes viennent la compléter.
   # ---------------------------------------------------------------------------
   linux:
-    needs: preparer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,7 +92,6 @@ jobs:
   # 3. WINDOWS — archive .zip
   # ---------------------------------------------------------------------------
   windows:
-    needs: preparer
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -140,7 +127,6 @@ jobs:
   #  On n'utilise PAS `actions/deploy-pages` : cette action passe elle aussi
   #  par le stockage d'artéfacts, donc par le même quota saturé.
   web:
-    needs: preparer
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
