@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Politique de la plateforme et des données</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.8pt; color: #16212e; line-height: 1.42; }
+  h1 { font-size: 20pt; margin: 0 0 1mm; color: #0d3b66; }
+  h2 { font-size: 13pt; margin: 7mm 0 2mm; color: #fff; background: #0d3b66; padding: 2mm 3mm; border-radius: 2mm; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 4mm 0 1mm; color: #12507f; border-bottom: 1.5px solid #d9e2ec; padding-bottom: 0.8mm; page-break-after: avoid; }
+  p.sous { color: #5b6b7c; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 8.9pt; }
+  th { background: #e8eff7; color: #0d3b66; text-align: left; padding: 1.7mm; font-size: 8.4pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 1.7mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 1mm; }
+  .astuce { border-left: 3px solid #1b7f4a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .alerte { border-left: 3px solid #c0392b; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .encadre { border: 1.2px solid #d9e2ec; border-radius: 2mm; padding: 2.5mm 3mm; margin: 2.5mm 0; page-break-inside: avoid; }
+  .encadre h4 { margin: 0 0 1.5mm; color: #0d3b66; font-size: 10pt; }
+  .pied { margin-top: 5mm; border-top: 1px solid #d9e2ec; padding-top: 1.5mm; font-size: 8pt; color: #5b6b7c; }
+</style>
+</head>
+<body>
+
+<h1>Politique de la plateforme et des données</h1>
+<p class="sous">Biashara Yangu 2.4.0 · Ce que la plateforme collecte, pourquoi, combien de temps, et ce que chacun peut exiger</p>
+
+<div class="astuce">
+Ce document est volontairement rédigé en langage clair. Il décrit le fonctionnement <strong>réel</strong> de l'application, pas une intention. Là où une règle technique impose une limite, elle est écrite noir sur blanc.
+</div>
+
+<h2>1. Qui fait quoi</h2>
+<table>
+  <tr><th style="width:30%">Acteur</th><th>Responsabilité</th></tr>
+  <tr><td><strong>L'entreprise</strong> (le commerçant)</td><td>Propriétaire de son activité et de ses données de gestion. Elle décide de ce qu'elle publie sur sa vitrine.</td></tr>
+  <tr><td><strong>L'agent terrain</strong></td><td>Installe, vérifie, active et publie. Ne modifie ni les permissions, ni la comptabilité, ni les données d'autrui.</td></tr>
+  <tr><td><strong>L'administration plateforme</strong></td><td>Vérifie les dossiers, encaisse et active les abonnements, gère les référentiels (villes, devises, groupes tarifaires), assure le support.</td></tr>
+  <tr><td><strong>Le Super Admin</strong></td><td>Seul habilité à modifier les permissions, à supprimer des comptes et à engager une purge de données. Ses actions sont tracées.</td></tr>
+</table>
+
+<h2>2. Quelles données sont collectées, et pourquoi</h2>
+<table>
+  <tr><th style="width:26%">Catégorie</th><th style="width:37%">Contenu</th><th>Finalité</th></tr>
+  <tr><td><strong>Identification</strong></td><td>Nom, prénom, adresse e-mail, mot de passe (chiffré, jamais lisible par un agent), rôle.</td><td>Vous connecter et vous attribuer les bons droits.</td></tr>
+  <tr><td><strong>Entreprise</strong></td><td>Nom commercial, type d'activité, ville, quartier, contacts, position géographique.</td><td>Vous identifier et vous rendre trouvable sur le Marketplace.</td></tr>
+  <tr><td><strong>Activité de gestion</strong></td><td>Articles, stock, ventes, dépenses, clients, dettes, abonnements.</td><td>Faire fonctionner vos écrans de caisse, de stock et de rapports.</td></tr>
+  <tr><td><strong>Vitrine publique</strong></td><td>Article, prix public, photo, description, disponibilité, horaires.</td><td>Être vu par les clients : c'est <strong>vous</strong> qui choisissez quoi publier.</td></tr>
+  <tr><td><strong>Mesure d'audience</strong></td><td>Nombre de vues de la vitrine, contacts reçus, articles consultés.</td><td>Vous montrer ce qui fonctionne. Statistiques <strong>agrégées</strong>, non commercialisées.</td></tr>
+  <tr><td><strong>Sécurité</strong></td><td>Journal d'audit : qui a fait quoi, quand, depuis quelle adresse.</td><td>Détecter les erreurs et les usages abusifs ; protéger vos données.</td></tr>
+</table>
+<div class="alerte"><strong>Ce qui n'est jamais collecté :</strong> votre carnet d'adresses téléphonique, vos SMS, vos photos hors de celles que vous téléversez, votre position en continu. La position d'une boutique n'est enregistrée que <strong>lorsque vous l'enregistrez explicitement</strong>.</div>
+
+<h2>3. Combien de temps les données sont conservées</h2>
+<table>
+  <tr><th style="width:34%">Donnée</th><th>Durée</th></tr>
+  <tr><td>Compte et profil</td><td>Tant que le compte existe, puis supprimé sur demande.</td></tr>
+  <tr><td>Données de gestion (ventes, stock, dépenses)</td><td>Conservées pendant la vie du compte. <strong>Les ventes ne sont jamais supprimées</strong> : elles s'<em>annulent</em> de façon tracée, pour que vos comptes restent vérifiables.</td></tr>
+  <tr><td>Publications de vitrine</td><td>Jusqu'à leur retrait par vous.</td></tr>
+  <tr><td>Journal d'audit</td><td>Conservé pour la sécurité ; il est anonymisé lors d'une suppression de compte (l'identifiant est vidé, l'action reste).</td></tr>
+  <tr><td>Sauvegardes</td><td>Une fonction de sauvegarde et de restauration est disponible dans vos paramètres : elle vous appartient.</td></tr>
+</table>
+
+<h2>4. Les trois protections qui encadrent la suppression</h2>
+<div class="encadre">
+<h4>1. Une vente ne se supprime pas</h4>
+<p>Un enregistrement de vente est protégé au niveau de la base : la suppression directe est <strong>refusée par le système</strong>. On utilise l'<strong>annulation tracée</strong>, qui conserve la trace de l'annulation. Conséquence assumée : cela évite les trous invisibles dans votre historique.</p>
+</div>
+<div class="encadre">
+<h4>2. Un compte ne s'efface pas par accident</h4>
+<p>Supprimer un utilisateur entraîne l'effacement des données qui lui sont rattachées. L'opération exige une <strong>confirmation par recopie</strong> et, lorsqu'elle est massive, une phrase de confirmation exacte. Les comptes d'administration de la plateforme ne peuvent pas être purgés.</p>
+</div>
+<div class="encadre">
+<h4>3. Toute action sensible est journalisée</h4>
+<p>Création de compte, vérification de dossier, activation, encaissement, changement de permission, suppression : chaque action est enregistrée avec son auteur et son horodatage.</p>
+</div>
+
+<h2>5. Vos droits, et comment les exercer</h2>
+<table>
+  <tr><th style="width:26%">Droit</th><th>Comment</th></tr>
+  <tr><td><strong>Accès</strong></td><td>Vos données sont visibles dans l'application, écran par écran. Une exportation est disponible depuis vos paramètres.</td></tr>
+  <tr><td><strong>Rectification</strong></td><td>Vous modifiez vous-même vos informations, vos articles, vos prix et votre vitrine.</td></tr>
+  <tr><td><strong>Retrait de la vitrine</strong></td><td>Décocher « visible publiquement » vous retire du Marketplace sans perdre vos données.</td></tr>
+  <tr><td><strong>Suppression</strong></td><td>Sur demande au Super Admin. Elle est <strong>définitive</strong> et entraîne la perte des ventes, du stock et de l'historique. Une confirmation écrite est exigée.</td></tr>
+  <tr><td><strong>Opposition à la mesure d'audience</strong></td><td>Demandez le retrait de votre vitrine : sans publication, aucun compteur n'est alimenté.</td></tr>
+</table>
+
+<h2>6. Sécurité — ce que la plateforme garantit, et ce qui vous revient</h2>
+<h3>Garanties de la plateforme</h3>
+<ul>
+  <li>Les mots de passe sont stockés <strong>chiffrés</strong> : personne, pas même un administrateur, ne peut les lire.</li>
+  <li>L'accès aux données est contrôlé <strong>ligne par ligne</strong> : une entreprise ne peut pas voir celle d'une autre.</li>
+  <li>Le verrouillage de compte après plusieurs tentatives infructueuses est actif : il protège contre l'essai de mots de passe.</li>
+  <li>Les droits d'administration sont répartis par rôle, et chaque rôle ne dispose que des écrans nécessaires.</li>
+</ul>
+<h3>Ce qui vous revient</h3>
+<ul>
+  <li>Ne pas partager votre mot de passe, même avec un agent ou un proche.</li>
+  <li>Ne pas créer de compte partagé : un compte = une personne.</li>
+  <li>Vérifier la liste de vos collaborateurs, et retirer immédiatement le rôle d'une personne qui quitte l'entreprise.</li>
+  <li>Ne rien publier sur la vitrine que vous ne voulez pas rendre public.</li>
+</ul>
+
+<h2>7. L'assistant IA — ce qu'il voit et ce qu'il ne voit pas</h2>
+<table>
+  <tr><th style="width:44%">Point</th><th>Réalité</th></tr>
+  <tr><td>Ce que l'assistant analyse</td><td>Les données de gestion de <strong>votre</strong> entreprise : ventes, stock, dépenses — pour vous conseiller.</td></tr>
+  <tr><td>Ce qu'il ne fait pas</td><td>Il ne prend aucune décision à votre place, ne modifie rien dans vos données, et ne transmet pas vos chiffres à une autre entreprise.</td></tr>
+  <tr><td>Disponibilité</td><td>L'assistant nécessite une connexion à son service externe ; sans elle, il indique qu'il est momentanément indisponible.</td></tr>
+  <tr><td>Vos précautions</td><td>Ne saisissez pas dans le chat de données que vous ne souhaitez pas voir traitées.</td></tr>
+</table>
+
+<h2>8. Le Marketplace — règles de publication</h2>
+<ol>
+  <li><strong>Vous décidez</strong> de ce qui est publié : la publication n'est jamais automatique.</li>
+  <li><strong>Un article absent du marché est invisible</strong> tant qu'il n'est pas publié, même s'il existe en stock.</li>
+  <li><strong>Disponible</strong> signifie exactement : publié <em>et</em> stock supérieur à zéro.</li>
+  <li><strong>Les prix publics sont de votre responsabilité</strong> ; un prix erroné en ligne engage votre réputation, pas celle de la plateforme.</li>
+  <li><strong>La plateforme ne vend pas à votre place</strong> : elle affiche, et met le client en contact (appel, WhatsApp). Le paiement se fait entre vous et le client.</li>
+</ol>
+
+<h2>9. Les engagements de la plateforme</h2>
+<ul>
+  <li><strong>Un service qui fonctionne hors connexion</strong> pour les gestes essentiels : caisse, articles, stock, dépenses.</li>
+  <li><strong>Des délais d'activation clairs</strong> : après vérification du dossier et paiement, le compte est activé sans intervention technique supplémentaire.</li>
+  <li><strong>Un droit à l'information</strong> : tout refus de dossier est motivé par écrit, avec l'action attendue.</li>
+  <li><strong>Une continuité d'accès</strong> : vos données de gestion restent accessibles lors d'un impayé — c'est la <strong>vitrine publique</strong> et les <strong>modules métiers avancés</strong> qui sont restreints, pas votre comptabilité.</li>
+  <li><strong>Aucun accès non journalisé</strong> aux données d'une entreprise par un membre de l'administration.</li>
+</ul>
+
+<h2>10. Ce que la plateforme ne fait pas</h2>
+<table>
+  <tr><th style="width:44%">Ce n'est pas le rôle de Biashara Yangu</th><th>Pourquoi c'est écrit ici</th></tr>
+  <tr><td>Remplacer une déclaration fiscale ou un expert-comptable</td><td>L'application produit des rapports ; elle n'établit pas de document fiscal officiel.</td></tr>
+  <tr><td>Encaisser l'argent de vos clients à votre place</td><td>Aucun paiement client ne transite par la plateforme dans cette version.</td></tr>
+  <tr><td>Garantir une vente ou un paiement d'un client</td><td>La mise en relation est fournie ; la transaction reste entre vous et le client.</td></tr>
+  <tr><td>Remplacer une connexion internet pour la vitrine</td><td>La publication et la visibilité dépendent du réseau.</td></tr>
+  <tr><td>Conserver une vente après une suppression de compte</td><td>La suppression est totale et irréversible : elle doit être une décision mûrement réfléchie.</td></tr>
+</table>
+
+<div class="astuce">
+<strong>La règle qui résume tout :</strong> vos données de gestion vous appartiennent, votre vitrine est ce que vous décidez d'en montrer, et toute action destructrice demande une confirmation explicite — parce que rien n'est effacé discrètement, ni par vous, ni par nous.
+</div>
+
+<div class="pied">
+Biashara Yangu 2.4.0 — politique de la plateforme et des données. À diffuser aux entreprises à l'ouverture de leur compte, et à chaque agent terrain.
+</div>
+
+</body>
+</html>
