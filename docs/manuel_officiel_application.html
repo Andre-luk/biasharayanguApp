@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Manuel officiel de l'application</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.8pt; color: #16212e; line-height: 1.40; }
+  h1 { font-size: 20pt; margin: 0 0 1mm; color: #0d3b66; }
+  h2 { font-size: 13pt; margin: 7mm 0 2mm; color: #fff; background: #0d3b66; padding: 2mm 3mm; border-radius: 2mm; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 4mm 0 1mm; color: #12507f; border-bottom: 1.5px solid #d9e2ec; padding-bottom: 0.8mm; page-break-after: avoid; }
+  h4 { font-size: 9.8pt; margin: 2.5mm 0 1mm; color: #1b4f7a; page-break-after: avoid; }
+  p.sous { color: #5b6b7c; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 8.8pt; }
+  th { background: #e8eff7; color: #0d3b66; text-align: left; padding: 1.6mm; font-size: 8.3pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 1.6mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 0.9mm; }
+  code { background: #eef4fa; padding: 0.2mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 8.3pt; }
+  .bloc { border: 1px solid #dfe7ee; border-radius: 2mm; padding: 2mm 2.5mm; margin: 0 0 2.5mm; page-break-inside: avoid; }
+  .bloc p { margin: 0 0 1.2mm; }
+  .lbl { display: inline-block; font-weight: bold; color: #0d3b66; }
+  .alerte { border-left: 3px solid #c0392b; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .astuce { border-left: 3px solid #1b7f4a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .frise { background: #f2f7fc; border-left: 3px solid #12507f; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  figure { margin: 2mm 0; text-align: center; page-break-inside: avoid; }
+  figure img { border: 1px solid #cfd9e4; border-radius: 2mm; width: 150mm; }
+  figcaption { font-size: 8.2pt; color: #5b6b7c; margin-top: 1mm; font-style: italic; }
+  .pied { margin-top: 5mm; border-top: 1px solid #d9e2ec; padding-top: 1.5mm; font-size: 8pt; color: #5b6b7c; }
+</style>
+</head>
+<body>
+
+<h1>Biashara Yangu — Manuel officiel</h1>
+<p class="sous">Version 2.4.0 · Chaque module, à quoi il sert et comment on l'utilise · Expliqué simplement</p>
+
+<div class="frise">
+<strong>L'idée en une phrase.</strong> Biashara Yangu gère ton commerce <strong>même sans internet</strong> :
+les ventes et le stock sont enregistrés sur ton téléphone, puis synchronisés dès que la connexion revient.
+Et parce qu'un commerce a besoin d'être vu, l'application publie ta vitrine dans un catalogue public
+où les clients te trouvent près d'eux.
+</div>
+
+<h2>1. Comprendre l'application en 3 minutes</h2>
+
+<h3>Le mode hors ligne</h3>
+<div class="bloc">
+<p><span class="lbl">Ce que ça change :</span> une coupure de réseau n'interrompt jamais une vente. Les données s'écrivent d'abord sur le téléphone, puis montent au serveur.</p>
+<p><span class="lbl">Ce qu'il faut savoir :</span> le catalogue public (Marketplace) et l'assistant intelligent ont besoin du réseau. Le reste — caisse, articles, stock, clients, dettes, rapports — fonctionne hors ligne.</p>
+<p><span class="lbl">Le geste :</span> en haut de l'écran, l'indicateur de synchronisation te dit si tout est monté au serveur.</p>
+</div>
+
+<h3>Les rôles dans une entreprise</h3>
+<table>
+  <tr><th style="width:26%">Rôle</th><th>Ce qu'il peut faire</th></tr>
+  <tr><td><strong>Patron / Propriétaire</strong></td><td>Tout dans son entreprise : ventes, articles, stock, finances, employés, vitrine, abonnement.</td></tr>
+  <tr><td><strong>Caissier (vendeur)</strong></td><td>Encaisser, scanner, consulter les ventes. <strong>Ne peut jamais modifier un prix.</strong></td></tr>
+  <tr><td><strong>Magasinier</strong></td><td>Stock, articles, inventaire. Pas d'accès à la caisse ni aux finances.</td></tr>
+  <tr><td><strong>Comptable</strong></td><td>Rapports, dépenses, finances — en lecture.</td></tr>
+</table>
+<p class="sous">Les droits sont vérifiés <strong>par le serveur</strong> à chaque action, pas seulement à l'écran.</p>
+
+<h2>2. Le cœur du commerce</h2>
+
+<h3>2.1 Ventes &amp; caisse</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> enregistrer une vente, l'encaisser, et alimenter le stock automatiquement.</p>
+<p><span class="lbl">Comment :</span> <strong>Caisse → Nouvelle vente</strong> → ajouter les articles (recherche ou QR code) → <strong>Panier</strong> → <strong>Encaisser</strong> → choix du mode de paiement (espèces, Mobile Money, crédit) → <strong>Confirmation</strong> (reçu, impression, partage WhatsApp).</p>
+<p><span class="lbl">Les 3 gestes :</span> scanner un article plutôt que le chercher ; vendre à crédit en un clic (la dette se crée seule) ; annuler une vente <strong>par l'annulation tracée</strong>, jamais en la supprimant.</p>
+</div>
+<div class="alerte"><strong>Une vente ne se supprime pas.</strong> C'est une pièce comptable : elle s'annule de façon tracée, ce qui laisse une histoire vérifiable au lieu d'un trou.</div>
+
+<h3>2.2 Scanner</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> retrouver un article instantanément à partir de son étiquette QR.</p>
+<p><span class="lbl">Comment :</span> <strong>Scanner</strong> → viser l'étiquette → l'article s'ouvre (détail, vente, entrée de stock).</p>
+<p><span class="lbl">Les 3 gestes :</span> imprimer les étiquettes depuis <strong>Articles → QR codes</strong> ; coller l'étiquette sur l'article <em>avant</em> la mise en rayon ; utiliser le scanner aussi pour l'inventaire.</p>
+</div>
+
+<h3>2.3 Articles</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> c'est le catalogue interne : ce que tu vends, à quel prix, avec quelles variantes.</p>
+<p><span class="lbl">Comment :</span> <strong>Articles → Nouvel article</strong> : nom, catégorie, prix d'achat, prix de vente, unité (pièce, kg, litre, sac), photo. Pour un article à plusieurs formats : <strong>variantes</strong> (taille, couleur, poids).</p>
+<p><span class="lbl">Les 3 gestes :</span> renseigner le <strong>prix d'achat</strong> (c'est lui qui calcule la marge) ; créer les <strong>unités</strong> correctement (« kg » n'est pas « pièce ») ; importer un catalogue entier par <strong>fichier CSV</strong> au lieu de tout ressaisir.</p>
+</div>
+
+<h3>2.4 Stock</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> savoir ce qu'il reste, et être alerté avant la rupture.</p>
+<p><span class="lbl">Comment :</span> <strong>Stock → Entrée de stock</strong> (réception, retour) · <strong>Sortie</strong> (perte, casse, don) · <strong>Inventaire</strong> (comptage réel) · <strong>Alertes</strong> (seuil minimum).</p>
+<p><span class="lbl">Les 3 gestes :</span> fixer un <strong>seuil d'alerte</strong> par article ; faire un <strong>inventaire</strong> régulier (le stock théorique diverge toujours un peu) ; corriger une erreur par une <strong>sortie motivée</strong>, jamais par une modification silencieuse.</p>
+</div>
+<p class="sous">Modules métiers : <strong>pesée</strong> (vendu au poids), <strong>production</strong> (boulangerie), <strong>lots et péremption</strong> (pharmacie, boucherie).</p>
+
+<h3>2.5 Clients, dettes et règlements</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> suivre l'argent qu'on te doit, sans cahier.</p>
+<p><span class="lbl">Comment :</span> <strong>Clients</strong> : fiche avec téléphone et WhatsApp · <strong>Dettes</strong> : le solde de chaque client, avec l'historique · <strong>Règlements</strong> : encaisser un paiement partiel ou total.</p>
+<p><span class="lbl">Les 3 gestes :</span> vendre à crédit crée la dette automatiquement ; encaisser un <strong>paiement partiel</strong> (le solde se met à jour seul) ; utiliser la <strong>relance WhatsApp</strong> — un message pré-rempli, tracé dans le journal.</p>
+</div>
+
+<h3>2.6 Dépenses et caisse</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> connaître le vrai bénéfice, et contrôler l'argent liquide.</p>
+<p><span class="lbl">Comment :</span> <strong>Dépenses</strong> : loyer, transport, salaires, électricité — avec catégorie · <strong>Caisse</strong> : ouverture, mouvement, <strong>clôture</strong> avec écart.</p>
+<p><span class="lbl">Les 3 gestes :</span> saisir les dépenses <strong>le jour même</strong> ; clôturer la caisse <strong>chaque soir</strong> (l'écart devient visible) ; catégoriser — c'est ce qui rend le rapport utile.</p>
+</div>
+
+<h3>2.7 Rapports</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> transformer l'activité en décisions : que vendre plus, que vendre moins, combien on gagne vraiment.</p>
+<p><span class="lbl">Comment :</span> <strong>Rapports</strong> → choisir la période : ventes, <strong>marge</strong>, meilleurs articles, ventes par vendeur, par catégorie, impayés, caisse. Export et partage possibles.</p>
+<p><span class="lbl">Les 3 gestes :</span> regarder la <strong>marge</strong> autant que le chiffre d'affaires ; comparer deux périodes ; identifier les <strong>articles dormants</strong> (ceux qui immobilisent ton argent).</p>
+</div>
+
+<h3>2.8 Collaborateurs</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> donner un accès à un employé sans lui donner les clés de la maison.</p>
+<p><span class="lbl">Comment :</span> <strong>Collaborateurs → Ajouter</strong> : prénom, e-mail, mot de passe, <strong>rôle</strong> (caissier, magasinier, comptable).</p>
+<p><span class="lbl">Les 3 gestes :</span> un compte <strong>par personne</strong> (jamais un compte partagé : le journal d'audit doit dire <em>qui</em>) ; un caissier ne modifie pas un prix ; retirer le compte dès le départ de l'employé.</p>
+</div>
+
+<h2>3. Être vu : le Marketplace</h2>
+
+<h3>3.1 Ma vitrine Biashara</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> publier ta boutique dans le catalogue public, pour que les clients te trouvent <strong>près d'eux</strong>.</p>
+<p><span class="lbl">Comment :</span> <strong>Paramètres → Ma vitrine Biashara → Vitrine &amp; localisation</strong> : activer la visibilité, renseigner <strong>ville, quartier, position</strong> (bouton de géolocalisation), téléphone/WhatsApp, horaires.</p>
+<p><span class="lbl">Les 3 gestes :</span> <strong>ville</strong> et <strong>position</strong> sont les deux oublis classiques ; ajouter une photo de devanture (un client reconnaît ta boutique avant d'y arriver) ; vérifier ensuite que la boutique apparaît bien dans le catalogue.</p>
+</div>
+
+<h3>3.2 Mes publications</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> choisir ce que le public voit, et à quel prix public.</p>
+<p><span class="lbl">Comment :</span> <strong>Mes publications</strong> → sélectionner un article → <strong>publier</strong>, définir le <strong>prix public</strong>, la description courte, les mots-clés, la photo ; ou <strong>dépublier</strong> pour le retirer.</p>
+<p><span class="lbl">Les 3 gestes :</span> un article non publié <strong>n'existe pas</strong> pour le public ; un article est <strong>disponible</strong> seulement s'il est publié <strong>et</strong> en stock — sinon l'étiquette rouge « Indisponible » s'affiche ; enrichir les mots-clés (c'est ce que tape le client).</p>
+</div>
+
+<h3>3.3 Ma visibilité Biashara</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> mesurer ce que le Marketplace t'apporte réellement, du premier regard à la vente.</p>
+<p><span class="lbl">Comment :</span> quatre étapes sont mesurées — <strong>Visibilité</strong> (affichages), <strong>Intérêt</strong> (consultations), <strong>Intention</strong> (itinéraire, appel, WhatsApp), <strong>Conversion</strong> (vente attribuée) — avec les taux de passage entre chaque.</p>
+<p><span class="lbl">Les 3 gestes :</span> si la visibilité est bonne mais l'intérêt faible → améliore <strong>photo et prix</strong> ; si l'intérêt est bon mais l'intention faible → renseigne <strong>position et contacts</strong> ; si l'intention ne convertit pas → le problème est dans la boutique, pas sur la plateforme.</p>
+</div>
+
+<h3>3.4 Publicités Biashara</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> mettre en avant un article ou une promotion, ciblé par ville, quartier, rayon ou catégorie.</p>
+<p><span class="lbl">Comment :</span> <strong>Publicités → Nouvelle campagne</strong> : article visé, ciblage, période, budget. La campagne est <strong>soumise à validation</strong> par la plateforme.</p>
+<p><span class="lbl">Les 3 gestes :</span> cibler un rayon court autour de la boutique ; une période courte et intense plutôt que longue et faible ; mesurer avant/après dans <em>Ma visibilité</em>.</p>
+</div>
+
+<h2>4. Les modules métiers</h2>
+<table>
+  <tr><th style="width:22%">Module</th><th>À quoi ça sert</th><th style="width:34%">Les écrans</th></tr>
+  <tr><td><strong>Hôtel</strong></td><td>Louer des chambres, suivre les séjours, encaisser les nuitées.</td><td>Chambres (état, tarif) · Réservations (arrivée, départ) · Réception (check-in/out)</td></tr>
+  <tr><td><strong>Restaurant</strong></td><td>Prendre les commandes, les envoyer en cuisine, encaisser à table.</td><td>Tables (plan, occupation) · Commandes · Cuisine (écran de préparation)</td></tr>
+  <tr><td><strong>Salle des fêtes</strong></td><td>Louer la salle par événement, gérer l'acompte et le solde.</td><td>Salles · Événements (date, client, montant, solde)</td></tr>
+  <tr><td><strong>Boulangerie</strong></td><td>Produire, suivre les fournées et les ingrédients.</td><td>Production (recette, quantité, coût)</td></tr>
+  <tr><td><strong>Pharmacie</strong></td><td>Vendre en respectant les dates de péremption et les lots.</td><td>Articles (lot, péremption) · Alertes de péremption</td></tr>
+  <tr><td><strong>Boucherie</strong></td><td>Vendre au poids, gérer les découpes.</td><td>Pesée · Variantes de poids</td></tr>
+  <tr><td><strong>Production</strong></td><td>Transformer des matières premières en produits finis.</td><td>Matières · Production · Coût de revient</td></tr>
+</table>
+<p class="sous">Le <strong>type d'activité</strong> choisi à la création de l'entreprise détermine les modules visibles. Il se modifie ensuite dans <strong>Types d'activités</strong>.</p>
+
+<h2>5. Les fonctions transverses</h2>
+
+<h3>5.1 Assistant intelligent</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> poser une question en langage courant sur <em>tes</em> chiffres — « qu'est-ce qui s'est le mieux vendu cette semaine ? », « qui me doit le plus ? ».</p>
+<p><span class="lbl">Comment :</span> <strong>Assistant</strong> → écrire la question. L'assistant analyse tes données et peut proposer des actions (créer une dépense, corriger un stock). Il fonctionne avec un <strong>quota</strong> de questions.</p>
+<p><span class="lbl">Les 3 gestes :</span> poser des questions précises ; vérifier les actions qu'il propose avant de valider ; suivre son quota dans <strong>Abonnement</strong>.</p>
+</div>
+
+<h3>5.2 Abonnement</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> savoir où en est ton abonnement, ce qui a été payé, ce qui reste dû.</p>
+<p><span class="lbl">Comment :</span> <strong>Abonnement</strong> : statut, échéance, solde, historique des paiements, prolongation.</p>
+<p><span class="lbl">Les 3 gestes :</span> surveiller l'<strong>échéance</strong> ; un paiement partiel accorde un essai — le solde reste dû ; la régularisation réactive automatiquement.</p>
+</div>
+
+<h3>5.3 Devises multiples</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> vendre en francs congolais <em>et</em> en devises, sans erreur de conversion.</p>
+<p><span class="lbl">Comment :</span> <strong>Paramètres → Devises</strong> : devise par défaut, taux. Les prix et les rapports suivent la devise choisie.</p>
+<p><span class="lbl">Les 3 gestes :</span> tenir les <strong>taux à jour</strong> ; fixer une devise par boutique si elles diffèrent ; vérifier les rapports après un changement de taux.</p>
+</div>
+
+<h3>5.4 Plusieurs entreprises</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> gérer plusieurs boutiques ou plusieurs activités avec le même compte, en gardant chaque comptabilité séparée.</p>
+<p><span class="lbl">Comment :</span> <strong>Mes entreprises</strong> → créer ou basculer d'une entreprise à l'autre. Le changement recharge l'application sur l'entreprise choisie.</p>
+<p><span class="lbl">Les 3 gestes :</span> vérifier <strong>sur quelle entreprise tu es</strong> avant de saisir (nom affiché en haut) ; un employé peut être rattaché à une entreprise précise ; chaque entreprise a son abonnement.</p>
+</div>
+
+<h3>5.5 Audit, sécurité et verrouillage</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> savoir qui a fait quoi, et se protéger d'un accès non autorisé.</p>
+<p><span class="lbl">Comment :</span> <strong>Audit</strong> : journal horodaté des actions sensibles (changement de prix, annulation, encaissement, validation) · <strong>Sécurité</strong> : verrouillage après plusieurs tentatives échouées.</p>
+<p><span class="lbl">Les 3 gestes :</span> consulter le journal en cas d'écart de caisse ; un compte par personne ; ne jamais communiquer son mot de passe.</p>
+</div>
+
+<h3>5.6 Paramètres et sauvegarde</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> régler l'application, imprimer les QR codes, sauvegarder et restaurer.</p>
+<p><span class="lbl">Comment :</span> <strong>Paramètres</strong> : Ma vitrine Biashara · QR codes · Import d'articles · <strong>Sauvegarde / Restauration</strong> · Notifications · Guide d'utilisation.</p>
+<p><span class="lbl">Les 3 gestes :</span> faire une <strong>sauvegarde</strong> avant tout changement important ; imprimer les QR codes après chaque nouvel article ; utiliser le <strong>guide intégré</strong> pour former un employé.</p>
+</div>
+
+<h2>6. Le côté plateforme (administration)</h2>
+<p class="sous">Ces écrans n'apparaissent que pour l'équipe Biashara — ils ne sont pas visibles d'un commerçant.</p>
+<table>
+  <tr><th style="width:30%">Écran</th><th>Usage</th></tr>
+  <tr><td><strong>Entreprises</strong></td><td>Créer, consulter, rectifier une entreprise et son rattachement.</td></tr>
+  <tr><td><strong>Comptes à vérifier</strong></td><td>Approuver un dossier d'activation, ou le rejeter avec un motif.</td></tr>
+  <tr><td><strong>Activations &amp; paiements</strong></td><td>Fixer le <strong>montant total dû</strong>, encaisser, activer, suivre les soldes.</td></tr>
+  <tr><td><strong>Utilisateurs</strong></td><td>Créer les comptes, attribuer les rôles, désactiver, anonymiser, (Super Admin) purger.</td></tr>
+  <tr><td><strong>Boutiques</strong></td><td>Voir tout le parc et la <strong>raison exacte</strong> d'invisibilité d'une boutique.</td></tr>
+  <tr><td><strong>Modération</strong></td><td>Retirer du catalogue public un article non conforme, avec motif tracé.</td></tr>
+  <tr><td><strong>Référentiels</strong></td><td>Villes, activités, groupes tarifaires — à tenir à jour : une ville manquante empêche un classement.</td></tr>
+  <tr><td><strong>Devises &amp; Agent IA</strong></td><td>Taux de change de la plateforme, quotas et configuration de l'assistant.</td></tr>
+  <tr><td><strong>Permissions</strong></td><td>Matrice des droits par rôle (Super Admin uniquement).</td></tr>
+  <tr><td><strong>Audit</strong></td><td>Journal complet de la plateforme.</td></tr>
+</table>
+
+<figure>
+  <img src="file:///home/andre/Documents/biasharayanguApp/marketing/depliant/assets/ecrans/linux-accueil.png" alt="Tableau de bord">
+  <figcaption>Le tableau de bord : la première chose qu'on voit, et le point de départ de chaque journée.</figcaption>
+</figure>
+
+<h2>7. Les 10 gestes du quotidien</h2>
+<table>
+  <tr><th style="width:6%">N°</th><th>Geste</th><th style="width:34%">Où</th></tr>
+  <tr><td>1</td><td>Ouvrir la journée : vérifier la synchronisation et les alertes de stock</td><td>Tableau de bord</td></tr>
+  <tr><td>2</td><td>Encaisser une vente</td><td>Caisse → Nouvelle vente</td></tr>
+  <tr><td>3</td><td>Encaisser un règlement de dette</td><td>Dettes → Règlement</td></tr>
+  <tr><td>4</td><td>Saisir une dépense du jour</td><td>Dépenses</td></tr>
+  <tr><td>5</td><td>Réceptionner une livraison</td><td>Stock → Entrée</td></tr>
+  <tr><td>6</td><td>Publier un nouvel article</td><td>Mes publications</td></tr>
+  <tr><td>7</td><td>Vérifier que le stock est &gt; 0 (sinon « Indisponible »)</td><td>Stock</td></tr>
+  <tr><td>8</td><td>Clôturer la caisse</td><td>Caisse → Clôture</td></tr>
+  <tr><td>9</td><td>Regarder les ventes et la marge de la journée</td><td>Rapports</td></tr>
+  <tr><td>10</td><td>Faire une sauvegarde</td><td>Paramètres → Sauvegarde</td></tr>
+</table>
+
+<h2>8. Les erreurs fréquentes et leur explication</h2>
+<table>
+  <tr><th style="width:34%">Ce qu'on voit</th><th>Pourquoi</th><th style="width:30%">Quoi faire</th></tr>
+  <tr><td>Article « Indisponible »</td><td>Stock à zéro, ou publication désactivée</td><td>Entrée de stock, ou réactiver la disponibilité</td></tr>
+  <tr><td>Boutique invisible dans le Marketplace</td><td>Vitrine non publiée, ville ou position manquante, aucun article publié</td><td>Vitrine &amp; localisation, puis publier un article</td></tr>
+  <tr><td>Marge fausse</td><td>Prix d'achat non renseigné</td><td>Articles → compléter le prix d'achat</td></tr>
+  <tr><td>Écart de caisse</td><td>Une dépense ou un règlement non saisi</td><td>Journal d'audit, puis régulariser</td></tr>
+  <tr><td>Vente introuvable</td><td>Elle a peut-être été annulée</td><td>Ventes → filtre « annulées »</td></tr>
+  <tr><td>« Connectez-vous » alors qu'on est connecté</td><td>Session expirée</td><td>Se reconnecter</td></tr>
+  <tr><td>Distance absente dans le catalogue</td><td>Position de la boutique non renseignée</td><td>Vitrine &amp; localisation → géolocaliser</td></tr>
+</table>
+
+<h2>9. Ce que l'application ne fait pas — pour éviter les malentendus</h2>
+<ul>
+  <li>Elle <strong>ne supprime pas</strong> les ventes : elle les annule de façon tracée (exigence comptable).</li>
+  <li>Elle <strong>ne remplace pas la déclaration fiscale</strong> : les rapports sont des outils de gestion.</li>
+  <li>Le <strong>Marketplace</strong> est un catalogue de proximité, pas une boutique en ligne avec paiement en ligne.</li>
+  <li>L'<strong>assistant intelligent</strong> aide à lire les chiffres : il ne les invente jamais et ne décide pas à ta place.</li>
+</ul>
+
+<div class="pied">
+Biashara Yangu 2.4.0 — Manuel officiel. Un chapitre par module ; chaque bloc suit le même plan :
+à quoi ça sert · comment on l'utilise · les 3 gestes à connaître. Pour un usage quotidien, voir
+« Les 10 gestes du quotidien » et « Les erreurs fréquentes ».
+</div>
+
+</body>
+</html>
