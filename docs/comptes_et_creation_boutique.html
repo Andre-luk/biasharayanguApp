@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Comptes plateforme, création de boutique, chevauchement des rôles</title>
+<style>
+  @page { size: A4; margin: 16mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10.5pt; color: #16212e; line-height: 1.45; }
+  h1 { font-size: 19pt; margin: 0 0 2mm; color: #0d3b66; }
+  h2 { font-size: 13pt; margin: 7mm 0 2mm; color: #0d3b66; border-bottom: 2px solid #d9e2ec; padding-bottom: 1mm; }
+  h3 { font-size: 11pt; margin: 4mm 0 1mm; color: #12507f; }
+  .sous { color: #5b6b7c; font-size: 9.5pt; margin: 0 0 4mm; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm; font-size: 9.5pt; }
+  th { background: #0d3b66; color: #fff; text-align: left; padding: 2mm; font-size: 9pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 2mm; vertical-align: top; }
+  tr:nth-child(even) td { background: #f7fafc; }
+  code { background: #eef4fa; padding: 0.3mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; }
+  .pwd { font-family: "DejaVu Sans Mono", monospace; font-weight: bold; color: #1b4f2a; background: #e8f5ec; padding: 0.6mm 1.4mm; border-radius: 3px; }
+  .alerte { border-left: 4px solid #c0392b; background: #fdecea; padding: 2.5mm 3mm; margin: 3mm 0; font-size: 9.5pt; }
+  .note { border-left: 4px solid #12507f; background: #eef4fa; padding: 2.5mm 3mm; margin: 3mm 0; font-size: 9.5pt; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 1.2mm; }
+  .oui { color: #1b4f2a; font-weight: bold; }
+  .non { color: #a93226; font-weight: bold; }
+  .pied { margin-top: 6mm; border-top: 1px solid #d9e2ec; padding-top: 2mm; font-size: 8.5pt; color: #5b6b7c; }
+  .eviter { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<h1>Biashara Yangu — Comptes, boutiques et chevauchement des rôles</h1>
+<p class="sous">Version 2.4.0 · Module 21 (agent terrain, purge maîtrisée) · document interne à conserver hors ligne</p>
+
+<div class="alerte">
+  <strong>À lire en premier.</strong> Les mots de passe ci-dessous sont ceux livrés par le module 4 et
+  <strong>ils figurent dans le dépôt du projet</strong> : ils ne sont donc pas secrets.
+  Changez-les dès la première connexion (Supabase → Authentication → Users → <em>Update password</em>),
+  puis détruisez ce document.
+</div>
+
+<h2>1. Les comptes de la plateforme</h2>
+<table class="eviter">
+  <tr><th style="width:20%">Rôle</th><th style="width:26%">Adresse de connexion</th><th style="width:26%">Mot de passe initial</th><th>Ce qu'il fait</th></tr>
+  <tr>
+    <td><strong>SUPER_ADMIN</strong><br><span style="color:#5b6b7c">Expert / Super administrateur</span></td>
+    <td><code>super.admin@biasharayangu.cd</code></td>
+    <td><span class="pwd">LaPerle!Super2026</span></td>
+    <td>Tout : permissions, référentiels, devises, configuration IA, purge des comptes.</td>
+  </tr>
+  <tr>
+    <td><strong>GESTIONNAIRE_COMPTES</strong><br><span style="color:#5b6b7c">Gestion des comptes</span></td>
+    <td><code>comptes@biasharayangu.cd</code></td>
+    <td><span class="pwd">LaPerle!Comptes2026</span></td>
+    <td>Crée les entreprises, vérifie les dossiers, gère utilisateurs et référentiels. Ne touche pas à l'argent.</td>
+  </tr>
+  <tr>
+    <td><strong>FINANCE_LAPERLE</strong><br><span style="color:#5b6b7c">Finance plateforme</span></td>
+    <td><code>finance@biasharayangu.cd</code></td>
+    <td><span class="pwd">LaPerle!Finance2026</span></td>
+    <td>Fixe le montant dû, valide les paiements, active les comptes. Ne crée pas d'entreprise.</td>
+  </tr>
+  <tr>
+    <td><strong>SUPPORT</strong><br><span style="color:#5b6b7c">Assistance</span></td>
+    <td><code>support@biasharayangu.cd</code></td>
+    <td><span class="pwd">LaPerle!Support2026</span></td>
+    <td>Lecture seule sur les entreprises et les utilisateurs ; modère l'assistance et les notifications.</td>
+  </tr>
+  <tr>
+    <td><strong>AGENT_TERRAIN</strong><br><span style="color:#5b6b7c">à créer (module 21)</span></td>
+    <td>au choix : <code>agent1@…</code></td>
+    <td>créé dans l'application</td>
+    <td>Va sur le terrain : crée l'entreprise, vérifie le dossier, active le compte et valide le paiement — en une seule visite.</td>
+  </tr>
+</table>
+
+<h3>Créer un compte « agent terrain »</h3>
+<ol>
+  <li>Se connecter avec <code>super.admin@biasharayangu.cd</code>.</li>
+  <li><strong>Administration → Utilisateurs → « Ajouter un agent terrain »</strong>.</li>
+  <li>Renseigner prénom, nom, adresse e-mail ; utiliser le bouton <em>dé</em> pour générer un mot de passe (8 caractères minimum) et l'afficher.</li>
+  <li>Valider : le mot de passe est haché par la base, et <strong>votre propre session n'est pas remplacée</strong>. Notez les identifiants affichés et transmettez-les à l'agent.</li>
+</ol>
+
+<h2>2. Créer une boutique — pas à pas</h2>
+
+<h3>Côté plateforme (agent terrain ou gestionnaire des comptes)</h3>
+<ol>
+  <li><strong>Administration → Entreprises → Nouvelle entreprise</strong> : nom de l'entreprise et type d'activité (boutique, hôtel, restaurant, pharmacie, boulangerie, salle des fêtes…). Le dossier part <strong>« en attente de vérification »</strong>.</li>
+  <li><strong>Administration → Comptes à vérifier</strong> : contrôler le dossier, puis <strong>« Vérifier »</strong> (ou rejeter avec un motif obligatoire, journalisé).</li>
+  <li><strong>Administration → Activations &amp; paiements → « Valider le paiement »</strong> :
+    <ul>
+      <li>saisir le <strong>Montant total dû (abonnement)</strong> — c'est le montant négocié ; il prime sur le prix du pack tarifaire ;</li>
+      <li>saisir le <strong>montant réellement reçu</strong>, le mode de paiement et la référence ;</li>
+      <li>valider : <strong>paiement total</strong> → activation immédiate (30 jours) ; <strong>paiement partiel</strong> → essai de 7 jours avec solde à régulariser.</li>
+    </ul>
+  </li>
+  <li>Si le compte existe déjà sans montant dû, l'erreur <code>MONTANT_TOTAL_INCONNU</code> disparaît dès que ce montant est saisi : c'est le champ qui manquait.</li>
+</ol>
+
+<h3>Côté commerçant (le patron de la boutique)</h3>
+<ol>
+  <li>Se connecter avec son compte (créé avec l'entreprise) : il arrive directement sur le <strong>Marketplace public</strong>, puis <strong>« Mon compte »</strong> pour rejoindre son espace.</li>
+  <li><strong>Articles → Nouvel article</strong> : nom, prix de vente, unité de mesure, photo.</li>
+  <li><strong>Stock → Entrée de stock</strong> : la quantité doit être supérieure à zéro pour que l'article soit marqué <em>disponible</em>.</li>
+  <li><strong>Visibilité (Marketplace)</strong> : activer « vitrine visible publiquement » et renseigner la <strong>localisation</strong> (latitude/longitude). Sans position, la boutique ne peut pas être classée « la plus proche ».</li>
+  <li>Créer la <strong>publication</strong> de l'article : il apparaît alors dans le catalogue public, trié par distance.</li>
+  <li><strong>QR codes</strong> : imprimer l'étiquette de la boutique pour la vitrine.</li>
+</ol>
+
+<div class="note">
+  <strong>Une boutique visible n'est pas seulement « cochée ».</strong> Cinq conditions doivent être réunies :
+  boutique active · vitrine publiée (opt-in du commerçant) · position renseignée · dossier d'activation
+  accepté · entreprise non suspendue. L'écran <em>Administration → Boutiques</em> affiche, pour chaque
+  boutique, la raison exacte de son invisibilité.
+</div>
+
+<h2>3. Chevauchement des rôles</h2>
+<p class="sous">« Chevauchement » = deux personnes différentes peuvent légitimement accomplir la même étape. C'est voulu : cela évite qu'un dossier bloque faute de personnel disponible. Le serveur revérifie toujours le rôle, jamais l'écran.</p>
+
+<table class="eviter">
+  <tr>
+    <th style="width:38%">Étape</th>
+    <th>SUPER<br>ADMIN</th>
+    <th>GEST.<br>COMPTES</th>
+    <th>FINANCE</th>
+    <th>AGENT<br>TERRAIN</th>
+    <th>SUPPORT</th>
+  </tr>
+  <tr><td>Créer l'entreprise et son compte patron</td><td class="oui">oui</td><td class="oui">oui</td><td class="non">non</td><td class="oui">oui</td><td class="non">non</td></tr>
+  <tr><td>Vérifier le dossier d'activation</td><td class="oui">oui</td><td class="oui">oui</td><td class="non">non</td><td class="oui">oui</td><td class="non">non</td></tr>
+  <tr><td>Fixer le montant total dû</td><td class="oui">oui</td><td class="oui">oui</td><td class="oui">oui</td><td class="oui">oui</td><td class="non">non</td></tr>
+  <tr><td>Valider le paiement et activer</td><td class="oui">oui</td><td class="non">non</td><td class="oui">oui</td><td class="oui">oui</td><td class="non">non</td></tr>
+  <tr><td>Suspendre une boutique / modérer le catalogue</td><td class="oui">oui</td><td class="oui">oui</td><td class="non">non</td><td class="oui">oui</td><td class="non">non</td></tr>
+  <tr><td>Consulter (lecture seule)</td><td class="oui">oui</td><td class="oui">oui</td><td class="oui">oui</td><td class="oui">oui</td><td class="oui">oui</td></tr>
+  <tr><td>Permissions, devises, configuration IA</td><td class="oui">oui</td><td class="non">non</td><td class="non">non</td><td class="non">non</td><td class="non">non</td></tr>
+  <tr><td>Purger un compte et ses données</td><td class="oui">oui</td><td class="non">non</td><td class="non">non</td><td class="non">non</td><td class="non">non</td></tr>
+</table>
+
+<h3>Les trois zones de chevauchement à connaître</h3>
+<ul>
+  <li><strong>Vérification d'un dossier</strong> : gestionnaire des comptes <em>et</em> agent terrain <em>et</em> Super Admin. Le premier disponible fait avancer le dossier.</li>
+  <li><strong>Activation + paiement</strong> : finance <em>et</em> agent terrain <em>et</em> Super Admin. Sur le terrain, l'agent peut donc clôturer un dossier sans attendre le bureau.</li>
+  <li><strong>Montant total dû</strong> : les quatre rôles opérationnels peuvent le fixer — c'est une décision commerciale, pas comptable. Seul le support en est exclu (lecture seule).</li>
+</ul>
+
+<div class="alerte">
+  <strong>Deux garde-fous non chevauchables.</strong> (1) Seul le <strong>Super Admin</strong> touche aux
+  permissions, aux devises et à la configuration de l'assistant IA. (2) Seul le <strong>Super Admin</strong>
+  peut purger un compte ou une entreprise — et cette purge exige la recopie du nom exact, après une
+  simulation qui affiche le volume de données détruit.
+</div>
+
+<h2>4. Outils de maintenance (SQL Editor)</h2>
+<table class="eviter">
+  <tr><th style="width:44%">Fichier</th><th>Rôle</th></tr>
+  <tr><td><code>tools/purger_comptes_entreprises.sql</code></td><td>Purge les entreprises et leurs données. Audit par défaut (<code>v_executer := false</code>).</td></tr>
+  <tr><td><code>tools/purger_comptes_orphelins.sql</code></td><td>Comptes sans entreprise : inventaire avec volume de données, puis suppression des seules adresses listées.</td></tr>
+  <tr><td><code>tools/purger_tout_sauf_administration.sql</code></td><td>Ne conserve que les 4 comptes plateforme. <strong>Destructif</strong> : <code>v_simulation := true</code> par défaut.</td></tr>
+</table>
+
+<div class="pied">
+  Biashara Yangu 2.4.0 — document généré depuis le dépôt du projet. Les mots de passe doivent être
+  changés après la première connexion, puis ce document détruit.
+</div>
+
+</body>
+</html>
