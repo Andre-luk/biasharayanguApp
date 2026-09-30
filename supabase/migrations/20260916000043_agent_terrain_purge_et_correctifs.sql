@@ -321,20 +321,55 @@ grant execute on function public.rpc_activation_definir_montant_total(uuid, nume
 --      pack tarifaire (moteur d'abonnement, migration 23).
 do $patch_engine$
 declare
-  v_res jsonb;
-begin
-  v_res := public.biashara_patcher_fonction(
-    'rpc_abonnement_enregistrer_paiement',
-    $motif$v_total := coalesce\(\s*\(select nullif\(g\.montant_abonnement, 0\)$motif$,
-    $repl$-- correctif 43 : le montant total NÉGOCIÉ pour l''entreprise prime sur
-    -- le prix générique du pack tarifaire (sinon le montant saisi à la
-    -- validation du paiement serait ignoré).
+  v_def    text;
+  v_new    text;
+  v_motifs text[] := array[
+    -- Variante migration 23 (deux arguments dans cet ordre).
+    $m1$v_total := coalesce\(\s*\(select nullif\(g\.montant_abonnement, 0\)$m1$,
+    -- Variante tolérante aux espaces internes.
+    $m2$v_total := coalesce\(\s*\(select\s+nullif\(g\.montant_abonnement,\s*0\)$m2$
+  ];
+  -- Pas d'apostrophe dans ce commentaire : il est inséré dans du PL/pgSQL.
+  v_repl   text := $r$-- correctif 43 : le montant total NEGOCIE pour l entreprise prime
     v_total := coalesce(
       nullif(v_total, 0),
-      (select nullif(g.montant_abonnement, 0)$repl$,
-    'correctif 43 : le montant total'
-  );
-  raise notice 'Moteur d''abonnement : %', v_res::text;
+      (select nullif(g.montant_abonnement, 0)$r$;
+  v_i      integer;
+  v_ok     boolean := false;
+begin
+  select pg_get_functiondef(p.oid) into v_def
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'rpc_abonnement_enregistrer_paiement'
+   limit 1;
+
+  if v_def is null then
+    raise warning 'Moteur d''abonnement introuvable : correctif du montant négocié NON appliqué.';
+  elsif position('correctif 43' in v_def) > 0 then
+    raise notice 'Moteur d''abonnement : correctif 43 déjà appliqué.';
+  elsif position('montant_abonnement' in v_def) = 0 then
+    raise warning 'Moteur d''abonnement : aucune référence à montant_abonnement. La grille tarifaire n''est peut-être pas installée : lancez la requête 6.d en fin de fichier.';
+  else
+    for v_i in 1..array_length(v_motifs, 1) loop
+      v_new := regexp_replace(v_def, v_motifs[v_i], v_repl, 'gn');
+      if v_new <> v_def then
+        execute v_new;
+        v_ok := true;
+        exit;
+      end if;
+    end loop;
+
+    if v_ok then
+      raise notice 'Moteur d''abonnement : correctif 43 appliqué (le montant de l''entreprise prime sur le prix du pack).';
+    else
+      -- On ne bloque PAS le reste du module 21 : une variante inconnue du
+      -- moteur ne doit pas empêcher l'agent terrain, la purge et l'écran
+      -- Boutiques d'être installés. Le détail est affiché et la requête 6.d
+      -- montre le code réel, à transmettre pour un correctif ciblé.
+      raise warning 'Moteur d''abonnement : variante inconnue → correctif du montant négocié NON appliqué (le reste du fichier est appliqué). Lancez la requête 6.d et transmettez le résultat.';
+    end if;
+  end if;
 end $patch_engine$;
 
 
@@ -356,7 +391,12 @@ do $patch_perms$
 declare
   v_res jsonb;
 begin
-  v_res := public.biashara_patcher_fonction(
+  -- Enveloppe de sûreté : si `permissions_defaut` a été réécrite par un autre
+  -- module (le CASE peut avoir changé de forme), on SIGNALE au lieu de
+  -- bloquer tout le fichier. Les RPC, la purge et la création d'agent
+  -- terrain, eux, s'installent quand même.
+  begin
+    v_res := public.biashara_patcher_fonction(
     'permissions_defaut',
     $motif$\n\s*else\s*\n\s*return '\{\}'::jsonb;$motif$,
     $repl$
@@ -373,8 +413,11 @@ begin
     else
       return '{}'::jsonb;$repl$,
     'AGENT_TERRAIN'
-  );
-  raise notice 'permissions_defaut : %', v_res::text;
+    );
+    raise notice 'permissions_defaut : %', v_res::text;
+  exception when others then
+    raise warning 'permissions_defaut : % → AGENT_TERRAIN absent des permissions par défaut (le reste du fichier est appliqué).', sqlerrm;
+  end;
 end $patch_perms$;
 
 
@@ -945,6 +988,19 @@ select e.enumlabel as role
 
 -- 6.c Permissions par défaut de l'agent terrain.
 select public.permissions_defaut('AGENT_TERRAIN') as permissions_agent_terrain;
+
+-- 6.d DIAGNOSTIC — le moteur d'abonnement, montré tel qu'il est VRAIMENT dans
+--     la base (utile si l'étape 2.b a signalé « variante inconnue »).
+--     Transmettez ces lignes pour obtenir un correctif ciblé.
+select ligne
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace,
+  lateral unnest(string_to_array(pg_get_functiondef(p.oid), chr(10))) as ligne
+ where n.nspname = 'public'
+   and p.proname = 'rpc_abonnement_enregistrer_paiement'
+   and (ligne ilike '%montant_abonnement%'
+        or ligne ilike '%montant_total_du%'
+        or ligne ilike '%v_total%');
 
 -- ============================================================================
 --  FIN — module 21 : correctif GROUP BY, montant total dû, agent terrain,

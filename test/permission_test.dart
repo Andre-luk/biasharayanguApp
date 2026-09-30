@@ -32,16 +32,20 @@ void main() {
 
   group('Les huit rôles du cahier des charges', () {
     test('les huit codes sont déclarés et uniques', () {
-      expect(RoleUtilisateur.values.length, 9); // 8 rôles + « inconnu »
-      expect(RoleUtilisateur.rolesSelectionnables.length, 8);
+      // 🧑‍🌾 MODULE 21 — un 9ᵉ rôle sélectionnable a été ajouté :
+      // AGENT_TERRAIN (agent de terrain : crée l'entreprise, vérifie et
+      // active son dossier, valide les paiements).
+      expect(RoleUtilisateur.values.length, 10); // 9 rôles + « inconnu »
+      expect(RoleUtilisateur.rolesSelectionnables.length, 9);
 
       final Set<String> codes = RoleUtilisateur.rolesSelectionnables
           .map((RoleUtilisateur r) => r.code)
           .toSet();
-      expect(codes.length, 8);
+      expect(codes.length, 9);
       expect(codes, contains('SUPER_ADMIN'));
       expect(codes, contains('GESTIONNAIRE_COMPTES'));
       expect(codes, contains('FINANCE_LAPERLE'));
+      expect(codes, contains('AGENT_TERRAIN'));
       expect(codes, contains('SUPPORT'));
       expect(codes, contains('PROPRIETAIRE'));
       expect(codes, contains('VENDEUR'));
@@ -797,11 +801,14 @@ void main() {
 
   group('Critères d\'acceptation', () {
     test('les 8 rôles ont des droits différents (aucun doublon de matrice)', () {
+      // Invariant conservé avec le 9ᵉ rôle (AGENT_TERRAIN) : deux rôles ne
+      // doivent JAMAIS partager exactement la même matrice de permissions —
+      // sinon la distinction des rôles ne sert plus à rien.
       final Set<String> signatures = <String>{};
       for (final RoleUtilisateur role in RoleUtilisateur.rolesSelectionnables) {
         signatures.add(service.permissionsDe(role).toJson().toString());
       }
-      expect(signatures.length, 8);
+      expect(signatures.length, RoleUtilisateur.rolesSelectionnables.length);
     });
 
     test('la lecture de `dashboard` distingue plateforme et entreprise', () {
