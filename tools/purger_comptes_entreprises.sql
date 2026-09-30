@@ -55,6 +55,16 @@ begin
     raise exception 'Aucun compte SUPER_ADMIN trouvé : purge annulée.';
   end if;
 
+  -- ⚠️ INDISPENSABLE : le SQL Editor n'a AUCUNE session utilisateur. Sans ces
+  -- deux lignes, `auth.uid()` vaut NULL, donc `mon_role()` renvoie NULL et les
+  -- RPC de purge répondent « DROIT_REFUSE » : la purge ne s'exécute pas, alors
+  -- que le script semble avoir tourné. On se déclare Super Admin le temps de
+  -- ce script uniquement (`is_local => true` : rien n'est conservé après).
+  perform set_config('request.jwt.claims',
+    jsonb_build_object('sub', v_admin::text,
+                       'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claim.sub', v_admin::text, true);
+
   raise notice '=== PURGE DES COMPTES ENTREPRISES — mode % ===',
     case when v_executer then 'SUPPRESSION RÉELLE' else 'AUDIT (aucune suppression)' end;
 
