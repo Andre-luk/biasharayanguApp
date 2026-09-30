@@ -55,6 +55,13 @@ declare
                            'finance@biasharayangu.cd',
                            'support@biasharayangu.cd'];
 
+  -- ENTREPRISES À CONSERVER (nom exact ou identifiant).
+  -- ⚠️ Ce script supprime TOUTES les entreprises de la base. Si tu viens d'en
+  -- créer une que tu veux garder, ajoute-la ICI, sinon elle sera détruite
+  -- avec ses boutiques et ses articles.
+  -- Exemple : v_garder_entreprises text[] := array['Biashara Group'];
+  v_garder_entreprises text[] := array[]::text[];
+
   v_admin  uuid;
   v_rec    record;
   v_dep    jsonb;
@@ -131,7 +138,10 @@ begin
 
   -- ------------------------------------- entreprises restantes (données orphelines)
   for v_rec in
-    select e.id, e.nom from public.entreprises e order by e.nom
+    select e.id, e.nom from public.entreprises e
+     where not (e.nom = any(v_garder_entreprises))
+       and e.id::text <> all(v_garder_entreprises)
+     order by e.nom
   loop
     if v_simulation then
       raise notice '   ▸ Entreprise « % » : serait supprimée avec ses boutiques et ses données.', v_rec.nom;

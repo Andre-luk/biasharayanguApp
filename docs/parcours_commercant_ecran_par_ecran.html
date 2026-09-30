@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Du compte à la vitrine publiée, écran par écran</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #16212e; line-height: 1.42; }
+  h1 { font-size: 19pt; margin: 0 0 1mm; color: #0d3b66; }
+  h2 { font-size: 12.5pt; margin: 6mm 0 2mm; color: #fff; background: #0d3b66; padding: 2mm 3mm; border-radius: 2mm; page-break-after: avoid; }
+  h3 { font-size: 10.5pt; margin: 3.5mm 0 1mm; color: #12507f; page-break-after: avoid; }
+  p.sous { color: #5b6b7c; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 9pt; }
+  th { background: #e8eff7; color: #0d3b66; text-align: left; padding: 1.8mm; font-size: 8.5pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 1.8mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 1.1mm; }
+  code { background: #eef4fa; padding: 0.2mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; }
+  .chemin { background: #f2f7fc; border-left: 3px solid #12507f; padding: 1.5mm 2.5mm; margin: 1mm 0 2mm; font-size: 9pt; }
+  .alerte { border-left: 3px solid #c0392b; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .astuce { border-left: 3px solid #1b7f4a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  figure { margin: 3mm 0; text-align: center; page-break-inside: avoid; }
+  figure img { border: 1px solid #cfd9e4; border-radius: 2mm; max-width: 100%; }
+  figcaption { font-size: 8.5pt; color: #5b6b7c; margin-top: 1mm; font-style: italic; }
+  .duo { display: flex; gap: 4mm; align-items: flex-start; page-break-inside: avoid; }
+  .duo figure { flex: 1; margin: 0; }
+  .mobile img { width: 52mm; }
+  .pied { margin-top: 5mm; border-top: 1px solid #d9e2ec; padding-top: 1.5mm; font-size: 8pt; color: #5b6b7c; }
+</style>
+</head>
+<body>
+
+<h1>Du compte à la vitrine publiée</h1>
+<p class="sous">Le parcours complet du commerçant dans Biashara Yangu 2.4.0 — chaque étape avec la vue réelle de l'application</p>
+
+<div class="astuce">
+<strong>Ce document suit l'ordre réel des opérations.</strong> Les écrans reproduits sont des captures de
+l'application : ce que tu vois ici est ce que tu verras à l'écran. Compte <strong>20 minutes</strong> la première fois,
+<strong>5 minutes</strong> pour une boutique suivante.
+</div>
+
+<h2>Vue d'ensemble — qui fait quoi</h2>
+<table>
+  <tr><th style="width:22%">Qui</th><th>Ce qu'il fait</th></tr>
+  <tr><td><strong>Le commerçant</strong></td><td>Crée son compte, son entreprise, ses articles, sa vitrine. Publie ses produits.</td></tr>
+  <tr><td><strong>L'agent terrain</strong></td><td>Accompagne le commerçant, vérifie le dossier, active le compte, valide le paiement.</td></tr>
+  <tr><td><strong>La plateforme</strong></td><td>Vérifie le dossier (gestionnaire), valide le paiement (finance), modère le catalogue.</td></tr>
+</table>
+
+<h2>1. Le commerçant crée son compte</h2>
+
+<h3>1.1 Ouvrir l'application et se connecter</h3>
+<div class="chemin"><strong>Écran d'accueil → « Se connecter »</strong> (ou <strong>« Créer un compte »</strong> s'il n'en a pas).</div>
+
+<div class="duo">
+  <figure class="mobile">
+    <img src="file:///home/andre/Documents/biasharayanguApp/marketing/depliant/assets/ecrans/mobile-connexion.png" alt="Écran de connexion">
+    <figcaption>Écran de connexion : adresse e-mail et mot de passe.</figcaption>
+  </figure>
+  <figure class="mobile">
+    <img src="file:///home/andre/Documents/biasharayanguApp/marketing/depliant/assets/ecrans/mobile-creation.png" alt="Création de compte">
+    <figcaption>Création de compte : prénom, nom, e-mail, mot de passe.</figcaption>
+  </figure>
+</div>
+
+<ul>
+  <li>L'adresse e-mail <strong>est l'identifiant</strong> : elle ne doit pas contenir de faute.</li>
+  <li>Le mot de passe doit contenir <strong>au moins 8 caractères</strong>.</li>
+  <li>Après inscription, l'application propose immédiatement la <strong>création de l'entreprise</strong>.</li>
+</ul>
+
+<h2>2. Le commerçant crée son entreprise</h2>
+<div class="chemin"><strong>« Créer mon entreprise »</strong> → nom commercial + <strong>type d'activité</strong>.</div>
+<table>
+  <tr><th style="width:34%">Type d'activité</th><th>Modules qui s'activent</th></tr>
+  <tr><td>Boutique / commerce</td><td>Ventes, articles, stock, clients, dettes, caisse</td></tr>
+  <tr><td>Hôtel</td><td>+ chambres, réservations, réception</td></tr>
+  <tr><td>Restaurant</td><td>+ tables, commandes, cuisine</td></tr>
+  <tr><td>Salle des fêtes</td><td>+ salles, événements</td></tr>
+  <tr><td>Boulangerie · Pharmacie · Production</td><td>+ production, lots, péremption</td></tr>
+</table>
+
+<div class="astuce">
+<strong>Ce que le système fait tout seul :</strong> il crée l'<strong>entreprise</strong> et sa
+<strong>boutique par défaut</strong>. C'est elle qui alimentera « Ma vitrine ». Le dossier passe alors
+<strong>en attente de vérification</strong> — l'agent terrain doit l'approuver.
+</div>
+
+<h2>3. L'agent vérifie et active le compte <span style="font-size:9pt;font-weight:normal">(côté plateforme)</span></h2>
+
+<h3>3.1 Vérifier le dossier</h3>
+<div class="chemin"><strong>Administration → Comptes à vérifier → « Vérifier »</strong></div>
+<p>L'agent contrôle les informations, puis approuve. En cas de dossier incomplet, il <strong>rejette avec un motif</strong> — obligatoire, et conservé dans le journal d'audit.</p>
+
+<h3>3.2 Fixer le montant et encaisser le paiement</h3>
+<div class="chemin"><strong>Administration → Activations &amp; paiements → « Valider le paiement »</strong></div>
+<table>
+  <tr><th style="width:36%">Champ</th><th>Ce qu'il faut saisir</th></tr>
+  <tr><td><strong>Montant total dû (abonnement)</strong></td><td>Le montant <strong>négocié</strong>. Il prime sur le prix du pack. Sans lui, l'activation est refusée.</td></tr>
+  <tr><td><strong>Montant reçu</strong></td><td>Ce qui a été réellement encaissé.</td></tr>
+  <tr><td>Mode de paiement · Référence</td><td>Espèces, Mobile Money, virement — la référence est ta preuve en cas de litige.</td></tr>
+</table>
+<p><strong>Paiement total</strong> → activation immédiate (30 jours). <strong>Paiement partiel</strong> → essai de 7 jours, solde suivi automatiquement.</p>
+
+<h2>4. Le commerçant crée ses articles</h2>
+
+<h3>4.1 Créer l'article</h3>
+<div class="chemin"><strong>Articles → « Nouvel article »</strong></div>
+<ul>
+  <li><strong>Nom</strong> — ce que le client lira dans le catalogue. Sois précis : « Riz parfumé 25 kg » plutôt que « Riz ».</li>
+  <li><strong>Prix de vente</strong> et <strong>unité</strong> (pièce, kg, litre, sac…).</li>
+  <li><strong>Photo</strong> — facultative. Sans photo, l'application affiche un visuel de repli aux couleurs de Biashara ; l'article reste parfaitement visible.</li>
+</ul>
+
+<h3>4.2 Mettre du stock — l'étape que tout le monde oublie</h3>
+<div class="chemin"><strong>Stock → « Entrée de stock »</strong></div>
+<div class="alerte">
+<strong>Sans stock, l'article est marqué « Indisponible »</strong> et n'apparaît pas dans le catalogue public.
+C'est la première cause d'un article « qui ne se voit pas ».
+</div>
+
+<div style="border:1px solid #cfd9e4;border-radius:2mm;padding:2.5mm;margin:2mm 0;font-size:9pt;page-break-inside:avoid">
+<strong>La règle exacte, telle que l'applique le serveur :</strong><br>
+Un article est <strong>disponible</strong> si et seulement si :<br>
+&nbsp;&nbsp;<strong>l'article est publié</strong> (case de publication cochée dans « Mes publications »)<br>
+&nbsp;&nbsp;<strong>ET</strong> sa <strong>quantité en stock est supérieure à zéro</strong>.<br>
+Si l'une des deux manque → étiquette rouge <strong>« Indisponible »</strong> sur la carte produit.
+</div>
+
+<h3>4.3 Les deux causes d'un « Indisponible » — et le geste pour chacune</h3>
+<table>
+  <tr><th style="width:30%">Ce que tu vois</th><th style="width:32%">Cause réelle</th><th>Ce qu'il faut faire</th></tr>
+  <tr><td>Étiquette rouge « Indisponible »</td><td><strong>Stock à zéro</strong> (cas le plus fréquent)</td><td><strong>Stock → Entrée de stock</strong> : saisir une quantité supérieure à zéro</td></tr>
+  <tr><td>Étiquette rouge « Indisponible »</td><td>L'article a été <strong>marqué indisponible</strong> volontairement</td><td><strong>Mes publications</strong> → réactiver la disponibilité</td></tr>
+  <tr><td>Aucune étiquette</td><td>Article publié et en stock</td><td>Rien à faire : il est vendable</td></tr>
+</table>
+
+<h2>5. Le commerçant publie sa vitrine</h2>
+<div class="chemin"><strong>Paramètres → « Ma vitrine Biashara » → « Vitrine &amp; localisation »</strong></div>
+
+<figure>
+  <img src="file:///home/andre/Documents/biasharayanguApp/marketing/depliant/assets/ecrans/linux-parametres.png" alt="Écran Paramètres avec la section Ma vitrine Biashara" style="width:150mm">
+  <figcaption>L'écran Paramètres : la section « Ma vitrine Biashara » regroupe Vitrine &amp; localisation, Mes publications et la visibilité.</figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:34%">Réglage</th><th>Valeur attendue</th></tr>
+  <tr><td><strong>Vitrine visible publiquement</strong></td><td>Activé — c'est l'accord du commerçant</td></tr>
+  <tr><td><strong>Ville</strong></td><td>Choisie dans la liste — indispensable au filtrage par ville</td></tr>
+  <tr><td><strong>Quartier</strong></td><td>Renseigné (ex. Gambela)</td></tr>
+  <tr><td><strong>Latitude / Longitude</strong></td><td>Position obtenue par le bouton de géolocalisation — indispensable au calcul de distance</td></tr>
+  <tr><td><strong>Téléphone / WhatsApp</strong></td><td>Renseignés — permettent les boutons « Appeler » et « WhatsApp »</td></tr>
+  <tr><td><strong>Horaires</strong></td><td>Renseignés — évitent les visites inutiles</td></tr>
+</table>
+
+<div class="alerte">
+<strong>Les 5 conditions de visibilité réelle.</strong> Une vitrine cochée ne suffit pas. La boutique apparaît
+dans le catalogue public seulement si : <strong>1)</strong> elle est active · <strong>2)</strong> la vitrine est publiée ·
+<strong>3)</strong> la position est renseignée · <strong>4)</strong> la <strong>ville</strong> est renseignée ·
+<strong>5)</strong> le dossier est activé et l'entreprise non suspendue.<br>
+Deux de ces conditions (ville, position) sont les oublis les plus fréquents. En cas de doute :
+<strong>Administration → Boutiques</strong> affiche la raison exacte de l'invisibilité.
+</div>
+
+<h2>6. Le commerçant publie ses articles</h2>
+<div class="chemin"><strong>Paramètres → « Ma vitrine Biashara » → « Mes publications »</strong></div>
+<ul>
+  <li>Un article vivant dans la boutique est <strong>privé</strong> par défaut.</li>
+  <li>C'est la <strong>publication</strong> qui le fait entrer dans le catalogue public.</li>
+  <li>L'écran signale les informations manquantes (photo, unité, prix) qui pénalisent le classement.</li>
+</ul>
+
+<div class="astuce">
+<strong>Le geste en une phrase :</strong> publier un article = le rendre visible <em>et</em> vendable.
+S'il n'est pas publié, il n'existe pas pour le Marketplace.
+</div>
+
+<h2>7. Vérifier que tout fonctionne</h2>
+
+<figure>
+  <img src="file:///home/andre/Documents/biasharayanguApp/marketing/depliant/assets/ecrans/linux-accueil.png" alt="Tableau de bord de l'application" style="width:150mm">
+  <figcaption>Le tableau de bord : ventes du jour, stock, alertes — et l'accès au Marketplace public.</figcaption>
+</figure>
+
+<table>
+  <tr><th style="width:34%">Où regarder</th><th>Ce que tu dois voir</th></tr>
+  <tr><td><strong>Marketplace</strong> (accueil public)</td><td>Ta boutique sous « Boutiques à proximité », tes articles sous « Produits autour de vous », avec la distance</td></tr>
+  <tr><td><strong>Ma visibilité Biashara</strong></td><td>Affichages, consultations, itinéraires, appels, WhatsApp, ventes attribuées</td></tr>
+  <tr><td><strong>Rapports</strong></td><td>Ventes, marges, meilleurs articles (voir l'écran ci-dessous)</td></tr>
+  <tr><td><strong>Administration → Boutiques</strong></td><td>« Visible dans le catalogue public »</td></tr>
+</table>
+
+<figure>
+  <img src="file:///home/andre/Documents/biasharayanguApp/marketing/depliant/assets/ecrans/linux-rapports.png" alt="Écran des rapports" style="width:150mm">
+  <figcaption>Les rapports : ce que la boutique a réellement produit sur la période.</figcaption>
+</figure>
+
+<h2>8. Dépannage — les messages et le geste</h2>
+<table>
+  <tr><th style="width:36%">Message / situation</th><th>Cause</th><th style="width:28%">Geste</th></tr>
+  <tr><td>« Cette boutique est introuvable »</td><td>La boutique n'existe pas pour ce compte</td><td>Faire recréer la boutique par l'agent</td></tr>
+  <tr><td>« Aucune boutique n'est encore visible ici »</td><td>Aucun article <strong>publié</strong> et disponible</td><td>Publier un article + mettre du stock</td></tr>
+  <tr><td>Boutique absente d'une ville</td><td>Ville non renseignée sur la vitrine</td><td>Vitrine &amp; localisation → Ville</td></tr>
+  <tr><td>Étiquette « Indisponible »</td><td>Stock à zéro ou publication désactivée</td><td>Stock, ou Mes publications</td></tr>
+  <tr><td>Article publié mais pas de photo</td><td>Quirk d'affichage : visuel de repli</td><td>Ajouter une photo (facultatif)</td></tr>
+  <tr><td>Distance absente sur la carte produit</td><td>Position de la boutique non renseignée</td><td>Vitrine &amp; localisation → géolocalisation</td></tr>
+</table>
+
+<h2>Checklist — avant de laisser le commerçant</h2>
+<table>
+  <tr><th style="width:6%">✔</th><th>Point vérifié</th></tr>
+  <tr><td>☐</td><td>Compte créé, mot de passe noté, connexion testée</td></tr>
+  <tr><td>☐</td><td>Entreprise créée avec le bon type d'activité</td></tr>
+  <tr><td>☐</td><td>Dossier vérifié par la plateforme</td></tr>
+  <tr><td>☐</td><td>Montant dû fixé, paiement encaissé, compte activé</td></tr>
+  <tr><td>☐</td><td>Au moins un article créé <strong>avec du stock</strong></td></tr>
+  <tr><td>☐</td><td>Vitrine publiée + ville + quartier + position + contacts</td></tr>
+  <tr><td>☐</td><td>Article publié dans « Mes publications »</td></tr>
+  <tr><td>☐</td><td>Boutique visible depuis le Marketplace, contrôle effectué</td></tr>
+</table>
+
+<div class="pied">
+Biashara Yangu 2.4.0 — parcours du commerçant, écran par écran. Captures réelles de l'application
+(version Linux et Android). Document interne : en cas de comportement anormal, noter l'écran,
+le message exact et l'adresse du compte concerné.
+</div>
+
+</body>
+</html>

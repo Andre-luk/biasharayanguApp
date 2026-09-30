@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Guide de l'agent : créer, activer et publier une boutique</title>
+<style>
+  @page { size: A4; margin: 15mm 14mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #16212e; line-height: 1.42; }
+  h1 { font-size: 18pt; margin: 0 0 1mm; color: #0d3b66; }
+  h2 { font-size: 12.5pt; margin: 6mm 0 2mm; color: #fff; background: #0d3b66; padding: 2mm 3mm; border-radius: 2mm; }
+  h3 { font-size: 10.5pt; margin: 3.5mm 0 1mm; color: #12507f; }
+  p.sous { color: #5b6b7c; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 9pt; }
+  th { background: #e8eff7; color: #0d3b66; text-align: left; padding: 1.8mm; font-size: 8.5pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 1.8mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 1.1mm; }
+  code { background: #eef4fa; padding: 0.2mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; }
+  .chemin { background: #f2f7fc; border-left: 3px solid #12507f; padding: 1.5mm 2.5mm; margin: 1mm 0 2mm; font-size: 9pt; }
+  .alerte { border-left: 3px solid #c0392b; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .astuce { border-left: 3px solid #1b7f4a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .eviter { page-break-inside: avoid; }
+  .pied { margin-top: 5mm; border-top: 1px solid #d9e2ec; padding-top: 1.5mm; font-size: 8pt; color: #5b6b7c; }
+  .etape { font-weight: bold; color: #0d3b66; }
+</style>
+</head>
+<body>
+
+<h1>Créer, activer et publier une boutique</h1>
+<p class="sous">Guide opérationnel des agents · Biashara Yangu 2.4.0 · du dossier vide à l'article visible dans le Marketplace</p>
+
+<div class="astuce">
+<strong>À qui s'adresse ce guide.</strong> À l'<strong>agent terrain</strong> et aux comptes d'administration
+(<code>super.admin@</code>, <code>comptes@</code>, <code>finance@</code>). Il couvre les deux côtés :
+ce que fait la plateforme, puis ce que fait le commerçant. Comptez <strong>15 à 20 minutes</strong>
+la première fois, <strong>5 minutes</strong> ensuite.
+</div>
+
+<h2>1. Qui fait quoi — à connaître avant de commencer</h2>
+<table class="eviter">
+  <tr><th style="width:26%">Rôle</th><th>Ce qu'il peut faire dans ce parcours</th></tr>
+  <tr><td><strong>AGENT TERRAIN</strong></td><td>Crée l'entreprise, vérifie le dossier, active le compte, valide le paiement — <em>en une seule visite</em>.</td></tr>
+  <tr><td><strong>GESTIONNAIRE_COMPTES</strong></td><td>Crée l'entreprise et vérifie le dossier. Ne valide pas les paiements.</td></tr>
+  <tr><td><strong>FINANCE_LAPERLE</strong></td><td>Fixe le montant dû, valide le paiement, active le compte. Ne crée pas d'entreprise.</td></tr>
+  <tr><td><strong>SUPPORT</strong></td><td>Consultation seule.</td></tr>
+  <tr><td><strong>PROPRIETAIRE</strong> (le commerçant)</td><td>Gère sa boutique : articles, stock, vitrine, publications.</td></tr>
+</table>
+
+<h2>2. Créer l'entreprise et son compte</h2>
+
+<p><span class="etape">Étape 1 — Créer le compte du commerçant</span></p>
+<div class="chemin"><strong>Administration → Utilisateurs → « Ajouter un utilisateur »</strong> (ou <strong>« Ajouter un agent terrain »</strong> si tu crées le compte d'un collègue).</div>
+<ul>
+  <li>Renseigne prénom, nom et adresse e-mail : c'est l'identifiant de connexion du commerçant.</li>
+  <li>Le mot de passe : utilise le bouton <em>dé</em> pour en générer un, puis <strong>note-le et remets-le au commerçant</strong>. Il ne pourra plus être relu ensuite.</li>
+</ul>
+
+<p><span class="etape">Étape 2 — Créer l'entreprise</span></p>
+<div class="chemin"><strong>Administration → Entreprises → « Nouvelle entreprise »</strong></div>
+<ul>
+  <li><strong>Nom</strong> : le nom commercial (ex. « Biashara Group »).</li>
+  <li><strong>Type d'activité</strong> : boutique, hôtel, restaurant, salle des fêtes, boulangerie, pharmacie, production. <em>Ce choix détermine les modules que le commerçant verra.</em></li>
+</ul>
+
+<div class="astuce">
+<strong>Ce que le système crée automatiquement — et qu'il faut vérifier :</strong>
+l'<strong>entreprise</strong>, la <strong>boutique par défaut</strong> (l'« espace », identifiée par l'UUID du patron)
+et le <strong>rattachement du patron</strong> à son entreprise. C'est cette boutique par défaut qui alimente
+<em>Ma vitrine</em> et <em>Vitrine &amp; localisation</em>.
+</div>
+
+<div class="alerte">
+<strong>Le contrôle à faire systématiquement</strong> : connecte-toi avec le compte du commerçant et ouvre
+<em>Paramètres → Ma vitrine Biashara</em>. Si tu lis <strong>« Cette boutique est introuvable »</strong>,
+la boutique par défaut n'a pas été créée : signale-le avant d'aller plus loin, tout le reste du parcours
+échouerait. (Les étapes de dépannage sont en fin de guide.)
+</div>
+
+<h2>3. Vérifier le dossier d'activation</h2>
+
+<p><span class="etape">Étape 3 — Instruire le dossier</span></p>
+<div class="chemin"><strong>Administration → Comptes à vérifier</strong></div>
+<ul>
+  <li>Contrôle les informations du dossier, puis <strong>« Vérifier »</strong> : le dossier passe à <em>vérifié</em> et attend la finance.</li>
+  <li>Si le dossier est incomplet, <strong>rejette-le avec un motif</strong> (obligatoire) : le motif est enregistré dans le journal d'audit et reste consultable.</li>
+</ul>
+
+<h2>4. Activer la boutique — montant dû et paiement</h2>
+
+<p><span class="etape">Étape 4 — Fixer le montant et encaisser</span></p>
+<div class="chemin"><strong>Administration → Activations &amp; paiements → « Valider le paiement »</strong></div>
+
+<table class="eviter">
+  <tr><th style="width:34%">Champ</th><th>Ce qu'il faut y mettre</th></tr>
+  <tr><td><strong>Montant total dû (abonnement, CDF)</strong></td><td>Le montant <strong>négocié</strong> avec ce commerçant. Il <strong>prime</strong> sur le prix du pack tarifaire. Sans lui, l'activation est refusée (<code>MONTANT_TOTAL_INCONNU</code>).</td></tr>
+  <tr><td><strong>Montant reçu (CDF)</strong></td><td>Ce qui a été <em>réellement</em> encaissé, ni plus ni moins.</td></tr>
+  <tr><td><strong>Mode de paiement</strong></td><td>Espèces, Mobile Money, virement…</td></tr>
+  <tr><td><strong>Référence transaction</strong></td><td>Facultatif mais recommandé (ex. <code>MOMO-2026-00123</code>) : c'est ta preuve en cas de litige.</td></tr>
+  <tr><td><strong>Note</strong></td><td>Facultatif.</td></tr>
+</table>
+
+<p><strong>Deux scénarios possibles, entièrement automatiques :</strong></p>
+<ul>
+  <li><strong>Paiement total</strong> (montant reçu ≥ solde) → compte <strong>ACTIVÉ immédiatement</strong>, abonnement de 30 jours.</li>
+  <li><strong>Paiement partiel</strong> → <strong>essai de 7 jours</strong> accordé, le solde restant est suivi automatiquement. À l'échéance, un solde impayé restreint l'accès (lecture seule) ; la régularisation réactive.</li>
+</ul>
+
+<div class="astuce">
+<strong>Bon réflexe</strong> : saisis toujours le montant total dû <em>avant</em> le montant reçu. La fenêtre te
+montre un aperçu du scénario (« paiement TOTAL : activation immédiate » ou « paiement PARTIEL : essai »)
+et le solde restant après opération.
+</div>
+
+<h2>5. Le commerçant prend la main — préparer la boutique</h2>
+<p class="sous">Les étapes suivantes se font avec <strong>le compte du commerçant</strong>, dans son espace.</p>
+
+<p><span class="etape">Étape 5 — Créer les articles</span></p>
+<div class="chemin"><strong>Articles → « Nouvel article »</strong> : nom, prix de vente, unité de mesure, photo.</div>
+
+<p><span class="etape">Étape 6 — Mettre du stock</span></p>
+<div class="chemin"><strong>Stock → Entrée de stock</strong> : la quantité doit être <strong>supérieure à zéro</strong>.</div>
+<div class="alerte">
+Sans stock, un article est marqué <strong>indisponible</strong> : il peut être publié mais
+<strong>n'apparaîtra pas</strong> dans le Marketplace. C'est l'oubli le plus fréquent.
+</div>
+
+<p><span class="etape">Étape 7 — Imprimer le QR code</span></p>
+<div class="chemin"><strong>Paramètres → QR codes</strong> (étiquette de la boutique pour la vitrine).</div>
+
+<h2>6. Activer la vitrine — tous les paramétrages</h2>
+
+<p><span class="etape">Étape 8 — Vitrine &amp; localisation</span></p>
+<div class="chemin"><strong>Paramètres → Ma vitrine Biashara → « Vitrine &amp; localisation »</strong></div>
+
+<table class="eviter">
+  <tr><th style="width:32%">Paramètre</th><th>Réglage attendu</th><th style="width:26%">Pourquoi</th></tr>
+  <tr><td><strong>Vitrine visible publiquement</strong></td><td>Activé</td><td>C'est l'accord du commerçant. Sans lui, la boutique reste privée.</td></tr>
+  <tr><td><strong>Quartier</strong></td><td>Renseigné</td><td>Ce que le client reconnaît sur la carte.</td></tr>
+  <tr><td><strong>Ville</strong></td><td>Choisie dans la liste</td><td>Filtre la recherche par ville.</td></tr>
+  <tr><td><strong>Latitude / Longitude</strong></td><td>Positionnées (bouton de géolocalisation)</td><td>Sans position, impossible de calculer « à X km ». La boutique n'est jamais « la plus proche ».</td></tr>
+  <tr><td><strong>Téléphone / WhatsApp</strong></td><td>Renseignés</td><td>Permet le bouton « Appeler » et « WhatsApp » — un client qui appelle, c'est une vente.</td></tr>
+  <tr><td><strong>Horaires d'ouverture</strong></td><td>Renseignés</td><td>Évite les visites inutiles et améliore la conversion.</td></tr>
+</table>
+
+<h3>Les 5 conditions d'une visibilité RÉELLE</h3>
+<p>Une vitrine « cochée » ne suffit pas. La boutique apparaît dans le catalogue public seulement si :</p>
+<ol>
+  <li>la boutique est <strong>active</strong> ;</li>
+  <li>la <strong>vitrine est publiée</strong> (le paramètre ci-dessus) ;</li>
+  <li>la <strong>position est renseignée</strong> ;</li>
+  <li>le <strong>dossier d'activation est accepté</strong> (vérifié par le gestionnaire) ;</li>
+  <li>l'<strong>entreprise n'est pas suspendue</strong>.</li>
+</ol>
+<div class="astuce">
+<strong>Outil de diagnostic</strong> : <strong>Administration → Boutiques</strong> affiche, pour chaque boutique,
+la raison exacte de son invisibilité (« le commerçant n'a pas publié sa vitrine », « position non renseignée »,
+« en attente de validation »…). C'est l'écran à consulter quand un commerçant dit « on ne me voit pas ».
+</div>
+
+<h2>7. Publier les articles</h2>
+
+<p><span class="etape">Étape 9 — Publier</span></p>
+<div class="chemin"><strong>Paramètres → Ma vitrine Biashara → « Mes publications »</strong></div>
+<ul>
+  <li>Un article vivant dans la boutique est <strong>privé</strong>. C'est la <strong>publication</strong> qui le rend visible du public.</li>
+  <li>L'écran indique les <strong>informations manquantes</strong> qui pénalisent la visibilité (photo, unité, prix) : les compléter améliore le classement.</li>
+</ul>
+
+<h2>8. Vérifier et mesurer</h2>
+
+<p><span class="etape">Étape 10 — Contrôler le résultat</span></p>
+<table class="eviter">
+  <tr><th style="width:32%">Où regarder</th><th>Ce que tu dois voir</th></tr>
+  <tr><td><strong>Marketplace</strong> (accueil public)</td><td>La boutique, ses articles, la distance calculée si le visiteur autorise sa localisation.</td></tr>
+  <tr><td><strong>Ma visibilité Biashara</strong></td><td>Le tableau de bord : <em>visibilité</em> (affichages), <em>intérêt</em> (consultations), <em>intention</em> (itinéraires, appels, WhatsApp), <em>conversion</em> (achats attribués), avec les taux de passage.</td></tr>
+  <tr><td><strong>Administration → Boutiques</strong></td><td>« Visible dans le catalogue public » doit s'afficher pour la boutique.</td></tr>
+</table>
+
+<h2>9. Modération et suspension (plateforme)</h2>
+<table class="eviter">
+  <tr><th style="width:34%">Action</th><th>Où</th></tr>
+  <tr><td>Suspendre une boutique / retirer sa visibilité</td><td>Administration → Boutiques</td></tr>
+  <tr><td>Retirer un article du catalogue public</td><td>Administration → Modération du catalogue</td></tr>
+</table>
+<p>Une décision de modération est <strong>motivée et datée</strong> : le commerçant voit pourquoi son article a été retiré, au lieu de constater une disparition.</p>
+
+<h2>10. Dépannage — les messages et ce qu'ils veulent dire</h2>
+<table class="eviter">
+  <tr><th style="width:38%">Message</th><th>Cause</th><th style="width:30%">Que faire</th></tr>
+  <tr><td>« Cette boutique est introuvable »</td><td>La boutique (espace) n'existe pas pour ce compte.</td><td>La recréer (voir la requête en annexe), puis reprendre à l'étape 8.</td></tr>
+  <tr><td>« Vous n'êtes pas autorisé à consulter cette visibilité »</td><td>Le compte connecté n'est pas le patron de la boutique.</td><td>Se reconnecter avec le compte du commerçant.</td></tr>
+  <tr><td><code>MONTANT_TOTAL_INCONNU</code></td><td>Aucun montant total dû n'est fixé pour cette entreprise.</td><td>Saisir le montant négocié dans la fenêtre de paiement (étape 4).</td></tr>
+  <tr><td><code>MONTANT_SUPERIEUR</code></td><td>Le montant reçu dépasse le solde réclamé.</td><td>Vérifier le montant total dû puis le montant réellement encaissé.</td></tr>
+  <tr><td><code>ETAPE_INVALIDE</code></td><td>Le dossier n'a pas encore été vérifié.</td><td>Reprendre à l'étape 3.</td></tr>
+  <tr><td>Article publié mais absent du Marketplace</td><td>Stock à zéro, ou position de la boutique non renseignée.</td><td>Entrée de stock, puis étape 8.</td></tr>
+</table>
+
+<h2>11. Règle d'or : on ne purge jamais après avoir créé</h2>
+<div class="alerte">
+Les outils de maintenance (<code>tools/purger_*.sql</code>) <strong>détruisent des données définitivement</strong>,
+y compris les ventes et le journal d'audit. Ils s'utilisent <strong>une seule fois</strong>, sur une base vide,
+<strong>avant</strong> toute création. Ordre correct : <strong>1. purger → 2. créer</strong>.
+Une vente ne peut pas être supprimée par accident (protection comptable) : c'est voulu.
+</div>
+
+<h2>Annexe — Recréer une boutique manquante</h2>
+<p>Si le compte est bien rattaché à une entreprise mais qu'aucune boutique n'existe, exécute ceci dans
+Supabase → SQL Editor, en remplaçant les deux identifiants par ceux du compte
+(<code>id</code> du compte, <code>entreprise_id</code>) :</p>
+<p><code>insert into public.espaces (id, entreprise_id, nom, type, actif)<br>
+select u.id, u.entreprise_id, coalesce(e.nom, 'Ma boutique'), 'boutique', true<br>
+&nbsp;&nbsp;from public.utilisateurs u join public.entreprises e on e.id = u.entreprise_id<br>
+&nbsp;where lower(u.email) = 'ADRESSE_DU_COMMERCANT'<br>
+&nbsp;&nbsp;&nbsp;and not exists (select 1 from public.espaces s where s.id = u.id);</code></p>
+<p>Contrôle : <code>select id, nom, entreprise_id, actif from public.espaces;</code></p>
+
+<h2>Checklist finale — à cocher avant de quitter le commerçant</h2>
+<table class="eviter">
+  <tr><th style="width:6%">✔</th><th>Point vérifié</th></tr>
+  <tr><td>☐</td><td>Compte du commerçant créé, mot de passe remis et noté.</td></tr>
+  <tr><td>☐</td><td>Entreprise créée avec le bon type d'activité.</td></tr>
+  <tr><td>☐</td><td><em>Ma vitrine</em> s'ouvre sans « boutique introuvable ».</td></tr>
+  <tr><td>☐</td><td>Dossier vérifié (Administration → Comptes à vérifier).</td></tr>
+  <tr><td>☐</td><td>Montant total dû saisi, paiement encaissé, compte activé.</td></tr>
+  <tr><td>☐</td><td>Au moins un article créé, avec du stock.</td></tr>
+  <tr><td>☐</td><td>Vitrine publiée + position renseignée + contacts + horaires.</td></tr>
+  <tr><td>☐</td><td>Article publié (Mes publications).</td></tr>
+  <tr><td>☐</td><td>Boutique visible depuis le Marketplace, contrôle effectué.</td></tr>
+</table>
+
+<div class="pied">
+Biashara Yangu 2.4.0 — guide de l'agent. Écrans : Administration (plateforme) et Paramètres → Ma vitrine Biashara
+(commerçant). En cas de comportement anormal, note l'écran, le message exact et l'adresse du compte concerné.
+</div>
+
+</body>
+</html>
