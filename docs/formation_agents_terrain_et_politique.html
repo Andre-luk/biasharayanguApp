@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Formation des agents terrain et politique d'intervention</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.8pt; color: #16212e; line-height: 1.42; }
+  h1 { font-size: 20pt; margin: 0 0 1mm; color: #0d3b66; }
+  h2 { font-size: 13pt; margin: 7mm 0 2mm; color: #fff; background: #0d3b66; padding: 2mm 3mm; border-radius: 2mm; page-break-after: avoid; }
+  h3 { font-size: 11pt; margin: 4mm 0 1mm; color: #12507f; border-bottom: 1.5px solid #d9e2ec; padding-bottom: 0.8mm; page-break-after: avoid; }
+  p.sous { color: #5b6b7c; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 8.9pt; }
+  th { background: #e8eff7; color: #0d3b66; text-align: left; padding: 1.7mm; font-size: 8.4pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 1.7mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 1mm; }
+  code { background: #eef4fa; padding: 0.2mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 8.4pt; }
+  .chemin { background: #f2f7fc; border-left: 3px solid #12507f; padding: 1.5mm 2.5mm; margin: 1mm 0 2mm; font-size: 9pt; }
+  .alerte { border-left: 3px solid #c0392b; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .astuce { border-left: 3px solid #1b7f4a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .citation { border-left: 3px solid #8e44ad; background: #f6effa; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; font-style: italic; }
+  .interdit { border: 1px solid #e6b0aa; background: #fdf3f2; border-radius: 2mm; padding: 2.5mm; margin: 2mm 0; page-break-inside: avoid; }
+  .interdit h4 { margin: 0 0 1.5mm; color: #a93226; font-size: 10pt; }
+  .fiche { border: 1.5px solid #0d3b66; border-radius: 2mm; padding: 3mm; margin: 3mm 0; page-break-inside: avoid; }
+  .fiche table { margin: 0; }
+  .fiche td { border-bottom: 1px dotted #b9c6d3; }
+  .pied { margin-top: 5mm; border-top: 1px solid #d9e2ec; padding-top: 1.5mm; font-size: 8pt; color: #5b6b7c; }
+</style>
+</head>
+<body>
+
+<h1>Agents terrain — Formation et politique d'intervention</h1>
+<p class="sous">Biashara Yangu 2.4.0 · Le rôle, la visite type, les interdits, le contrôle qualité · Document de référence des agents</p>
+
+<div class="citation">
+« L'agent terrain est la <strong>première image</strong> de Biashara Yangu. Sa mission tient en une phrase :
+<strong>qu'un commerçant reparte avec une boutique qui fonctionne réellement</strong> — pas avec un compte créé. »
+</div>
+
+<h2>1. Le rôle — et ce qu'il n'est pas</h2>
+
+<h3>Ce que fait l'agent terrain</h3>
+<table>
+  <tr><th style="width:32%">Mission</th><th>En pratique</th></tr>
+  <tr><td><strong>Installer</strong></td><td>Créer le compte du commerçant, créer son entreprise, choisir le bon type d'activité.</td></tr>
+  <tr><td><strong>Faire adopter</strong></td><td>Créer au moins un article <em>avec</em> du stock, encaisser une vente de test, montrer le rapport du jour.</td></tr>
+  <tr><td><strong>Activer</strong></td><td>Vérifier le dossier, fixer le <strong>montant total dû</strong>, encaisser le paiement, activer le compte.</td></tr>
+  <tr><td><strong>Publier</strong></td><td>Ouvrir la vitrine : visibilité, ville, quartier, position, contacts — puis publier un article.</td></tr>
+  <tr><td><strong>Traçer</strong></td><td>Consigner chaque visite : ce qui a été fait, ce qui reste, ce qui bloque.</td></tr>
+</table>
+
+<h3>Ce que l'agent terrain n'est pas</h3>
+<ul>
+  <li><strong>Pas un administrateur de la plateforme.</strong> Il ne touche ni aux permissions, ni aux devises, ni à la configuration de l'assistant.</li>
+  <li><strong>Pas un comptable du commerçant.</strong> Il installe les outils ; il ne saisit pas l'activité à sa place.</li>
+  <li><strong>Pas un décideur commercial.</strong> Il informe, il ne promet ni remise, ni délai, ni gratuité.</li>
+</ul>
+
+<h2>2. Avant la visite — la préparation (15 minutes en amont)</h2>
+<table>
+  <tr><th style="width:26%">À préparer</th><th>Pourquoi</th></tr>
+  <tr><td>Le nom commercial et le type d'activité</td><td>Une entreprise créée avec le mauvais type active de mauvais modules — il faut alors tout refaire.</td></tr>
+  <tr><td>L'adresse e-mail du commerçant</td><td>C'est l'identifiant de connexion. Une faute de frappe = un compte inaccessible.</td></tr>
+  <tr><td>Le montant négocié de l'abonnement</td><td>À saisir dans « Montant total dû ». Sans lui, l'activation est refusée.</td></tr>
+  <tr><td>La ville et le quartier</td><td>Si la ville n'est pas dans le référentiel, la faire ajouter <strong>avant</strong> la visite.</td></tr>
+  <tr><td>Un téléphone chargé et l'application installée</td><td>Le pire moment pour découvrir une batterie à plat.</td></tr>
+</table>
+<div class="astuce"><strong>Toujours vérifier la ville dans le référentiel avant de partir.</strong> C'est l'oubli qui rend une boutique invisible sans aucun message d'erreur — et c'est l'agent qui devra revenir.</div>
+
+<h2>3. La visite type en 7 étapes</h2>
+
+<h3>Étape 1 — Comprendre le commerce avant de toucher à l'application (5 min)</h3>
+<p>Demander : <em>« Qu'est-ce que vous vendez ? Comment vous notez vos ventes aujourd'hui ? Qu'est-ce qui vous fait perdre de l'argent ? »</em> La réponse détermine le type d'activité, les unités de mesure, et les premiers articles à créer. Un plan de compte mal adapté ne sera jamais utilisé.</p>
+
+<h3>Étape 2 — Créer le compte et l'entreprise (5 min)</h3>
+<div class="chemin">Application → <strong>Créer un compte</strong> → puis <strong>Créer mon entreprise</strong> (nom + type d'activité).</div>
+<p>Noter le mot de passe généré et <strong>le remettre au commerçant</strong> en le lui faisant écrire lui-même. Vérifier immédiatement que <em>Ma vitrine</em> s'ouvre : si elle dit « boutique introuvable », la boutique par défaut n'a pas été créée — à signaler avant de continuer.</p>
+
+<h3>Étape 3 — Vérifier le dossier et activer le compte (5 min)</h3>
+<div class="chemin">Administration → <strong>Comptes à vérifier</strong> → Vérifier · puis <strong>Activations &amp; paiements</strong> → Valider le paiement.</div>
+<ul>
+  <li>Saisir d'abord le <strong>montant total dû</strong> (le montant négocié), puis le <strong>montant reçu</strong>.</li>
+  <li>Renseigner le mode de paiement et la <strong>référence</strong> (indispensable en cas de litige).</li>
+  <li>Paiement total → compte activé 30 jours. Paiement partiel → essai 7 jours, solde suivi.</li>
+</ul>
+
+<h3>Étape 4 — Créer les 5 premiers articles, avec du stock (15 min)</h3>
+<div class="chemin">Articles → Nouvel article · puis <strong>Stock → Entrée de stock</strong>.</div>
+<p>Cinq articles suffisent pour l'adoption : les plus vendus, avec leur <strong>prix d'achat</strong> (pour que la marge soit juste) et une <strong>unité</strong> correcte. <strong>Chaque article doit avoir un stock supérieur à zéro</strong>, sinon il s'affichera « Indisponible ».</p>
+
+<h3>Étape 5 — Faire encaisser une vraie vente par le commerçant (5 min)</h3>
+<div class="chemin">Caisse → Nouvelle vente → Panier → Encaisser.</div>
+<p><strong>Le commerçant fait le geste, l'agent regarde.</strong> C'est la règle d'or de la formation : un geste fait par le commerçant est retenu ; un geste fait par l'agent est oublié dans l'heure.</p>
+
+<h3>Étape 6 — Ouvrir la vitrine et publier (10 min)</h3>
+<div class="chemin">Paramètres → <strong>Ma vitrine Biashara</strong> → Vitrine &amp; localisation → puis <strong>Mes publications</strong>.</div>
+<table>
+  <tr><th style="width:38%">À renseigner</th><th>Conséquence si oublié</th></tr>
+  <tr><td>Vitrine visible publiquement</td><td>Boutique privée</td></tr>
+  <tr><td><strong>Ville</strong></td><td>Boutique absente du filtre par ville</td></tr>
+  <tr><td><strong>Position</strong> (géolocalisation)</td><td>Aucune distance affichée, jamais « la plus proche »</td></tr>
+  <tr><td>Téléphone / WhatsApp</td><td>Pas de bouton « Appeler » ni « WhatsApp »</td></tr>
+  <tr><td>Publication d'un article</td><td><strong>Le catalogue reste vide malgré tout</strong></td></tr>
+</table>
+
+<h3>Étape 7 — Vérifier de bout en bout et clore (5 min)</h3>
+<ol>
+  <li>Ouvrir le <strong>Marketplace</strong> : la boutique et l'article doivent apparaître (filtre sur la ville du commerçant).</li>
+  <li>Montrer <strong>Ma visibilité Biashara</strong> : les compteurs doivent bouger après quelques minutes.</li>
+  <li>Remplir la <strong>fiche de visite</strong> (modèle en fin de document) et la transmettre.</li>
+  <li>Donner au commerçant le <strong>guide du commerçant</strong> et l'adresse de support.</li>
+</ol>
+
+<h2>4. Les 8 interdits absolus</h2>
+
+<div class="interdit">
+<h4>1. Ne jamais communiquer un mot de passe par la conversation ou par écrit non remis en main propre</h4>
+<p>Le mot de passe d'un compte est personnel. Il se transmet oralement, ou écrit et remis directement au commerçant, qui le change ensuite.</p>
+</div>
+
+<div class="interdit">
+<h4>2. Ne jamais créer deux comptes pour la même personne</h4>
+<p>Un doublon crée deux entreprises, deux stocks, deux comptabilités — et un vrai désordre. En cas de doute : rechercher le compte avant de le créer.</p>
+</div>
+
+<div class="interdit">
+<h4>3. Ne jamais promettre un prix, une remise ou un délai</h4>
+<p>Le montant dû se négocie avec la plateforme. L'agent <strong>informe</strong> et <strong>transmet</strong> ; il ne s'engage pas.</p>
+</div>
+
+<div class="interdit">
+<h4>4. Ne jamais saisir l'activité à la place du commerçant</h4>
+<p>Les ventes de démonstration se suppriment mal (elles s'annulent de façon tracée) et fausseront les rapports. La seule vente admise est une <strong>vraie</strong> vente, faite par le commerçant.</p>
+</div>
+
+<div class="interdit">
+<h4>5. Ne jamais purger de données</h4>
+<p>Les scripts de remise à zéro détruisent <strong>définitivement</strong> les ventes et le journal d'audit, et n'ont de sens que sur une base vide, <strong>avant</strong> toute création. Un agent terrain n'y touche pas : il remonte le besoin à la plateforme.</p>
+</div>
+
+<div class="interdit">
+<h4>6. Ne jamais supprimer un utilisateur pour « repartir proprement »</h4>
+<p>On désactive, on anonymise, ou on demande une purge au Super Admin. La suppression d'un compte peut casser une entreprise et un abonnement payé.</p>
+</div>
+
+<div class="interdit">
+<h4>7. Ne jamais modifier un prix ni une vente après coup</h4>
+<p>C'est le travail du patron, et il est tracé dans le journal d'audit. Un agent qui le fait engage sa responsabilité — et l'écart se voit.</p>
+</div>
+
+<div class="interdit">
+<h4>8. Ne jamais quitter un commerçant sans le contrôle qualité de la section 6</h4>
+<p>Un compte créé mais inutilisable génère un appel au support, une perte de confiance, et un déplacement supplémentaire.</p>
+</div>
+
+<h2>5. Rejeter un dossier — comment écrire un motif utile</h2>
+<p>Quand un dossier est incomplet, il se <strong>rejette avec un motif obligatoire</strong>. Ce motif est lu par le commerçant : il doit lui dire <strong>quoi faire</strong>, pas constater un problème.</p>
+<table>
+  <tr><th style="width:48%">Motif à éviter</th><th>Motif à écrire</th></tr>
+  <tr><td>« Dossier incomplet »</td><td>« Le numéro de téléphone du responsable est manquant : à compléter puis à resoumettre. »</td></tr>
+  <tr><td>« Informations erronées »</td><td>« Le nom de l'entreprise est identique à celui d'une entreprise existante : choisir un nom distinctif. »</td></tr>
+  <tr><td>« Non conforme »</td><td>« Le type d'activité déclaré (restaurant) ne correspond pas aux articles proposés (vêtements) : corriger le type. »</td></tr>
+  <tr><td>« À revoir »</td><td>« La position de la boutique n'a pas été confirmée sur la carte : l'enregistrer depuis Vitrine &amp; localisation. »</td></tr>
+</table>
+<p class="sous">Un bon motif tient en une phrase, nomme le champ précis, et indique l'action attendue.</p>
+
+<h2>6. Contrôle qualité — avant de quitter le commerçant</h2>
+<div class="fiche">
+<table>
+  <tr><th style="width:6%">✔</th><th>Point de contrôle</th><th style="width:30%">Comment le vérifier</th></tr>
+  <tr><td>☐</td><td>Le commerçant se connecte <strong>lui-même</strong> à son compte</td><td>Il saisit son mot de passe devant l'agent</td></tr>
+  <tr><td>☐</td><td>L'entreprise a le <strong>bon type d'activité</strong></td><td>Les modules attendus sont présents au menu</td></tr>
+  <tr><td>☐</td><td><em>Ma vitrine</em> s'ouvre sans « boutique introuvable »</td><td>Paramètres → Ma vitrine Biashara</td></tr>
+  <tr><td>☐</td><td>Dossier <strong>vérifié</strong> et compte <strong>activé</strong></td><td>Administration → Activations &amp; paiements</td></tr>
+  <tr><td>☐</td><td>Au moins <strong>5 articles</strong> créés</td><td>Articles</td></tr>
+  <tr><td>☐</td><td>Chaque article a un <strong>stock &gt; 0</strong> et un <strong>prix d'achat</strong></td><td>Stock · Articles</td></tr>
+  <tr><td>☐</td><td>Le commerçant a encaissé <strong>une vraie vente</strong></td><td>Ventes du jour sur le tableau de bord</td></tr>
+  <tr><td>☐</td><td>Vitrine publiée + <strong>ville</strong> + quartier + <strong>position</strong></td><td>Vitrine &amp; localisation</td></tr>
+  <tr><td>☐</td><td>Contacts (téléphone / WhatsApp) et horaires renseignés</td><td>Vitrine &amp; localisation</td></tr>
+  <tr><td>☐</td><td>Au moins <strong>un article publié</strong></td><td>Mes publications</td></tr>
+  <tr><td>☐</td><td>La boutique est <strong>visible dans le Marketplace</strong></td><td>Catalogue public, filtre sur la ville</td></tr>
+  <tr><td>☐</td><td>Le commerçant sait <strong>refaire une vente seul</strong></td><td>Il la refait, l'agent ne touche à rien</td></tr>
+</table>
+</div>
+
+<h2>7. Incidents fréquents et conduite à tenir</h2>
+<table>
+  <tr><th style="width:32%">Incident</th><th>Conduite à tenir</th></tr>
+  <tr><td>Le mot de passe ne fonctionne pas</td><td>Vérifier l'orthographe de l'e-mail ; réinitialiser par « mot de passe oublié » ; ne jamais recréer un second compte.</td></tr>
+  <tr><td>Pas de réseau sur le lieu</td><td>Créer entreprise et articles fonctionnent hors ligne ; l'activation et la publication nécessitent le réseau — les faire depuis un point couvert, puis revenir vérifier.</td></tr>
+  <tr><td>La ville n'existe pas dans la liste</td><td>La faire ajouter par l'administration (Référentiels → Villes) <strong>avant</strong> de terminer la visite.</td></tr>
+  <tr><td>La boutique reste invisible</td><td>Vérifier dans l'ordre : article publié ? stock &gt; 0 ? ville ? position ? dossier activé ? L'écran <em>Administration → Boutiques</em> donne la raison exacte.</td></tr>
+  <tr><td>Un message technique apparaît</td><td>Noter <strong>l'écran, le message exact, l'adresse du compte et l'heure</strong>, puis transmettre. Ne pas chercher à contourner.</td></tr>
+  <tr><td>Le commerçant refuse le montant</td><td>Ne pas négocier sur place. Remonter le cas : la décision appartient à la plateforme.</td></tr>
+  <tr><td>Un compte en double est détecté</td><td>Le signaler immédiatement : seul un administrateur peut anonymiser ou rattacher sans casser l'abonnement.</td></tr>
+</table>
+
+<h2>8. Politique d'intervention</h2>
+<table>
+  <tr><th style="width:28%">Règle</th><th>Contenu</th></tr>
+  <tr><td><strong>Traçabilité</strong></td><td>Chaque visite donne lieu à une fiche. Une action non consignée est réputée non réalisée.</td></tr>
+  <tr><td><strong>Un agent, un compte nominatif</strong></td><td>Jamais de compte partagé : le journal d'audit doit nommer la personne qui agit.</td></tr>
+  <tr><td><strong>Périmètre</strong></td><td>L'agent crée, vérifie, active et publie. Il ne modifie ni les permissions, ni les devises, ni les données comptables.</td></tr>
+  <tr><td><strong>Confidentialité</strong></td><td>Les chiffres d'un commerçant ne se commentent jamais devant un tiers, ni sur les réseaux sociaux.</td></tr>
+  <tr><td><strong>Matériel</strong></td><td>L'agent travaille sur son propre appareil, avec sa propre session. La session du commerçant se ferme après la visite.</td></tr>
+  <tr><td><strong>Sécurité des accès</strong></td><td>Aucun mot de passe n'est conservé, noté dans un carnet, ni envoyé par messagerie.</td></tr>
+  <tr><td><strong>Remontée</strong></td><td>Tout blocage technique remonte à la plateforme avec le message exact. Contourner un problème est une faute : il reviendra plus tard, en plus grave.</td></tr>
+</table>
+
+<h2>Fiche de visite — modèle à remplir</h2>
+<div class="fiche">
+<table>
+  <tr><td style="width:34%"><strong>Date et heure</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Agent (nom)</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Commerçant / entreprise</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>E-mail du compte</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Ville / quartier</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Type d'activité</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Montant dû / montant reçu</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Référence de paiement</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Articles créés (nombre)</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Vente de démonstration encaissée ?</strong></td><td>☐ oui &nbsp;&nbsp; ☐ non</td></tr>
+  <tr><td><strong>Vitrine publiée ? Ville ? Position ?</strong></td><td>☐ oui &nbsp;&nbsp; ☐ non &nbsp;&nbsp; Précisions : ………………</td></tr>
+  <tr><td><strong>Article publié ?</strong></td><td>☐ oui &nbsp;&nbsp; ☐ non</td></tr>
+  <tr><td><strong>Boutique visible dans le Marketplace ?</strong></td><td>☐ oui &nbsp;&nbsp; ☐ non</td></tr>
+  <tr><td><strong>Contrôle qualité complet (12 points) ?</strong></td><td>☐ oui &nbsp;&nbsp; ☐ non</td></tr>
+  <tr><td><strong>Difficultés rencontrées</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>À faire lors d'une prochaine visite</strong></td><td>……………………………………</td></tr>
+  <tr><td><strong>Observations</strong></td><td>……………………………………</td></tr>
+</table>
+</div>
+
+<div class="pied">
+Biashara Yangu 2.4.0 — formation et politique d'intervention des agents terrain.
+À lire avant la première visite, puis à garder comme référence. La fiche de visite peut être photocopiée telle quelle.
+</div>
+
+</body>
+</html>
