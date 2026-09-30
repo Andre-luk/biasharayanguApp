@@ -8,6 +8,7 @@ import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/pages/setup_page.dart';
+import 'package:biashara_yangu/pages/admin_agent_terrain_page.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -272,6 +273,20 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     if (res == true) await _loadUsers();
   }
 
+  /// 🧑‍🌾 MODULE 21 — crée le compte d'un AGENT TERRAIN (compte + mot de passe).
+  ///
+  /// Passe par `rpc_admin_creer_agent_terrain` : le mot de passe est haché par
+  /// la base et la session de l'administrateur n'est pas remplacée.
+  Future<void> _creerAgentTerrain() async {
+    final bool? cree = await Navigator.push<bool?>(
+      context,
+      MaterialPageRoute<bool?>(
+        builder: (_) => const AdminAgentTerrainPage(),
+      ),
+    );
+    if (cree == true) await _loadUsers();
+  }
+
   // ---------------------------------------------------------------------------
   // 🛡️ MODULE 20 — RETRAIT D'UN COMPTE : ANALYSER AVANT D'AGIR
   // ---------------------------------------------------------------------------
@@ -301,6 +316,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     final StrategieSuppression? choix = await _choisirStrategie(u, dependances);
     if (choix == null || !mounted) return;
 
+    // 🧹 MODULE 21 — PURGE TOTALE : chemin distinct, car elle DÉTRUIT les
+    // données. Elle s'exécute en deux temps : simulation (on montre le volume
+    // exact qui serait effacé), puis exécution réelle après confirmation
+    // explicite du nom du compte.
+    if (choix == StrategieSuppression.purge) {
+      await _purgerCompte(u);
+      return;
+    }
+
     final String? motif = choix == StrategieSuppression.desactivation
         ? await _demanderMotifRetrait(u)
         : '';
@@ -329,7 +353,170 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         return 'Compte anonymisé. Les historiques restent traçables.';
       case StrategieSuppression.suppression:
         return 'Compte supprimé définitivement.';
+      case StrategieSuppression.purge:
+        return 'Purge totale effectuée : le compte et ses données ont été '
+            'supprimés.';
     }
+  }
+
+  /// 🧹 MODULE 21 — Purge totale d'un compte : simulation → confirmation →
+  /// exécution. La simulation est demandée AVANT toute suppression pour que
+  /// l'administrateur voie le volume réel de ce qu'il s'apprête à détruire.
+  Future<void> _purgerCompte(Utilisateur u) async {
+    if (u.id == null) return;
+
+    final String? confirmation = await _demanderConfirmationPurge(u);
+    if (confirmation == null || !mounted) return;
+
+    try {
+      final Map<String, dynamic> apercu =
+          await AdminPlateformeService.instance.purgerUtilisateur(
+        utilisateurId: u.id!,
+        confirmation: confirmation,
+        simulation: true,
+      );
+      if (!mounted) return;
+
+      final bool? confirme = await _confirmerPurge(u, apercu);
+      if (confirme != true || !mounted) return;
+
+      final Map<String, dynamic> resultat =
+          await AdminPlateformeService.instance.purgerUtilisateur(
+        utilisateurId: u.id!,
+        confirmation: confirmation,
+        simulation: false,
+      );
+      if (!mounted) return;
+
+      _messageAdmin(
+        'Purge effectuée pour ${u.fullName} : '
+        '${resultat['lignes_concernees'] ?? 0} ligne(s) supprimée(s) — '
+        'compte de connexion '
+        '${resultat['compte_auth_supprime'] == true ? 'supprimé' : 'NON supprimé (à vérifier)'}.',
+      );
+      await _loadUsers();
+    } on AdminPlateformeException catch (e) {
+      if (!mounted) return;
+      _messageAdmin(e.message, erreur: true);
+    }
+  }
+
+  /// Exige la recopie exacte de l'adresse e-mail du compte à purger : c'est
+  /// cette adresse que le serveur exige comme confirmation.
+  Future<String?> _demanderConfirmationPurge(Utilisateur u) async {
+    final TextEditingController controleur = TextEditingController();
+    final String email = u.email.trim().toLowerCase();
+
+    final String? saisie = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Purge totale — confirmation'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                'Cette opération supprime DÉFINITIVEMENT le compte '
+                '${u.fullName} et toutes ses données : ventes, paiements, '
+                'dettes, stock, traces d\'audit. Elle est irréversible.',
+              ),
+              const SizedBox(height: 12),
+              const Text('Recopiez l\'adresse du compte pour confirmer :'),
+              const SizedBox(height: 6),
+              SelectableText(
+                email.isEmpty ? '(adresse inconnue)' : email,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controleur,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Adresse e-mail du compte',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, controleur.text.trim()),
+            child: const Text('Continuer'),
+          ),
+        ],
+      ),
+    );
+
+    controleur.dispose();
+    if (saisie == null) return null;
+
+    if (saisie.toLowerCase() != email || email.isEmpty) {
+      if (mounted) {
+        _messageAdmin(
+          'Adresse saisie différente de celle du compte : purge annulée.',
+          erreur: true,
+        );
+      }
+      return null;
+    }
+    return saisie;
+  }
+
+  /// Affiche le volume EXACT que la purge détruirait (réponse du serveur).
+  Future<bool?> _confirmerPurge(
+      Utilisateur u, Map<String, dynamic> apercu) async {
+    final Map<String, dynamic> detail = Map<String, dynamic>.from(
+        (apercu['detail'] as Map?) ?? const <String, dynamic>{});
+
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Ce qui sera définitivement supprimé'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('Compte : ${u.fullName}'),
+              Text('Lignes concernées : ${apercu['lignes_concernees'] ?? 0}'),
+              const SizedBox(height: 8),
+              if (detail.isEmpty)
+                const Text('Aucune donnée rattachée à ce compte.')
+              else
+                for (final MapEntry<String, dynamic> e in detail.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text('- ${e.key} : ${e.value}'),
+                  ),
+              const SizedBox(height: 12),
+              Text(
+                'Le compte de connexion (mot de passe) est également supprimé. '
+                'Cette action ne peut pas être annulée.',
+                style: TextStyle(color: Colors.red.shade700, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer définitivement'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Charge le diagnostic serveur ; affiche l'erreur telle quelle sinon.
@@ -417,8 +604,13 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                     groupValue: choix,
                     contentPadding: EdgeInsets.zero,
                     dense: true,
-                    enabled: s != StrategieSuppression.suppression ||
+                    enabled: switch (s) {
+                      StrategieSuppression.suppression =>
                         dependances.suppressionPossible,
+                      StrategieSuppression.purge =>
+                        PermissionService.instance.estSuperAdmin,
+                      _ => true,
+                    },
                     title: Row(
                       children: <Widget>[
                         Flexible(child: Text(s.libelle)),
@@ -455,7 +647,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             FilledButton(
               onPressed: () => Navigator.pop(ctx, choix),
               style: FilledButton.styleFrom(
-                backgroundColor: choix == StrategieSuppression.suppression
+                backgroundColor: choix == StrategieSuppression.suppression ||
+                        choix == StrategieSuppression.purge
                     ? Colors.red
                     : null,
               ),
@@ -827,6 +1020,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton.icon(onPressed: _createUser, icon: const Icon(Icons.person_add), label: const Text('Ajouter un utilisateur')),
+                ElevatedButton.icon(onPressed: _creerAgentTerrain, icon: const Icon(Icons.badge_outlined), label: const Text('Ajouter un agent terrain')),
                 const SizedBox(width: 8),
                 IconButton(icon: const Icon(Icons.refresh), onPressed: _loadUsers, tooltip: 'Rafraîchir'),
               ],

@@ -198,6 +198,49 @@ class ActivationService {
   }
 
   // ---------------------------------------------------------------------------
+  // ÉCRITURE — MONTANT TOTAL DÛ (MODULE 21)
+  // ---------------------------------------------------------------------------
+
+  /// Fixe le montant total dû de l'abonnement d'une entreprise.
+  ///
+  /// C'est le champ qui manquait à la fenêtre « Valider le paiement » : sans
+  /// lui, une entreprise sans grille tarifaire ne pouvait pas être activée
+  /// (`MONTANT_TOTAL_INCONNU`), et un montant négocié était ignoré au profit
+  /// du prix générique du pack. `solde_restant` étant calculé par la base
+  /// (total − payé), le solde se met à jour automatiquement.
+  ///
+  /// Renvoie le nouveau solde restant, tel que calculé par le serveur.
+  Future<double> definirMontantTotal({
+    required String entrepriseId,
+    required double montant,
+    String? note,
+  }) {
+    return _executer(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_activation_definir_montant_total',
+          params: <String, dynamic>{
+            'p_entreprise_id': entrepriseId,
+            'p_montant': montant,
+            'p_note': (note ?? '').trim().isEmpty ? null : note!.trim(),
+          },
+        );
+
+        final Map<String, dynamic>? map = parseMap(reponse);
+        if (map == null) {
+          throw const ActivationServiceException(
+            'Le serveur a renvoyé une réponse inattendue.',
+          );
+        }
+        return parseDouble(map['solde_restant']);
+      },
+      'l\'enregistrement du montant total dû',
+      'Impossible d\'enregistrer le montant total dû. Vérifiez votre '
+          'connexion internet puis réessayez.',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // AUTOMATISATION (démarrage de l'application)
   // ---------------------------------------------------------------------------
 

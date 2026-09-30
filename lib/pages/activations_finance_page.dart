@@ -127,6 +127,21 @@ class _ActivationsFinancePageState extends State<ActivationsFinancePage> {
     setState(() => _enCours = dossier.id);
 
     try {
+      // 🧮 MODULE 21 — Le MONTANT TOTAL DÛ est enregistré AVANT le paiement :
+      // le moteur d'abonnement calcule le solde à partir de lui. Sans cette
+      // étape, une entreprise sans grille tarifaire échouait en
+      // « MONTANT_TOTAL_INCONNU » et les montants négociés étaient ignorés.
+      final double? totalSaisi = paiement.montantTotalDu;
+      if (totalSaisi != null &&
+          totalSaisi > 0 &&
+          totalSaisi != dossier.montantTotalDu) {
+        await ActivationService.instance.definirMontantTotal(
+          entrepriseId: dossier.id,
+          montant: totalSaisi,
+          note: paiement.note,
+        );
+      }
+
       final Map<String, dynamic> reponse =
           await ActivationService.instance.validerFinance(
         entrepriseId: dossier.id,
@@ -545,12 +560,18 @@ class _ResultatPaiement {
   const _ResultatPaiement({
     required this.montant,
     required this.modePaiement,
+    this.montantTotalDu,
     this.reference,
     this.note,
   });
 
   final double montant;
   final String modePaiement;
+
+  /// 🧮 Montant total dû de l'abonnement, quand l'opérateur l'a fixé ou
+  /// corrigé dans la fenêtre. `null` = on garde celui du dossier.
+  final double? montantTotalDu;
+
   final String? reference;
   final String? note;
 }
@@ -570,11 +591,18 @@ class _DialoguePaiement extends StatefulWidget {
 
 class _DialoguePaiementState extends State<_DialoguePaiement> {
   late final TextEditingController _montant;
+
+  /// 🧮 MODULE 21 — Montant total dû de l'abonnement. C'est ce montant que le
+  /// moteur d'abonnement utilise pour calculer le solde : sans lui, une
+  /// entreprise sans grille tarifaire ne peut pas être activée.
+  late final TextEditingController _montantTotal;
+
   final TextEditingController _reference = TextEditingController();
   final TextEditingController _note = TextEditingController();
 
   String _modePaiement = modesPaiementDisponibles.first;
   String? _erreurMontant;
+  String? _erreurTotal;
 
   @override
   void initState() {
@@ -586,11 +614,19 @@ class _DialoguePaiementState extends State<_DialoguePaiement> {
     _montant = TextEditingController(
       text: solde > 0 ? solde.toStringAsFixed(0) : '',
     );
+
+    // Montant total dû connu du dossier (peut être vide si la base ne le
+    // porte pas encore : c'est précisément le cas que ce champ règle).
+    final double total = widget.dossier.montantTotalDu;
+    _montantTotal = TextEditingController(
+      text: total > 0 ? total.toStringAsFixed(0) : '',
+    );
   }
 
   @override
   void dispose() {
     _montant.dispose();
+    _montantTotal.dispose();
     _reference.dispose();
     _note.dispose();
     super.dispose();
@@ -599,21 +635,47 @@ class _DialoguePaiementState extends State<_DialoguePaiement> {
   double get _montantSaisi =>
       double.tryParse(_montant.text.trim().replaceAll(' ', '')) ?? 0;
 
+  /// Montant total dû saisi dans la fenêtre (0 = non renseigné).
+  double get _montantTotalSaisi =>
+      double.tryParse(_montantTotal.text.trim().replaceAll(' ', '')) ?? 0;
+
+  /// Montant total dû retenu : la saisie de l'opérateur prime sur celui du
+  /// dossier (le serveur l'enregistre AVANT d'encaisser le paiement).
+  double get _totalDu => _montantTotalSaisi > 0
+      ? _montantTotalSaisi
+      : widget.dossier.montantTotalDu;
+
+  /// Solde qui sera réellement réclamé par le moteur d'abonnement
+  /// (total dû − déjà payé).
+  double get _soldeEffectif {
+    final double calcule = _totalDu - widget.dossier.montantDejaPaye;
+    if (calcule > 0) return calcule;
+    return widget.dossier.soldeRestant;
+  }
+
   /// Aperçu du scénario appliqué par la base (total → 30 j ; partiel → essai).
   String get _apercu {
     final double montant = _montantSaisi;
+    if (_montantTotalSaisi <= 0 && widget.dossier.montantTotalDu <= 0) {
+      return 'Renseignez le MONTANT TOTAL DÛ de l\'abonnement : sans lui, '
+          'le serveur refuse l\'activation (il ne saurait pas quel solde '
+          'réclamer).';
+    }
     if (montant <= 0) return 'Saisissez le montant réellement reçu.';
 
-    if (montant >= widget.dossier.soldeRestant && widget.dossier.soldeRestant > 0) {
+    final double solde = _soldeEffectif;
+
+    if (montant >= solde && solde > 0) {
       return 'Paiement TOTAL : le compte sera ACTIVÉ immédiatement '
           '(abonnement de 30 jours).';
     }
-    if (widget.dossier.soldeRestant <= 0) {
+    if (solde <= 0) {
       return 'Abonnement déjà soldé : ce paiement sera enregistré '
           '(prolongation / régularisation selon la grille tarifaire).';
     }
     return 'Paiement PARTIEL : essai initial accordé (7 jours par défaut), '
-        'solde restant à régulariser avant l\'échéance.';
+        'solde restant de ${solde.toStringAsFixed(0)} CDF à régulariser '
+        'avant l\'échéance.';
   }
 
   void _valider() {
@@ -622,10 +684,20 @@ class _DialoguePaiementState extends State<_DialoguePaiement> {
       return;
     }
 
+    // Sans montant total dû, le moteur d'abonnement ne peut pas calculer de
+    // solde : on l'exige AVANT d'appeler le serveur (message clair plutôt
+    // qu'un échec MONTANT_TOTAL_INCONNU).
+    if (_montantTotalSaisi <= 0 && widget.dossier.montantTotalDu <= 0) {
+      setState(() => _erreurTotal =
+          'Indiquez le montant total dû de l\'abonnement.');
+      return;
+    }
+
     Navigator.of(context).pop(
       _ResultatPaiement(
         montant: _montantSaisi,
         modePaiement: _modePaiement,
+        montantTotalDu: _montantTotalSaisi > 0 ? _montantTotalSaisi : null,
         reference: _reference.text.trim().isEmpty
             ? null
             : _reference.text.trim(),
@@ -646,6 +718,30 @@ class _DialoguePaiementState extends State<_DialoguePaiement> {
             Text(
               'Solde restant : ${widget.dossier.soldeRestant.toStringAsFixed(0)} CDF',
               style: TextStyle(color: Colors.grey.shade700),
+            ),
+            const SizedBox(height: 12),
+            // 🧮 MODULE 21 — MONTANT TOTAL DÛ : le champ qui manquait. Le
+            // solde_restant de la base est calculé à partir de ce montant.
+            TextFormField(
+              controller: _montantTotal,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9., ]')),
+              ],
+              onChanged: (_) => setState(() => _erreurTotal = null),
+              decoration: InputDecoration(
+                labelText: 'Montant total dû (abonnement, CDF)',
+                helperText: widget.dossier.montantTotalDu > 0
+                    ? 'Montant négocié pour cette entreprise. Il prime sur le '
+                        'prix du pack tarifaire.'
+                    : 'Non renseigné dans la base : saisissez-le, sinon le '
+                        'serveur refuse l\'activation.',
+                helperMaxLines: 3,
+                errorText: _erreurTotal,
+                prefixIcon: const Icon(Icons.request_quote_outlined),
+                border: const OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(

@@ -290,7 +290,16 @@ enum StrategieSuppression {
 
   /// Suppression réelle, réservée aux comptes sans aucune attache.
   suppression('suppression', 'Suppression réelle',
-      'Le compte est effacé définitivement. Uniquement possible si le compte ne porte aucune donnée.');
+      'Le compte est effacé définitivement. Uniquement possible si le compte ne porte aucune donnée.'),
+
+  /// 🧹 MODULE 21 — Purge totale : le compte ET toutes ses données.
+  ///
+  /// Contrairement à [suppression], cette stratégie ne recule devant aucune
+  /// attache : elle efface aussi les ventes, paiements, dettes, stock et
+  /// traces d'audit du compte. Réservée au **Super Admin**, avec recopie de
+  /// l'adresse e-mail du compte comme confirmation explicite.
+  purge('purge', 'Purge totale (compte + données)',
+      'Le compte et TOUTES ses données sont effacés : ventes, paiements, dettes, stock, audits. Irréversible — réservé au Super Admin, confirmation par l\'adresse e-mail.');
 
   const StrategieSuppression(this.code, this.libelle, this.description);
 

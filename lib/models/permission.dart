@@ -35,6 +35,7 @@ enum RoleUtilisateur {
   superAdmin('SUPER_ADMIN', 'Expert / Super Administrateur', true),
   gestionnaireComptes('GESTIONNAIRE_COMPTES', 'Gestionnaire des comptes', true),
   financeLaperle('FINANCE_LAPERLE', 'Finance plateforme', true),
+  agentTerrain('AGENT_TERRAIN', 'Agent terrain', true),
   support('SUPPORT', 'Assistance', true),
   proprietaire('PROPRIETAIRE', 'Entreprise / Propriétaire', false),
   vendeur('VENDEUR', 'Caissier (vendeur)', false),

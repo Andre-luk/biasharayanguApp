@@ -173,6 +173,44 @@ class PermissionService {
         ActionAccess.valider,
       ],
     ),
+    // 🧑‍🌾 MODULE 21 — AGENT TERRAIN : collaborateur de la plateforme qui va
+    // sur le terrain. Il CRÉE l'entreprise du commerçant, VÉRIFIE et ACTIVE
+    // son dossier, puis VALIDE les paiements reçus. Il n'a ni les
+    // permissions, ni les référentiels sensibles (devises, paramètres) : ces
+    // écrans restent réservés au Super Admin.
+    RoleUtilisateur.agentTerrain: RolePermission.personnalise(
+      <PageAccess, Set<ActionAccess>>{
+        for (final PageAccess page in const <PageAccess>[
+          PageAccess.dashboard,
+          PageAccess.entreprises,
+          PageAccess.utilisateurs,
+          PageAccess.villes,
+          PageAccess.activites,
+          PageAccess.groupesTarifaires,
+          PageAccess.abonnements,
+          PageAccess.paiements,
+          PageAccess.boutiques,
+          PageAccess.assistance,
+          PageAccess.notifications,
+        ])
+          page: const <ActionAccess>{
+            ActionAccess.voir,
+            ActionAccess.creer,
+            ActionAccess.modifier,
+          },
+        // 🧾 Le workflow d'activation complet : vérifier le dossier, PUIS
+        // activer le compte et valider le paiement (rôles revérifiés par les
+        // RPC : l'application n'est jamais l'autorité).
+        PageAccess.verificationComptes: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.valider,
+        },
+        PageAccess.activationsFinance: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.valider,
+        },
+      },
+    ),
     RoleUtilisateur.support: RolePermission.personnalise(
       <PageAccess, Set<ActionAccess>>{
         PageAccess.dashboard: const <ActionAccess>{ActionAccess.voir},

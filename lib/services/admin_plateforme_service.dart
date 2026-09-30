@@ -220,6 +220,103 @@ class AdminPlateformeService {
   }
 
   // ---------------------------------------------------------------------------
+  // 3 bis. MODULE 21 — PURGE TOTALE (SUPER ADMIN)
+  // ---------------------------------------------------------------------------
+  //  La purge SUPPRIME le compte et ses données. Elle est donc réservée au
+  //  Super Admin côté serveur (`rpc_admin_purger_utilisateur`), exige la
+  //  recopie de l'adresse e-mail du compte, et s'appelle en DEUX TEMPS :
+  //  d'abord en simulation (`simulation: true`) pour montrer ce qui serait
+  //  détruit, puis réellement — jamais l'inverse.
+
+  /// Simule ou exécute la suppression définitive d'un compte et de ses données.
+  Future<Map<String, dynamic>> purgerUtilisateur({
+    required String utilisateurId,
+    required String confirmation,
+    bool simulation = true,
+  }) async {
+    final dynamic reponse = await _executer(
+      () => _client.rpc('rpc_admin_purger_utilisateur',
+          params: <String, dynamic>{
+            'p_utilisateur_id': utilisateurId,
+            'p_confirmation': confirmation,
+            'p_simulation': simulation,
+          }),
+      simulation ? 'la simulation de purge' : 'la purge du compte',
+    );
+
+    final Map<String, dynamic>? map = parseMap(reponse);
+    if (map == null) {
+      throw const AdminPlateformeException(
+        'Réponse inattendue du serveur pour la purge.',
+        type: TypeErreurAdmin.inconnu,
+      );
+    }
+    return map;
+  }
+
+  /// Simule ou exécute la suppression définitive d'une entreprise entière
+  /// (boutiques, comptes et données). Confirmation = nom exact de l'entreprise.
+  Future<Map<String, dynamic>> purgerEntreprise({
+    required String entrepriseId,
+    required String confirmation,
+    bool simulation = true,
+  }) async {
+    final dynamic reponse = await _executer(
+      () => _client.rpc('rpc_admin_purger_entreprise',
+          params: <String, dynamic>{
+            'p_entreprise_id': entrepriseId,
+            'p_confirmation': confirmation,
+            'p_simulation': simulation,
+          }),
+      simulation
+          ? 'la simulation de purge de l\'entreprise'
+          : 'la purge de l\'entreprise',
+    );
+
+    final Map<String, dynamic>? map = parseMap(reponse);
+    if (map == null) {
+      throw const AdminPlateformeException(
+        'Réponse inattendue du serveur pour la purge.',
+        type: TypeErreurAdmin.inconnu,
+      );
+    }
+    return map;
+  }
+
+  /// 🧑‍🌾 MODULE 21 — Crée le compte d'un AGENT TERRAIN (compte + mot de passe).
+  ///
+  /// Le mot de passe est haché par la base ; la session de l'administrateur
+  /// n'est jamais remplacée (à la différence d'une inscription classique).
+  Future<Map<String, dynamic>> creerAgentTerrain({
+    required String email,
+    required String motDePasse,
+    required String nom,
+    required String prenom,
+    String? note,
+  }) async {
+    final dynamic reponse = await _executer(
+      () => _client.rpc('rpc_admin_creer_agent_terrain',
+          params: <String, dynamic>{
+            'p_email': email.trim(),
+            'p_password': motDePasse,
+            'p_nom': nom.trim(),
+            'p_prenom': prenom.trim(),
+            'p_note': (note ?? '').trim().isEmpty ? null : note!.trim(),
+          }),
+      'la création du compte agent terrain',
+    );
+
+    final Map<String, dynamic>? map = parseMap(reponse);
+    if (map == null) {
+      throw const AdminPlateformeException(
+        'Réponse inattendue du serveur pour la création du compte.',
+        type: TypeErreurAdmin.inconnu,
+      );
+    }
+    return map;
+  }
+
+  // ---------------------------------------------------------------------------
   // OUTILS
   // ---------------------------------------------------------------------------
 
@@ -258,7 +355,12 @@ class AdminPlateformeService {
           'MODE_INCONNU' ||
           'DONNEES_INVALIDES' ||
           'SUPPRESSION_IMPOSSIBLE' ||
-          'PROPRIETE_A_TRANSFERER' =>
+          'PROPRIETE_A_TRANSFERER' ||
+          'CONFIRMATION_INVALIDE' ||
+          'COMPTE_PLATEFORME' ||
+          'MOT_DE_PASSE_TROP_COURT' ||
+          'EMAIL_INVALIDE' ||
+          'MONTANT_INVALIDE' =>
             TypeErreurAdmin.validation,
           _ => TypeErreurAdmin.inconnu,
         },

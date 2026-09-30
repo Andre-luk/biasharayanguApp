@@ -1,0 +1,68 @@
+# ============================================================================
+#  MIGRATIONS SUPABASE — EXÉCUTION EN LIGNE DEPUIS GITHUB
+#  .github/workflows/migrer-supabase.yml
+# ============================================================================
+#
+#  Chemins de migration, avec la sécurité :
+#    1. ajouter (une seule fois) le secret GitHub
+#       `SUPABASE_DB_URL` = chaîne de connexion complète du projet
+#       (Supabase → Project Settings → Database → Connection string → URI,
+#        en remplaçant le mot de passe par celui de la base) ;
+#    2. onglet Actions → « Migrations Supabase » → Run workflow ;
+#    3. laisser le champ vide pour appliquer le correctif + le module 21,
+#       ou saisir un ou plusieurs fichiers séparés par des virgules.
+#
+#  Aucun mot de passe n'est écrit dans ce fichier : il vient d'un secret
+#  GitHub, chiffré et masqué dans les journaux.
+# ============================================================================
+name: Migrations Supabase
+
+on:
+  workflow_dispatch:
+    inputs:
+      fichiers:
+        description: 'Fichiers à appliquer (séparés par des virgules)'
+        required: false
+        default: '20260916000042_fix_accueil_distance_km.sql,20260916000043_agent_terrain_purge_et_correctifs.sql'
+
+jobs:
+  migrer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Vérifier le secret de connexion
+        run: |
+          if [ -z "${{ secrets.SUPABASE_DB_URL }}" ]; then
+            echo "::error::Le secret SUPABASE_DB_URL n'est pas défini (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Appliquer les migrations demandées
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          FICHIERS: ${{ inputs.fichiers }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FICHIERS}" ]; then
+            FICHIERS="20260916000042_fix_accueil_distance_km.sql,20260916000043_agent_terrain_purge_et_correctifs.sql"
+          fi
+
+          echo "Fichiers à appliquer : ${FICHIERS}"
+          IFS=',' read -ra LISTE <<< "${FICHIERS}"
+
+          for f in "${LISTE[@]}"; do
+            fichier="supabase/migrations/$(echo "$f" | xargs)"
+            if [ ! -f "${fichier}" ]; then
+              echo "::error::Fichier introuvable : ${fichier}"
+              exit 1
+            fi
+            echo "=== Application de ${fichier} ==="
+            # ON_ERROR_STOP=1 : la migration s'arrête au premier problème, on
+            # ne masque rien. Les RAISE NOTICE du fichier apparaissent dans le
+            # journal (auto-contrôle OK / ÉCHEC).
+            psql "${DB_URL}" -v ON_ERROR_STOP=1 --echo-errors -f "${fichier}"
+          done
+
+          echo "=== Toutes les migrations demandées ont été appliquées ==="
