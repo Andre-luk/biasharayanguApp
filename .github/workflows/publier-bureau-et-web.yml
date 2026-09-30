@@ -52,19 +52,12 @@ jobs:
   preparer:
     runs-on: ubuntu-latest
     steps:
-      - name: Créer la release si elle n'existe pas
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ inputs.tag }}
+      - name: Vérification
         run: |
-          set -euo pipefail
-          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "La release $TAG existe déjà : les fichiers seront remplacés."
-          else
-            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" \
-              --title "Biashara Yangu $TAG" \
-              --notes "Publication automatique des paquets Linux, Windows et Web (sans artéfacts)."
-          fi
+          echo "Tag ciblé : ${{ inputs.tag }}"
+          echo "La release est créée (ou actualisée) automatiquement par l'étape"
+          echo "de publication de chaque job — aucune commande gh n'est utilisée."
+          git --version
 
   # ---------------------------------------------------------------------------
   # 2. LINUX — archive .tar.gz
@@ -99,13 +92,13 @@ jobs:
           cd build/linux/x64/release/bundle
           tar czf "$GITHUB_WORKSPACE/biashara-yangu-${{ inputs.tag }}-linux-x64.tar.gz" .
 
-      - name: Téléverser sur la release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh release upload "${{ inputs.tag }}" \
-            "biashara-yangu-${{ inputs.tag }}-linux-x64.tar.gz" --clobber
+      - name: Publier sur la release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: Biashara Yangu ${{ inputs.tag }}
+          files: biashara-yangu-${{ inputs.tag }}-linux-x64.tar.gz
+          fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
   # 3. WINDOWS — archive .zip
@@ -134,12 +127,12 @@ jobs:
           Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath $dest -Force
           Get-Item $dest | Select-Object Name, Length
 
-      - name: Téléverser sur la release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ inputs.tag }}" "biashara-yangu-${{ inputs.tag }}-windows-x64.zip" --clobber
+      - name: Publier sur la release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: biashara-yangu-${{ inputs.tag }}-windows-x64.zip
+          fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
   # 4. WEB — archive .zip (publiée comme fichier de release)
@@ -168,13 +161,12 @@ jobs:
           cd build/web
           zip -r "$GITHUB_WORKSPACE/biashara-yangu-${{ inputs.tag }}-web.zip" .
 
-      - name: Téléverser sur la release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          gh release upload "${{ inputs.tag }}" \
-            "biashara-yangu-${{ inputs.tag }}-web.zip" --clobber
+      - name: Publier sur la release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          files: biashara-yangu-${{ inputs.tag }}-web.zip
+          fail_on_unmatched_files: true
 
   # ---------------------------------------------------------------------------
   # 5. Récapitulatif — ce qui est réellement disponible au téléchargement.
@@ -185,6 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Lister les fichiers de la release
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
