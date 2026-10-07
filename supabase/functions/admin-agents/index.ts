@@ -16,6 +16,8 @@
 //      `service_role` : elles sont inaccessibles depuis l'application Flutter.
 //    • Les données exposées se limitent à l'ACTIVITÉ DE L'AGENT : jamais les
 //      ventes, le stock, les dépenses ou les clients des commerçants.
+//    • L'assistant IA (route /ia) raisonne UNIQUEMENT sur ces mêmes données :
+//      la clé `DEEPSEEK_API_KEY` ne sort pas non plus de la fonction.
 //
 //  CONTRAT (préfixe : /admin-agents)
 //  ---------------------------------
@@ -28,6 +30,9 @@
 //           { email, password, nom, prenom, note }
 //    POST   /admin-agents/agents/{agentId}/desactiver   → désactiver (valide = 0)
 //           { motif }
+//    GET    /admin-agents/ia                            → état de l'assistant IA
+//    POST   /admin-agents/ia                            → analyser via DeepSeek
+//           { question, agentId? }
 //
 //    Codes : 200 succès · 400 requête invalide · 401 jeton absent/incorrect ·
 //            403 action refusée · 404 route inconnue · 502 erreur base · 503 non configuré.
@@ -37,13 +42,19 @@
 //  --------------------
 //    1. Supabase Dashboard → Edge Functions → « admin-agents » → Éditer → coller
 //       ce fichier → Deploy (ou `supabase functions deploy admin-agents`).
-//    2. Edge Functions → Secrets → ajouter `BG_ADMIN_TOKEN` = une chaîne
-//       aléatoire longue (≥ 32 caractères). La communiquer à Biashara Group.
+//    2. Edge Functions → Secrets → ajouter :
+//         • `BG_ADMIN_TOKEN`   = chaîne aléatoire longue (≥ 32 caractères),
+//           à communiquer à Biashara Group (en-tête `x-bg-token`) ;
+//         • `DEEPSEEK_API_KEY` = déjà défini si l'assistant `agent-ia`
+//           fonctionne (les secrets Supabase sont au niveau du PROJET).
 //    3. SQL requis AVANT : 20260916000051_api_biashara_group_agents.sql
 //       (crée les RPC `rpc_bg_*` réservées au service_role).
-//    4. « Verify JWT » peut rester ACTIVÉ : cette fonction n'utilise pas le JWT
-//       utilisateur, mais le jeton de service. Si votre passerelle l'exige,
-//       envoyez aussi l'en-tête `Authorization: Bearer <anon>`.
+//    4. ⚠️ DÉSACTIVER « Verify JWT » (« Enforce JWT verification ») sur cette
+//       fonction : elle ne s'authentifie PAS par JWT mais par `x-bg-token`.
+//       Sinon la passerelle répond AVANT le code :
+//         401 {"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}
+//       Sinon, il faut ajouter l'en-tête `Authorization: Bearer <anon>` à
+//       chaque appel (mais `apikey:` seul NE SUFFIT PAS).
 // ============================================================================
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
@@ -51,6 +62,15 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const BG_ADMIN_TOKEN = Deno.env.get('BG_ADMIN_TOKEN') ?? '';
+const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY') ?? '';
+
+// ---- Assistant IA (DeepSeek) ----------------------------------------------
+const DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions';
+const DEEPSEEK_MODEL = 'deepseek-chat';
+const IA_MAX_TOKENS = 900;
+const IA_TEMPERATURE = 0.2;
+const IA_QUESTION_MAX = 1000;
+const IA_JOURNAL_MAX = 40;
 
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -107,6 +127,121 @@ function cheminUtile(url: URL): string {
 
 function estUuid(v: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+// ---------------------------------------------------------------------------
+// ASSISTANT IA (DeepSeek) — analyse de l'activité des agents terrain
+// ---------------------------------------------------------------------------
+
+const IA_SYSTEME = `Tu es l'assistant analytique de l'espace d'administration de BIASHARA GROUP
+(biasharagroup.com/admin), la societe editrice de l'application « Biashara Yangu ».
+
+TON ROLE : aider les administrateurs et responsables a suivre leurs AGENTS TERRAIN.
+
+DONNEES MISES A TA DISPOSITION (transmises en JSON avec la question) :
+  - le PORTEFEUILLE des agents (compteurs par agent) ; ou
+  - la FICHE d'un agent precis : entreprises raccordees, boutiques, QR codes,
+    abonnements actifs, produits, encaissements, solde du ; et
+  - son JOURNAL d'activite unifie (connexions, verifications de comptes,
+    montants definis, vitrines, publications, rapports, paiements encaisses).
+
+REGLES STRICTES :
+  1. Ne reponds QUE d'apres les donnees fournies. Si une information manque,
+     dis-le explicitement (« je ne vois pas cette information dans les donnees »).
+     N'invente JAMAIS un chiffre, un nom ou une date.
+  2. Tu n'as acces NI aux ventes, NI au stock, NI aux depenses, NI aux clients des
+     commercants : ce n'est pas ton perimetre. Refuse poliment ces demandes et
+     rappelle que seules les ACTIVITES DE L'AGENT sont suivies.
+  3. Reponds en FRANCAIS, de facon breve et concrete : 5 phrases maximum, ou une
+     courte liste a puces. Aucun preambule, aucune conclusion creuse.
+  4. Les montants sont en francs congolais (CDF) : ecris-les avec une espace comme
+     separateur de milliers (exemple : 12 500 CDF).
+  5. Termine, quand c'est utile, par 1 ou 2 recommandations actionnables.`;
+
+interface ReponseIa {
+  reponse: string;
+  jetons: number;
+}
+
+/** RPC service_role qui renvoie les DONNEES (et non une Response HTTP). */
+async function rpcDonnees(
+  client: SupabaseClient,
+  nom: string,
+  params: Record<string, unknown>,
+): Promise<unknown> {
+  const { data, error } = await client.rpc(nom, params);
+  if (error) throw new Error(error.message ?? 'Erreur inconnue');
+  return data;
+}
+
+/** Rassemble le contexte JSON : portefeuille, ou fiche + journal d'un agent. */
+async function construireContexte(
+  client: SupabaseClient,
+  agentId: string | null,
+): Promise<Record<string, unknown>> {
+  if (!agentId) {
+    return { portefeuille: await rpcDonnees(client, 'rpc_bg_agents_lister', {}) };
+  }
+
+  const fiche = await rpcDonnees(client, 'rpc_bg_agent_fiche', { p_agent_id: agentId });
+
+  let journal: unknown = null;
+  try {
+    journal = await rpcDonnees(client, 'rpc_bg_agent_journal_lister', {
+      p_agent_id: agentId,
+      p_limite: IA_JOURNAL_MAX,
+      p_decalage: 0,
+    });
+  } catch (e) {
+    console.error(`admin-agents : journal indisponible pour ${agentId} → ${e}`);
+  }
+
+  return { fiche, journal };
+}
+
+/** Appel HTTP à l'API DeepSeek (compatible OpenAI). */
+async function interrogerIa(
+  question: string,
+  contexte: Record<string, unknown>,
+): Promise<ReponseIa> {
+  const corps = {
+    model: DEEPSEEK_MODEL,
+    messages: [
+      { role: 'system', content: IA_SYSTEME },
+      {
+        role: 'user',
+        content: 'DONNEES (JSON) :\n' + JSON.stringify(contexte) +
+          '\n\nQUESTION DE L\'ADMINISTRATEUR :\n' + question,
+      },
+    ],
+    max_tokens: IA_MAX_TOKENS,
+    temperature: IA_TEMPERATURE,
+    stream: false,
+  };
+
+  const reponse = await fetch(DEEPSEEK_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(corps),
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!reponse.ok) {
+    const texte = await reponse.text().catch(() => '');
+    throw new Error(`DeepSeek ${reponse.status} : ${texte.slice(0, 300)}`);
+  }
+
+  const donnees = await reponse.json();
+  const contenu = donnees?.choices?.[0]?.message?.content;
+  if (!contenu) throw new Error('DeepSeek : reponse sans contenu.');
+
+  return {
+    reponse: String(contenu).trim(),
+    jetons: Number(donnees?.usage?.total_tokens ?? 0),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +327,66 @@ Deno.serve(async (req: Request): Promise<Response> => {
     // ---------------------------------------------------------------- ping
     if (chemin === '/ping' || chemin === '/') {
       return json({ ok: true, service: 'admin-agents' });
+    }
+
+    // ------------------------------------------------------ assistant IA
+    // GET  /ia → état de l'assistant (secret présent ou non).
+    // POST /ia → { question, agentId? } → analyse DeepSeek.
+    if (chemin === '/ia' || chemin === '/ia/etat') {
+      if (req.method === 'GET') {
+        return json({
+          ok: true,
+          assistant: 'deepseek',
+          modele: DEEPSEEK_MODEL,
+          disponible: DEEPSEEK_API_KEY.length > 0,
+          usage: 'POST /admin-agents/ia { "question": "...", "agentId": "<uuid>|null" }',
+        });
+      }
+      if (req.method !== 'POST') {
+        return erreur('METHODE_INVALIDE', 'Utilisez GET ou POST sur /ia.', 405);
+      }
+      if (!DEEPSEEK_API_KEY) {
+        return erreur(
+          'IA_INDISPONIBLE',
+          "Le secret DEEPSEEK_API_KEY n'est pas défini sur le projet : ajoutez-le dans Edge Functions → Secrets.",
+          503,
+        );
+      }
+
+      const corps = await req.json().catch(() => null) as Record<string, unknown> | null;
+      const question = String(corps?.question ?? '').trim();
+      if (question.length < 3) {
+        return erreur('QUESTION_REQUISE', 'Posez une question (3 caractères minimum).');
+      }
+      if (question.length > IA_QUESTION_MAX) {
+        return erreur(
+          'QUESTION_TROP_LONGUE',
+          `La question est limitée à ${IA_QUESTION_MAX} caractères.`,
+        );
+      }
+
+      const brutAgent = corps?.agentId == null ? '' : String(corps.agentId).trim();
+      if (brutAgent && !estUuid(brutAgent)) {
+        return erreur('AGENT_ID_INVALIDE', 'Identifiant d\'agent invalide.', 400);
+      }
+      const agentId = brutAgent || null;
+
+      try {
+        const contexte = await construireContexte(client, agentId);
+        const { reponse: texte, jetons } = await interrogerIa(question, contexte);
+        return json({ ok: true, agent_id: agentId, reponse: texte, jetons });
+      } catch (e) {
+        const brut = e instanceof Error ? e.message : String(e);
+        console.error(`admin-agents : /ia → ${brut}`);
+        if (brut.startsWith('DeepSeek')) {
+          return erreur('IA_ERREUR', `Assistant IA en échec : ${messageLisible(brut)}`, 502);
+        }
+        return erreur(
+          'IA_CONTEXTE_ERREUR',
+          `Lecture des données impossible : ${messageLisible(brut)}`,
+          502,
+        );
+      }
     }
 
     // ------------------------------------------------- liste des agents
