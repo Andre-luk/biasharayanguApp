@@ -156,13 +156,29 @@ jobs:
       - name: Renommer l'APK
         run: cp build/app/outputs/flutter-apk/app-release.apk biashara-yangu.apk
 
-      - name: Publier le paquet APK
-        uses: actions/upload-artifact@v4
+      - name: Déterminer le tag de publication
+        id: tag
+        shell: bash
+        run: |
+          T="${{ github.event.inputs.tag }}"
+          if [ -z "$T" ]; then T="${GITHUB_REF_NAME}"; fi
+          if [ -z "$T" ] || [ "$T" = "main" ]; then T="biashara-build-${{ github.run_number }}"; fi
+          echo "tag=$T" >> "$GITHUB_OUTPUT"
+
+      # 🚫 AUCUN ARTEFACT : le quota de stockage d'artéfacts du compte GitHub est
+      # saturé (« Failed to CreateArtifact: Artifact storage quota has been
+      # hit »), ce qui faisait échouer la publication à la toute dernière étape
+      # et empêchait la création de la release. Le paquet part donc DIRECTEMENT
+      # sur la release du tag : plus de dépendance au quota, et le fichier reste
+      # attaché définitivement (pas d'expiration à 30 jours).
+      - name: Publier l'APK sur la release
+        uses: softprops/action-gh-release@v2
         with:
-          name: biashara-yangu-apk
-          path: biashara-yangu.apk
-          if-no-files-found: error
-          retention-days: 30
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Biashara Yangu ${{ steps.tag.outputs.tag }}
+          generate_release_notes: true
+          files: biashara-yangu.apk
+          fail_on_unmatched_files: true
 
   # ==========================================================================
   #  ÉTAPE 2b — Linux (archive tar.gz de l'exécutable + ressources).
@@ -210,13 +226,21 @@ jobs:
       - name: Créer l'archive
         run: tar -czf biashara-yangu-linux.tar.gz -C build/linux/x64/release/bundle .
 
-      - name: Publier le paquet Linux
-        uses: actions/upload-artifact@v4
+      - name: Déterminer le tag de publication
+        id: tag
+        shell: bash
+        run: |
+          T="${{ github.event.inputs.tag }}"
+          if [ -z "$T" ]; then T="${GITHUB_REF_NAME}"; fi
+          if [ -z "$T" ] || [ "$T" = "main" ]; then T="biashara-build-${{ github.run_number }}"; fi
+          echo "tag=$T" >> "$GITHUB_OUTPUT"
+
+      - name: Publier le paquet Linux sur la release
+        uses: softprops/action-gh-release@v2
         with:
-          name: biashara-yangu-linux
-          path: biashara-yangu-linux.tar.gz
-          if-no-files-found: error
-          retention-days: 30
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: biashara-yangu-linux.tar.gz
+          fail_on_unmatched_files: true
 
   # ==========================================================================
   #  ÉTAPE 2c — Windows (archive zip du dossier Release).
@@ -296,52 +320,34 @@ jobs:
           Copy-Item windows\installer\dist\biashara-yangu-setup.exe .
           dir biashara-yangu-setup.exe
 
-      - name: Publier le paquet Windows
-        uses: actions/upload-artifact@v4
-        with:
-          name: biashara-yangu-windows
-          path: |
-            biashara-yangu-windows.zip
-            biashara-yangu-setup.exe
-          if-no-files-found: error
-          retention-days: 30
-
-  # ==========================================================================
-  #  ÉTAPE 3 — Release GitHub : les trois paquets réunis, prêts à télécharger.
-  # ==========================================================================
-  release:
-    name: Publier la release
-    needs: [apk, linux, windows]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Télécharger les trois paquets
-        uses: actions/download-artifact@v4
-        with:
-          path: paquets
-          merge-multiple: true
-
-      - name: Déterminer le tag
+      - name: Déterminer le tag de publication
         id: tag
-        shell: bash
+        shell: pwsh
         run: |
-          TAG="${{ github.event.inputs.tag }}"
-          if [ -z "$TAG" ]; then TAG="${GITHUB_REF_NAME}"; fi
-          if [ -z "$TAG" ] || [ "$TAG" = "main" ]; then
-            TAG="biashara-build-${{ github.run_number }}"
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          $t = "${{ github.event.inputs.tag }}"
+          if (-not $t) { $t = "$env:GITHUB_REF_NAME" }
+          if (-not $t -or $t -eq "main") { $t = "biashara-build-${{ github.run_number }}" }
+          "tag=$t" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Créer la release GitHub
+      - name: Publier les paquets Windows sur la release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: Biashara Yangu ${{ steps.tag.outputs.tag }}
-          generate_release_notes: true
           files: |
-            paquets/biashara-yangu.apk
-            paquets/biashara-yangu-linux.tar.gz
-            paquets/biashara-yangu-windows.zip
-            paquets/biashara-yangu-setup.exe
+            biashara-yangu-windows.zip
+            biashara-yangu-setup.exe
+          fail_on_unmatched_files: true
+
+  # ==========================================================================
+  #  ÉTAPE 3 — RELEASE GITHUB : SUPPRIMÉE (fusionnée dans chaque job)
+  # --------------------------------------------------------------------------
+  #  Elle téléchargeait des ARTEFACTS, or le quota d'artéfacts du compte est
+  #  saturé : les trois jobs échouaient donc au dépôt, le job « release »
+  #  n'était jamais exécuté (needs non satisfaits) et AUCUNE release n'était
+  #  créée. Désormais chacun dépose son paquet directement sur la release du
+  #  tag (voir les étapes « Publier … sur la release » ci-dessus) : la release
+  #  est créée par le premier job qui arrive, les suivants la complètent.
+  # ==========================================================================
 
   # ==========================================================================
   #  SIGNATURE OFFICIELLE — désormais INTÉGRÉE au job « apk » (voir l'étape
