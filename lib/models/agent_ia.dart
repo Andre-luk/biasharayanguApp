@@ -22,12 +22,19 @@ class AgentIaConfig {
     required this.prixPack10Quotas,
     required this.quotasOffertsInscription,
     required this.actif,
+    this.tauxMarge = 16,
+    this.tauxUsdCdf = 2800,
+    this.coutCdfParMillionEntree = 840,
+    this.coutCdfParMillionCache = 16.8,
+    this.coutCdfParMillionSortie = 3360,
+    this.soldeDeepseekUsd = 0,
+    this.alerteSoldeUsd = 1,
   });
 
-  /// CDF facturés par quota consommé (100 à 150).
+  /// CDF facturés par quota consommé (1 à 1000 depuis le module 13 bis).
   final double tarifParQuota;
 
-  /// Nombre de caractères de réponse comptant pour 1 quota (défaut 20).
+  /// Nombre de caractères de réponse comptant pour 1 quota (défaut 400).
   final int caracteresParQuota;
 
   /// Prix du pack de 10 quotas (les autres packs sont proportionnels).
@@ -39,11 +46,39 @@ class AgentIaConfig {
   /// Assistant actif ou non (réglage Super Admin).
   final bool actif;
 
-  /// Valeurs de repli (mêmes défauts que la migration SQL).
+  /// Coefficient de marge appliqué au coût réel DeepSeek (16 par défaut).
+  final double tauxMarge;
+
+  /// Change appliqué aux conversions dollar ↔ franc congolais.
+  final double tauxUsdCdf;
+
+  /// Coût CDF d'un million de tokens d'entrée NON cachés (tarif de pointe).
+  final double coutCdfParMillionEntree;
+
+  /// Coût CDF d'un million de tokens d'entrée CACHÉS (≈ 50 fois moins cher).
+  final double coutCdfParMillionCache;
+
+  /// Coût CDF d'un million de tokens de sortie.
+  final double coutCdfParMillionSortie;
+
+  /// Crédit DeepSeek restant, en dollars (saisi par les recharges).
+  final double soldeDeepseekUsd;
+
+  /// Seuil sous lequel le tableau de bord affiche une alerte de recharge.
+  final double alerteSoldeUsd;
+
+  /// Prix d'un caractère de réponse (CDF) : tarif / taille d'un quota.
+  double get prixParCaractere =>
+      caracteresParQuota > 0 ? tarifParQuota / caracteresParQuota : 0;
+
+  /// Coût réel estimé d'une question (6 CDF par défaut, mesure de référence).
+  static const double coutQuestionReferenceCdf = 6;
+
+  /// Valeurs de repli — mêmes défauts que la migration 52 (module 13 bis).
   static const AgentIaConfig defaut = AgentIaConfig(
-    tarifParQuota: 150,
-    caracteresParQuota: 20,
-    prixPack10Quotas: 1000,
+    tarifParQuota: 96,
+    caracteresParQuota: 400,
+    prixPack10Quotas: 860,
     quotasOffertsInscription: 5,
     actif: true,
   );
@@ -53,12 +88,22 @@ class AgentIaConfig {
     if (map == null) return null;
 
     return AgentIaConfig(
-      tarifParQuota: parseDouble(map['tarif_par_quota'], fallback: 150),
-      caracteresParQuota: parseInt(map['caracteres_par_quota'], fallback: 20),
-      prixPack10Quotas: parseDouble(map['prix_pack_10_quotas'], fallback: 1000),
+      tarifParQuota: parseDouble(map['tarif_par_quota'], fallback: 96),
+      caracteresParQuota: parseInt(map['caracteres_par_quota'], fallback: 400),
+      prixPack10Quotas: parseDouble(map['prix_pack_10_quotas'], fallback: 860),
       quotasOffertsInscription:
           parseInt(map['quotas_offerts_inscription'], fallback: 5),
       actif: map['actif'] != false,
+      tauxMarge: parseDouble(map['taux_marge'], fallback: 16),
+      tauxUsdCdf: parseDouble(map['taux_usd_cdf'], fallback: 2800),
+      coutCdfParMillionEntree:
+          parseDouble(map['cout_cdf_par_million_entree'], fallback: 840),
+      coutCdfParMillionCache:
+          parseDouble(map['cout_cdf_par_million_cache'], fallback: 16.8),
+      coutCdfParMillionSortie:
+          parseDouble(map['cout_cdf_par_million_sortie'], fallback: 3360),
+      soldeDeepseekUsd: parseDouble(map['solde_deepseek_usd']),
+      alerteSoldeUsd: parseDouble(map['alerte_solde_usd'], fallback: 1),
     );
   }
 }
@@ -398,3 +443,280 @@ const Map<String, String> _libellesOutils = <String, String>{
   'informations_entreprise': 'Informations entreprise',
   'statistiques_globales': 'Statistiques plateforme',
 };
+
+// ============================================================================
+//  MODULE 13 bis — GESTION RÉELLE DES TOKENS
+// ============================================================================
+
+/// Une ligne de la comptabilité IA (`public.agent_ia_usage`).
+///
+/// Représente UN appel facturé : les tokens réellement consommés chez DeepSeek,
+/// le coût correspondant en CDF, et ce qui a été facturé au client.
+class LigneUsageIa {
+  const LigneUsageIa({
+    required this.id,
+    required this.createdAt,
+    required this.source,
+    this.modele,
+    this.entrepriseId,
+    this.entreprise,
+    this.utilisateurId,
+    this.utilisateur,
+    required this.tokensEntree,
+    required this.tokensCache,
+    required this.tokensSortie,
+    required this.tokensTotal,
+    required this.coutCdf,
+    required this.quotasDebites,
+    required this.montantCdf,
+    required this.margeCdf,
+  });
+
+  final int id;
+  final DateTime? createdAt;
+
+  /// `agent-ia` (application) ou `admin-agents` (API Biashara Group).
+  final String source;
+
+  final String? modele;
+  final String? entrepriseId;
+  final String? entreprise;
+  final String? utilisateurId;
+  final String? utilisateur;
+
+  /// Tokens d'entrée NON cachés (facturés plein tarif).
+  final int tokensEntree;
+
+  /// Tokens d'entrée servis depuis le cache (≈ 50 fois moins chers).
+  final int tokensCache;
+
+  final int tokensSortie;
+  final int tokensTotal;
+
+  /// Coût réel payé à DeepSeek, en CDF.
+  final double coutCdf;
+
+  final int quotasDebites;
+
+  /// Montant facturé au client, en CDF (0 pour un appel offert).
+  final double montantCdf;
+
+  /// Marge = montant facturé − coût réel (négative pour un appel offert).
+  final double margeCdf;
+
+  /// Part des tokens d'entrée servie par le cache (indicateur d'efficacité).
+  double get tauxCache {
+    final int total = tokensEntree + tokensCache;
+    return total > 0 ? tokensCache / total : 0;
+  }
+
+  static LigneUsageIa? depuisJson(dynamic valeur) {
+    final Map<String, dynamic>? map = parseMap(valeur);
+    if (map == null) return null;
+
+    return LigneUsageIa(
+      id: parseInt(map['id']),
+      createdAt: parseDateTimeOrNull(map['created_at']),
+      source: parseString(map['source'], fallback: 'agent-ia'),
+      modele: parseStringOrNull(map['modele']),
+      entrepriseId: parseStringOrNull(map['entreprise_id']),
+      entreprise: parseStringOrNull(map['entreprise']),
+      utilisateurId: parseStringOrNull(map['utilisateur_id']),
+      utilisateur: parseStringOrNull(map['utilisateur']),
+      tokensEntree: parseInt(map['tokens_entree']),
+      tokensCache: parseInt(map['tokens_entree_cache']),
+      tokensSortie: parseInt(map['tokens_sortie']),
+      tokensTotal: parseInt(map['tokens_total']),
+      coutCdf: parseDouble(map['cout_cdf']),
+      quotasDebites: parseInt(map['quotas_debites']),
+      montantCdf: parseDouble(map['montant_cdf']),
+      margeCdf: parseDouble(map['marge_cdf']),
+    );
+  }
+
+  static List<LigneUsageIa> listeDepuisJson(dynamic valeur) {
+    return parseMapList(valeur)
+        .map(LigneUsageIa.depuisJson)
+        .whereType<LigneUsageIa>()
+        .toList(growable: false);
+  }
+}
+
+/// Consommation agrégée d'une entreprise (distribution de l'usage).
+class RepartitionIaEntreprise {
+  const RepartitionIaEntreprise({
+    this.entrepriseId,
+    required this.entreprise,
+    required this.appels,
+    required this.tokensTotal,
+    required this.coutCdf,
+    required this.factureCdf,
+    required this.margeCdf,
+    required this.quotasDebites,
+    required this.caracteres,
+    this.derniereActivite,
+  });
+
+  final String? entrepriseId;
+  final String entreprise;
+  final int appels;
+  final int tokensTotal;
+  final double coutCdf;
+  final double factureCdf;
+  final double margeCdf;
+  final int quotasDebites;
+
+  /// Équivalent en caractères de réponse (quotas × `caracteres_par_quota`).
+  final int caracteres;
+  final DateTime? derniereActivite;
+
+  static RepartitionIaEntreprise? depuisJson(dynamic valeur) {
+    final Map<String, dynamic>? map = parseMap(valeur);
+    if (map == null) return null;
+
+    return RepartitionIaEntreprise(
+      entrepriseId: parseStringOrNull(map['entreprise_id']),
+      entreprise: parseString(map['entreprise'], fallback: 'Sans entreprise'),
+      appels: parseInt(map['appels']),
+      tokensTotal: parseInt(map['tokens_total']),
+      coutCdf: parseDouble(map['cout_cdf']),
+      factureCdf: parseDouble(map['facture_cdf']),
+      margeCdf: parseDouble(map['marge_cdf']),
+      quotasDebites: parseInt(map['quotas_debites']),
+      caracteres: parseInt(map['caracteres']),
+      derniereActivite: parseDateTimeOrNull(map['derniere_activite']),
+    );
+  }
+
+  static List<RepartitionIaEntreprise> listeDepuisJson(dynamic valeur) {
+    return parseMapList(valeur)
+        .map(RepartitionIaEntreprise.depuisJson)
+        .whereType<RepartitionIaEntreprise>()
+        .toList(growable: false);
+  }
+}
+
+/// Tableau de bord des tokens IA (`rpc_ia_tokens_tableau_bord`).
+class TokensIaTableauBord {
+  const TokensIaTableauBord({
+    required this.jours,
+    required this.config,
+    required this.appels,
+    required this.tokensEntree,
+    required this.tokensCache,
+    required this.tokensSortie,
+    required this.coutCdf,
+    required this.factureCdf,
+    required this.margeCdf,
+    required this.coefficient,
+    required this.quotasDebites,
+    required this.coutMoyenQuestionCdf,
+    required this.periodeAppels,
+    required this.periodeCoutCdf,
+    required this.periodeFactureCdf,
+    required this.periodeMargeCdf,
+    required this.periodeQuotas,
+    required this.jourCoutCdf,
+    required this.jourFactureCdf,
+    required this.jourMargeCdf,
+    required this.jourQuotas,
+    required this.soldeDeepseekUsd,
+    required this.soldeCdf,
+    required this.questionsRestantes,
+    required this.consommationPct,
+    required this.alerte,
+  });
+
+  final int jours;
+  final AgentIaConfig config;
+
+  // — Depuis toujours —
+  final int appels;
+  final int tokensEntree;
+  final int tokensCache;
+  final int tokensSortie;
+
+  /// Coût réel cumulé payé à DeepSeek (CDF).
+  final double coutCdf;
+
+  /// Total facturé aux clients (CDF).
+  final double factureCdf;
+
+  /// Bénéfice réalisé (CDF).
+  final double margeCdf;
+
+  /// Coefficient constaté = facturé ÷ coût (l'objectif est 16).
+  final double coefficient;
+
+  final int quotasDebites;
+
+  /// Coût moyen réellement constaté d'une question (CDF).
+  final double coutMoyenQuestionCdf;
+
+  // — Sur la période choisie —
+  final int periodeAppels;
+  final double periodeCoutCdf;
+  final double periodeFactureCdf;
+  final double periodeMargeCdf;
+  final int periodeQuotas;
+
+  // — Aujourd'hui (heure de Kinshasa) —
+  final double jourCoutCdf;
+  final double jourFactureCdf;
+  final double jourMargeCdf;
+  final int jourQuotas;
+
+  // — Solde DeepSeek —
+  final double soldeDeepseekUsd;
+  final double soldeCdf;
+  final int questionsRestantes;
+  final double consommationPct;
+
+  /// `true` si le solde est au niveau du seuil d'alerte.
+  final bool alerte;
+
+  int get tokensTotal => tokensEntree + tokensCache + tokensSortie;
+
+  /// Part des tokens d'entrée servie par le cache.
+  double get tauxCache {
+    final int total = tokensEntree + tokensCache;
+    return total > 0 ? tokensCache / total : 0;
+  }
+
+  /// Marge potentielle si tout le solde était consommé (CDF).
+  double get margePotentielleCdf => soldeCdf * (config.tauxMarge - 1);
+
+  static TokensIaTableauBord? depuisJson(dynamic valeur) {
+    final Map<String, dynamic>? map = parseMap(valeur);
+    if (map == null || map['ok'] == false) return null;
+
+    return TokensIaTableauBord(
+      jours: parseInt(map['jours'], fallback: 30),
+      config: AgentIaConfig.depuisJson(map) ?? AgentIaConfig.defaut,
+      appels: parseInt(map['appels']),
+      tokensEntree: parseInt(map['tokens_entree']),
+      tokensCache: parseInt(map['tokens_cache']),
+      tokensSortie: parseInt(map['tokens_sortie']),
+      coutCdf: parseDouble(map['cout_cdf']),
+      factureCdf: parseDouble(map['facture_cdf']),
+      margeCdf: parseDouble(map['marge_cdf']),
+      coefficient: parseDouble(map['coefficient']),
+      quotasDebites: parseInt(map['quotas_debites']),
+      coutMoyenQuestionCdf: parseDouble(map['cout_moyen_question_cdf']),
+      periodeAppels: parseInt(map['periode_appels']),
+      periodeCoutCdf: parseDouble(map['periode_cout_cdf']),
+      periodeFactureCdf: parseDouble(map['periode_facture_cdf']),
+      periodeMargeCdf: parseDouble(map['periode_marge_cdf']),
+      periodeQuotas: parseInt(map['periode_quotas']),
+      jourCoutCdf: parseDouble(map['jour_cout_cdf']),
+      jourFactureCdf: parseDouble(map['jour_facture_cdf']),
+      jourMargeCdf: parseDouble(map['jour_marge_cdf']),
+      jourQuotas: parseInt(map['jour_quotas']),
+      soldeDeepseekUsd: parseDouble(map['solde_deepseek_usd']),
+      soldeCdf: parseDouble(map['solde_cdf']),
+      questionsRestantes: parseInt(map['questions_restantes']),
+      consommationPct: parseDouble(map['consommation_pct']),
+      alerte: map['alerte'] == true,
+    );
+  }
+}

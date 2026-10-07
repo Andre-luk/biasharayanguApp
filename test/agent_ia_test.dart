@@ -25,11 +25,18 @@ import 'package:biashara_yangu/services/agent_service.dart';
 // =============================================================================
 
 Map<String, dynamic> _configJson() => <String, dynamic>{
-      'tarif_par_quota': 150,
-      'caracteres_par_quota': 20,
-      'prix_pack_10_quotas': 1000,
+      'tarif_par_quota': 96,
+      'caracteres_par_quota': 400,
+      'prix_pack_10_quotas': 860,
       'quotas_offerts_inscription': 5,
       'actif': true,
+      'taux_marge': 16,
+      'taux_usd_cdf': 2800,
+      'cout_cdf_par_million_entree': 840,
+      'cout_cdf_par_million_cache': 16.8,
+      'cout_cdf_par_million_sortie': 3360,
+      'solde_deepseek_usd': 2,
+      'alerte_solde_usd': 1,
     };
 
 Map<String, dynamic> _etatJson() => <String, dynamic>{
@@ -60,23 +67,46 @@ Map<String, dynamic> _etatJson() => <String, dynamic>{
 
 void main() {
   group('AgentIaConfig', () {
-    test('les défauts respectent le cahier des charges (150 CDF / 20 car.)',
+    test('les défauts appliquent la formule module 13 bis (96 CDF / 400 car.)',
         () {
-      expect(AgentIaConfig.defaut.tarifParQuota, 150);
-      expect(AgentIaConfig.defaut.caracteresParQuota, 20);
-      expect(AgentIaConfig.defaut.prixPack10Quotas, 1000);
+      // Objectif métier : 2 $ de coût DeepSeek → 32 $ de recettes (30 $ de
+      // bénéfice), soit un coefficient de marge de 16.
+      expect(AgentIaConfig.defaut.tarifParQuota, 96);
+      expect(AgentIaConfig.defaut.caracteresParQuota, 400);
+      expect(AgentIaConfig.defaut.prixPack10Quotas, 860);
       expect(AgentIaConfig.defaut.quotasOffertsInscription, 5);
       expect(AgentIaConfig.defaut.actif, isTrue);
+      expect(AgentIaConfig.defaut.tauxMarge, 16);
+      expect(AgentIaConfig.defaut.tauxUsdCdf, 2800);
+    });
+
+    test('prixParCaractere = tarif / taille d\'un quota', () {
+      // 96 CDF pour 400 caractères → 0,24 CDF le caractère.
+      expect(AgentIaConfig.defaut.prixParCaractere, closeTo(0.24, 0.0001));
+    });
+
+    test('le coefficient cible respecte l\'objectif 2 \$ → 30 \$ de bénéfice',
+        () {
+      // 2 $ de coût × 16 = 32 $ de recettes → 30 $ de bénéfice.
+      final double recettes = 2 * AgentIaConfig.defaut.tauxMarge;
+      expect(recettes - 2, 30);
     });
 
     test('depuisJson lit la ligne de `agent_ia_config`', () {
       final AgentIaConfig config = AgentIaConfig.depuisJson(_configJson())!;
 
-      expect(config.tarifParQuota, 150);
-      expect(config.caracteresParQuota, 20);
-      expect(config.prixPack10Quotas, 1000);
+      expect(config.tarifParQuota, 96);
+      expect(config.caracteresParQuota, 400);
+      expect(config.prixPack10Quotas, 860);
       expect(config.quotasOffertsInscription, 5);
       expect(config.actif, isTrue);
+      expect(config.tauxMarge, 16);
+      expect(config.tauxUsdCdf, 2800);
+      expect(config.coutCdfParMillionEntree, 840);
+      expect(config.coutCdfParMillionCache, 16.8);
+      expect(config.coutCdfParMillionSortie, 3360);
+      expect(config.soldeDeepseekUsd, 2);
+      expect(config.alerteSoldeUsd, 1);
     });
 
     test('les colonnes absentes retombent sur les valeurs par défaut', () {
@@ -115,17 +145,17 @@ void main() {
 
       expect(packs.map((PackQuotas p) => p.quotas).toList(),
           <int>[10, 20, 50, 100]);
-      // Packs du cahier des charges : 1000 · 2000 · 5000 · 10000 CDF.
+      // Packs proportionnels au pack de 10 (860 CDF, remise de 10 %).
       expect(packs.map((PackQuotas p) => p.prix).toList(),
-          <double>[1000, 2000, 5000, 10000]);
+          <double>[860, 1720, 4300, 8600]);
     });
 
-    test('le prix est proportionnel au pack de 10 (défaut 100 CDF/quota)', () {
+    test('le prix est proportionnel au pack de 10 (défaut 86 CDF/quota)', () {
       final List<PackQuotas> packs =
           PackQuotas.depuisConfig(AgentIaConfig.defaut);
 
       for (final PackQuotas pack in packs) {
-        expect(pack.prixParQuota, 100, reason: 'pack ${pack.quotas}');
+        expect(pack.prixParQuota, 86, reason: 'pack ${pack.quotas}');
       }
     });
 
@@ -208,7 +238,7 @@ void main() {
     test('depuisRpc lit la réponse complète de `rpc_agent_ia_etat`', () {
       final EtatAgentIa etat = EtatAgentIa.depuisRpc(_etatJson())!;
 
-      expect(etat.config.tarifParQuota, 150);
+      expect(etat.config.tarifParQuota, 96);
       expect(etat.pool!.quotasDisponibles, 18);
       expect(etat.moi.quotasDisponibles, 7);
       expect(etat.role, 'PROPRIETAIRE');
@@ -622,6 +652,181 @@ void main() {
 
       expect(message.erreur, isTrue);
       expect(message.codeErreur, 'QUOTAS_EPUISES');
+    });
+  });
+
+  // ===========================================================================
+  // MODULE 13 bis — GESTION RÉELLE DES TOKENS
+  // ===========================================================================
+
+  group('LigneUsageIa', () {
+    test('depuisJson lit une ligne de `agent_ia_usage`', () {
+      final LigneUsageIa? ligne = LigneUsageIa.depuisJson(<String, dynamic>{
+        'id': 12,
+        'created_at': '2026-10-07T09:15:00.000Z',
+        'source': 'agent-ia',
+        'modele': 'deepseek-chat',
+        'entreprise_id': 'ent-1',
+        'entreprise': 'Boutique Jean-Luc Takalashi',
+        'utilisateur_id': 'u-1',
+        'utilisateur': 'Espoir',
+        'tokens_entree': 700,
+        'tokens_entree_cache': 3000,
+        'tokens_sortie': 120,
+        'tokens_total': 3820,
+        'cout_cdf': 1.25,
+        'quotas_debites': 1,
+        'montant_cdf': 96,
+        'marge_cdf': 94.75,
+      });
+
+      expect(ligne, isNotNull);
+      expect(ligne!.id, 12);
+      expect(ligne.createdAt, isNotNull);
+      expect(ligne.source, 'agent-ia');
+      expect(ligne.entreprise, 'Boutique Jean-Luc Takalashi');
+      expect(ligne.utilisateur, 'Espoir');
+      expect(ligne.tokensEntree, 700);
+      expect(ligne.tokensCache, 3000);
+      expect(ligne.tokensSortie, 120);
+      expect(ligne.tokensTotal, 3820);
+      expect(ligne.coutCdf, 1.25);
+      expect(ligne.quotasDebites, 1);
+      expect(ligne.montantCdf, 96);
+      expect(ligne.margeCdf, 94.75);
+    });
+
+    test('tauxCache rapporte le cache aux tokens d\'entrée', () {
+      final LigneUsageIa ligne = LigneUsageIa.depuisJson(<String, dynamic>{
+        'tokens_entree': 1000,
+        'tokens_entree_cache': 3000,
+        'tokens_sortie': 0,
+      })!;
+
+      // 3 000 cachés sur 4 000 tokens d'entrée au total.
+      expect(ligne.tauxCache, closeTo(0.75, 0.0001));
+    });
+
+    test('un appel sans donnée de cache ne divise pas par zéro', () {
+      final LigneUsageIa ligne =
+          LigneUsageIa.depuisJson(<String, dynamic>{'tokens_sortie': 50})!;
+      expect(ligne.tauxCache, 0);
+    });
+
+    test('une liste illisible renvoie une liste vide (jamais d\'exception)', () {
+      expect(LigneUsageIa.listeDepuisJson(null), isEmpty);
+      expect(LigneUsageIa.listeDepuisJson('pas une liste'), isEmpty);
+    });
+  });
+
+  group('RepartitionIaEntreprise', () {
+    test('depuisJson lit une ligne de `rpc_ia_usage_par_entreprise`', () {
+      final RepartitionIaEntreprise? ligne =
+          RepartitionIaEntreprise.depuisJson(<String, dynamic>{
+        'entreprise_id': 'ent-1',
+        'entreprise': 'Boutique Jean-Luc Takalashi',
+        'appels': 42,
+        'tokens_total': 160000,
+        'cout_cdf': 250.5,
+        'facture_cdf': 4032,
+        'marge_cdf': 3781.5,
+        'quotas_debites': 42,
+        'caracteres': 16800,
+      });
+
+      expect(ligne, isNotNull);
+      expect(ligne!.entreprise, 'Boutique Jean-Luc Takalashi');
+      expect(ligne.appels, 42);
+      expect(ligne.coutCdf, 250.5);
+      expect(ligne.factureCdf, 4032);
+      expect(ligne.margeCdf, 3781.5);
+      expect(ligne.quotasDebites, 42);
+      expect(ligne.caracteres, 16800);
+    });
+
+    test('une entreprise inconnue retombe sur « Sans entreprise »', () {
+      final RepartitionIaEntreprise ligne =
+          RepartitionIaEntreprise.depuisJson(<String, dynamic>{})!;
+      expect(ligne.entreprise, 'Sans entreprise');
+    });
+  });
+
+  group('TokensIaTableauBord', () {
+    test('depuisJson lit le tableau de bord complet', () {
+      final TokensIaTableauBord? tableau =
+          TokensIaTableauBord.depuisJson(<String, dynamic>{
+        'ok': true,
+        'jours': 30,
+        ..._configJson(),
+        'appels': 933,
+        'tokens_entree': 600000,
+        'tokens_cache': 2600000,
+        'tokens_sortie': 120000,
+        'cout_cdf': 5598,
+        'facture_cdf': 89568,
+        'marge_cdf': 83970,
+        'coefficient': 16,
+        'quotas_debites': 933,
+        'cout_moyen_question_cdf': 6,
+        'periode_appels': 100,
+        'periode_cout_cdf': 600,
+        'periode_facture_cdf': 9600,
+        'periode_marge_cdf': 9000,
+        'periode_quotas': 100,
+        'jour_cout_cdf': 12,
+        'jour_facture_cdf': 192,
+        'jour_marge_cdf': 180,
+        'jour_quotas': 2,
+        'solde_deepseek_usd': 2,
+        'solde_cdf': 5600,
+        'questions_restantes': 933,
+        'consommation_pct': 0,
+        'alerte_solde_usd': 1,
+        'alerte': false,
+      });
+
+      expect(tableau, isNotNull);
+      expect(tableau!.appels, 933);
+      expect(tableau.coutCdf, 5598);
+      expect(tableau.factureCdf, 89568);
+      expect(tableau.coefficient, 16);
+      expect(tableau.coutMoyenQuestionCdf, 6);
+      expect(tableau.soldeDeepseekUsd, 2);
+      expect(tableau.questionsRestantes, 933);
+      expect(tableau.alerte, isFalse);
+      expect(tableau.config.tarifParQuota, 96);
+    });
+
+    test('l\'objectif métier est cohérent : 2 \$ → 32 \$ de recettes', () {
+      final TokensIaTableauBord tableau =
+          TokensIaTableauBord.depuisJson(<String, dynamic>{
+        'ok': true,
+        ..._configJson(),
+        'solde_deepseek_usd': 2,
+        'solde_cdf': 5600,
+      })!;
+
+      // Marge potentielle si le solde entier est consommé : (16 − 1) × 5 600.
+      expect(tableau.margePotentielleCdf, closeTo(84000, 0.01));
+    });
+
+    test('tokensTotal additionne entrée, cache et sortie', () {
+      final TokensIaTableauBord tableau =
+          TokensIaTableauBord.depuisJson(<String, dynamic>{
+        'ok': true,
+        'tokens_entree': 100,
+        'tokens_cache': 200,
+        'tokens_sortie': 50,
+      })!;
+
+      expect(tableau.tokensTotal, 350);
+      expect(tableau.tauxCache, closeTo(200 / 300, 0.0001));
+    });
+
+    test('un refus serveur (`ok: false`) renvoie null', () {
+      expect(TokensIaTableauBord.depuisJson(<String, dynamic>{'ok': false}),
+          isNull);
+      expect(TokensIaTableauBord.depuisJson(null), isNull);
     });
   });
 }

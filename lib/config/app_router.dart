@@ -145,6 +145,7 @@ import 'package:biashara_yangu/pages/securite_page.dart';
 // ========== MODULE 13 : ASSISTANT IA (DEEPSEEK) ==========
 import 'package:biashara_yangu/pages/achat_quotas_page.dart';
 import 'package:biashara_yangu/pages/agent_ia_config_page.dart';
+import 'package:biashara_yangu/pages/tokens_ia_page.dart';
 import 'package:biashara_yangu/pages/assistant_ia_page.dart';
 
 // ========== AIDE, ACCESSIBILITÉ & INFORMATIONS LÉGALES ==========
@@ -394,6 +395,11 @@ final GoRouter appRouter = GoRouter(
       path: '/agent-ia-config',
       name: 'agent-ia-config',
       builder: (context, state) => const AgentIaConfigPage(),
+    ),
+    GoRoute(
+      path: '/tokens-ia',
+      name: 'tokens-ia',
+      builder: (context, state) => const TokensIaPage(),
     ),
 
     // ========== AIDE, ACCESSIBILITÉ & INFORMATIONS LÉGALES ==========

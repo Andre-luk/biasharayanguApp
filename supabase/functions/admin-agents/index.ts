@@ -160,7 +160,12 @@ REGLES STRICTES :
 
 interface ReponseIa {
   reponse: string;
-  jetons: number;
+  usage: {
+    entree: number;
+    entreeCache: number;
+    sortie: number;
+    total: number;
+  };
 }
 
 /** RPC service_role qui renvoie les DONNEES (et non une Response HTTP). */
@@ -238,9 +243,21 @@ async function interrogerIa(
   const contenu = donnees?.choices?.[0]?.message?.content;
   if (!contenu) throw new Error('DeepSeek : reponse sans contenu.');
 
+  const u = donnees?.usage ?? {};
+  const entree = Number(u.prompt_tokens ?? 0);
+  const entreeCache = Number(
+    u.prompt_cache_hit_tokens ?? u.prompt_tokens_details?.cached_tokens ?? 0,
+  );
+  const sortie = Number(u.completion_tokens ?? 0);
+
   return {
     reponse: String(contenu).trim(),
-    jetons: Number(donnees?.usage?.total_tokens ?? 0),
+    usage: {
+      entree,
+      entreeCache: Math.min(Math.max(entreeCache, 0), entree),
+      sortie,
+      total: Number(u.total_tokens ?? entree + sortie),
+    },
   };
 }
 
@@ -373,8 +390,33 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
       try {
         const contexte = await construireContexte(client, agentId);
-        const { reponse: texte, jetons } = await interrogerIa(question, contexte);
-        return json({ ok: true, agent_id: agentId, reponse: texte, jetons });
+        const { reponse: texte, usage } = await interrogerIa(question, contexte);
+
+        // Comptabilité réelle (best-effort) : cet appel est offert à Biashara
+        // Group, donc 0 quota et 0 CDF facturés — seul le COÛT est enregistré,
+        // ce qui rend la charge visible dans le tableau de bord des tokens.
+        try {
+          await client.rpc('rpc_ia_usage_enregistrer', {
+            p_entreprise: null,
+            p_utilisateur: null,
+            p_source: 'admin-agents',
+            p_modele: DEEPSEEK_MODEL,
+            p_tokens_entree: usage.entree,
+            p_tokens_cache: usage.entreeCache,
+            p_tokens_sortie: usage.sortie,
+            p_quotas_debites: 0,
+            p_montant_cdf: 0,
+          });
+        } catch (e) {
+          console.error(`admin-agents : comptabilite /ia → ${e}`);
+        }
+
+        return json({
+          ok: true,
+          agent_id: agentId,
+          reponse: texte,
+          jetons: usage.total,
+        });
       } catch (e) {
         const brut = e instanceof Error ? e.message : String(e);
         console.error(`admin-agents : /ia → ${brut}`);

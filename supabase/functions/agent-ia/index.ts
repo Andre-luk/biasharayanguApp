@@ -1530,10 +1530,35 @@ function promptSysteme(ctx: {
   ].join('\n');
 }
 
+/**
+ * Consommation RÉELLE renvoyée par DeepSeek pour un appel.
+ *
+ * `entreeCache` est un SOUS-ENSEMBLE de `entree` : ce sont les tokens servis
+ * depuis le cache DeepSeek, facturés environ 50 fois moins cher. Pour la
+ * comptabilité on isole donc `entreeNonCachee = entree - entreeCache`.
+ */
+interface UsageDeepSeek {
+  entree: number;
+  entreeCache: number;
+  sortie: number;
+  total: number;
+}
+
+const USAGE_VIDE: UsageDeepSeek = { entree: 0, entreeCache: 0, sortie: 0, total: 0 };
+
+function cumulerUsage(a: UsageDeepSeek, b: UsageDeepSeek): UsageDeepSeek {
+  return {
+    entree: a.entree + b.entree,
+    entreeCache: a.entreeCache + b.entreeCache,
+    sortie: a.sortie + b.sortie,
+    total: a.total + b.total,
+  };
+}
+
 /** Appel HTTP à l'API DeepSeek (OpenAI-compatible). */
 async function appelerDeepSeek(messages: MessageDeepSeek[]): Promise<{
   message: MessageDeepSeek;
-  tokensUtilises: number;
+  usage: UsageDeepSeek;
 }> {
   const corps: Record<string, unknown> = {
     model: MODELE,
@@ -1572,9 +1597,22 @@ async function appelerDeepSeek(messages: MessageDeepSeek[]): Promise<{
     throw new Error('DeepSeek : réponse sans message.');
   }
 
+  // Consommation réelle : DeepSeek détaille entrée / cache / sortie.
+  const u = donnees?.usage ?? {};
+  const entree = Number(u.prompt_tokens ?? 0);
+  const entreeCache = Number(
+    u.prompt_cache_hit_tokens ?? u.prompt_tokens_details?.cached_tokens ?? 0,
+  );
+  const sortie = Number(u.completion_tokens ?? 0);
+
   return {
     message,
-    tokensUtilises: Number(donnees?.usage?.total_tokens ?? 0),
+    usage: {
+      entree,
+      entreeCache: Math.min(Math.max(entreeCache, 0), entree),
+      sortie,
+      total: Number(u.total_tokens ?? entree + sortie),
+    },
   };
 }
 
@@ -1904,12 +1942,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const actionsExecutees: ActionExecutee[] = [];
     let reponseTexte = '';
     let tokensTotal = 0;
+    let usageCumule: UsageDeepSeek = USAGE_VIDE;
 
     for (let tour = 0; tour < MAX_TOURS_OUTILS; tour++) {
-      const { message: messageAssistant, tokensUtilises } = await appelerDeepSeek(
+      const { message: messageAssistant, usage } = await appelerDeepSeek(
         messages,
       );
-      tokensTotal += tokensUtilises;
+      tokensTotal += usage.total;
+      usageCumule = cumulerUsage(usageCumule, usage);
 
       const appels = messageAssistant.tool_calls ?? [];
 
@@ -2019,6 +2059,40 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     // =======================================================================
+    // 11.b — COMPTABILITÉ RÉELLE (tokens + coût DeepSeek + marge)
+    // =======================================================================
+    //  Alimente `agent_ia_usage` : c'est ce qui permet au Super Admin de
+    //  vérifier la marge réellement réalisée et d'estimer les questions
+    //  restantes selon le solde DeepSeek. Best-effort : une panne de
+    //  comptabilité ne doit jamais empêcher la réponse à l'utilisateur.
+    try {
+      const { data: compta, error: erreurCompta } = await admin.rpc(
+        'rpc_ia_usage_enregistrer',
+        {
+          p_entreprise: entrepriseId,
+          p_utilisateur: utilisateur.id,
+          p_source: 'agent-ia',
+          p_modele: MODELE,
+          p_tokens_entree: usageCumule.entree,
+          p_tokens_cache: usageCumule.entreeCache,
+          p_tokens_sortie: usageCumule.sortie,
+          p_quotas_debites: quotasConsommes,
+          p_montant_cdf: montantCdf,
+        },
+      );
+      if (erreurCompta) {
+        console.error('agent-ia : comptabilité des tokens', erreurCompta.message);
+      } else if (compta && typeof compta === 'object') {
+        console.log(
+          `agent-ia : comptabilité — coût ${(compta as Record<string, unknown>).cout_cdf} CDF, ` +
+            `facturé ${(compta as Record<string, unknown>).montant_cdf} CDF`,
+        );
+      }
+    } catch (e) {
+      console.error('agent-ia : comptabilité impossible', e);
+    }
+
+    // =======================================================================
     // 12. TRAÇABILITÉ COMPLÈTE + RÉPONSE
     // =======================================================================
 
@@ -2051,6 +2125,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
           montant_cdf: montantCdf,
           caracteres_reponse: nbCaracteres,
           tokens: tokensTotal,
+          tokens_entree: usageCumule.entree,
+          tokens_entree_cache: usageCumule.entreeCache,
+          tokens_sortie: usageCumule.sortie,
           boutique: entrepriseId,
           portee: 'entreprise',
         },

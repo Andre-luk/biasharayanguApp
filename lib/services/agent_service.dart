@@ -198,7 +198,9 @@ class AgentService {
             .from('agent_ia_config')
             .select(
               'tarif_par_quota, caracteres_par_quota, prix_pack_10_quotas, '
-              'quotas_offerts_inscription, actif',
+              'quotas_offerts_inscription, actif, taux_marge, taux_usd_cdf, '
+              'cout_cdf_par_million_entree, cout_cdf_par_million_cache, '
+              'cout_cdf_par_million_sortie, solde_deepseek_usd, alerte_solde_usd',
             )
             .limit(1)
             .maybeSingle();
@@ -293,7 +295,7 @@ class AgentService {
     );
   }
 
-  /// Super Admin : met à jour les tarifs/réglages.
+  /// Super Admin : met à jour les tarifs/réglages (module 13 bis inclus).
   Future<Map<String, dynamic>> majConfig(AgentIaConfig config) {
     return _executer<Map<String, dynamic>>(
       () async {
@@ -305,11 +307,131 @@ class AgentService {
             'p_prix_pack_10_quotas': config.prixPack10Quotas,
             'p_quotas_offerts_inscription': config.quotasOffertsInscription,
             'p_actif': config.actif,
+            'p_taux_marge': config.tauxMarge,
+            'p_taux_usd_cdf': config.tauxUsdCdf,
+            'p_cout_million_entree': config.coutCdfParMillionEntree,
+            'p_cout_million_cache': config.coutCdfParMillionCache,
+            'p_cout_million_sortie': config.coutCdfParMillionSortie,
+            'p_alerte_solde_usd': config.alerteSoldeUsd,
           },
         );
         return parseMap(reponse) ?? <String, dynamic>{};
       },
       'l\'enregistrement de la configuration',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2.b GESTION RÉELLE DES TOKENS (module 13 bis)
+  // ---------------------------------------------------------------------------
+
+  /// Tableau de bord des tokens : coût réel, marge, tokens, solde DeepSeek.
+  ///
+  /// Renvoie `null` si l'utilisateur n'a pas les droits (le serveur refuse
+  /// alors avec `DROIT_REFUSE`, traduit en [AgentServiceException]).
+  Future<TokensIaTableauBord> tokensTableauBord({int jours = 30}) {
+    return _executer<TokensIaTableauBord>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_ia_tokens_tableau_bord',
+          params: <String, dynamic>{'p_jours': jours},
+        );
+        final TokensIaTableauBord? tableau =
+            TokensIaTableauBord.depuisJson(reponse);
+        if (tableau == null) {
+          throw const AgentServiceException(
+            'Tableau de bord des tokens illisible. Réessayez.',
+          );
+        }
+        return tableau;
+      },
+      'le chargement du tableau de bord des tokens',
+    );
+  }
+
+  /// Journal des appels IA (tokens, coût, facturé, marge).
+  Future<List<LigneUsageIa>> usageLister({
+    int limite = 100,
+    int decalage = 0,
+    String? entreprise, 
+    String? source,
+  }) {
+    return _executer<List<LigneUsageIa>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_ia_usage_lister',
+          params: <String, dynamic>{
+            'p_limite': limite,
+            'p_decalage': decalage,
+            if (entreprise != null) 'p_entreprise': entreprise,
+            if (source != null && source.isNotEmpty) 'p_source': source,
+          },
+        );
+        final Map<String, dynamic>? map = parseMap(reponse);
+        if (map == null) return const <LigneUsageIa>[];
+        return LigneUsageIa.listeDepuisJson(map['usage']);
+      },
+      'le chargement du journal des tokens',
+    );
+  }
+
+  /// Répartition de la consommation par entreprise (distribution de l'usage).
+  Future<List<RepartitionIaEntreprise>> usageParEntreprise({int jours = 30}) {
+    return _executer<List<RepartitionIaEntreprise>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_ia_usage_par_entreprise',
+          params: <String, dynamic>{'p_jours': jours},
+        );
+        final Map<String, dynamic>? map = parseMap(reponse);
+        if (map == null) return const <RepartitionIaEntreprise>[];
+        return RepartitionIaEntreprise.listeDepuisJson(map['repartition']);
+      },
+      'le chargement de la répartition',
+    );
+  }
+
+  /// Super Admin : offre [quotas] à une entreprise (geste commercial tracé).
+  Future<Map<String, dynamic>> distribuerQuotas({
+    required String entrepriseId,
+    required int quotas,
+    required String motif,
+  }) {
+    return _executer<Map<String, dynamic>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_ia_distribuer',
+          params: <String, dynamic>{
+            'p_entreprise': entrepriseId,
+            'p_quotas': quotas,
+            'p_motif': motif.trim(),
+          },
+        );
+        return parseMap(reponse) ?? <String, dynamic>{};
+      },
+      'la distribution des quotas',
+    );
+  }
+
+  /// Super Admin : enregistre une recharge du compte DeepSeek.
+  Future<Map<String, dynamic>> rechargerCredit({
+    required double montantUsd,
+    double? tauxUsdCdf,
+    String? note,
+  }) {
+    return _executer<Map<String, dynamic>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_ia_credit_recharger',
+          params: <String, dynamic>{
+            'p_montant_usd': montantUsd,
+            if (tauxUsdCdf != null) 'p_taux_usd_cdf': tauxUsdCdf,
+            if (note != null && note.trim().isNotEmpty) 'p_note': note.trim(),
+          },
+        );
+        return parseMap(reponse) ?? <String, dynamic>{};
+      },
+      'l\'enregistrement de la recharge',
     );
   }
 
