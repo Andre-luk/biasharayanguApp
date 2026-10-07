@@ -57,7 +57,12 @@ class _JourHoraire {
 }
 
 class MaVitrinePage extends StatefulWidget {
-  const MaVitrinePage({super.key});
+  const MaVitrinePage({super.key, this.espaceId});
+
+  /// 🧑‍🌾 MODULE 21 ter — boutique ciblée. `null` = la boutique active du
+  /// compte connecté (commerçant). Un AGENT TERRAIN, qui n'a pas d'entreprise,
+  /// passe l'identifiant de la boutique qu'il a prise en charge.
+  final String? espaceId;
 
   @override
   State<MaVitrinePage> createState() => _MaVitrinePageState();
@@ -129,7 +134,8 @@ class _MaVitrinePageState extends State<MaVitrinePage> {
     });
 
     try {
-      final LocalisationBoutique etat = await _vitrine.etat();
+      final LocalisationBoutique etat =
+          await _vitrine.etat(espaceId: widget.espaceId);
 
       if (!mounted) return;
 

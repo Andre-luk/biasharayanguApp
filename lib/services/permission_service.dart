@@ -178,19 +178,20 @@ class PermissionService {
     // son dossier, puis VALIDE les paiements reçus. Il n'a ni les
     // permissions, ni les référentiels sensibles (devises, paramètres) : ces
     // écrans restent réservés au Super Admin.
+    // ⚠️ MODULE 21 ter — le périmètre est VOLONTAIREMENT ÉTROIT : l'agent
+    // est un accélérateur de terrain. Tout est en plus CLOISONNÉ côté serveur
+    // (RLS + RPC `agent_id`) : il ne voit que ses utilisateurs, ses boutiques,
+    // ses abonnements. Les référentiels (villes, activités, groupes), les
+    // permissions, les devises et la purge restent au Super Admin.
     RoleUtilisateur.agentTerrain: RolePermission.personnalise(
       <PageAccess, Set<ActionAccess>>{
         for (final PageAccess page in const <PageAccess>[
           PageAccess.dashboard,
           PageAccess.entreprises,
           PageAccess.utilisateurs,
-          PageAccess.villes,
-          PageAccess.activites,
-          PageAccess.groupesTarifaires,
           PageAccess.abonnements,
           PageAccess.paiements,
           PageAccess.boutiques,
-          PageAccess.assistance,
           PageAccess.notifications,
         ])
           page: const <ActionAccess>{
@@ -760,6 +761,13 @@ class PermissionService {
 
   /// Le rôle connecté appartient-il à la plateforme La Perle ?
   bool get estPlateforme => _roleCourant.estPlateforme;
+
+  /// 🧑‍🌾 MODULE 21 ter — le rôle connecté est-il un AGENT TERRAIN ?
+  ///
+  /// Sert aux écrans à adapter (tableau de bord = sa fiche, listes
+  /// cloisonnées) et aux gardes d'interface. La sécurité réelle reste
+  /// serveur (RLS + RPC filtrées sur `agent_id`).
+  bool get estAgentTerrain => _roleCourant == RoleUtilisateur.agentTerrain;
 
   // ---------------------------------------------------------------------------
   // 6. MIDDLEWARE DE NAVIGATION

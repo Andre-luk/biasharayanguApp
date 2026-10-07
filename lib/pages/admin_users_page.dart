@@ -1020,7 +1020,13 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton.icon(onPressed: _createUser, icon: const Icon(Icons.person_add), label: const Text('Ajouter un utilisateur')),
-                ElevatedButton.icon(onPressed: _creerAgentTerrain, icon: const Icon(Icons.badge_outlined), label: const Text('Ajouter un agent terrain')),
+                // 🧑‍🌾 MODULE 21 ter — SEUL le Super Admin ou le gestionnaire des
+                // comptes crée un agent terrain. Un agent ne peut PAS en créer un
+                // autre (le serveur le refuse déjà ; on masque aussi le bouton).
+                if (PermissionService.instance.estSuperAdmin ||
+                    PermissionService.instance.roleCourant ==
+                        RoleUtilisateur.gestionnaireComptes)
+                  ElevatedButton.icon(onPressed: _creerAgentTerrain, icon: const Icon(Icons.badge_outlined), label: const Text('Ajouter un agent terrain')),
                 const SizedBox(width: 8),
                 IconButton(icon: const Icon(Icons.refresh), onPressed: _loadUsers, tooltip: 'Rafraîchir'),
               ],

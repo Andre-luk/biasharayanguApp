@@ -20,7 +20,11 @@ import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/photo_biashara.dart';
 
 class MesPublicationsPage extends StatefulWidget {
-  const MesPublicationsPage({super.key});
+  const MesPublicationsPage({super.key, this.espaceId});
+
+  /// 🧑‍🌾 MODULE 21 ter — boutique ciblée (agent terrain) ; `null` = boutique
+  /// active du compte connecté.
+  final String? espaceId;
 
   @override
   State<MesPublicationsPage> createState() => _MesPublicationsPageState();
@@ -56,6 +60,7 @@ class _MesPublicationsPageState extends State<MesPublicationsPage> {
 
     try {
       final EtatPublications etat = await _vitrine.publications(
+        espaceId: widget.espaceId,
         recherche: _recherche.text.trim().isEmpty ? null : _recherche.text.trim(),
         filtre: _filtre,
       );

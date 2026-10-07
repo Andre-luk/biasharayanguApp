@@ -29,6 +29,7 @@ import 'package:biashara_yangu/pages/comptes_verification_page.dart';
 // du catalogue public (manques relevés par l'audit final).
 import 'package:biashara_yangu/pages/admin_boutiques_page.dart';
 import 'package:biashara_yangu/pages/admin_moderation_page.dart';
+import 'package:biashara_yangu/pages/agent_terrain_fiche_page.dart';
 
 
 // ====================================================================
@@ -74,7 +75,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
       label: 'Tableau',
       icone: Icons.dashboard_customize,
       pages: const <PageAccess>[PageAccess.dashboard],
-      builder: (_) => const AdminDashboardPage(),
+      // 🧑‍🌾 MODULE 21 ter — un agent terrain n'a rien à voir dans les revenus
+      // globaux de la plateforme : son « Tableau » est SA fiche.
+      builder: (_) => const _TableauAdmin(),
     ),
     _OngletAdmin(
       label: 'Utilisateurs',
@@ -711,5 +714,22 @@ class AdminSettingsPage extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// 🧑‍🌾 MODULE 21 ter — l'onglet « Tableau » de l'administration.
+///
+/// Un AGENT TERRAIN voit SA fiche (ses clients, ses boutiques, ses QR codes,
+/// ses revenus) : les revenus globaux de la plateforme ne le concernent pas.
+/// Les autres rôles gardent le tableau de bord plateforme.
+class _TableauAdmin extends StatelessWidget {
+  const _TableauAdmin();
+
+  @override
+  Widget build(BuildContext context) {
+    if (PermissionService.instance.estAgentTerrain) {
+      return const AgentTerrainFichePage();
+    }
+    return const AdminDashboardPage();
   }
 }
