@@ -16,7 +16,6 @@ import 'package:biashara_yangu/models/agent_terrain.dart';
 import 'package:biashara_yangu/pages/agent_boutiques_page.dart';
 import 'package:biashara_yangu/pages/qr_codes_page.dart';
 import 'package:biashara_yangu/services/agent_terrain_service.dart';
-import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 

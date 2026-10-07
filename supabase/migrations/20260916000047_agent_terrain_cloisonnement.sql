@@ -745,7 +745,7 @@ begin
      and (v_q = '' or public.biashara_normaliser(
             coalesce(u.nom, '') || ' ' || coalesce(u.email, '')) like '%' || v_q || '%');
 
-  select coalesce(jsonb_agg(t order by t.created_at desc), '[]'::jsonb)
+  select coalesce(jsonb_agg(s.t order by s.created_at desc), '[]'::jsonb)
     into v_liste
     from (
       select jsonb_build_object(
@@ -839,7 +839,7 @@ begin
   exception when others then v_encaisse := 0;
   end;
 
-  select coalesce(jsonb_agg(t order by t.created_at desc), '[]'::jsonb)
+  select coalesce(jsonb_agg(s.t order by s.created_at desc), '[]'::jsonb)
     into v_liste
     from (
       select jsonb_build_object(

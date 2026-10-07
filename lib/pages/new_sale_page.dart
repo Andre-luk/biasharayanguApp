@@ -8,13 +8,16 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/article_scanne.dart';
 import 'package:biashara_yangu/models/client.dart';
+import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/dette.dart';
 import 'package:biashara_yangu/models/ligne_panier.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/models/vente.dart';
+import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/invoice_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -26,6 +29,7 @@ import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
+import 'package:biashara_yangu/widgets/choix_format_vente.dart';
 import '../ui/widgets/primary_loader.dart';
 
 class NewSalePage extends StatefulWidget {
@@ -210,6 +214,43 @@ class _NewSalePageState extends State<NewSalePage> {
   }
 
   void _setProductQuantity(Produit p, double qty) => _updateQuantity(p, qty);
+
+  /// 🧾 MULTI-FORMATS — ajoute un produit au panier en laissant choisir le
+  /// format de vente (unité / plaquette / sachet / carton) quand il en a.
+  ///
+  /// Sans conditionnement (ou hors ligne), on retombe sur l'ajout à l'unité :
+  /// la vente n'est jamais bloquée par un problème réseau.
+  Future<void> _ajouterAvecFormat(Produit p) async {
+    if (p.id == null) return;
+    try {
+      final Article? article =
+          await ArticleService.instance.getArticleById(p.id!);
+      if (!mounted) return;
+
+      final List<Conditionnement> formats =
+          article?.conditionnements ?? const <Conditionnement>[];
+      if (article == null || formats.isEmpty) {
+        _updateQuantity(p, 1);
+        return;
+      }
+
+      final ChoixFormatVente? choix = await choisirFormatVente(
+        context,
+        article: article,
+        conditionnements: formats,
+      );
+      if (choix == null || !mounted) return;
+
+      _panier.ajouterArticle(
+        ArticleScanne(article: article, conditionnement: choix.format),
+        quantite: choix.quantite,
+      );
+    } catch (e) {
+      debugPrint('Format de vente indisponible : $e');
+      if (!mounted) return;
+      _updateQuantity(p, 1);
+    }
+  }
 
   void _incrementProductQuantity(Produit p, {double step = 1.0}) {
     if (p.id == null) return;
@@ -720,7 +761,7 @@ class _NewSalePageState extends State<NewSalePage> {
                   )
                 else
                   FilledButton.tonal(
-                    onPressed: () => _updateQuantity(p, 1),
+                    onPressed: () => _ajouterAvecFormat(p),
                     child: Text(T.addButton),
                   ),
               ],

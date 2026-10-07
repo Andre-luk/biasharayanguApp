@@ -29,9 +29,12 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:vibration/vibration.dart';
 
+import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/article_scanne.dart';
+import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
@@ -768,7 +771,16 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
   double _quantite = 1;
   String? _erreur;
 
-  ArticleScanne get _article => widget.article;
+  /// 🧾 MULTI-FORMATS — autres formats de vente de l'article (plaquette,
+  /// sachet, carton…) avec leur propre prix. Quand l'article scanné est
+  /// l'unité de base, l'utilisateur peut basculer d'un format à l'autre.
+  List<Conditionnement> _formats = const <Conditionnement>[];
+  Conditionnement? _choix;
+
+  /// Article effectivement vendu (unité de base ou format retenu).
+  ArticleScanne get _article => _choix == null
+      ? widget.article
+      : ArticleScanne(article: widget.article.article, conditionnement: _choix);
 
   /// `true` quand le rôle connecté peut remplir le panier (VENDEUR : oui).
   bool get _peutVendre =>
@@ -784,6 +796,38 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
     _quantiteControleur = TextEditingController(
       text: _texteQuantite(_quantite),
     );
+    _chargerFormats();
+  }
+
+  /// Charge les autres formats de vente de l'article (best-effort : hors
+  /// ligne, on reste sur l'unité de base).
+  Future<void> _chargerFormats() async {
+    if (widget.article.conditionnement != null) return;
+    try {
+      final Article? article =
+          await ArticleService.instance.getArticleById(widget.article.produitId);
+      if (!mounted) return;
+      setState(() {
+        _formats = article?.conditionnements ?? const <Conditionnement>[];
+      });
+    } catch (_) {
+      // Sans réseau, on garde l'unité de base : la vente n'est pas bloquée.
+    }
+  }
+
+  /// Bascule vers un format (ou revient à l'unité de base).
+  void _choisirFormat(Conditionnement? format) {
+    setState(() {
+      _choix = format;
+      final double pas = _article.pasQuantite;
+      final double maximum = _article.quantiteMaxVendable;
+      double q = 1;
+      if (maximum > 0 && maximum < q) q = maximum;
+      if (q < pas) q = pas;
+      _quantite = q;
+      _erreur = null;
+      _quantiteControleur.text = _texteQuantite(q);
+    });
   }
 
   @override
@@ -898,6 +942,10 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
 
                 _buildEntete(),
                 const SizedBox(height: 16),
+                if (_formats.isNotEmpty) ...<Widget>[
+                  _buildFormats(),
+                  const SizedBox(height: 14),
+                ],
                 _buildPrix(),
                 const SizedBox(height: 12),
                 _buildStock(),
@@ -1004,6 +1052,53 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
       );
     }
     return const Icon(Icons.inventory_2_rounded, color: Colors.white24);
+  }
+
+  /// 🧾 Chips des formats de vente (unité de base + emballages).
+  Widget _buildFormats() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const Text(
+          'Format de vente',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: <Widget>[
+            _chipFormat(null),
+            for (final Conditionnement c in _formats) _chipFormat(c),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _chipFormat(Conditionnement? format) {
+    final bool selectionne = _choix?.id == format?.id;
+    final String libelle = format == null
+        ? '${_article.article.uniteMesure} · '
+            '${formatMontant(_article.article.prixVente)}'
+        : '${format.libelle} · ${formatMontant(format.prixVente)}';
+    return ChoiceChip(
+      selected: selectionne,
+      onSelected: (_) => _choisirFormat(format),
+      label: Text(libelle, style: const TextStyle(fontSize: 12)),
+      selectedColor: _vertAccent.withValues(alpha: 0.25),
+      labelStyle: TextStyle(
+        color: selectionne ? _vertAccent : Colors.white70,
+        fontWeight: selectionne ? FontWeight.w700 : FontWeight.w500,
+      ),
+      side: BorderSide(
+        color: selectionne ? _vertAccent : Colors.white24,
+      ),
+    );
   }
 
   Widget _buildPrix() {
