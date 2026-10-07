@@ -111,6 +111,25 @@ class AgentTerrainService {
     return (abonnements, n(map?['montant_encaisse']), n(map?['solde_du']));
   }
 
+  /// 🧑‍🌾 MODULE 21 ter — dossiers LIBRES (non rattachés à un agent), proposés
+  /// à la prise en charge. Séparés des listes de travail de l'agent.
+  Future<List<EntrepriseAgentTerrain>> dossiersLibres({int limite = 100}) async {
+    final dynamic reponse = await _executer(
+      () => _client.rpc('rpc_agent_dossiers_libres',
+          params: <String, dynamic>{'p_limite': limite}),
+      'le chargement des dossiers libres',
+    );
+
+    // La RPC renvoie un TABLEAU jsonb (pas un objet).
+    final List<dynamic> liste =
+        reponse is List ? reponse : const <dynamic>[];
+    return liste
+        .whereType<Map>()
+        .map((Map e) =>
+            EntrepriseAgentTerrain.fromMap(Map<String, dynamic>.from(e)))
+        .toList(growable: false);
+  }
+
   /// Prend en charge une entreprise libre (dossier non attribué).
   Future<bool> rattacher(String entrepriseId) async {
     final dynamic reponse = await _executer(

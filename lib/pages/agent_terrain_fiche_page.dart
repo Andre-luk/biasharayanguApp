@@ -18,6 +18,7 @@ import 'package:biashara_yangu/pages/qr_codes_page.dart';
 import 'package:biashara_yangu/services/agent_terrain_service.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/widgets/dossiers_libres_agent.dart';
 
 class AgentTerrainFichePage extends StatefulWidget {
   const AgentTerrainFichePage({super.key, this.showAppBar = false, this.agentId});
@@ -242,6 +243,18 @@ class _AgentTerrainFichePageState extends State<AgentTerrainFichePage> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => const QrCodesPage(modePlateforme: true))),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.inbox_rounded),
+                title: const Text('Dossiers libres à prendre en charge'),
+                subtitle:
+                    const Text('Dossiers non rattachés : prenez-les pour les suivre'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final bool pris = await ouvrirFeuilleDossiersLibres(context);
+                  if (pris) _charger();
+                },
               ),
             ],
           ),

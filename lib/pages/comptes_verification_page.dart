@@ -20,6 +20,7 @@ import 'package:biashara_yangu/models/activation.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/widgets/dossiers_libres_agent.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 /// Filtres proposés (valeurs d'étape SQL — `null` = tous).
@@ -259,6 +260,36 @@ class _ComptesVerificationPageState extends State<ComptesVerificationPage> {
 
     return Column(
       children: <Widget>[
+        // 🧑‍🌾 MODULE 21 ter — pour un agent, la liste est STRICTEMENT la
+        // sienne : les dossiers libres se prennent À PART, jamais mélangés.
+        if (PermissionService.instance.estAgentTerrain)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: <Widget>[
+                const Icon(Icons.lock_outline, size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Vous ne voyez que VOS dossiers.',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final bool pris = await ouvrirFeuilleDossiersLibres(context);
+                    if (pris) _charger();
+                  },
+                  child: const Text('Dossiers libres'),
+                ),
+              ],
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: TextField(
