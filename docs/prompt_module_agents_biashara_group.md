@@ -80,7 +80,7 @@ Projet Supabase de Biashara Yangu (référence : `pqzcliibocndiyqbyddr.supabase.
 
 **Fonctions / RPC déjà disponibles** (source de vérité, `security definer`)
 - `rpc_agent_fiche(p_agent_id uuid default null)` → jsonb :
-  `nom, email, role, nb_utilisateurs, nb_entreprises, nb_boutiques,
+  `nom, email, telephone, valide, role, nb_utilisateurs, nb_entreprises, nb_boutiques,
   nb_abonnements_actifs, nb_en_attente, nb_produits, nb_conditionnements,
   nb_qr_codes, nb_produits_publies, montant_encaisse, solde_du,
   entreprises[] (id, nom, statut, activation_etape, solde_restant,
@@ -96,6 +96,20 @@ Projet Supabase de Biashara Yangu (référence : `pqzcliibocndiyqbyddr.supabase.
   profil `AGENT_TERRAIN` et renvoie `{ok, agent_id, email, role, compte_reutilise}`.
 - Helpers : `est_agent_terrain()`, `agent_detient_entreprise(uuid)`,
   `mon_entreprise_id()`, `mon_role()`.
+
+**API DE SERVICE POUR BIASHARA GROUP (⚠️ DÉJÀ IMPLÉMENTÉE côté Biashara Yangu)**
+Migration `20260916000051_api_biashara_group_agents.sql` + Edge Function
+`supabase/functions/admin-agents/index.ts`. Ces RPC `rpc_bg_*` sont `execute`
+**uniquement pour `service_role`** (inaccessibles depuis l'application) :
+- `rpc_bg_agents_lister()` → tous les comptes `AGENT_TERRAIN` + compteurs.
+- `rpc_bg_agent_fiche(p_agent_id)` → même contenu que `rpc_agent_fiche`.
+- `rpc_bg_agent_journal_lister(p_agent_id, p_limite, p_decalage)` → **journal unifié**
+  (audit + étapes d'activation) avec le nom de l'entreprise et les montants.
+- `rpc_bg_agent_creer(p_email, p_password, p_nom, p_prenom, p_note)` → crée le compte.
+- `rpc_bg_agent_desactiver(p_agent_id, p_motif)` → `valide = 0` + trace (jamais de suppression).
+
+**Ton appli Biashara Group n'appelle donc PAS Supabase directement** : elle appelle
+l'Edge Function ci-dessous (§12) avec le jeton de service.
 
 **Commissions / revenus**
 - « Revenus d'un agent » = **abonnements encaissés sur les entreprises qu'il a
@@ -188,16 +202,31 @@ jamais seulement dans l'interface. Un agent ne peut jamais lire les lignes d'un 
 
 ---
 
-## 7. SUIVI D'ACTIVITÉ
+## 7. SUIVI D'ACTIVITÉ — TOUT CE QU'IL FAIT
 
-Source **unique** : `rpc_agent_fiche(agent_yangu_id)` (+ `rpc_agent_abonnements_lister`
-pour le détail des dossiers). Synchronisation :
-- à l'ouverture d'une fiche agent (appel direct, mise en cache 5 min) ;
-- tâche planifiée journalière qui alimente `bg_agent_sync` et les tableaux de bord.
+**Exigence forte :** *tout ce que l'agent fait dans Biashara Yangu doit apparaître
+dans sa fiche Biashara Group*, sous forme de **journal chronologique unifié**.
 
-Affiche : dossiers pris en charge (libres→pris), boutiques créées, QR codes
-générés, articles publiés, abonnements actifs, en attente, **encaissements
-générés**, solde dû, et le **journal d'actions** (traduit en français lisible).
+Deux sources, une seule timeline :
+1. `journal_audit` (Biashara Yangu) : connexions, `AGENT_TERRAIN_RATTACHEMENT`
+   (prise en charge d'un dossier), `ACTIVATION_VERIFIEE`, `ACTIVATION_REJETEE`,
+   `ACTIVATION_FINANCE` (encaissement), `PAIEMENT_REJETE_FINANCE`,
+   `MONTANT_TOTAL_FIXE`, `BIASHARA_VITRINE` (vitrine enregistrée), `RAPPORT`,
+   `AGENT_IA`, etc.
+2. `activations_entreprise` : étapes du workflow avec `montant`, `mode_paiement`,
+   `reference_transaction`, `note`.
+
+**API** : `GET /agents/{id}/journal?limite&decalage` (Edge Function §12) renvoie
+`{ok:true, total, journal:[{source, action, niveau, entreprise_id, entreprise,
+montant?, details, created_at}]}`. Affiche chaque ligne avec **une icône, un
+libellé français lisible et l'heure** (fuseau de Lubumbashi, UTC+2).
+
+Compteurs affichés (issus de la fiche) : dossiers pris en charge, boutiques
+créées, QR codes générés, articles publiés, abonnements actifs, en attente,
+**encaissements générés**, solde dû.
+
+`rpc_agent_fiche`/`rpc_bg_agent_fiche` donne les 20 dernières actions ; le journal
+complet passe par `rpc_bg_agent_journal_lister`.
 
 **Ne jamais** afficher les ventes/stocks/clients des commerçants.
 
@@ -215,13 +244,29 @@ générés**, solde dû, et le **journal d'actions** (traduit en français lisib
 
 ---
 
-## 9. ÉTAT D'AVANCEMENT
+## 9. ÉTAT D'AVANCEMENT ET PHOTO
 
+### Avancement
 - Objectifs par mois/trimestre (dossiers, boutiques, encaissement).
 - Barre de progression + **niveau** (`Débutant < Bronze < Argent < Or < Platine`),
   seuils configurables.
 - Alerte automatique : agent sans activité depuis N jours, objectif < 50 %,
   dossier en attente de vérification depuis N jours, pièce d'identité expirée.
+
+### Photo de l'agent (exigence explicite)
+L'administration suit la photo de l'agent **dans sa fiche Biashara Group** :
+- `bg_agents.photo_url` = **photo de profil officielle**, affichée en grand dans la
+  fiche et dans la liste (avatar). Elle est **obligatoire** pour valider un recrutement.
+- Le dossier contient aussi la **photo de la pièce d'identité** (`bg_agent_documents`),
+  réservée aux rôles RH/Admin, servie par **URL signée à durée limitée**
+  (jamais un bucket public).
+- L'agent peut **remplacer sa photo** depuis « Mon espace agent » ; l'admin la
+  **valide** (statut `en_attente|validee|refusee` avec motif). Chaque changement est
+  journalisé (`bg_agent_journal`) et **horodaté**.
+- Affiche un **badge d'état** (photo manquante / à valider / validée).
+- ⚠️ Côté Biashara Yangu, **il n'existe pas de colonne photo serveur** pour un
+  utilisateur : la photo de l'agent est donc gérée **entièrement dans Biashara
+  Group** (ne pas attendre une synchronisation d'avatar).
 
 ---
 
@@ -250,21 +295,40 @@ générés**, solde dû, et le **journal d'actions** (traduit en français lisib
 
 ---
 
-## 12. CONTRAT D'API (à implémenter côté Biashara Yangu)
+## 12. API — EDGE FUNCTION `admin-agents` (⚠️ DÉJÀ IMPLÉMENTÉE)
 
-Crée une **Edge Function** `admin-agents` (Deno) dans le projet Biashara Yangu,
-protégée par un **jeton de service Biashara Group** (secret dédié, jamais côté client) :
+L'intégration côté Biashara Yangu **existe déjà** :
+- Edge Function : `supabase/functions/admin-agents/index.ts` ;
+- secret à créer : **`BG_ADMIN_TOKEN`** (chaîne aléatoire ≥ 32 caractères) ;
+- SQL : migration `20260916000051_api_biashara_group_agents.sql`.
 
-- `GET /agents/{agent_yangu_id}/fiche` → renvoie exactement le jsonb de `rpc_agent_fiche`.
-- `GET /agents` → liste des comptes `AGENT_TERRAIN` (id, nom, email, created_at).
-- `POST /agents` → `{email,password,nom,prenom,note}` → `rpc_admin_creer_agent_terrain`.
-- `POST /agents/{id}/desactiver` → `{motif}` → désactivation du compte (jamais de purge).
-- Toutes les réponses : `{ok:true, ...}` ou `{erreur, message}` ; journalise chaque
-  appel dans `journal_audit` (`action='BG_ADMIN_AGENT'`, `utilisateur_id` = agent visé).
+**Base URL** : `https://pqzcliibocndiyqbyddr.functions.supabase.co/admin-agents`
 
-**Sécurité d'accès aux données** : la plateforme Biashara Group ne doit **jamais**
-recevoir la clé `service_role` dans son client. Elle appelle l'Edge Function avec
-son jeton d'agent de service ; la fonction applique le cloisonnement.
+| Méthode | Chemin | Corps / Paramètres | Retour |
+|---|---|---|---|
+| GET | `/ping` | — | `{ok:true, service:'admin-agents'}` |
+| GET | `/agents` | — | `{ok:true}` + liste des agents avec compteurs |
+| GET | `/agents/{agentId}` | — | fiche complète (`nb_*`, `montant_encaisse`, `entreprises[]`, `utilisateurs[]`, `journal[]`) |
+| GET | `/agents/{agentId}/journal` | `?limite=100&decalage=0` | `{ok:true, total, journal[]}` |
+| POST | `/agents` | `{email,password,nom,prenom,note}` | `{ok:true, agent_id, compte_reutilise}` |
+| POST | `/agents/{agentId}/desactiver` | `{motif}` | `{ok:true, valide:0}` |
+
+**En-tête obligatoire** : `x-bg-token: <BG_ADMIN_TOKEN>`.
+
+**Erreurs** : `401 JETON_INVALIDE` · `403 DROIT_REFUSE` · `400 EMAIL_INVALIDE /
+MOT_DE_PASSE_TROP_COURT / MOTIF_REQUIS / AGENT_ID_INVALIDE` · `503 SECRET_MANQUANT
+/ NON_DEPLOYE` · `502` erreur base · `404 ROUTE_INCONNUE`.
+Forme : `{ erreur, message }` (message déjà en français, affichable tel quel).
+
+**Côté Biashara Group** : implémente une couche `AgentsApi` qui ajoute le jeton
+(côté serveur uniquement — **jamais exposé au navigateur**), journalise les
+appels et met en cache 5 minutes.
+
+### Option (historique local)
+Si tu préfères ne pas dépendre du réseau à chaque écran, la Edge Function peut
+alimenter une table `bg_agent_sync` (snapshot jsonb + `synchronise_le`) via une
+tâche planifiée (cron Supabase `pg_cron` ou GitHub Actions) appelant `/agents`.
+Affiche alors l'horodatage de dernière synchronisation sur les tableaux de bord.
 
 ---
 
