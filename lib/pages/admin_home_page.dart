@@ -588,6 +588,24 @@ class AdminSettingsPage extends StatelessWidget {
             ),
           ),
 
+          // 🪙 MODULE 13 bis — gestion RÉELLE des tokens : coût DeepSeek,
+          // bénéfice, solde du compte, distribution et usage par entreprise.
+          PermissionGate(
+            page: PageAccess.parametres,
+            action: ActionAccess.modifier,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.data_usage_rounded,
+              color: Colors.deepPurple.shade600,
+              title: 'Tokens IA — coûts & bénéfice',
+              subtitle:
+                  'Saisir la recharge DeepSeek, suivre le coût réel, la marge, '
+                  'les questions restantes et la distribution par entreprise.',
+              onTap: () => GoRouter.of(context).push('/tokens-ia'),
+            ),
+          ),
+
           // 🪙 MODULE 18 — taux de change par défaut de la plateforme et
           // configuration d'une entreprise (Super Admin).
           PermissionGate(
