@@ -66,14 +66,24 @@ class ModulesService {
   final ValueNotifier<Set<String>> modules =
       ValueNotifier<Set<String>>(const <String>{});
 
+  /// 🧩 CORRECTIF 65 — fonctionnalités ouvertes par l'ABONNEMENT de
+  /// l'entreprise. Vide tant que rien n'est chargé (=> tout est visible).
+  final ValueNotifier<Set<String>> modulesAbonnement =
+      ValueNotifier<Set<String>>(const <String>{});
+
   String? _type;
   String? _libelle;
   bool _charge = false;
+  bool _chargeAbonnement = false;
   bool _surveillanceActive = false;
   String? _dernierEspaceId;
 
   /// Le profil a-t-il été chargé (une réponse serveur reçue) ?
   bool get charge => _charge;
+
+  /// L'abonnement a-t-il été chargé ? `false` = aucune restriction connue
+  /// (fail-open).
+  bool get abonnementCharge => _chargeAbonnement;
 
   /// Code du type de l'espace actif (« boutique » tant que rien n'est chargé).
   String get type => _type ?? ModuleCode.profilDefaut;
@@ -85,18 +95,34 @@ class ModulesService {
   // GARDE UNIVERSELLE (gating)
   // ---------------------------------------------------------------------------
 
-  /// Le module est-il actif pour l'espace de travail courant ?
+  /// Le module est-il **actif** ET **ouvert par l'abonnement** ?
   ///
-  /// Fail-open : tant que le profil n'est pas chargé (ou qu'il est vide),
-  /// tout est considéré actif — aucune régression possible.
-  bool moduleActif(String code) => estActif(modules.value, _charge, code);
+  /// CORRECTIF 65 — deux filtres indépendants :
+  ///   • l'ACTIVITÉ dit ce qui a du SENS (une pharmacie gère des lots,
+  ///     un hôtel des chambres) ;
+  ///   • l'ABONNEMENT dit ce qui est PAYÉ.
+  ///
+  /// Les deux sont fail-open : une panne réseau, une migration non exécutée
+  /// ou une liste vide laissent TOUT visible — aucune régression possible
+  /// chez un commerçant dont l'abonnement est en règle.
+  bool moduleActif(String code) =>
+      estActif(modules.value, _charge, code) &&
+      estAutoriseParAbonnement(modulesAbonnement.value, _chargeAbonnement, code);
 
-  /// Version PURE (testable sans réseau) de [moduleActif].
+  /// Version PURE (testable sans réseau) du filtre ACTIVITÉ.
   ///
   /// Délègue à [ReglesActivite.actif] : la règle fail-open est écrite UNE
   /// seule fois (model) et partagée par toutes les entrées de l'interface.
   static bool estActif(Set<String> actifs, bool charge, String code) =>
       ReglesActivite.actif(actifs, charge, <String>{code});
+
+  /// Version PURE (testable sans réseau) du filtre ABONNEMENT.
+  static bool estAutoriseParAbonnement(
+    Set<String> ouverts,
+    bool charge,
+    String code,
+  ) =>
+      ReglesAbonnement.autorise(ouverts, charge, <String>{code});
 
   // ---------------------------------------------------------------------------
   // CHARGEMENT
@@ -123,11 +149,49 @@ class ModulesService {
         _libelle = parseStringOrNull(map['libelle']);
         modules.value = ProfilModules.modulesDepuisJson(map['modules']);
         _charge = true;
+
+        //  CORRECTIF 65 — les fonctionnalités ouvertes par l'abonnement.
+        //  Chargement BEST-EFFORT : si la RPC n'existe pas encore (migration
+        //  non exécutée) ou si le réseau lâche, on reste en fail-open. Un
+        //  abonnement ne doit JAMAIS faire disparaître un écran par accident.
+        await _chargerAbonnement();
       },
       'le chargement des modules de votre activité',
       'Impossible de charger les modules de votre activité. '
           'Vérifiez votre connexion internet.',
     );
+  }
+
+  /// Charge les fonctionnalités ouvertes par l'abonnement (best-effort).
+  ///
+  /// `rpc_abonnement_modules()` renvoie soit une LISTE de codes, soit `null`
+  /// — `null` signifiant « aucune restriction ». Toute erreur est avalée :
+  /// c'est la contrepartie de la règle fail-open.
+  Future<void> _chargerAbonnement() async {
+    try {
+      final dynamic reponse = await _client.rpc('rpc_abonnement_modules');
+
+      modulesAbonnement.value = _codesDepuisJson(reponse);
+      _chargeAbonnement = true;
+    } catch (e) {
+      debugPrint('ModulesService (abonnement, ignoré) : $e');
+      modulesAbonnement.value = const <String>{};
+      _chargeAbonnement = false;
+    }
+  }
+
+  /// Liste de codes de fonctionnalités depuis une réponse jsonb.
+  ///
+  /// Toute forme inattendue (null, objet, texte) donne une liste VIDE, donc
+  /// « aucune restriction » — on ne devine jamais, on n'invente jamais une
+  /// fonctionnalité manquante.
+  static Set<String> _codesDepuisJson(dynamic valeur) {
+    if (valeur is! List) return const <String>{};
+
+    return valeur
+        .map((dynamic element) => element.toString().trim())
+        .where((String code) => code.isNotEmpty)
+        .toSet();
   }
 
   /// Variante silencieuse (démarrage / connexion / bascule d'entreprise) :
@@ -145,8 +209,10 @@ class ModulesService {
     _type = null;
     _libelle = null;
     _charge = false;
+    _chargeAbonnement = false;
     _dernierEspaceId = null;
     modules.value = const <String>{};
+    modulesAbonnement.value = const <String>{};
   }
 
   // ---------------------------------------------------------------------------

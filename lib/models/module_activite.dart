@@ -51,6 +51,39 @@ abstract final class ModuleCode {
   static const String profilDefaut = 'boutique';
 }
 
+/// 🧩 CORRECTIF 65 — RÈGLES D'ABONNEMENT.
+///
+/// Deuxième filtre, indépendant de l'activité : un écran doit avoir du SENS
+/// (activité) **et** être PAYÉ (niveau d'abonnement).
+///
+/// ⚠️ Même règle d'or que [ReglesActivite] : **fail-open**. Liste vide, non
+/// chargée, ou portant le joker `*` → tout est ouvert. Un abonnement ne fait
+/// que MASQUER ce qu'il n'inclut pas — il ne masque jamais tout, et une panne
+/// réseau ne fait jamais disparaître les écrans d'un commerçant qui paie.
+abstract final class ReglesAbonnement {
+  /// Le joker : « toutes les fonctionnalités de l'activité ».
+  ///
+  /// C'est le niveau le plus élevé. Il restera correct même quand de
+  /// nouvelles fonctionnalités seront ajoutées à l'application — contrairement
+  /// à une liste énumérée qu'il faudrait penser à compléter.
+  static const String joker = '*';
+
+  /// Règle générique : au moins une des fonctionnalités demandées est-elle
+  /// ouverte par l'abonnement ?
+  static bool autorise(
+    Set<String> ouverts,
+    bool charge,
+    Set<String> codes,
+  ) {
+    if (!charge || ouverts.isEmpty) return true; // fail-open
+    if (ouverts.contains(joker)) return true; // niveau le plus haut
+    for (final String code in codes) {
+      if (ouverts.contains(code)) return true;
+    }
+    return false;
+  }
+}
+
 /// 🧩 MODULE 16 — RÈGLES D'AFFICHAGE PILOTÉES PAR L'ACTIVITÉ.
 ///
 /// Un module ne fait que **MASQUER** une entrée : il ne bloque jamais un
