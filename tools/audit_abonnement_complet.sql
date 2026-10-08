@@ -152,7 +152,7 @@ problemes as (
 )
 
 select '0. RESUME' as bloc, 'ℹ️' as gravite, 'Entreprises' as sujet,
-       count(*)::text || ' au total · ' as detail
+       count(*)::text || ' au total' as detail
   from public.entreprises
 
 union all
@@ -184,16 +184,52 @@ union all
 select '0. RESUME', 'ℹ️', 'Niveaux d''abonnement au catalogue',
        count(*)::text from public.niveaux_abonnement
 
--- ── Les comptes utilisateurs orphelins ────────────────────────────────────
+-- ── Les comptes PLATEFORME — aucun rattachement n'est attendu ────────────
+--  Super Admin, Finance, Gestionnaire des comptes, Support et agents de
+--  terrain administrent la plateforme : ils n'appartiennent à AUCUNE
+--  boutique. Leur presence ici est NORMALE, ce n'est pas une anomalie.
 union all
 
-select '3. COMPTES SANS ENTREPRISE', '⚠️',
+select '3. COMPTES PLATEFORME (normal)', 'ℹ️',
        coalesce(nullif(btrim(u.nom), ''), u.email, u.id::text),
-       'role ' || public.mon_role(u.id)
-       || ' · entreprise_id '
-       || coalesce(left(u.entreprise_id::text, 8), 'VIDE')
-       || case when u.parent_id is null then '' else ' · rattache a ' || left(u.parent_id::text, 8) end
+       'role ' || public.mon_role(u.id) || ' — aucun rattachement attendu'
   from public.utilisateurs u
  where u.entreprise_id is null
+   and public.mon_role(u.id) in ('SUPER_ADMIN', 'GESTIONNAIRE_COMPTES',
+                                 'FINANCE_LAPERLE', 'SUPPORT', 'AGENT_TERRAIN')
+
+-- ── Les PROPRIÉTAIRES sans entreprise : à examiner ────────────────────────
+--  Un proprietaire sans entreprise n'est PAS forcement une erreur :
+--  l'application cree l'entreprise automatiquement a sa premiere connexion.
+--  Ces lignes sont donc surtout des comptes JAMAIS CONNECTES.
+union all
+
+select '4. PROPRIETAIRES SANS ENTREPRISE', '⚠️',
+       coalesce(nullif(btrim(u.nom), ''), u.email, u.id::text),
+       'role ' || public.mon_role(u.id)
+       || ' · entreprise creee automatiquement a la 1re connexion'
+       || case when u.parent_id is null then ''
+               else ' · rattache a ' || left(u.parent_id::text, 8) end
+  from public.utilisateurs u
+ where u.entreprise_id is null
+   and u.parent_id is null
+   and public.mon_role(u.id) not in ('SUPER_ADMIN', 'GESTIONNAIRE_COMPTES',
+                                     'FINANCE_LAPERLE', 'SUPPORT', 'AGENT_TERRAIN')
+
+-- ── Comptes rattaches a un patron, mais sans entreprise propre ────────────
+--  Cas du personnel d'une boutique : NORMAL, son entreprise est celle du
+--  patron. Signale seulement si le patron lui-meme n'en a aucune.
+union all
+
+select '5. PERSONNEL SANS ENTREPRISE PROPRE', 'ℹ️',
+       coalesce(nullif(btrim(u.nom), ''), u.email, u.id::text),
+       'role ' || public.mon_role(u.id)
+       || ' · entreprise du patron '
+       || coalesce(left((select p.entreprise_id::text
+                           from public.utilisateurs p
+                          where p.id = u.parent_id), 8), 'ABSENTE')
+  from public.utilisateurs u
+ where u.entreprise_id is null
+   and u.parent_id is not null
 
 order by 1, 3, 4;
