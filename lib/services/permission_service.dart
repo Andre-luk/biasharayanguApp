@@ -187,8 +187,6 @@ class PermissionService {
       <PageAccess, Set<ActionAccess>>{
         for (final PageAccess page in const <PageAccess>[
           PageAccess.dashboard,
-          PageAccess.entreprises,
-          PageAccess.utilisateurs,
           PageAccess.abonnements,
           PageAccess.paiements,
           PageAccess.boutiques,
@@ -199,6 +197,20 @@ class PermissionService {
             ActionAccess.creer,
             ActionAccess.modifier,
           },
+        // 🛡️ CORRECTIF 63 — L'AGENT NI SUSPEND NI NE RÉACTIVE UN COMPTE.
+        //  `entreprises` et `utilisateurs` perdent « modifier » : l'agent crée
+        //  et consulte les dossiers, mais ne peut plus suspendre, réactiver ni
+        //  désactiver un compte. La base le refuse désormais AUSSI (policies
+        //  RLS restrictives, migration 63) — la base fait foi, même si une
+        //  surcharge de permissions rétablissait ces droits côté interface.
+        PageAccess.entreprises: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        PageAccess.utilisateurs: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
         // 🧾 Le workflow d'activation complet : vérifier le dossier, PUIS
         // activer le compte et valider le paiement (rôles revérifiés par les
         // RPC : l'application n'est jamais l'autorité).
