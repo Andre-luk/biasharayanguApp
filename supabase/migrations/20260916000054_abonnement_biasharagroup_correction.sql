@@ -224,7 +224,7 @@ begin
     raise notice '   il reste un solde : abonnement non conclu';
   end if;
 
-  -- ------------------------------------------------------------- 5) traçabilité
+  -- ------------------------------------------------------------- 6) traçabilité
   --  `id` est fourni explicitement (comme dans la migration 23) : la colonne
   --  peut ne pas avoir de valeur par défaut, et une insertion sans elle
   --  échouerait en NOT NULL, ce qui annulerait toute la migration.
@@ -249,27 +249,11 @@ end $$;
 
 
 -- ============================================================================
---  CONTRÔLE — le tableau qui confirme le résultat
--- ============================================================================
-
-select u.email                     as compte,
-       e.nom                       as entreprise,
-       e.montant_total_du          as montant_du,
-       e.montant_deja_paye         as deja_paye,
-       e.solde_restant             as solde_restant,
-       e.statut::text              as statut,
-       e.activation_etape          as etape,
-       to_char(e.date_expiration, 'DD/MM/YYYY') as expiration,
-       (e.date_expiration - now()) as jours_restants
-  from public.utilisateurs u
-  left join public.utilisateurs p on p.id = u.parent_id
-  join public.entreprises e on e.id = coalesce(u.entreprise_id, p.entreprise_id)
- where lower(btrim(u.email)) = lower(btrim('biasharagroup@gmail.com'));
-
-
--- ============================================================================
 --  HISTORIQUE DES VERSEMENTS — ce que le client a réellement payé
 -- ============================================================================
+--  ⚠️ Placer ce tableau AVANT le contrôle final : le SQL Editor de Supabase
+--     n'affiche que le résultat de la DERNIÈRE instruction du script. Le
+--     tableau le plus important (l'état du compte) doit donc venir en dernier.
 
 select to_char(h.created_at, 'DD/MM/YYYY HH24:MI') as "date",
        h.montant                                    as verse,
@@ -285,6 +269,26 @@ select to_char(h.created_at, 'DD/MM/YYYY HH24:MI') as "date",
   left join public.utilisateurs p on p.id = u.parent_id
  where e.id = coalesce(u.entreprise_id, p.entreprise_id)
  order by h.created_at;
+
+
+-- ============================================================================
+--  CONTRÔLE FINAL — l'état du compte après correction
+--  (en dernier : c'est le tableau qui s'affiche dans l'éditeur)
+-- ============================================================================
+
+select u.email                     as compte,
+       e.nom                       as entreprise,
+       e.montant_total_du          as montant_du,
+       e.montant_deja_paye         as deja_paye,
+       e.solde_restant             as solde_restant,
+       e.statut::text              as statut,
+       e.activation_etape          as etape,
+       to_char(e.date_expiration, 'DD/MM/YYYY') as expiration,
+       (e.date_expiration - now()) as jours_restants
+  from public.utilisateurs u
+  left join public.utilisateurs p on p.id = u.parent_id
+  join public.entreprises e on e.id = coalesce(u.entreprise_id, p.entreprise_id)
+ where lower(btrim(u.email)) = lower(btrim('biasharagroup@gmail.com'));
 
 -- ============================================================================
 --  FIN — correctif 54.
