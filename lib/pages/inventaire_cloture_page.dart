@@ -19,6 +19,7 @@ import 'package:biashara_yangu/models/inventaire_ligne.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/stock_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
 
 /// Écran de clôture de l'inventaire quotidien (Module 9).
 class InventaireCloturePage extends StatefulWidget {
@@ -31,6 +32,52 @@ class InventaireCloturePage extends StatefulWidget {
 class _InventaireCloturePageState extends State<InventaireCloturePage> {
   final StockService _service = StockService.instance;
   final TextEditingController _rechercheController = TextEditingController();
+
+  // -------------------------------------------------------------------------
+  // 🏷️ CORRECTIF 59 — COMPTER EN SCANNANT
+  // -------------------------------------------------------------------------
+
+  /// Isole une ligne de comptage en scannant le code-barres du produit.
+  ///
+  /// L'inventaire se fait article par article : scanner filtre la liste sur
+  /// le bon produit (le compteur reste à saisir) et rappelle le stock
+  /// théorique, ce qui évite de chercher le libellé dans une longue liste.
+  Future<void> _scannerPourCompter() async {
+    final String? code = await lireCodeBarre(
+      context,
+      titre: 'Inventaire — scanner un article',
+      aide: 'Visez le code-barres du produit compté.',
+    );
+    if (code == null || !mounted) return;
+
+    try {
+      final Article? article =
+          await ArticleService.instance.trouverParCodeBarre(code);
+      if (!mounted) return;
+
+      if (article == null) {
+        _messageScan('Aucun article ne porte le code « $code ».');
+        return;
+      }
+
+      setState(() => _rechercheController.text = article.nom);
+      _messageScan(
+        '${article.nom} — stock théorique : '
+        '${formatQuantite(article.quantite)} ${article.uniteMesure}.',
+      );
+    } catch (e) {
+      debugPrint('InventaireCloturePage._scannerPourCompter : $e');
+      if (mounted) {
+        _messageScan('Recherche impossible : vérifiez votre réseau.');
+      }
+    }
+  }
+
+  void _messageScan(String texte) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(texte), duration: const Duration(seconds: 4)),
+    );
+  }
 
   List<LigneInventaire> _lignes = <LigneInventaire>[];
   final Map<int, TextEditingController> _controleurs =
@@ -529,6 +576,12 @@ class _InventaireCloturePageState extends State<InventaireCloturePage> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: <Widget>[
+          // 🏷️ CORRECTIF 59 — compter l'article en le scannant.
+          IconButton(
+            onPressed: _scannerPourCompter,
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            tooltip: 'Scanner un article à compter',
+          ),
           IconButton(
             onPressed: () => _charger(),
             icon: const Icon(Icons.refresh),

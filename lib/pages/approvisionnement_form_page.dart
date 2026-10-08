@@ -18,9 +18,11 @@ import 'package:flutter/material.dart';
 
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
+import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/stock_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
+import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
 
 /// Une unité proposée à la saisie (unité de base, ou conditionnement).
 class _OptionUnite {
@@ -126,6 +128,49 @@ class _ApprovisionnementFormPageState extends State<ApprovisionnementFormPage> {
           _OptionUnite(libelle: c.libelle, facteur: c.quantiteUnitesBase),
     ];
     _indexUnite = 0;
+  }
+
+  /// 🏷️ CORRECTIF 59 — choisit l'article en scannant son code-barres.
+  ///
+  /// À la réception d'une livraison, on scanne le carton au lieu de chercher
+  /// le libellé dans une longue liste.
+  Future<void> _scannerArticle() async {
+    final String? code = await lireCodeBarre(
+      context,
+      titre: 'Article à approvisionner',
+      aide: 'Visez le code-barres du produit reçu.',
+    );
+    if (code == null || !mounted) return;
+
+    try {
+      final Article? article =
+          await ArticleService.instance.trouverParCodeBarre(code);
+      if (!mounted) return;
+
+      if (article == null) {
+        _messageScan('Aucun article ne porte le code « $code ».\n'
+            'Créez-le d\'abord dans la liste des articles.');
+        return;
+      }
+
+      //  Le menu déroulant n'accepte comme valeur qu'un article présent dans
+      //  sa liste : on ajoute celui du scan s'il n'y figure pas encore.
+      if (!_articles.any((Article a) => a.id == article.id)) {
+        setState(() => _articles = <Article>[..._articles, article]);
+      }
+      _selectionnerArticle(article);
+    } catch (e) {
+      debugPrint('ApprovisionnementFormPage._scannerArticle : $e');
+      if (mounted) {
+        _messageScan('Recherche impossible : vérifiez votre réseau.');
+      }
+    }
+  }
+
+  void _messageScan(String texte) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(texte), duration: const Duration(seconds: 3)),
+    );
   }
 
   void _selectionnerArticle(Article? article) {
@@ -292,22 +337,36 @@ class _ApprovisionnementFormPageState extends State<ApprovisionnementFormPage> {
       );
     }
 
-    return AppDropdownField<Article>(
-      label: 'Article',
-      value: _article,
-      prefixIcon: Icons.inventory_2_outlined,
-      hint: 'Choisir un article…',
-      items: _articles
-          .map((Article a) => DropdownMenuItem<Article>(
-                value: a,
-                child: Text(
-                  '${a.nom} (${formatQuantite(a.quantite)} ${a.uniteMesure})',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ))
-          .toList(growable: false),
-      onChanged: _selectionnerArticle,
+    return Column(
+      children: <Widget>[
+        AppDropdownField<Article>(
+          label: 'Article',
+          value: _article,
+          prefixIcon: Icons.inventory_2_outlined,
+          hint: 'Choisir un article…',
+          items: _articles
+              .map((Article a) => DropdownMenuItem<Article>(
+                    value: a,
+                    child: Text(
+                      '${a.nom} (${formatQuantite(a.quantite)} ${a.uniteMesure})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ))
+              .toList(growable: false),
+          onChanged: _selectionnerArticle,
+        ),
+        const SizedBox(height: 10),
+        // 🏷️ CORRECTIF 59 — le produit reçu est scanné, pas cherché.
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _scannerArticle,
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            label: const Text('Scanner le code-barres de l\'article'),
+          ),
+        ),
+      ],
     );
   }
 

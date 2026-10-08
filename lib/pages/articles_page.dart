@@ -20,6 +20,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
+import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 /// Liste des articles de la boutique (Module 5).
@@ -35,6 +36,50 @@ class _ArticlesPageState extends State<ArticlesPage> {
 
   final ArticleService _service = ArticleService.instance;
   final TextEditingController _rechercheController = TextEditingController();
+
+  // -------------------------------------------------------------------------
+  // 🏷️ CORRECTIF 59 — RECHERCHE PAR CODE-BARRES
+  // -------------------------------------------------------------------------
+
+  /// Retrouve un article en scannant son code-barres.
+  ///
+  /// Le nom trouvé est placé dans le champ de recherche : la liste se filtre
+  /// aussitôt sur le bon produit. C'est le geste attendu au comptoir quand on
+  /// ne connaît pas le libellé exact de l'article.
+  Future<void> _scannerPourRechercher() async {
+    final String? code = await lireCodeBarre(
+      context,
+      titre: 'Rechercher un article',
+      aide: 'Visez le code-barres du produit.',
+    );
+    if (code == null || !mounted) return;
+
+    try {
+      final Article? article =
+          await ArticleService.instance.trouverParCodeBarre(code);
+      if (!mounted) return;
+
+      if (article == null) {
+        _messageScan('Aucun article ne porte le code « $code ».\n'
+            'Vous pouvez l\'ajouter depuis le formulaire d\'article.');
+        return;
+      }
+
+      setState(() => _rechercheController.text = article.nom);
+      _messageScan('${article.nom} trouvé.');
+    } catch (e) {
+      debugPrint('ArticlesPage._scannerPourRechercher : $e');
+      if (mounted) {
+        _messageScan('Recherche impossible : vérifiez votre réseau.');
+      }
+    }
+  }
+
+  void _messageScan(String texte) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(texte), duration: const Duration(seconds: 3)),
+    );
+  }
 
   List<Article> _articles = const <Article>[];
   List<Categorie> _categories = const <Categorie>[];
@@ -452,6 +497,12 @@ class _ArticlesPageState extends State<ArticlesPage> {
               icon: const Icon(Icons.upload_file_rounded),
               tooltip: 'Importer des articles (CSV)',
             ),
+          ),
+          // 🏷️ CORRECTIF 59 — retrouver un article en scannant son code.
+          IconButton(
+            onPressed: _scannerPourRechercher,
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+            tooltip: 'Rechercher par code-barres',
           ),
           IconButton(
             onPressed: () => _charger(),
