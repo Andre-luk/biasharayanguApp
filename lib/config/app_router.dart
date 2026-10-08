@@ -81,6 +81,8 @@ import 'package:biashara_yangu/pages/types_activites_page.dart';
 
 // ================== MODULE 3 : MOTEUR D'ABONNEMENT ==================
 import 'package:biashara_yangu/pages/abonnement_detail_page.dart';
+import 'package:biashara_yangu/pages/niveau_abonnement_form_page.dart';
+import 'package:biashara_yangu/pages/niveaux_abonnement_page.dart';
 import 'package:biashara_yangu/pages/paiement_abonnement_page.dart';
 
 // ============= MODULE 4 : PERMISSIONS (RÔLES & ACCÈS) =============
@@ -400,6 +402,28 @@ final GoRouter appRouter = GoRouter(
       path: '/tokens-ia',
       name: 'tokens-ia',
       builder: (context, state) => const TokensIaPage(),
+    ),
+
+    // 🧩 CORRECTIF 65 — catalogue des NIVEAUX D'ABONNEMENT (Super Admin) :
+    // ce que chaque niveau ouvre comme fonctionnalités.
+    GoRoute(
+      path: '/niveaux-abonnement',
+      name: 'niveaux-abonnement',
+      builder: (context, state) => const NiveauxAbonnementPage(),
+      routes: <RouteBase>[
+        GoRoute(
+          path: 'nouveau',
+          name: 'niveau-abonnement-nouveau',
+          builder: (context, state) => const NiveauAbonnementFormPage(),
+        ),
+        GoRoute(
+          path: ':code',
+          name: 'niveau-abonnement-fiche',
+          builder: (context, state) => NiveauAbonnementFormPage(
+            code: state.pathParameters['code'],
+          ),
+        ),
+      ],
     ),
 
     // ========== AIDE, ACCESSIBILITÉ & INFORMATIONS LÉGALES ==========

@@ -606,6 +606,26 @@ class AdminSettingsPage extends StatelessWidget {
             ),
           ),
 
+          // 🧩 CORRECTIF 65 — NIVEAUX D'ABONNEMENT : ce que chaque niveau
+          // ouvre comme fonctionnalités (l'activité dit ce qui a du sens, le
+          // niveau dit ce qui est payé).
+          PermissionGate(
+            page: PageAccess.groupesTarifaires,
+            action: ActionAccess.modifier,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.workspace_premium_rounded,
+              color: Colors.amber.shade800,
+              title: 'Niveaux d\'abonnement',
+              subtitle:
+                  'Définir ce que chaque niveau ouvre : fonctionnalités, prix '
+                  'conseillé, ordre d\'affichage. Tant qu\'aucun niveau n\'est '
+                  'affecté, tout reste visible.',
+              onTap: () => GoRouter.of(context).push('/niveaux-abonnement'),
+            ),
+          ),
+
           // 🪙 MODULE 18 — taux de change par défaut de la plateforme et
           // configuration d'une entreprise (Super Admin).
           PermissionGate(
