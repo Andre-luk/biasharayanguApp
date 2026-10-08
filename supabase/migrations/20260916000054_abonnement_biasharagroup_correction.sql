@@ -15,16 +15,35 @@
 --  CE QUE FAIT CETTE MIGRATION
 --  ---------------------------
 --    1. retrouve l'entreprise du compte ;
---    2. constate le montant réellement versé (somme des versements enregistrés) ;
+--    2. relève le montant dû porté par la fiche et l'historique des versements ;
 --    3. remet `montant_deja_paye` au montant DÛ (`solde_restant` suit tout seul :
 --       c'est une colonne générée) ;
 --    4. CONCLUT l'abonnement : statut ACTIF, étape « actif », période de la
 --       grille tarifaire (30 jours par défaut).
 --
+--  ⚠️ CE QUE L'HISTORIQUE A RÉVÉLÉ (07/10/2026, 21:17 → 21:22)
+--  -----------------------------------------------------------
+--  Le journal des versements de ce dossier contient 7 lignes pour 115 000 CDF,
+--  alors que l'abonnement est de 30 000 CDF : l'essai du bug a été rejoué
+--  quatre fois, et chaque tentative a laissé sa trace.
+--      • trois lignes de 5 000 portent la marque du bug (cumulé en BAISSE :
+--        25 000 puis 5 000) ;
+--      • les quatre séquences « 25 000 puis 5 000 » représentent en réalité le
+--        MÊME abonnement de 30 000 CDF, payé quatre fois en essai.
+--
+--  Conclusion : la SOMME des versements ne peut pas servir de référence — elle
+--  donnerait 115 000 CDF pour un abonnement de 30 000. C'est pourquoi cette
+--  migration retient le MONTANT DÛ de la fiche, borne le paiement entre ce qui
+--  est déjà enregistré et ce qui est dû, et vous ALERTE si les versements
+--  dépassent nettement le montant dû (versements d'essai à nettoyer : ils
+--  gonflent sinon les rapports de chiffre d'affaires).
+--
 --  GARDE-FOUS
 --  ----------
---    • le montant n'est JAMAIS abaissé (GREATEST) ;
---    • il ne dépasse JAMAIS le montant dû ;
+--    • le montant n'est JAMAIS abaissé, ni poussé au-delà du montant dû ;
+--    • si la fiche ne porte AUCUN montant dû, la migration ne devine pas : elle
+--      s'arrête et vous indique la commande pour le renseigner
+--      (ou renseignez `v_montant_du_force` en tête de fichier) ;
 --    • un compte SUSPENDU n'est PAS réactivé automatiquement : la révocation
 --      reste une décision humaine ;
 --    • si le compte est introuvable, la migration ne casse rien : elle prévient.
@@ -43,14 +62,27 @@ select set_config('search_path', 'public, extensions', true);
 
 do $$
 declare
+  -- ─────────────────────────────  RÉGLAGES  ─────────────────────────────
   v_email    text := 'biasharagroup@gmail.com';
-  v_user     public.utilisateurs;
-  v_eid      uuid;
-  v_e        public.entreprises;
-  v_verse    numeric := 0;   -- total réellement encaissé (historique)
-  v_paye     numeric := 0;   -- montant enregistré avant correction
-  v_cible    numeric := 0;   -- montant à rétablir
-  v_duree    integer := 30;
+
+  -- Montant dû de l'abonnement.
+  --   NULL  = on utilise le montant porté par la fiche (cas normal).
+  --   valeur = on l'impose, ET on l'écrit sur la fiche — à n'utiliser que si
+  --            la fiche n'indique aucun montant dû.
+  -- ⚠️ Ne JAMAIS laisser la migration déduire le montant dû de la somme des
+  --    versements : l'historique d'essai de ce dossier totalise 115 000 CDF
+  --    pour un abonnement de 30 000, ce qui produirait une fiche absurde.
+  v_montant_du_force numeric := null;
+  -- ───────────────────────────────────────────────────────────────────────
+
+  v_user       public.utilisateurs;
+  v_eid        uuid;
+  v_e          public.entreprises;
+  v_verse      numeric := 0;   -- total des versements enregistrés
+  v_paye       numeric := 0;   -- montant enregistré avant correction
+  v_montant_du numeric := 0;   -- montant dû retenu
+  v_cible      numeric := 0;   -- montant à rétablir
+  v_duree      integer := 30;
 begin
   -- ------------------------------------------------------------------ 1) compte
   select * into v_user
@@ -85,25 +117,62 @@ begin
   v_paye := coalesce(v_e.montant_deja_paye, 0);
 
   -- ------------------------------------------------------- 2) montant versé
-  -- Somme de TOUS les versements enregistrés pour cette entreprise : c'est la
-  -- preuve chiffrée de ce que le client a réellement payé.
+  -- Somme des versements enregistrés. C'est un INDICE, pas une référence : le
+  -- dossier d'essai ci-dessous totalise 115 000 CDF pour 30 000 dus, chaque
+  -- essai ayant laissé sa trace. Cette somme sert uniquement d'alerte.
   select coalesce(sum(h.montant), 0)
     into v_verse
     from public.paiements_abonnements_laperle h
    where h.entreprise_id = v_eid;
 
-  -- ------------------------------------------------------------- 3) cible
-  -- Le montant dû fait foi ; à défaut (non renseigné), on retient le total des
-  -- versements. On ne retient jamais moins que ce qui est déjà enregistré.
-  v_cible := greatest(
-    v_paye,
-    coalesce(nullif(v_e.montant_total_du, 0), v_verse)
+  -- --------------------------------------------------------- 3) montant dû
+  v_montant_du := coalesce(
+    nullif(v_montant_du_force, 0),      -- valeur imposée en tête, si fournie
+    nullif(v_e.montant_total_du, 0),    -- sinon celle de la fiche
+    0
   );
 
   raise notice 'Correctif 54 — dossier « % »', v_e.nom;
-  raise notice '   montant du     : %', coalesce(v_e.montant_total_du, 0);
-  raise notice '   deja paye      : %  (verse : %)', v_paye, v_verse;
-  raise notice '   statut avant   : %', v_e.statut::text;
+  raise notice '   montant du (fiche)  : %', coalesce(v_e.montant_total_du, 0);
+  raise notice '   deja paye (fiche)   : %', v_paye;
+  raise notice '   solde restant       : %', coalesce(v_e.solde_restant, 0);
+  raise notice '   statut avant        : %', v_e.statut::text;
+  raise notice '   versements enregistres : % (total %)',
+               (select count(*) from public.paiements_abonnements_laperle h
+                 where h.entreprise_id = v_eid), v_verse;
+
+  -- Alerte : beaucoup plus de versements que le montant dû = essais empilés.
+  if v_montant_du > 0 and v_verse > v_montant_du * 1.5 then
+    raise warning
+      'Correctif 54 : % verses pour % dus — l''historique contient des versements d''essai. Le montant retenu reste celui de la fiche ; pensez a nettoyer ces lignes si elles faussent vos rapports.',
+      v_verse, v_montant_du;
+  end if;
+
+  -- Sans montant dû, on ne devine PAS : mieux vaut ne rien conclure que
+  -- fabriquer un abonnement incohérent.
+  if v_montant_du <= 0 then
+    raise warning
+      'Correctif 54 : montant du inconnu sur la fiche — migration sans effet sur le montant. Renseignez-le puis relancez : select public.rpc_activation_definir_montant_total(''%'', <montant>, ''Correctif 54'');',
+      v_eid;
+    return;
+  end if;
+
+  -- Si un montant a été imposé, on l'écrit sur la fiche.
+  if nullif(v_montant_du_force, 0) is not null
+     and coalesce(v_e.montant_total_du, 0) <> v_montant_du then
+    update public.entreprises
+       set montant_total_du = v_montant_du,
+           updated_at       = now()
+     where id = v_eid
+    returning * into v_e;
+    raise notice '   montant du force    : %  (ecrit sur la fiche)', v_montant_du;
+  end if;
+
+  -- ------------------------------------------------------------- 4) cible
+  --  Le montant dû fait foi. On ne retient jamais moins que ce qui est déjà
+  --  enregistré, ni plus que ce qui est dû : impossible de fabriquer un solde
+  --  négatif ou un trop-perçu.
+  v_cible := least(greatest(v_paye, v_montant_du), v_montant_du);
 
   if v_cible > v_paye then
     update public.entreprises
@@ -111,14 +180,14 @@ begin
            updated_at        = now()
      where id = v_eid
     returning * into v_e;
-    raise notice '   deja paye      : %  ->  %', v_paye, v_cible;
+    raise notice '   deja paye           : %  ->  %', v_paye, v_cible;
   else
-    raise notice '   aucun montant a corriger (deja au niveau du)';
+    raise notice '   deja paye           : %  (aucune correction necessaire)', v_paye;
   end if;
 
-  raise notice '   solde restant  : %', coalesce(v_e.solde_restant, 0);
+  raise notice '   solde restant       : %', coalesce(v_e.solde_restant, 0);
 
-  -- --------------------------------------------------------- 4) conclusion
+  -- --------------------------------------------------------- 5) conclusion
   -- Tout est réglé → l'abonnement est conclu, sauf compte suspendu.
   if coalesce(v_e.solde_restant, 0) <= 0
      and coalesce(v_e.montant_deja_paye, 0) > 0
