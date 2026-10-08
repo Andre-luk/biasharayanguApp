@@ -82,6 +82,7 @@ import 'package:biashara_yangu/pages/types_activites_page.dart';
 // ================== MODULE 3 : MOTEUR D'ABONNEMENT ==================
 import 'package:biashara_yangu/pages/abonnement_detail_page.dart';
 import 'package:biashara_yangu/pages/niveau_abonnement_form_page.dart';
+import 'package:biashara_yangu/pages/niveau_entreprise_page.dart';
 import 'package:biashara_yangu/pages/niveaux_abonnement_page.dart';
 import 'package:biashara_yangu/pages/paiement_abonnement_page.dart';
 
@@ -402,6 +403,16 @@ final GoRouter appRouter = GoRouter(
       path: '/tokens-ia',
       name: 'tokens-ia',
       builder: (context, state) => const TokensIaPage(),
+    ),
+
+    // 🧩 CORRECTIF 65 — niveau d'abonnement d'UNE entreprise : niveau choisi,
+    // fonctionnalités négociées, et ce qui est réellement appliqué.
+    GoRoute(
+      path: '/entreprise/:id/niveau',
+      name: 'entreprise-niveau',
+      builder: (context, state) => NiveauEntreprisePage(
+        entrepriseId: state.pathParameters['id'] ?? '',
+      ),
     ),
 
     // 🧩 CORRECTIF 65 — catalogue des NIVEAUX D'ABONNEMENT (Super Admin) :

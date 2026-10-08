@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/fonctionnalites.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
+import 'package:biashara_yangu/services/abonnement_niveaux_service.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/statut_abonnement_chip.dart';
@@ -314,6 +316,10 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           _carteInformations(theme, entreprise),
           const SizedBox(height: 16),
           _carteAbonnement(theme, entreprise),
+          const SizedBox(height: 16),
+          //  🧩 CORRECTIF 65 — ce que cette entreprise peut VOIR : son niveau
+          //  d'abonnement et les fonctionnalités réellement appliquées.
+          _carteNiveau(theme, entreprise),
           const SizedBox(height: 16),
           _cartePaiements(theme),
           const SizedBox(height: 16),
@@ -714,6 +720,107 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
     if (!mounted || modifie != true) return;
 
     await _charger(silencieux: true);
+  }
+
+  /// 🧩 CORRECTIF 65 — niveau d'abonnement : ce que cette entreprise voit.
+  ///
+  /// Affiche les fonctionnalités RÉELLEMENT appliquées (résolues côté
+  /// serveur) et permet d'ouvrir l'écran de réglage. Rappel affiché : aucune
+  /// restriction = tout reste visible.
+  Widget _carteNiveau(ThemeData theme, Entreprise entreprise) {
+    return FutureBuilder<NiveauEntreprise>(
+      future: NiveauxAbonnementService.instance
+          .lireNiveauEntreprise(entreprise.id),
+      builder: (BuildContext ctx, AsyncSnapshot<NiveauEntreprise> snap) {
+        final List<Widget> enfants = <Widget>[];
+
+        if (snap.connectionState != ConnectionState.done) {
+          enfants.add(const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Center(child: CircularProgressIndicator()),
+          ));
+        } else if (snap.hasError || snap.data == null) {
+          //  Best-effort : une lecture impossible ne doit jamais gêner cette
+          //  fiche — et surtout pas laisser croire à une restriction.
+          enfants.add(const Text(
+            'Niveau indisponible pour le moment. Aucune restriction n\'est '
+            'appliquée.',
+            style: TextStyle(fontSize: 12.5, height: 1.3),
+          ));
+        } else {
+          final NiveauEntreprise etat = snap.data!;
+          final Set<String>? effectifs = etat.modulesEffectifs;
+
+          if (etat.sansRestriction) {
+            enfants.add(const Text(
+              'Aucune restriction : toutes les fonctionnalités restent '
+              'visibles.',
+              style: TextStyle(fontSize: 13, height: 1.35),
+            ));
+          } else if (effectifs!.contains(Fonctionnalites.joker)) {
+            enfants.add(const Text(
+              'Toutes les fonctionnalités de l\'activité.',
+              style: TextStyle(fontSize: 13, height: 1.35),
+            ));
+          } else {
+            enfants.add(Text(
+              '${effectifs.length} fonctionnalité'
+              '${effectifs.length > 1 ? 's' : ''} ouverte'
+              '${effectifs.length > 1 ? 's' : ''}',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ));
+            enfants.add(const SizedBox(height: 4));
+            enfants.add(Text(
+              effectifs
+                  .map((String code) => Fonctionnalites.libelleDe(code))
+                  .join(' · '),
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.3,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ));
+          }
+
+          enfants.add(const SizedBox(height: 8));
+          enfants.add(Text(
+            etat.niveau == null
+                ? 'Aucun niveau imposé : celui du pack tarifaire s\'applique.'
+                : 'Niveau imposé : ${etat.niveau}'
+                    '${etat.negocie ? ' · fonctionnalités négociées' : ''}',
+            style: TextStyle(
+              fontSize: 12,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ));
+        }
+
+        enfants.add(const SizedBox(height: 12));
+        enfants.add(Align(
+          alignment: Alignment.centerLeft,
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              final bool? modifie = await ctx.push<bool>(
+                '/entreprise/${entreprise.id}/niveau',
+              );
+              if (modifie == true) await _charger(silencieux: true);
+            },
+            icon: const Icon(Icons.tune_rounded),
+            label: const Text('Changer le niveau'),
+          ),
+        ));
+
+        return _carte(
+          theme: theme,
+          titre: 'Niveau d\'abonnement',
+          icone: Icons.workspace_premium_outlined,
+          enfants: enfants,
+        );
+      },
+    );
   }
 
   Widget _carte({
