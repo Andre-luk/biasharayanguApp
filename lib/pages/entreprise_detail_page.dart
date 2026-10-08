@@ -413,6 +413,118 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
     );
   }
 
+  /// 💰 CORRECTIF 60 — réglage des DEUX prix de l'abonnement d'une entreprise.
+  ///
+  /// Le prix d'installation comprend le premier mois ; les renouvellements
+  /// facturent le prix mensuel seul. Sans ces deux valeurs, le moteur ne peut
+  /// pas détecter qu'il s'apprête à refacturer une installation — c'est ce
+  /// qui est arrivé à Biashara Group.
+  Future<void> _modifierPrix(
+    ThemeData theme,
+    Entreprise entreprise,
+    PrixAbonnement? prix,
+  ) async {
+    final TextEditingController installation = TextEditingController(
+      text: prix?.installation == null
+          ? ''
+          : prix!.installation!.round().toString(),
+    );
+    final TextEditingController mensuel = TextEditingController(
+      text: prix?.mensuel == null ? '' : prix!.mensuel!.round().toString(),
+    );
+
+    final bool? enregistrer = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Prix de l\'abonnement'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Le prix d\'installation comprend le premier mois. Les '
+              'renouvellements facturent le prix mensuel. Laisser un champ '
+              'vide ne le modifie pas.',
+              style: TextStyle(fontSize: 12.5, height: 1.3),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: installation,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Prix d\'installation (CDF)',
+                helperText: 'Premier mois inclus',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: mensuel,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Prix mensuel (CDF)',
+                helperText: 'Appliqué au renouvellement',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+
+    final double? nouvelleInstallation = _lireMontant(installation.text);
+    final double? nouveauMensuel = _lireMontant(mensuel.text);
+
+    installation.dispose();
+    mensuel.dispose();
+
+    if (enregistrer != true) return;
+
+    try {
+      await NiveauxAbonnementService.instance.definirPrix(
+        entrepriseId: entreprise.id,
+        installation: nouvelleInstallation,
+        mensuel: nouveauMensuel,
+        note: 'Prix fixés depuis la fiche entreprise',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Prix de l\'abonnement enregistrés.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      await _charger(silencieux: true);
+    } on NiveauxAbonnementException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  /// Montant saisi, ou `null` si le champ est vide (⇒ prix inchangé).
+  static double? _lireMontant(String texte) {
+    final String propre =
+        texte.trim().replaceAll(' ', '').replaceAll(',', '.');
+    if (propre.isEmpty) return null;
+    return double.tryParse(propre);
+  }
+
   Widget _carteAbonnement(ThemeData theme, Entreprise entreprise) {
     final Color couleurSolde = entreprise.estSolde
         ? Colors.green.shade700
@@ -451,6 +563,56 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           formatMontant(entreprise.soldeRestant),
           couleurValeur: couleurSolde,
           gras: true,
+        ),
+
+        //  💰 CORRECTIF 60-62 — LES DEUX PRIX de l'abonnement. Le premier
+        //  cycle facture l'installation (premier mois inclus), les suivants
+        //  facturent le mensuel seul.
+        const Divider(height: 22),
+        FutureBuilder<PrixAbonnement>(
+          future: NiveauxAbonnementService.instance.lirePrix(entreprise.id),
+          builder: (BuildContext ctx, AsyncSnapshot<PrixAbonnement> snap) {
+            final PrixAbonnement? prix = snap.data;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _ligneInfo(
+                  'Prix d\'installation',
+                  prix?.installation == null
+                      ? 'non renseigné'
+                      : formatMontant(prix!.installation!),
+                ),
+                _ligneInfo(
+                  'Prix mensuel',
+                  prix?.mensuel == null
+                      ? 'non renseigné'
+                      : formatMontant(prix!.mensuel!),
+                ),
+                if (prix != null && prix.vide && !snap.hasError)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'Aucun prix propre : le prochain renouvellement '
+                      'retiendra le montant encaissé.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _modifierPrix(theme, entreprise, prix),
+                    icon: const Icon(Icons.edit_rounded),
+                    label: const Text('Modifier les prix'),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 10),
         ClipRRect(

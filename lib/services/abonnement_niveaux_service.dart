@@ -57,12 +57,82 @@ class NiveauEntreprise {
       modulesEffectifs == null || modulesEffectifs!.isEmpty;
 }
 
+/// Les DEUX prix d'un abonnement (colonnes du correctif 60).
+///
+/// Le premier cycle facture le PRIX D'INSTALLATION (il comprend le premier
+/// mois) ; les cycles suivants facturent le PRIX MENSUEL seul.
+class PrixAbonnement {
+  const PrixAbonnement({this.installation, this.mensuel});
+
+  /// Prix d'installation (premier mois inclus). `null` = non renseigné.
+  final double? installation;
+
+  /// Prix d'un mois, appliqué au renouvellement. `null` = non renseigné.
+  final double? mensuel;
+
+  /// Aucun des deux n'est renseigné.
+  bool get vide => installation == null && mensuel == null;
+}
+
 class NiveauxAbonnementService {
   NiveauxAbonnementService._();
 
   static final NiveauxAbonnementService instance = NiveauxAbonnementService._();
 
   SupabaseClient get _client => SupabaseService.instance.client;
+
+  // ---------------------------------------------------------------------------
+  // LES DEUX PRIX DE L'ABONNEMENT (correctif 60)
+  // ---------------------------------------------------------------------------
+
+  /// Lit les deux prix d'une entreprise.
+  Future<PrixAbonnement> lirePrix(String entrepriseId) {
+    return _executer(
+      () async {
+        final dynamic ligne = await _client
+            .from('entreprises')
+            .select('prix_installation, prix_abonnement_mensuel')
+            .eq('id', entrepriseId)
+            .maybeSingle();
+
+        final Map<String, dynamic>? map = parseMap(ligne);
+
+        return PrixAbonnement(
+          installation: parseDoubleOrNull(map?['prix_installation']),
+          mensuel: parseDoubleOrNull(map?['prix_abonnement_mensuel']),
+        );
+      },
+      messageEchec:
+          'Impossible de lire les prix de cet abonnement. Vérifiez votre connexion internet.',
+    );
+  }
+
+  /// Fixe les deux prix d'une entreprise.
+  ///
+  /// Un paramètre laissé à `null` n'est PAS modifié côté serveur : c'est ce
+  /// qui permet de ne toucher qu'à un seul des deux prix.
+  Future<void> definirPrix({
+    required String entrepriseId,
+    double? installation,
+    double? mensuel,
+    String? note,
+  }) {
+    return _executer(
+      () async {
+        await _client.rpc(
+          'rpc_abonnement_definir_prix',
+          params: <String, dynamic>{
+            'p_entreprise_id': entrepriseId,
+            'p_installation': installation,
+            'p_mensuel': mensuel,
+            'p_note': note,
+          },
+        );
+      },
+      messageEchec:
+          'Impossible d\'enregistrer les prix de cet abonnement. Vérifiez votre connexion internet.',
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // LECTURE
