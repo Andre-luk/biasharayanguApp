@@ -198,6 +198,45 @@ class ArticleService {
     );
   }
 
+  /// 🏷️ CORRECTIF 59 — retrouve un article par son CODE-BARRES.
+  ///
+  /// Cherche d'abord `produits.code_barre` (l'unité de base du produit), puis
+  /// en repli un CONDITIONNEMENT portant ce code (`code_barre_texte`) : les
+  /// codes enregistrés avant le correctif 59 restent donc scannables.
+  ///
+  /// Renvoie `null` si aucun article de la boutique ne porte ce code — la RLS
+  /// garantit qu'un code d'une autre boutique est invisible.
+  Future<Article?> trouverParCodeBarre(String code) async {
+    final String recherche = code.trim();
+    if (recherche.isEmpty) return null;
+
+    final dynamic ligne = await _client
+        .from('produits')
+        .select()
+        .eq('code_barre', recherche)
+        .limit(1)
+        .maybeSingle();
+
+    if (ligne is Map) {
+      return Article.fromMap(Map<String, dynamic>.from(ligne));
+    }
+
+    // Repli : le code est celui d'un emballage (Module 5).
+    final dynamic emballage = await _client
+        .from('conditionnements')
+        .select()
+        .eq('code_barre_texte', recherche)
+        .limit(1)
+        .maybeSingle();
+
+    if (emballage is! Map) return null;
+
+    final int? produitId = int.tryParse('${emballage['produit_id']}');
+    if (produitId == null) return null;
+
+    return getArticleById(produitId);
+  }
+
   /// Crée un article (le stock de départ est saisi en unités de base).
   Future<Article> creerArticle({
     required String nom,
@@ -212,6 +251,7 @@ class ArticleService {
     DateTime? dateExpiration,
     bool vendableAuPoids = false,
     Map<String, String> attributs = const <String, String>{},
+    String? codeBarre,
   }) {
     return _executer(
       () async {
@@ -243,6 +283,8 @@ class ArticleService {
               'vendable_au_poids': vendableAuPoids,
               // 👕 MODULE 16 C8 — mode : variantes (taille, couleur…).
               'attributs': attributs,
+              // 🏷️ CORRECTIF 59 — code-barres fabricant du produit.
+              'code_barre': _texteOuNull(codeBarre),
               'owner_id': proprietaire,
             })
             .select()
@@ -275,6 +317,7 @@ class ArticleService {
     DateTime? dateExpiration,
     bool vendableAuPoids = false,
     Map<String, String> attributs = const <String, String>{},
+    String? codeBarre,
   }) {
     return _executer(
       () async {
@@ -305,6 +348,9 @@ class ArticleService {
               'vendable_au_poids': vendableAuPoids,
               // 👕 MODULE 16 C8 — mode : variantes (taille, couleur…).
               'attributs': attributs,
+              // 🏷️ CORRECTIF 59 — code-barres fabricant du produit
+              //  (vidé ici si le champ a été effacé dans le formulaire).
+              'code_barre': _texteOuNull(codeBarre),
             })
             .eq('id', id)
             .select()
@@ -974,6 +1020,17 @@ class ArticleService {
   /// (`CODE|message`), comme les autres services du projet.
   static String messageErreur(String brut) {
     final String texte = brut.trim();
+
+    //  🏷️ CORRECTIF 59 — le code-barres est unique par patron : la base
+    //  refuse un doublon. On l'explique en français plutôt que de laisser
+    //  passer l'erreur technique de PostgreSQL.
+    if (texte.contains('idx_produits_code_barre_unique') ||
+        (texte.contains('duplicate key') && texte.contains('code_barre'))) {
+      return 'Ce code-barres est déjà utilisé par un autre produit de votre '
+          'boutique. Scannez-le depuis la liste pour ouvrir la bonne fiche, '
+          'ou saisissez un autre code.';
+    }
+
     final int separateur = texte.indexOf('|');
     if (separateur < 0 || separateur == texte.length - 1) return texte;
     return texte.substring(separateur + 1).trim();

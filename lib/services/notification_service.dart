@@ -1,9 +1,13 @@
 // lib/services/notification_service.dart
 //
-// 🔔 NOTIFICATIONS LOCALES — « chaque vente » + « rapport de fin de journée ».
+// 🔔 NOTIFICATIONS LOCALES — « chaque vente » + « rapport de fin de journée »
+//     + « stock faible ».
 //
 //   • notifierVente() : affichée après CHAQUE vente confirmée par le serveur
 //     (appelée par VenteService — best-effort, jamais bloquante) ;
+//   • 📦 notifierStockFaible() : affichée quand un article VIENT DE PASSER
+//     sous son seuil d'alerte (correctif 59). Une seule fois par
+//     franchissement : voir [aFranchiLeSeuil] ;
 //   • rapport de fin de journée : un résumé (nombre de ventes, chiffre
 //     d'affaires, articles vendus) est envoyé à l'heure choisie (19 h 00 par
 //     défaut) tant que l'application est ouverte (surveillance chaque minute)
@@ -56,8 +60,10 @@ class NotificationService {
   static const int _idRapport = 424242;
   static const String _canalVentes = 'biashara_ventes';
   static const String _canalRapport = 'biashara_rapport';
+  static const String _canalStock = 'biashara_stock';
   static const String _prefVentes = 'notifications_ventes_actives';
   static const String _prefRapport = 'notifications_rapport_actif';
+  static const String _prefStock = 'notifications_stock_actif';
   static const String _prefHeure = 'notifications_rapport_heure';
   static const String _prefDernierJour = 'notifications_rapport_dernier_jour';
 
@@ -72,12 +78,14 @@ class NotificationService {
   SharedPreferences? _prefs;
   bool _ventesActives = true;
   bool _rapportActif = true;
+  bool _stockActif = true;
   int _heureRapportMinutes = heureRapportParDefaut;
 
-  // ── Lectures (synchrones après [initialiser]) ────────────────────────────
+  // ── Lectures (synchrones après [initialiser]) ────────────────
 
   bool get ventesActives => _ventesActives;
   bool get rapportActif => _rapportActif;
+  bool get stockActif => _stockActif;
   int get heureRapportMinutes => _heureRapportMinutes;
   bool get supporte => _supporte;
 
@@ -158,6 +166,51 @@ class NotificationService {
     return tampon.toString();
   }
 
+  /// 📦 Titre de l'alerte de stock : « 📦 Stock faible — Riz 5 kg ».
+  static String titreStock(String nom) {
+    final String propre = nom.trim();
+    return propre.isEmpty ? '📦 Stock faible' : '📦 Stock faible — $propre';
+  }
+
+  /// Corps de l'alerte de stock.
+  static String messageStock({
+    required double quantite,
+    required double seuil,
+    String? unite,
+  }) {
+    final String u = (unite ?? '').trim();
+    final String suffixe = u.isEmpty ? '' : ' $u';
+    final String reste = quantite <= 0
+        ? 'RUPTURE de stock'
+        : 'il reste ${nombreLisible(quantite)}$suffixe';
+    return '$reste (seuil d\'alerte : ${nombreLisible(seuil)}$suffixe). '
+        'Pensez à réapprovisionner.';
+  }
+
+  /// Nombre sans zéro inutile : « 12 », « 0,5 ».
+  static String nombreLisible(double valeur) {
+    if (valeur == valeur.roundToDouble()) return valeur.round().toString();
+    return valeur.toStringAsFixed(2).replaceAll('.', ',');
+  }
+
+  /// Le stock vient-il de FRANCHIR son seuil d'alerte vers le bas ?
+  ///
+  /// C'est la règle « UNE SEULE notification par franchissement » : on ne
+  /// prévient que si l'article était AU-DESSUS du seuil avant l'opération.
+  /// Un article déjà sous le seuil (revendu plusieurs fois) ne redéclenche
+  /// donc rien — sinon le commerçant serait noyé d'alertes.
+  ///
+  /// Avec un seuil nul ou négatif, l'alerte « faible » est désactivée :
+  /// seule la RUPTURE est signalée (même règle que `StatutStock`).
+  static bool aFranchiLeSeuil({
+    required double avant,
+    required double apres,
+    required double seuil,
+  }) {
+    if (seuil <= 0) return avant > 0 && apres <= 0;
+    return avant > seuil && apres <= seuil;
+  }
+
   /// Le rapport du jour doit-il être envoyé maintenant ?
   /// Oui si l'heure est atteinte ET qu'aucun rapport n'a été envoyé aujourd'hui.
   static bool doitEnvoyerRapport({
@@ -182,6 +235,7 @@ class NotificationService {
       _prefs = await SharedPreferences.getInstance();
       _ventesActives = _prefs!.getBool(_prefVentes) ?? true;
       _rapportActif = _prefs!.getBool(_prefRapport) ?? true;
+      _stockActif = _prefs!.getBool(_prefStock) ?? true;
       _heureRapportMinutes =
           _prefs!.getInt(_prefHeure) ?? heureRapportParDefaut;
     } catch (e) {
@@ -253,6 +307,14 @@ class NotificationService {
     } catch (_) {}
   }
 
+  Future<void> definirStockActif(bool actif) async {
+    _stockActif = actif;
+    if (actif) await demanderPermissions();
+    try {
+      await _prefs?.setBool(_prefStock, actif);
+    } catch (_) {}
+  }
+
   Future<void> definirHeureRapport(int minutes) async {
     _heureRapportMinutes = minutes.clamp(0, 1439);
     try {
@@ -303,7 +365,34 @@ class NotificationService {
     }
   }
 
-  /// 📊 Vérifie l'heure et envoie le rapport du jour si nécessaire.
+  /// � Alerte « stock faible » — affichée au FRANCHISSEMENT du seuil.
+  ///
+  /// Best-effort : un échec d'affichage ne doit jamais interrompre une vente
+  /// ni une entrée de stock.
+  Future<void> notifierStockFaible({
+    required String nom,
+    required double quantite,
+    required double seuil,
+    String? unite,
+  }) async {
+    if (!_supporte || !_stockActif) return;
+    try {
+      await _plugin?.show(
+        id: DateTime.now().millisecondsSinceEpoch.remainder(100000),
+        title: titreStock(nom),
+        body: messageStock(quantite: quantite, seuil: seuil, unite: unite),
+        notificationDetails: _details(
+          _canalStock,
+          'Stock',
+          'Alerte quand un article passe sous son seuil',
+        ),
+      );
+    } catch (e) {
+      debugPrint('NotificationService (stock) : $e');
+    }
+  }
+
+  /// �📊 Vérifie l'heure et envoie le rapport du jour si nécessaire.
   ///
   /// [forcer] : ignoré les horaires (bouton « tester maintenant ») mais pas
   /// l'anti-doublon du jour.

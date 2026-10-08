@@ -24,6 +24,15 @@ class Article {
   final double quantite;
   final String uniteMesure;
   final double seuilAlerte;
+
+  /// 🏷️ CORRECTIF 59 — code-barres FABRICANT du produit (EAN-13, UPC,
+  /// Code 128, ITF…), valable pour son UNITÉ DE BASE.
+  ///
+  /// `null` = non renseigné. Unique par patron : deux produits du même
+  /// patron ne peuvent pas porter le même code (sinon un scan serait
+  /// ambigu et vendrait le mauvais article).
+  final String? codeBarre;
+
   final String? photo;
   final String? description;
 
@@ -59,6 +68,7 @@ class Article {
     this.quantite = 0,
     this.uniteMesure = 'unité',
     this.seuilAlerte = 5,
+    this.codeBarre,
     this.photo,
     this.description,
     this.lotNumero,
@@ -84,6 +94,7 @@ class Article {
       quantite: parseDouble(map['quantite']),
       uniteMesure: parseString(map['unite_mesure'], fallback: 'unité'),
       seuilAlerte: parseDouble(map['seuil_alerte'], fallback: 5),
+      codeBarre: parseStringOrNull(map['code_barre']),
       photo: parseStringOrNull(map['photo']),
       description: parseStringOrNull(map['description']),
       lotNumero: parseStringOrNull(map['lot_numero']),
@@ -137,6 +148,7 @@ class Article {
     double? quantite,
     String? uniteMesure,
     double? seuilAlerte,
+    String? codeBarre,
     String? photo,
     String? description,
     String? lotNumero,
@@ -157,6 +169,7 @@ class Article {
       quantite: quantite ?? this.quantite,
       uniteMesure: uniteMesure ?? this.uniteMesure,
       seuilAlerte: seuilAlerte ?? this.seuilAlerte,
+      codeBarre: codeBarre ?? this.codeBarre,
       photo: photo ?? this.photo,
       description: description ?? this.description,
       lotNumero: lotNumero ?? this.lotNumero,

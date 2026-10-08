@@ -7,6 +7,11 @@
 //     PROD:123                → l'article public.produits n° 123
 //     COND:<uuid>             → le conditionnement (qr_code_id)
 //
+// 🏷️ CORRECTIF 59 — un code qui n'est PAS une étiquette de l'application est
+// désormais traité comme un CODE-BARRES FABRICANT (EAN-13, UPC, Code 128,
+// ITF-14…) : on le cherche dans `produits.code_barre`, puis, en repli, dans
+// `conditionnements.code_barre_texte` (codes saisis avant le correctif 59).
+//
 // [resoudre] relit dans Supabase l'article et/ou le conditionnement VISÉS,
 // puis renvoie un [ArticleScanne] complet : stock, prix unitaire et unité
 // vendue sont donc toujours à jour, même si l'étiquette a été imprimée il y
@@ -28,6 +33,7 @@ import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/article_scanne.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/etiquette_qr.dart';
+import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -82,11 +88,11 @@ class ScannerService {
   /// plus ou si la base est injoignable.
   Future<ArticleScanne> resoudre(String? codeBrut) async {
     final EtiquetteQr? etiquette = EtiquetteQr.decoder(codeBrut);
+
+    //  🏷️ CORRECTIF 59 — ce n'est pas une étiquette de l'application : on le
+    //  traite comme un code-barres fabricant.
     if (etiquette == null) {
-      throw const ScannerException(
-        'QR code inconnu : ce code n\'est pas une étiquette Biashara Yangu.',
-        type: TypeErreurScan.formatInconnu,
-      );
+      return _resoudreCodeBarre(codeBrut);
     }
 
     try {
@@ -100,6 +106,45 @@ class ScannerService {
       rethrow;
     } catch (e) {
       debugPrint('ScannerService.resoudre : $e');
+      throw const ScannerException(
+        'Connexion impossible : vérifiez votre réseau puis réessayez.',
+        type: TypeErreurScan.reseau,
+      );
+    }
+  }
+
+  /// 🏷️ CORRECTIF 59 — résout un CODE-BARRES FABRICANT.
+  ///
+  /// Cherche le code dans `produits.code_barre` puis, en repli, dans les
+  /// conditionnements : un code déjà enregistré sur un emballage reste donc
+  /// scannable. Le code est comparé à l'identique, espaces retirés.
+  Future<ArticleScanne> _resoudreCodeBarre(String? codeBrut) async {
+    final String code = (codeBrut ?? '').trim();
+    if (code.isEmpty) {
+      throw const ScannerException(
+        'Code illisible : aucun code-barres détecté.',
+        type: TypeErreurScan.formatInconnu,
+      );
+    }
+
+    try {
+      final Article? article =
+          await ArticleService.instance.trouverParCodeBarre(code);
+
+      if (article == null) {
+        throw ScannerException(
+          'Code-barres inconnu : aucun produit de votre boutique ne porte « '
+          '$code ». Enregistrez ce code dans la fiche du produit, puis '
+          'réessayez.',
+          type: TypeErreurScan.introuvable,
+        );
+      }
+
+      return ArticleScanne(article: article);
+    } on ScannerException {
+      rethrow;
+    } catch (e) {
+      debugPrint('ScannerService._resoudreCodeBarre : $e');
       throw const ScannerException(
         'Connexion impossible : vérifiez votre réseau puis réessayez.',
         type: TypeErreurScan.reseau,

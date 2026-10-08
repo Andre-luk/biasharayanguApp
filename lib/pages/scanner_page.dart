@@ -5,7 +5,8 @@
 // Écran plein écran réservé aux rôles disposant de la page `scanner`
 // (VENDEUR, PROPRIÉTAIRE — Module 4) :
 //
-//   1. caméra plein écran + détection automatique des QR codes (scan continu,
+//   1. caméra plein écran + détection automatique des CODES-BARRES (EAN-13,
+//      UPC, Code 128…) ET des QR codes de l'application (scan continu,
 //      sans jamais fermer l'écran) ;
 //   2. feedback visuel (flash + bannière) et sonore (caisse + vibration) ;
 //   3. fiche d'ajout au panier : nom, conditionnement, PRIX RELU DANS LA BASE,
@@ -40,6 +41,7 @@ import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
+import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
 
 // ---------------------------------------------------------------------------
 // PALETTE DE L'ÉCRAN (thème sombre, la caméra occupe tout l'espace)
@@ -91,7 +93,9 @@ class _ScannerPageState extends State<ScannerPage>
     super.initState();
     _controleur = MobileScannerController(
       detectionSpeed: DetectionSpeed.noDuplicates,
-      formats: const <BarcodeFormat>[BarcodeFormat.qrCode],
+      //  🏷️ CORRECTIF 59 — codes-barres FABRICANTS + QR codes de
+      //  l'application : une étiquette déjà imprimée reste scannable.
+      formats: formatsCodesBarres,
       autoZoom: true,
     );
     _animationLigne = AnimationController(

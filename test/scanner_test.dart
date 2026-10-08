@@ -7,7 +7,9 @@
 //     unités de base, stock vendable, rupture) ;
 //   • le plafonnement des quantités du panier partagé (jamais plus que le
 //     stock) et le cumul par code scanné ;
-//   • le rejet des QR codes inconnus AVANT tout appel réseau ;
+//   • le rejet IMMÉDIAT des codes vides ou mal formés, avant tout réseau ;
+//   • 🏷️ CORRECTIF 59 — un code qui n'est pas une étiquette Biashara n'est
+//     plus refusé : il part en recherche de code-barres ;
 //   • l'historique glissant des 5 derniers scans.
 //
 //     flutter test test/scanner_test.dart
@@ -152,14 +154,33 @@ void main() {
   // =========================================================================
 
   group('ScannerService — codes inconnus', () {
-    test('un QR étranger est refusé sans toucher au réseau', () async {
+    test('un CODE VIDE est refusé sans toucher au réseau', () async {
+      await expectLater(
+        ScannerService.instance.resoudre('   '),
+        throwsA(
+          isA<ScannerException>().having(
+            (ScannerException e) => e.type,
+            'type',
+            TypeErreurScan.formatInconnu,
+          ),
+        ),
+      );
+    });
+
+    test(
+        '🏷️ CORRECTIF 59 — un code étranger n\'est PLUS rejeté hors ligne : '
+        'il devient une recherche de CODE-BARRES', () async {
+      //  AVANT : « formatInconnu » immédiat, sans réseau.
+      //  MAINTENANT : le code est confié à `produits.code_barre` ; sans base
+      //  joignable, l'échec est donc un problème de RÉSEAU — jamais un
+      //  « format inconnu ». C'est ce revirement qui est vérifié ici.
       await expectLater(
         ScannerService.instance.resoudre('https://exemple.com'),
         throwsA(
           isA<ScannerException>().having(
             (ScannerException e) => e.type,
             'type',
-            TypeErreurScan.formatInconnu,
+            isNot(TypeErreurScan.formatInconnu),
           ),
         ),
       );

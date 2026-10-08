@@ -26,6 +26,7 @@ import 'package:biashara_yangu/services/image_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
+import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 /// Valeur technique de l'entrée « Nouvelle catégorie » de la liste déroulante.
@@ -54,6 +55,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   final TextEditingController _prixVenteController = TextEditingController();
   final TextEditingController _quantiteController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+
+  // 🏷️ CORRECTIF 59 — code-barres fabricant du produit (EAN-13, UPC…).
+  final TextEditingController _codeBarreController = TextEditingController();
 
   // 🧩 MODULE 16 C1 — pharmacie : lot & date de péremption.
   final TextEditingController _lotController = TextEditingController();
@@ -95,6 +99,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     _prixVenteController.dispose();
     _quantiteController.dispose();
     _descriptionController.dispose();
+    _codeBarreController.dispose();
     _lotController.dispose();
     _tailleController.dispose();
     _couleurController.dispose();
@@ -146,6 +151,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         _prixVenteController.text = _champNombre(article.prixVente);
         _quantiteController.text = _champNombre(article.quantite);
         _descriptionController.text = article.description ?? '';
+        _codeBarreController.text = article.codeBarre ?? '';
         _lotController.text = article.lotNumero ?? '';
         _dateExpiration = article.dateExpiration;
         _vendableAuPoids = article.vendableAuPoids;
@@ -736,6 +742,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
       final double prixVente = _lireNombre(_prixVenteController.text);
       final double quantite = _lireNombre(_quantiteController.text);
       final String description = _descriptionController.text.trim();
+      // 🏷️ CORRECTIF 59 — code-barres fabricant du produit.
+      final String codeBarre = _codeBarreController.text.trim();
       // 🧩 MODULE 16 C1 — pharmacie : lot & date de péremption (les valeurs
       // d'un article existant sont conservées même si le module est inactif,
       // car les champs sont initialisés depuis l'article).
@@ -772,6 +780,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           dateExpiration: _dateExpiration,
           vendableAuPoids: _vendableAuPoids,
           attributs: attributs,
+          codeBarre: codeBarre,
         );
         if (!mounted) return;
         _afficherMessage('Modifications enregistrées.');
@@ -790,6 +799,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           dateExpiration: _dateExpiration,
           vendableAuPoids: _vendableAuPoids,
           attributs: attributs,
+          codeBarre: codeBarre,
         );
         if (!mounted) return;
         context.pop(true);
@@ -1010,6 +1020,20 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                         maxLines: 3,
                         textCapitalization: TextCapitalization.sentences,
                         decoration: _decoration('Description (optionnelle)'),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ------------------------------- code-barres 🏷️
+                      //  CORRECTIF 59 — le code du fabricant : saisi au
+                      //  clavier, scanné à la caméra, ou tapé par une
+                      //  douchette USB/Bluetooth.
+                      ChampCodeBarre(
+                        controller: _codeBarreController,
+                        aide: 'Scannez le code du fabricant '
+                            '(EAN-13, UPC, Code 128…).',
+                        onCode: (String code) =>
+                            FocusScope.of(context).unfocus(),
                       ),
 
                       // 🧩 MODULE 16 C1 — PHARMACIE : lot & péremption.

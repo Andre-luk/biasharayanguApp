@@ -19,10 +19,12 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/ligne_panier.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -249,7 +251,61 @@ class VenteService {
       modePaiement: vente.modePaiement,
     ));
 
+    // 🔔 STOCK (correctif 59) — alerte si un article vient de passer sous son
+    // seuil d'alerte. Best-effort, jamais bloquant.
+    unawaited(_alerterStockApresVente(lignesPanier));
+
     return vente;
+  }
+
+  /// 🔔 CORRECTIF 59 — alerte « stock faible » après une vente.
+  ///
+  /// Le stock est RELU dans la base (la sortie serveur vient d'être
+  /// appliquée) : c'est la valeur APRÈS. L'AVANT se déduit des unités
+  /// vendues. Une notification n'est envoyée QUE si le seuil vient d'être
+  /// franchi — jamais à chaque vente d'un article déjà en alerte.
+  ///
+  /// Best-effort intégral : une lecture impossible ou une notification
+  /// refusée ne remet jamais en cause la vente, déjà confirmée.
+  Future<void> _alerterStockApresVente(List<LignePanier> lignes) async {
+    // Regrouper les unités PAR PRODUIT : un panier peut contenir deux
+    // conditionnements du même article.
+    final Map<int, double> unitesParProduit = <int, double>{};
+    for (final LignePanier ligne in lignes) {
+      unitesParProduit.update(
+        ligne.produitId,
+        (double total) => total + ligne.unitesBase,
+        ifAbsent: () => ligne.unitesBase,
+      );
+    }
+
+    for (final MapEntry<int, double> entree in unitesParProduit.entries) {
+      try {
+        final Article? article =
+            await ArticleService.instance.getArticleById(entree.key);
+        if (article == null) continue;
+
+        final double apres = article.quantite;
+        final double avant = apres + entree.value;
+
+        if (!NotificationService.aFranchiLeSeuil(
+          avant: avant,
+          apres: apres,
+          seuil: article.seuilAlerte,
+        )) {
+          continue;
+        }
+
+        await NotificationService.instance.notifierStockFaible(
+          nom: article.nom,
+          quantite: apres,
+          seuil: article.seuilAlerte,
+          unite: article.uniteMesure,
+        );
+      } catch (e) {
+        debugPrint('VenteService._alerterStockApresVente : $e');
+      }
+    }
   }
 
   /// Décrémente le stock de la copie locale (SQLite) pour que la caisse
