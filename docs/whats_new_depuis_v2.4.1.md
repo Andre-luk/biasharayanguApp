@@ -28,6 +28,7 @@ les relancer ne casse rien.
 68  CRUD des quotas IA
 69  code de validation des agents
 70  l'agent peut vérifier un dossier
+71  colonne du nom des utilisateurs  ← OBLIGATOIRE (corrige une panne de la 2.8.0)
 ```
 
 ⚠️ **Le 59 est obligatoire** : sans la colonne `produits.code_barre`,
@@ -35,6 +36,10 @@ l'enregistrement d'un produit avec un code-barres échouerait.
 
 ⚠️ **Le 66 est une correction de faille** et doit être exécuté avec le 65. À
  défaut, voir la section Sécurité ci-dessous.
+
+⚠️ **Le 71 est obligatoire** si vous avez déjà installé la 2.8.0 : elle corrige
+une colonne inexistante qui empêchait trois fonctions de répondre. Voir la
+section « Correction 71 » ci-dessous.
 
 **Tant qu'un script n'est pas exécuté**, l'application ne plante pas : elle
 affiche « module non installé » sur les écrans concernés et continue de
@@ -159,6 +164,36 @@ L'alerte se déclenche désormais aussi après un **ajustement d'inventaire**, u
 
 ---
 
+## 🔧 Correction 71 — trois fonctions de la 2.8.0 ne répondaient pas
+
+**À exécuter si vous avez déjà installé la 2.8.0.**
+
+Les correctifs 67, 68 et 69 lisaient le nom d'un utilisateur dans une colonne
+qui **n'existe pas** (`nom_complet`, au lieu de `nom`). Trois fonctions
+échouaient donc à l'usage, avec le message :
+
+> `column demandeur.nom_complet does not exist`
+
+Ce qui ne fonctionnait pas :
+
+- la liste des **codes de validation** et celle des **dossiers à confirmer** ;
+- la liste des **attributions de quotas** (le nom du collaborateur) ;
+- la génération d'une **facture d'abonnement** (le nom de celui qui l'émet).
+
+Tout le reste de l'application est intact : la vente, le stock, les factures
+déjà émises, l'activation des comptes. Le script **71** réinstalle les trois
+fonctions corrigées. Aucune donnée n'est touchée et **aucune réinstallation de
+l'application n'est nécessaire**.
+
+> ⚠️ **Pourquoi le contrôle automatique ne l'avait pas vu :** PostgreSQL ne
+> vérifie les noms de colonnes **qu'à la première exécution** d'une fonction,
+> pas au moment où on l'installe. Le script s'était donc installé sans la
+> moindre erreur — et le défaut n'apparaissait qu'à l'écran, chez l'utilisateur.
+> Le script 71 ajoute désormais ce contrôle : il vérifie que les colonnes
+> utilisées **existent réellement**.
+
+---
+
 ## Version courte (pour la fiche du magasin)
 
 > **Biashara Yangu 2.8.0** — Gérez votre commerce à Lubumbashi, même hors
@@ -193,3 +228,4 @@ L'alerte se déclenche désormais aussi après un **ajustement d'inventaire**, u
 | 68 | quotas IA | catalogue des packs |
 | 69 | code de validation | nouvelles tables et fonctions |
 | 70 | l'agent vérifie un dossier | garde de rôle figée explicitement |
+| 71 | **colonne du nom des utilisateurs** | **obligatoire** : répare 3 fonctions de la 2.8.0 |

@@ -8,6 +8,32 @@ et 68)*
 
 ---
 
+## ⚠️ CORRECTION 71 — À EXÉCUTER APRÈS CETTE VERSION
+
+Trois fonctions livrées par les correctifs 67, 68 et 69 lisaient le nom d'un
+utilisateur dans une colonne **qui n'existe pas** (`nom_complet` au lieu de
+`nom`). Elles échouaient donc à l'usage, avec le message :
+
+> `column demandeur.nom_complet does not exist`
+
+Ce qui ne répondait pas : la liste des **codes de validation**, celle des
+**dossiers à confirmer**, la liste des **attributions de quotas** (nom du
+collaborateur) et la génération d'une **facture d'abonnement** (nom de
+l'émetteur). Tout le reste de l'application est intact.
+
+Le script **`20260916000071_fix_colonne_nom_utilisateur.sql`** réinstalle les
+quatre fonctions corrigées. Aucune donnée n'est touchée, **aucune
+réinstallation de l'application n'est nécessaire**.
+
+> ⚠️ **Pourquoi les vérifications automatiques ne l'avaient pas vu :**
+> PostgreSQL ne valide les noms de colonnes **qu'à la première exécution**
+> d'une fonction — pas au moment de son installation. Le script s'installait
+> donc sans la moindre erreur, et le défaut n'apparaissait qu'à l'écran, chez
+> l'utilisateur. Le script 71 comble ce trou : il **vérifie que les colonnes
+> utilisées existent réellement** avant de se déclarer terminé.
+
+---
+
 ## En une phrase
 
 **Une vérification de compte ne peut plus être signée par le seul agent — la

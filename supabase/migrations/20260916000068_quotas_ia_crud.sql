@@ -440,17 +440,17 @@ begin
   select coalesce(jsonb_agg(x.obj order by x.nom), '[]'::jsonb)
     into v_out
     from (
-      select coalesce(nullif(btrim(u.nom_complet), ''), 'Collaborateur') as nom,
+      select coalesce(nullif(btrim(u.nom), ''), u.email, 'Collaborateur') as nom,
              jsonb_build_object(
                'utilisateur_id',       q.utilisateur_id,
-               'nom',                  coalesce(nullif(btrim(u.nom_complet), ''), 'Collaborateur'),
+               'nom',                  coalesce(nullif(btrim(u.nom), ''), u.email, 'Collaborateur'),
                'role',                 public.mon_role(q.utilisateur_id),
                'quotas_disponibles',   q.quotas_disponibles,
                'quotas_utilises_total', q.quotas_utilises_total,
                'quotas_achetes_total', q.quotas_achetes_total,
                'attribue_le',          q.attribue_le,
                'attribue_par',         q.attribue_par,
-               'attribue_par_nom',     nullif(btrim(auteur.nom_complet), '')
+               'attribue_par_nom',     coalesce(nullif(btrim(auteur.nom), ''), auteur.email)
              ) as obj
         from public.agent_ia_quotas q
         left join public.utilisateurs u

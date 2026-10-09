@@ -567,12 +567,12 @@ begin
                'motif',          c.motif,
                'statut',         c.statut,
                'demande_par',    c.demande_par,
-               'demande_par_nom', nullif(btrim(demandeur.nom_complet), ''),
+               'demande_par_nom', coalesce(nullif(btrim(demandeur.nom), ''), demandeur.email),
                'demande_le',     c.demande_le,
                'emis_le',        c.emis_le,
-               'emis_par_nom',   nullif(btrim(emetteur.nom_complet), ''),
+               'emis_par_nom',   coalesce(nullif(btrim(emetteur.nom), ''), emetteur.email),
                'valide_le',      c.valide_le,
-               'valide_par_nom', nullif(btrim(valide.nom_complet), ''),
+               'valide_par_nom', coalesce(nullif(btrim(valide.nom), ''), valide.email),
                'expire_le',      c.expire_le,
                'minutes_restantes', case
                   when c.statut in ('EN_ATTENTE', 'EMIS')
@@ -650,7 +650,7 @@ begin
                'etape',         e.activation_etape,
                'statut',        e.statut::text,
                'verifie_par',   e.verifie_par,
-               'verifie_par_nom', nullif(btrim(verificateur.nom_complet), ''),
+               'verifie_par_nom', coalesce(nullif(btrim(verificateur.nom), ''), verificateur.email),
                'verifie_le',    e.verifie_le,
                --  Une demande ouverte a-t-elle au moins été faite ? Cela
                --  distingue « l'agent n'a rien demandé » de « la Finance n'a

@@ -52,7 +52,7 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 71 migrations SQL idempotentes (0000 → 0070)
+supabase/migrations/   → 72 migrations SQL idempotentes (0000 → 0071)
 test/                  → 842 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,

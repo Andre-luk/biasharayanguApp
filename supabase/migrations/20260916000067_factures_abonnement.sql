@@ -466,7 +466,7 @@ begin
   -- ── 5.f Identité de l'émetteur (traçabilité).
   --     `mon_role(uuid)` est le RÔLE EFFECTIF (new_role prime sur l'ancien
   --     `role` hérité) : la facture doit nommer le rôle réel de l'auteur.
-  select nullif(btrim(u.nom_complet), ''),
+  select coalesce(nullif(btrim(u.nom), ''), u.email),
          public.mon_role(u.id)
     into v_nom_auteur, v_role_auteur
     from public.utilisateurs u
