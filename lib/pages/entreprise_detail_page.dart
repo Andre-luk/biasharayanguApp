@@ -9,6 +9,7 @@ import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/services/abonnement_niveaux_service.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/statut_abonnement_chip.dart';
 
@@ -145,6 +146,13 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
 
   /// 💳 MODULE 3 — Ouvre le détail d'abonnement du moteur d'abonnement
   /// (paiements typés, renouvellement, historique de la table La Perle).
+  /// 🔒 CORRECTIF 63 — l'AGENT DE TERRAIN ne suspend ni ne réactive un compte.
+  ///
+  /// La base le refuse désormais (policies restrictives + déclencheur sur le
+  /// statut) ; on masque donc le bouton pour ne pas lui infliger un refus
+  /// incompréhensible. Les autres rôles — plateforme et patron — le gardent.
+  bool get _peutSuspendre => !PermissionService.instance.estAgentTerrain;
+
   Future<void> _ouvrirAbonnement() async {
     final Entreprise? entreprise = _entreprise;
     if (entreprise == null) return;
@@ -682,7 +690,8 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
             const SizedBox(width: 12),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: desactive ? null : _basculerStatut,
+                onPressed:
+                    (desactive || !_peutSuspendre) ? null : _basculerStatut,
                 icon: desactive
                     ? const SizedBox(
                         width: 16,
