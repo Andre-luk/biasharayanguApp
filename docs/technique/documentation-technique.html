@@ -398,6 +398,16 @@ test/                          Suite de tests pure Dart (aucun binding requis)</
       <tr><td><code>…0039_module18_devises.sql</code></td><td>Devises de travail (CDF/USD) et taux.</td></tr>
       <tr><td><code>…0040_module19_marketplace.sql</code></td><td>Marketplace : 7 tables, 1 vue, 22 fonctions, bucket de stockage, permissions.</td></tr>
       <tr><td><code>…0041_admin_plateforme.sql</code></td><td>Administration : 3 colonnes de modération, pages <code>boutiques</code> et <code>moderation</code>, 6 fonctions plateforme.</td></tr>
+      <tr><td><code>…0057→0058</code></td><td>Pools de quotas hérités et attribution des quotas par la plateforme.</td></tr>
+      <tr><td><code>…0059_code_barre_produits.sql</code></td><td>Code-barres fabricant par produit (colonne <code>produits.code_barre</code>).</td></tr>
+      <tr><td><code>…0060→0062</code></td><td>Deux prix d'abonnement (installation + mensuel) ; l'installation n'est plus refacturée ; premier renouvellement débloqué.</td></tr>
+      <tr><td><code>…0063→0064</code></td><td>Droits de l'agent de terrain : il corrige un dossier mais ne suspend, ne réactive ni ne supprime un compte.</td></tr>
+      <tr><td><code>…0065_fonctionnalites_par_abonnement.sql</code></td><td>Fonctionnalités disponibles selon le niveau d'abonnement.</td></tr>
+      <tr><td><code>…0066_rls_niveaux_abonnement.sql</code></td><td><strong>Sécurité</strong> : active la RLS sur <code>niveaux_abonnement</code> (lecture seule ; écritures par RPC). Sans elle, tout compte connecté pouvait s'octroyer le niveau « Premium ».</td></tr>
+      <tr><td><code>…0067_factures_abonnement.sql</code></td><td>Factures d'abonnement : table <code>factures_abonnement</code> (instantané figé), compteur de numéros, trigger d'émission sur les deux tables de paiement, 6 RPC, niveau d'audit <code>FACTURE_ABONNEMENT</code>.</td></tr>
+      <tr><td><code>…0068_quotas_ia_crud.sql</code></td><td>Quotas IA : table <code>agent_ia_packs</code> (catalogue modifiable), reprise d'attribution, geste commercial (<code>rpc_agent_ia_offrir</code>) ; <code>rpc_agent_ia_demander_achat</code> recalculée sur le catalogue.</td></tr>
+      <tr><td><code>…0069_code_validation_agent.sql</code></td><td>Code de validation des agents : table <code>codes_validation_agent</code> (une seule demande ouverte par compte), 6 RPC, <strong>code jamais journalisé et renvoyé à la Finance et au Super Admin seuls</strong>.</td></tr>
+      <tr><td><code>…0070_agent_verifie_dossier.sql</code></td><td>Fige explicitement la garde de <code>rpc_activation_verifier</code> (accepte <code>AGENT_TERRAIN</code>) ; contrôle par extraction de la garde réelle.</td></tr>
     </tbody>
   </table>
 

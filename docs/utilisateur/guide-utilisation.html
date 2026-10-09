@@ -52,6 +52,7 @@
     <li><strong>Ma visibilité Biashara</strong><span>Ce que la plateforme apporte, chiffres à l'appui.</span></li>
     <li><strong>Publicités Biashara</strong><span>Composer et soumettre une campagne.</span></li>
     <li><strong>Administration de la plateforme</strong><span>Vérifier, activer, modérer, administrer les comptes.</span></li>
+    <li><strong>Votre abonnement et vos factures</strong><span>Prix d'installation, abonnement mensuel, factures envoyées sur WhatsApp.</span></li>
     <li><strong>Problèmes fréquents</strong><span>Symptôme, cause probable, solution.</span></li>
   </ol>
 </section>
@@ -188,6 +189,19 @@
   <h3>Alertes</h3>
   <ul>
     <li><strong>Stock bas</strong> : la quantité est passée sous le seuil défini sur l'article.</li>
+    <li><strong>Stock bas — sur une vente, mais pas seulement</strong> : l'alerte se
+déclenche aussi quand un <strong>ajustement d'inventaire</strong>, une
+<strong>clôture d'inventaire</strong>, un <strong>ajustement de matière
+première</strong> ou une <strong>consommation en production</strong> fait passer
+l'article sous son seuil. C'est indispensable : une marchandise perdue, volée ou
+cassée ne se vend pas — sans cela, l'alerte n'aurait parlé que des manquants
+vendus, et le cas le plus grave serait resté muet.</li>
+    <li><strong>Un excédent ne déclenche rien</strong> : une hausse de stock ne peut
+pas faire passer un article <em>sous</em> son seuil. Une alerte qui se déclenche
+pour de bonnes nouvelles apprend à ne plus la lire.</li>
+    <li><strong>Alertes répétées évitées</strong> : l'alerte ne part qu'au moment
+où le seuil est <em>franchi</em>. Un article déjà en alerte ne redéclenche rien à
+chaque nouveau mouvement.</li>
     <li><strong>Expiration</strong> (pharmacie, alimentaire) : les lots proches de la date limite remontent dans un écran dédié.</li>
     <li><strong>Rupture</strong> : l'article est à zéro ; il reste vendable si vous le décidez, mais l'alerte évite l'oubli.</li>
   </ul>
@@ -583,9 +597,76 @@
   </p>
 </section>
 
-<!-- ===================== 13. DÉPANNAGE ===================== -->
+<!-- ===================== 13. ABONNEMENT ET FACTURES ===================== -->
 <section class="section">
-  <h2><span class="num">13.</span>Problèmes fréquents</h2>
+  <h2><span class="num">13.</span>Votre abonnement et vos factures</h2>
+
+  <h3>Deux prix, distincts</h3>
+  <p>Votre abonnement comporte <strong>deux montants séparés</strong> :</p>
+  <ul>
+    <li>le <strong>prix d'installation</strong> — payé une seule fois, il inclut
+    le premier mois ;</li>
+    <li>le <strong>prix de l'abonnement par mois</strong> — dû à partir du
+    deuxième mois.</li>
+  </ul>
+  <p>
+    L'installation n'est <strong>jamais refacturée</strong> au renouvellement :
+    vous ne payez plus que le mensuel.
+  </p>
+
+  <h3>Chaque paiement produit une facture, tout seul</h3>
+  <p>
+    À chaque encaissement, une <strong>facture numérotée</strong>
+    (<code>FA-2026-000001</code>) est créée automatiquement. Elle vous est
+    envoyée sur <strong>votre numéro WhatsApp</strong> et reste disponible dans
+    l'application.
+  </p>
+  <p>
+    La facture ne dit pas seulement « payé » : elle fige, au moment de son
+    émission,
+  </p>
+  <ul>
+    <li>le <strong>prix de l'installation</strong> et le <strong>prix
+    mensuel</strong> ;</li>
+    <li>l'<strong>avance</strong> que vous avez versée ;</li>
+    <li>le <strong>versement</strong> reçu et le <strong>total déjà
+    payé</strong> ;</li>
+    <li>ce qu'il <strong>reste à payer</strong>.</li>
+  </ul>
+  <p>
+    Une fois émise, elle <strong>ne change plus</strong> : même si les prix du
+    catalogue évoluent plus tard, votre facture reste la preuve de ce qui a été
+    convenu ce jour-là.
+  </p>
+
+  <h3>Qui a généré la facture</h3>
+  <p>
+    Chaque facture porte le <strong>nom et le rôle</strong> de la personne qui
+    l'a produite, ainsi que <strong>le numéro sur lequel elle a été
+    envoyée</strong>. C'est votre preuve de ce que vous payez, face à ce qu'on
+    vous demande.
+  </p>
+
+  <h3>Où la retrouver</h3>
+  <p>
+    <strong>Paramètres → Abonnement → « Mes factures d'abonnement »</strong>.
+    Vous pouvez la télécharger en PDF, la partager ou l'imprimer. La facture
+    part automatiquement sur WhatsApp ; si aucun numéro n'est enregistré, elle
+    reste marquée « à envoyer » le temps que la plateforme renseigne le
+    téléphone du responsable.
+  </p>
+
+  <h3>Votre avance, puis le complément</h3>
+  <p>
+    Le premier paiement comporte souvent une <strong>avance</strong>. Vous
+    disposez alors de <strong>7 jours</strong> pour verser le complément : la
+    facture vous rappelle la date limite et le solde restant à payer.
+  </p>
+</section>
+
+<!-- ===================== 14. DÉPANNAGE ===================== -->
+<section class="section">
+  <h2><span class="num">14.</span>Problèmes fréquents</h2>
 
   <table class="compact">
     <thead><tr><th style="width:34%">Ce que vous observez</th><th>Cause probable</th><th>Que faire</th></tr></thead>

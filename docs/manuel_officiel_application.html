@@ -90,6 +90,7 @@ où les clients te trouvent près d'eux.
 <p><span class="lbl">À quoi ça sert :</span> savoir ce qu'il reste, et être alerté avant la rupture.</p>
 <p><span class="lbl">Comment :</span> <strong>Stock → Entrée de stock</strong> (réception, retour) · <strong>Sortie</strong> (perte, casse, don) · <strong>Inventaire</strong> (comptage réel) · <strong>Alertes</strong> (seuil minimum).</p>
 <p><span class="lbl">Les 3 gestes :</span> fixer un <strong>seuil d'alerte</strong> par article ; faire un <strong>inventaire</strong> régulier (le stock théorique diverge toujours un peu) ; corriger une erreur par une <strong>sortie motivée</strong>, jamais par une modification silencieuse.</p>
+<p><span class="lbl">Quand l'alerte se déclenche :</span> non seulement sur une <strong>vente</strong>, mais aussi sur un <strong>ajustement d'inventaire</strong>, une <strong>clôture d'inventaire</strong>, un <strong>ajustement de matière première</strong> et une <strong>consommation en production</strong>. C'est indispensable : une marchandise perdue, volée ou cassée ne se vend pas — sans cela, l'alerte n'aurait parlé que des manquants vendus, et le cas le plus grave serait resté muet. Un <strong>excédent</strong> ne déclenche rien, et un article <strong>déjà en alerte</strong> ne redéclenche rien à chaque mouvement.</p>
 </div>
 <p class="sous">Modules métiers : <strong>pesée</strong> (vendu au poids), <strong>production</strong> (boulangerie), <strong>lots et péremption</strong> (pharmacie, boucherie).</p>
 
@@ -178,6 +179,8 @@ où les clients te trouvent près d'eux.
 <p><span class="lbl">À quoi ça sert :</span> savoir où en est ton abonnement, ce qui a été payé, ce qui reste dû.</p>
 <p><span class="lbl">Comment :</span> <strong>Abonnement</strong> : statut, échéance, solde, historique des paiements, prolongation.</p>
 <p><span class="lbl">Les 3 gestes :</span> surveiller l'<strong>échéance</strong> ; un paiement partiel accorde un essai — le solde reste dû ; la régularisation réactive automatiquement.</p>
+<p><span class="lbl">Deux prix, distincts :</span> le <strong>prix d'installation</strong> (payé une fois, premier mois inclus) et le <strong>prix mensuel</strong> (dû à partir du deuxième mois). L'installation n'est <strong>jamais refacturée</strong> au renouvellement. Après une <strong>avance</strong>, tu disposes de <strong>7 jours</strong> pour verser le complément.</p>
+<p><span class="lbl">Tes factures :</span> chaque encaissement produit <strong>tout seul</strong> une facture numérotée (<code>FA-2026-000001</code>), envoyée sur ton <strong>WhatsApp</strong> et conservée dans <strong>Abonnement → Mes factures d'abonnement</strong> (télécharger, partager, imprimer). Elle fige le prix d'installation, le prix mensuel, l'avance, le versement reçu, le total payé et le solde restant — ainsi que <strong>le nom et le rôle</strong> de qui l'a générée et le numéro sur lequel elle est partie. C'est la <strong>preuve</strong> de ce que tu paies, face à ce qu'on te demande.</p>
 </div>
 
 <h3>5.3 Devises multiples</h3>
@@ -214,7 +217,8 @@ où les clients te trouvent près d'eux.
   <tr><th style="width:30%">Écran</th><th>Usage</th></tr>
   <tr><td><strong>Entreprises</strong></td><td>Créer, consulter, rectifier une entreprise et son rattachement.</td></tr>
   <tr><td><strong>Comptes à vérifier</strong></td><td>Approuver un dossier d'activation, ou le rejeter avec un motif.</td></tr>
-  <tr><td><strong>Activations &amp; paiements</strong></td><td>Fixer le <strong>montant total dû</strong>, encaisser, activer, suivre les soldes.</td></tr>
+  <tr><td><strong>Activations &amp; paiements</strong></td><td>Fixer le <strong>montant total dû</strong>, encaisser, activer, suivre les soldes. Affiche aussi les <strong>codes de validation</strong> à dicter aux agents et les <strong>« dossiers à confirmer »</strong> (comptes vérifiés sans code).</td></tr>
+  <tr><td><strong>Codes de validation</strong></td><td>Les <strong>codes à 6 chiffres</strong> que la Finance (ou le Super Admin) dicte à l'agent de terrain avant la confirmation d'un dossier. Le code n'apparaît <strong>jamais</strong> dans le journal d'audit et l'agent ne peut pas le fabriquer. Passé <strong>5 minutes</strong>, l'agent peut continuer sans code — le dossier apparaît alors dans « dossiers à confirmer », avec l'indication de <strong>qui</strong> doit agir (« aucun code demandé par l'agent » ou « la Finance n'a pas répondu »).</td></tr>
   <tr><td><strong>Utilisateurs</strong></td><td>Créer les comptes, attribuer les rôles, désactiver, anonymiser, (Super Admin) purger.</td></tr>
   <tr><td><strong>Boutiques</strong></td><td>Voir tout le parc et la <strong>raison exacte</strong> d'invisibilité d'une boutique.</td></tr>
   <tr><td><strong>Modération</strong></td><td>Retirer du catalogue public un article non conforme, avec motif tracé.</td></tr>
