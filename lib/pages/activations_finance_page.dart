@@ -27,6 +27,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
+import 'package:biashara_yangu/widgets/codes_validation_finance.dart';
 import 'package:biashara_yangu/widgets/envoi_facture_automatique.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
@@ -344,6 +345,13 @@ class _ActivationsFinancePageState extends State<ActivationsFinancePage> {
             ],
           ),
         ),
+        // 🔐 CORRECTIF 69 — Codes de validation des agents.
+        // Deux choses à surveiller ici : les demandes de code en attente (la
+        // Finance doit le dicter à l'agent) et les comptes vérifiés SANS code
+        // — ceux que l'agent a pu valider après l'expiration des 5 minutes et
+        // que la Finance doit donc confirmer. Ce bandeau se réduit à une ligne
+        // quand il n'y a rien à faire : il ne prend pas la place des paiements.
+        const CodesValidationFinanceSection(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _charger,

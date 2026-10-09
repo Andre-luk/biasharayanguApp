@@ -20,6 +20,7 @@ import 'package:biashara_yangu/models/activation.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/widgets/code_validation_agent.dart';
 import 'package:biashara_yangu/widgets/dossiers_libres_agent.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
@@ -119,7 +120,9 @@ class _ComptesVerificationPageState extends State<ComptesVerificationPage> {
           'Le dossier « ${dossier.nom} » sera marqué VÉRIFIÉ et transmis à '
           'la finance pour la validation du paiement et l\'activation.\n\n'
           'Rappel : la vérification n\'active pas le compte — seule la '
-          'finance valide l\'activation finale.',
+          'finance valide l\'activation finale.\n\n'
+          'Un code de validation vous sera demandé juste après : la Finance '
+          'doit vous le dicter pour que l\'opération soit traçable.',
         ),
         actions: <Widget>[
           TextButton(
@@ -129,13 +132,34 @@ class _ComptesVerificationPageState extends State<ComptesVerificationPage> {
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Vérifier'),
+            label: const Text('Continuer'),
           ),
         ],
       ),
     );
 
-    if (confirme != true) return;
+    if (confirme != true || !mounted) return;
+
+    // 🔐 CORRECTIF 69 — LE CODE DE VALIDATION, JUSTE AVANT LA CONFIRMATION.
+    //
+    // ⚠️ L'ORDRE COMPTE. On demande le code APRÈS la confirmation et non
+    // avant : un code validé est à usage unique, et le consommer pour une
+    // vérification que l'agent annule ensuite fausserait la trace (le journal
+    // dirait « code utilisé » sans qu'aucun compte n'ait été vérifié).
+    //
+    // ⚠️ ET CE N'EST PAS UN VERROU : si la Finance ne répond pas dans les
+    // 5 minutes, `exigerCodeValidationAgent` propose « Continuer sans code ».
+    // L'agent garde donc toujours la possibilité de travailler ; ce que la
+    // Finance y gagne, c'est de VOIR ensuite ces dossiers dans sa liste
+    // « à confirmer ». Bloquer le terrain le pousserait à contourner
+    // l'application, et il n'y aurait plus aucune trace du tout.
+    final bool autorise = await exigerCodeValidationAgent(
+      context,
+      entrepriseId: dossier.id,
+      nomCompte: dossier.nom,
+    );
+    if (!autorise) return;
+
     await _executer(
       dossier,
       () => ActivationService.instance.verifier(
