@@ -1,0 +1,12 @@
+    -- 🔐 CORRECTIF 69 — code de validation de l'agent.
+    --   EMIS : c'est un CONTRÔLE sur la création de comptes, pas une
+    --   formalité — la Finance autorise quelqu'un à ouvrir un compte.
+    --   VALIDE : trace de qui s'en est servi.
+    --   ECHEC : un code refusé ou expiré est le signal le plus intéressant du
+    --   dispositif : soit une erreur, soit une tentative. Il ne doit JAMAIS
+    --   se noyer dans le journal.
+    when 'AGENT_CODE_DEMANDE'   then 'MOYEN'
+    when 'AGENT_CODE_EMIS'      then 'HAUT'
+    when 'AGENT_CODE_VALIDE'    then 'HAUT'
+    when 'AGENT_CODE_ECHEC'     then 'HAUT'
+    when 'AGENT_CODE_REVOQUE'   then 'HAUT'
