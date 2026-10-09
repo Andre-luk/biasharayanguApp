@@ -524,6 +524,29 @@ class GuideUtilisationPage extends StatelessWidget {
                   'samedi.',
             ],
           ),
+          _Etape(
+            numero: '32',
+            titre: 'Vos factures d\'abonnement',
+            icone: Icons.description_rounded,
+            points: <String>[
+              'Chaque encaissement de votre abonnement produit TOUT SEUL une '
+                  'facture : aucun document à réclamer, aucun oubli possible.',
+              'Elle montre le prix d\'installation (le premier mois est '
+                  'inclus), le prix de l\'abonnement par mois, l\'AVANCE que '
+                  'vous avez versée, le versement reçu et ce qu\'il reste à '
+                  'payer.',
+              'Elle dit AUSSI qui l\'a générée (le nom et le rôle de l\'agent) '
+                  'et sur quel numéro elle a été envoyée : c\'est votre preuve '
+                  'de ce que vous payez et de ce qu\'on vous demande.',
+              'Elle part automatiquement sur votre WhatsApp. Vous pouvez aussi '
+                  'la télécharger, la partager ou l\'imprimer.',
+              'Où la trouver : Paramètres → Abonnement → « Mes factures '
+                  'd\'abonnement ».',
+              'Pas de numéro WhatsApp enregistré ? Demandez à la plateforme de '
+                  'renseigner le téléphone du responsable : la facture restera '
+                  '« à envoyer » en attendant.',
+            ],
+          ),
         ],
       ),
     );

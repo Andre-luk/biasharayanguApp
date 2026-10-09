@@ -52,8 +52,8 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 42 migrations SQL idempotentes (0000 → 0041)
-test/                  → 698 tests purs (modèles, permissions, rapports, modules, devises, marketplace, administration)
+supabase/migrations/   → 68 migrations SQL idempotentes (0000 → 0067)
+test/                  → 788 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, marketplace, administration)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
@@ -219,7 +219,7 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **2.1.1+20**
+- Flutter **3.47.4** / Dart **3.13.3**, app **2.6.0+29**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`,
   `flutter_map` + `latlong2` (carte OpenStreetMap, **aucune clé d'API**),
   `geolocator` (position du visiteur, avec consentement), `http` (recherche
