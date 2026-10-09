@@ -8,6 +8,7 @@ import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/services/abonnement_niveaux_service.dart';
+import 'package:biashara_yangu/services/agent_service.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -328,6 +329,13 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           //  🧩 CORRECTIF 65 — ce que cette entreprise peut VOIR : son niveau
           //  d'abonnement et les fonctionnalités réellement appliquées.
           _carteNiveau(theme, entreprise),
+          const SizedBox(height: 16),
+          //  🪙 CORRECTIF 68 — GESTE COMMERCIAL : offrir des quotas IA au
+          //  client sans passer par un achat. La place naturelle de cette
+          //  action est ICI, sur la fiche du client : le contexte (qui, quel
+          //  compte, quel historique) y est déjà, et la fiche est le seul
+          //  écran où la plateforme agit sur une boutique précise.
+          _carteGesteQuotas(theme, entreprise),
           const SizedBox(height: 16),
           _cartePaiements(theme),
           const SizedBox(height: 16),
@@ -898,6 +906,152 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
   /// Affiche les fonctionnalités RÉELLEMENT appliquées (résolues côté
   /// serveur) et permet d'ouvrir l'écran de réglage. Rappel affiché : aucune
   /// restriction = tout reste visible.
+  // ---------------------------------------------------------------------------
+  // 🪙 CORRECTIF 68 — GESTE COMMERCIAL (QUOTAS IA OFFERTS)
+  // ---------------------------------------------------------------------------
+
+  /// Offre des quotas IA à cette boutique, sans passer par un achat.
+  ///
+  /// Réservé au Super Admin — et REVÉRIFIÉ par le serveur
+  /// (`rpc_agent_ia_offrir`), pas seulement masqué ici : l'application n'est
+  /// jamais l'autorité. Le MOTIF est obligatoire, côté écran ET côté serveur :
+  /// un cadeau sans justification est une sortie d'argent que personne ne
+  /// peut expliquer six mois plus tard.
+  Widget _carteGesteQuotas(ThemeData theme, Entreprise entreprise) {
+    if (!PermissionService.instance.estSuperAdmin) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(Icons.card_giftcard_rounded,
+                    color: theme.colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Geste commercial — quotas IA',
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Offrir des quotas à cette boutique : essai, geste après un '
+              'incident, accompagnement du lancement.\n\n'
+              'Les quotas offerts ne comptent JAMAIS comme achetés — le '
+              'propriétaire distingue donc ce qu\'il a payé de ce qui lui a '
+              'été offert. L\'opération est inscrite au journal d\'audit avec '
+              'son motif.',
+              style: TextStyle(fontSize: 12.5),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: () => _offrirQuotas(entreprise),
+                icon: const Icon(Icons.card_giftcard_rounded, size: 18),
+                label: const Text('Offrir des quotas'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _offrirQuotas(Entreprise entreprise) async {
+    final TextEditingController quantite = TextEditingController(text: '10');
+    final TextEditingController motif = TextEditingController();
+
+    final bool? confirme = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Offrir des quotas IA'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('À ${entreprise.nom}'),
+            const SizedBox(height: 14),
+            TextField(
+              controller: quantite,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Nombre de quotas',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: motif,
+              decoration: const InputDecoration(
+                labelText: 'Motif (obligatoire)',
+                hintText: 'Essai accordé au lancement',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Renoncer'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Offrir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirme != true) {
+      quantite.dispose();
+      motif.dispose();
+      return;
+    }
+
+    final int? nombre = int.tryParse(quantite.text.trim());
+    final String justification = motif.text.trim();
+    quantite.dispose();
+    motif.dispose();
+
+    if (nombre == null || nombre < 1) {
+      _afficherMessage('Indiquez un nombre de quotas valide.', estErreur: true);
+      return;
+    }
+    if (justification.length < 3) {
+      _afficherMessage('Indiquez le motif du geste commercial.',
+          estErreur: true);
+      return;
+    }
+
+    try {
+      final Map<String, dynamic> reponse =
+          await AgentService.instance.offrirQuotas(
+        quotas: nombre,
+        motif: justification,
+        entrepriseId: entreprise.id,
+      );
+      if (!mounted) return;
+      _afficherMessage(
+        '${reponse['quotas_offerts'] ?? nombre} quota(s) offert(s) — '
+        'pool de la boutique : ${reponse['solde_apres'] ?? '?'}.',
+      );
+    } on AgentServiceException catch (e) {
+      if (!mounted) return;
+      _afficherMessage(e.message, estErreur: true);
+    }
+  }
+
   Widget _carteNiveau(ThemeData theme, Entreprise entreprise) {
     return FutureBuilder<NiveauEntreprise>(
       future: NiveauxAbonnementService.instance

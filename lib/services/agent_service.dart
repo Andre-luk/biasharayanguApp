@@ -295,6 +295,152 @@ class AgentService {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // 1.b CORRECTIF 68 — CRUD DES QUOTAS IA
+  //     Catalogue des packs, reprise d'attribution, geste commercial et
+  //     visibilité sur « où sont passés les quotas ».
+  // ---------------------------------------------------------------------------
+
+  /// Catalogue des packs de quotas.
+  ///
+  /// ⚠️ REPLI LOCAL, volontaire : tant que la migration 68 n'est pas
+  /// exécutée, la RPC est absente (PGRST202) et l'écran d'achat serait VIDE —
+  /// plus personne ne pourrait commander. On retombe donc sur la grille
+  /// d'origine, et `vientDeLaBase == false` le dit à l'interface.
+  Future<List<PackQuotas>> chargerPacks({
+    AgentIaConfig? config,
+    bool inclureInactifs = false,
+  }) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_agent_ia_packs',
+        params: <String, dynamic>{'p_tous': inclureInactifs},
+      );
+
+      final List<PackQuotas> packs =
+          PackQuotas.listeDepuisJson(parseMap(reponse)?['packs']);
+      if (packs.isNotEmpty) return packs;
+
+      // Catalogue vide : mieux vaut la grille de repli qu'un écran vide.
+      return PackQuotas.depuisConfig(config ?? AgentIaConfig.defaut);
+    } catch (e) {
+      debugPrint('AgentService (packs, repli local) : $e');
+      return PackQuotas.depuisConfig(config ?? AgentIaConfig.defaut);
+    }
+  }
+
+  /// Super Admin : crée ou modifie un pack.
+  ///
+  /// [id] absent = création. La TAILLE d'un pack existant est verrouillée par
+  /// le serveur (un pack est une taille) : seule [quotas] à la création est
+  /// retenue pour un pack existant.
+  Future<Map<String, dynamic>> enregistrerPack({
+    String? id,
+    required int quotas,
+    required double prix,
+    String? libelle,
+    int? ordre,
+    bool? actif,
+  }) {
+    return _executer<Map<String, dynamic>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_agent_ia_pack_enregistrer',
+          params: <String, dynamic>{
+            'p_id': id,
+            'p_quotas': quotas,
+            'p_prix': prix,
+            'p_libelle': libelle,
+            'p_ordre': ordre,
+            'p_actif': actif,
+          },
+        );
+        return parseMap(reponse) ?? <String, dynamic>{};
+      },
+      'l\'enregistrement du pack',
+    );
+  }
+
+  /// Super Admin : supprime un pack (le dernier pack actif est protégé).
+  Future<Map<String, dynamic>> supprimerPack(String id) {
+    return _executer<Map<String, dynamic>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_agent_ia_pack_supprimer',
+          params: <String, dynamic>{'p_id': id},
+        );
+        return parseMap(reponse) ?? <String, dynamic>{};
+      },
+      'la suppression du pack',
+    );
+  }
+
+  /// Où sont passés les quotas : pool restant + solde de chaque membre.
+  Future<AttributionsQuotas> chargerAttributions({String? entrepriseId}) {
+    return _executer<AttributionsQuotas>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_agent_ia_attributions',
+          params: <String, dynamic>{'p_entreprise_id': entrepriseId},
+        );
+        return AttributionsQuotas.depuisJson(reponse);
+      },
+      'le chargement des attributions',
+    );
+  }
+
+  /// Reprend des quotas NON CONSOMMÉS à un collaborateur et les rend au pool.
+  ///
+  /// [quotas] absent = tout reprendre. Les quotas déjà utilisés ne sont jamais
+  /// reprenables : le service a été rendu, il est dû.
+  Future<Map<String, dynamic>> annulerAttribution({
+    required String utilisateurId,
+    int? quotas,
+  }) {
+    return _executer<Map<String, dynamic>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_agent_ia_attribution_annuler',
+          params: <String, dynamic>{
+            'p_utilisateur': utilisateurId,
+            'p_quotas': quotas,
+          },
+        );
+        return parseMap(reponse) ?? <String, dynamic>{};
+      },
+      'la reprise des quotas',
+    );
+  }
+
+  /// Super Admin : geste commercial — offre des quotas.
+  ///
+  /// Le motif est OBLIGATOIRE côté serveur : un cadeau sans justification est
+  /// un trou dans la caisse. Les quotas offerts ne comptent jamais comme
+  /// achetés, donc le patron distingue ce qu'il a payé de ce qu'on lui a
+  /// offert.
+  Future<Map<String, dynamic>> offrirQuotas({
+    required int quotas,
+    required String motif,
+    String? utilisateurId,
+    String? entrepriseId,
+  }) {
+    return _executer<Map<String, dynamic>>(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_agent_ia_offrir',
+          params: <String, dynamic>{
+            'p_quotas': quotas,
+            'p_motif': motif,
+            'p_utilisateur': utilisateurId,
+            'p_entreprise_id': entrepriseId,
+          },
+        );
+        return parseMap(reponse) ?? <String, dynamic>{};
+      },
+      'l\'octroi du geste commercial',
+    );
+  }
+
   /// Super Admin : met à jour les tarifs/réglages (module 13 bis inclus).
   Future<Map<String, dynamic>> majConfig(AgentIaConfig config) {
     return _executer<Map<String, dynamic>>(

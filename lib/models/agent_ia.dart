@@ -110,23 +110,206 @@ class AgentIaConfig {
 
 /// Un pack de quotas proposé à l'achat.
 class PackQuotas {
-  const PackQuotas({required this.quotas, required this.prix});
+  const PackQuotas({
+    required this.quotas,
+    required this.prix,
+    this.id,
+    this.libelle,
+    this.ordre = 0,
+    this.actif = true,
+  });
+
+  /// Identifiant du pack EN BASE (correctif 68). `null` = pack de repli,
+  /// c'est-à-dire l'ancienne grille codée en dur.
+  final String? id;
 
   final int quotas;
   final double prix;
 
+  /// Nom commercial (« Pack découverte », « Pack boutique »…).
+  final String? libelle;
+
+  final int ordre;
+  final bool actif;
+
   /// Prix par quota dans ce pack (affiché pour l'économie).
   double get prixParQuota => quotas > 0 ? prix / quotas : 0;
 
-  /// Les 4 packs officiels — prix proportionnels au prix du pack de 10.
+  /// Vrai si ce pack vient du CATALOGUE en base (et non du repli local).
+  bool get vientDeLaBase => id != null;
+
+  /// Libellé affiché, jamais vide.
+  String get libelleAffiche =>
+      (libelle ?? '').trim().isEmpty ? '$quotas quotas' : libelle!.trim();
+
+  // ---------------------------------------------------------------------------
+  // CATALOGUE EN BASE (correctif 68)
+  // ---------------------------------------------------------------------------
+
+  static PackQuotas? depuisJson(dynamic valeur) {
+    final Map<String, dynamic>? map = parseMap(valeur);
+    if (map == null) return null;
+
+    final int quotas = parseInt(map['quotas']);
+    if (quotas <= 0) return null;
+
+    return PackQuotas(
+      id: parseStringOrNull(map['id']),
+      quotas: quotas,
+      prix: parseDouble(map['prix']),
+      libelle: parseStringOrNull(map['libelle']),
+      ordre: parseInt(map['ordre']),
+      //  Absent ≠ inactif : une base plus ancienne que l'application ne doit
+      //  pas faire disparaître le catalogue.
+      actif: map['actif'] == null || map['actif'] == true,
+    );
+  }
+
+  /// Convertit une liste renvoyée par `rpc_agent_ia_packs`, triée pour
+  /// l'affichage (ordre du Super Admin, puis taille).
+  static List<PackQuotas> listeDepuisJson(dynamic valeur) {
+    final List<PackQuotas> packs = <PackQuotas>[];
+
+    for (final Map<String, dynamic> ligne in parseMapList(valeur)) {
+      final PackQuotas? pack = depuisJson(ligne);
+      if (pack != null) packs.add(pack);
+    }
+
+    packs.sort((PackQuotas a, PackQuotas b) {
+      final int parOrdre = a.ordre.compareTo(b.ordre);
+      return parOrdre != 0 ? parOrdre : a.quotas.compareTo(b.quotas);
+    });
+
+    return packs;
+  }
+
+  // ---------------------------------------------------------------------------
+  // REPLI LOCAL
+  // ---------------------------------------------------------------------------
+
+  /// Les 4 packs d'origine — prix proportionnels au prix du pack de 10.
+  ///
+  /// ⚠️ Ce n'est plus qu'un REPLI, utilisé quand le catalogue en base n'est
+  /// pas joignable (migration 68 pas encore exécutée, ou hors ligne). Sans
+  /// lui, l'écran d'achat serait vide et personne ne pourrait commander.
+  /// Règle fail-open du projet : mieux vaut une grille approchante que rien.
   static List<PackQuotas> depuisConfig(AgentIaConfig config) {
     final double base = config.prixPack10Quotas;
     return <PackQuotas>[
-      PackQuotas(quotas: 10, prix: base),
-      PackQuotas(quotas: 20, prix: base * 2),
-      PackQuotas(quotas: 50, prix: base * 5),
-      PackQuotas(quotas: 100, prix: base * 10),
+      PackQuotas(quotas: 10, prix: base, libelle: 'Pack découverte', ordre: 10),
+      PackQuotas(quotas: 20, prix: base * 2, libelle: 'Pack standard', ordre: 20),
+      PackQuotas(quotas: 50, prix: base * 5, libelle: 'Pack boutique', ordre: 30),
+      PackQuotas(
+          quotas: 100, prix: base * 10, libelle: 'Pack professionnel', ordre: 40),
     ];
+  }
+}
+
+// -----------------------------------------------------------------------------
+// CORRECTIF 68 — ATTRIBUTIONS : OÙ SONT PASSÉS LES QUOTAS ?
+// -----------------------------------------------------------------------------
+
+/// Le solde de quotas d'UN collaborateur, tel que le patron doit le voir.
+///
+/// `rpc_agent_ia_etat` liste les collaborateurs sans leur solde : le patron ne
+/// pouvait donc pas savoir qui détenait quoi, ni décider quoi reprendre.
+class AttributionQuota {
+  const AttributionQuota({
+    required this.utilisateurId,
+    this.nom = 'Collaborateur',
+    this.role = '',
+    this.quotasDisponibles = 0,
+    this.quotasUtilisesTotal = 0,
+    this.quotasAchetesTotal = 0,
+    this.attribueLe,
+    this.attribueParNom,
+  });
+
+  final String utilisateurId;
+  final String nom;
+  final String role;
+
+  /// Quotas encore disponibles chez ce collaborateur.
+  final int quotasDisponibles;
+
+  /// Quotas déjà consommés — JAMAIS reprenables : le service a été rendu.
+  final int quotasUtilisesTotal;
+
+  final int quotasAchetesTotal;
+  final DateTime? attribueLe;
+  final String? attribueParNom;
+
+  /// Vrai s'il reste quelque chose à reprendre.
+  bool get peutEtreReprise => quotasDisponibles > 0;
+
+  static AttributionQuota? depuisJson(dynamic valeur) {
+    final Map<String, dynamic>? map = parseMap(valeur);
+    if (map == null) return null;
+
+    final String id = parseString(map['utilisateur_id']);
+    if (id.isEmpty) return null;
+
+    return AttributionQuota(
+      utilisateurId: id,
+      nom: parseString(map['nom'], fallback: 'Collaborateur'),
+      role: parseString(map['role']),
+      quotasDisponibles: parseInt(map['quotas_disponibles']),
+      quotasUtilisesTotal: parseInt(map['quotas_utilises_total']),
+      quotasAchetesTotal: parseInt(map['quotas_achetes_total']),
+      attribueLe: parseDateTimeOrNull(map['attribue_le']),
+      attribueParNom: parseStringOrNull(map['attribue_par_nom']),
+    );
+  }
+}
+
+/// Le tableau complet : le pool restant et ce que détient chaque membre.
+class AttributionsQuotas {
+  const AttributionsQuotas({
+    this.entrepriseId,
+    this.poolDisponible = 0,
+    this.attributions = const <AttributionQuota>[],
+  });
+
+  final String? entrepriseId;
+
+  /// Quotas encore dans le pool de l'entreprise (non distribués).
+  final int poolDisponible;
+
+  final List<AttributionQuota> attributions;
+
+  static const AttributionsQuotas vide = AttributionsQuotas();
+
+  /// Somme des quotas encore détenus par les membres.
+  int get totalChezLesMembres => attributions.fold(
+        0,
+        (int total, AttributionQuota a) => total + a.quotasDisponibles,
+      );
+
+  /// Somme déjà consommée par les membres (ne reviendra jamais).
+  int get totalConsomme => attributions.fold(
+        0,
+        (int total, AttributionQuota a) => total + a.quotasUtilisesTotal,
+      );
+
+  /// Vrai s'il y a au moins une attribution à montrer.
+  bool get estVide => attributions.isEmpty;
+
+  static AttributionsQuotas depuisJson(dynamic valeur) {
+    final Map<String, dynamic>? map = parseMap(valeur);
+    if (map == null) return vide;
+
+    final List<AttributionQuota> liste = <AttributionQuota>[];
+    for (final Map<String, dynamic> ligne in parseMapList(map['attributions'])) {
+      final AttributionQuota? a = AttributionQuota.depuisJson(ligne);
+      if (a != null) liste.add(a);
+    }
+    liste.sort((AttributionQuota a, AttributionQuota b) => a.nom.compareTo(b.nom));
+
+    return AttributionsQuotas(
+      entrepriseId: parseStringOrNull(map['entreprise_id']),
+      poolDisponible: parseInt(map['pool_disponible']),
+      attributions: liste,
+    );
   }
 }
 

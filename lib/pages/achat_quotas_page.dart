@@ -55,9 +55,38 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
   bool _actionEnCours = false;
   String? _erreur;
 
+  /// 🪙 CORRECTIF 68 — le catalogue vient désormais de la base.
+  ///  Vide = catalogue injoignable (migration non exécutée, hors ligne) : on
+  ///  retombe alors sur la grille locale, sans jamais laisser l'écran vide.
+  List<PackQuotas> _packsCatalogue = const <PackQuotas>[];
+
+  /// Où sont passés les quotas : pool restant + solde de chaque collaborateur.
+  AttributionsQuotas _attributions = AttributionsQuotas.vide;
+
   int _packQuotas = 10;
   String _mode = 'especes';
   String? _attributionMembre;
+
+  /// Les packs à afficher : le catalogue s'il est joignable, sinon la grille
+  /// d'origine (règle fail-open du projet).
+  List<PackQuotas> get _packs {
+    if (_packsCatalogue.isNotEmpty) return _packsCatalogue;
+    return PackQuotas.depuisConfig((_etat ?? EtatAgentIa.defaut).config);
+  }
+
+  /// Le pack sélectionné.
+  ///
+  /// ⚠️ REPLI sur le premier pack si celui qui était choisi a disparu du
+  /// catalogue : le Super Admin a pu le supprimer ou le désactiver entre
+  /// l'ouverture de l'écran et le clic. Un `firstWhere` sans repli ferait
+  /// planter l'écran au pire moment — au moment de payer.
+  PackQuotas get _packSelectionne {
+    final List<PackQuotas> packs = _packs;
+    for (final PackQuotas pack in packs) {
+      if (pack.quotas == _packQuotas) return pack;
+    }
+    return packs.first;
+  }
 
   @override
   void initState() {
@@ -99,6 +128,26 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
         _achats = resultats[1] as List<AchatQuotas>;
         _chargement = false;
       });
+
+      //  Correctif 68 — chargements SECONDAIRES, jamais bloquants : si la
+      //  migration n'est pas exécutée, l'achat doit continuer de fonctionner
+      //  avec la grille locale.
+      final List<PackQuotas> packs = await _service.chargerPacks(
+        config: (_etat ?? EtatAgentIa.defaut).config,
+      );
+
+      AttributionsQuotas attributions = AttributionsQuotas.vide;
+      try {
+        attributions = await _service.chargerAttributions();
+      } catch (e) {
+        debugPrint('AchatQuotasPage (attributions) : $e');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _packsCatalogue = packs;
+        _attributions = attributions;
+      });
     } on AgentServiceException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -123,8 +172,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
     final EtatAgentIa? etat = _etat;
     if (etat == null) return;
 
-    final PackQuotas pack = PackQuotas.depuisConfig(etat.config)
-        .firstWhere((PackQuotas p) => p.quotas == _packQuotas);
+    final PackQuotas pack = _packSelectionne;
 
     final bool? confirme = await showDialog<bool>(
       context: context,
@@ -346,6 +394,8 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
                           Icons.family_restroom_rounded,
                         ),
                         _carteAttribution(),
+                        // 🪙 CORRECTIF 68 — où sont passés les quotas ?
+                        _carteAttributions(),
                       ],
                       const SizedBox(height: 22),
                       _sectionTitre(
@@ -497,7 +547,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
 
   Widget _cartePacks() {
     final EtatAgentIa etat = _etat ?? EtatAgentIa.defaut;
-    final List<PackQuotas> packs = PackQuotas.depuisConfig(etat.config);
+    final List<PackQuotas> packs = _packs;
     final ThemeData theme = Theme.of(context);
 
     return Wrap(
@@ -575,8 +625,7 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
 
   Widget _carteFormulaire() {
     final EtatAgentIa etat = _etat ?? EtatAgentIa.defaut;
-    final PackQuotas pack = PackQuotas.depuisConfig(etat.config)
-        .firstWhere((PackQuotas p) => p.quotas == _packQuotas);
+    final PackQuotas pack = _packSelectionne;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -640,6 +689,174 @@ class _AchatQuotasPageState extends State<AchatQuotasPage> {
         ],
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🪙 CORRECTIF 68 — OÙ SONT PASSÉS LES QUOTAS ?
+  // ---------------------------------------------------------------------------
+
+  /// Le solde de chaque collaborateur et le pool restant.
+  ///
+  /// Avant ce correctif, le patron voyait la liste des membres SANS leur
+  /// solde : il ne pouvait donc pas savoir qui détenait quoi, ni décider quoi
+  /// reprendre. Un quota attribué à un vendeur parti était perdu.
+  Widget _carteAttributions() {
+    final ThemeData theme = Theme.of(context);
+
+    if (_attributions.estVide) {
+      return Container(
+        margin: const EdgeInsets.only(top: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Text(
+          'Aucun collaborateur ne détient de quotas pour le moment : le pool '
+          'de l\'entreprise est intact.',
+          style: TextStyle(fontSize: 12.5),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Pool restant : ${_attributions.poolDisponible}   •   '
+            'chez les membres : ${_attributions.totalChezLesMembres}   •   '
+            'déjà consommés : ${_attributions.totalConsomme}',
+            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          ..._attributions.attributions
+              .map((AttributionQuota a) => _ligneAttribution(theme, a)),
+          const SizedBox(height: 6),
+          const Text(
+            'Les quotas DÉJÀ CONSOMMÉS ne sont jamais reprenables : le service '
+            'a été rendu par l\'assistant.',
+            style: TextStyle(fontSize: 11.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ligneAttribution(ThemeData theme, AttributionQuota attribution) {
+    final String auteur = (attribution.attribueParNom ?? '').trim().isEmpty
+        ? ''
+        : ' • attribué par ${attribution.attribueParNom}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  attribution.nom,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                Text(
+                  '${attribution.quotasDisponibles} disponible(s) • '
+                  '${attribution.quotasUtilisesTotal} consommé(s)$auteur',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          if (attribution.peutEtreReprise)
+            TextButton(
+              onPressed:
+                  _actionEnCours ? null : () => _reprendre(attribution),
+              child: const Text('Reprendre'),
+            )
+          else
+            Text('tout consommé', style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+
+  /// Reprend des quotas non consommés et les rend au pool.
+  Future<void> _reprendre(AttributionQuota attribution) async {
+    final TextEditingController quantite =
+        TextEditingController(text: '${attribution.quotasDisponibles}');
+
+    final bool? confirme = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Reprendre des quotas ?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('${attribution.nom} détient encore '
+                '${attribution.quotasDisponibles} quota(s) non consommé(s).'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: quantite,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Quotas à reprendre',
+                helperText: 'Ils retournent au pool de l\'entreprise.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Renoncer'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Reprendre'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirme != true) {
+      quantite.dispose();
+      return;
+    }
+
+    final int? nombre = int.tryParse(quantite.text.trim());
+    quantite.dispose();
+
+    if (nombre == null || nombre < 1) {
+      _snack('Indiquez un nombre de quotas valide.', erreur: true);
+      return;
+    }
+
+    setState(() => _actionEnCours = true);
+    try {
+      final Map<String, dynamic> reponse = await _service.annulerAttribution(
+        utilisateurId: attribution.utilisateurId,
+        quotas: nombre,
+      );
+      _snack(
+        '${reponse['quotas_repris'] ?? nombre} quota(s) repris à '
+        '${attribution.nom} — pool : ${reponse['pool_restant'] ?? '?'}.',
+      );
+      await _charger();
+    } on AgentServiceException catch (e) {
+      _snack(e.message, erreur: true);
+    } finally {
+      if (mounted) setState(() => _actionEnCours = false);
+    }
   }
 
   Widget _carteAttribution() {

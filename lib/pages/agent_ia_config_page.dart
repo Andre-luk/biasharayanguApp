@@ -52,6 +52,15 @@ class _AgentIaConfigPageState extends State<AgentIaConfigPage> {
   bool _enregistrement = false;
   String? _erreur;
 
+  /// 🪙 CORRECTIF 68 — CATALOGUE DES PACKS.
+  ///  Les packs étaient codés en dur dans l'application (10/20/50/100 à prix
+  ///  strictement proportionnels) : impossible de créer un pack de 30 ou de
+  ///  faire une remise sur les gros packs sans republier l'application.
+  ///  Ils viennent désormais de la base. `vientDeLaBase == false` signale le
+  ///  repli local (migration 68 pas encore exécutée) : on l'affiche, pour ne
+  ///  pas laisser croire que les modifications ont été enregistrées.
+  List<PackQuotas> _packs = const <PackQuotas>[];
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +104,16 @@ class _AgentIaConfigPageState extends State<AgentIaConfigPage> {
         _actif = config.actif;
         _chargement = false;
       });
+
+      //  Le catalogue est chargé À PART : s'il échoue (migration absente), la
+      //  configuration doit rester utilisable — on retombe alors sur la
+      //  grille de repli, signalée comme telle.
+      final List<PackQuotas> packs = await _service.chargerPacks(
+        config: config,
+        inclureInactifs: true,
+      );
+      if (!mounted) return;
+      setState(() => _packs = packs);
     } on AgentServiceException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -207,6 +226,189 @@ class _AgentIaConfigPageState extends State<AgentIaConfigPage> {
   }
 
   // ---------------------------------------------------------------------------
+  // 🪙 CORRECTIF 68 — CATALOGUE DES PACKS
+  // ---------------------------------------------------------------------------
+
+  /// Vrai si les packs affichés viennent réellement de la base.
+  bool get _catalogueEnBase => _packs.any((PackQuotas p) => p.vientDeLaBase);
+
+  /// Crée (pack == null) ou modifie un pack.
+  ///
+  /// ⚠️ La TAILLE n'est proposée QU'À LA CRÉATION : le serveur la verrouille
+  /// pour un pack existant, car un pack EST une taille. Le laisser modifiable
+  /// ferait croire qu'on peut transformer un « pack de 10 » en « pack de 30 »,
+  /// alors que les clients ont déjà acheté l'ancien.
+  Future<void> _editerPack({PackQuotas? pack}) async {
+    final bool creation = pack == null;
+    final TextEditingController quotas =
+        TextEditingController(text: creation ? '' : '${pack.quotas}');
+    final TextEditingController prix = TextEditingController(
+      text: creation ? '' : _texte(pack.prix),
+    );
+    final TextEditingController libelle =
+        TextEditingController(text: pack?.libelle ?? '');
+    final TextEditingController ordre =
+        TextEditingController(text: '${pack?.ordre ?? 0}');
+    bool actif = pack?.actif ?? true;
+
+    final bool? valide = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setEtat) => AlertDialog(
+          title: Text(creation ? 'Nouveau pack de quotas' : 'Modifier le pack'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextField(
+                  controller: quotas,
+                  enabled: creation,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre de quotas',
+                    helperText: creation
+                        ? 'Définitif : un pack EST une taille.'
+                        : 'La taille d\'un pack ne peut plus changer.',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: prix,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Prix (CDF)',
+                    helperText: 'Le client paie exactement ce prix.',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: libelle,
+                  decoration: const InputDecoration(
+                    labelText: 'Nom commercial (optionnel)',
+                    hintText: 'Pack boutique',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: ordre,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Ordre d\'affichage',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: actif,
+                  onChanged: (bool v) => setEtat(() => actif = v),
+                  title: const Text('Pack proposé aux clients'),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Renoncer'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(creation ? 'Créer' : 'Enregistrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (valide != true) {
+      _liberer(<TextEditingController>[quotas, prix, libelle, ordre]);
+      return;
+    }
+
+    final int? quotasSaisis = int.tryParse(quotas.text.trim());
+    final double? prixSaisi = double.tryParse(prix.text.trim().replaceAll(',', '.'));
+
+    if (quotasSaisis == null || quotasSaisis < 1) {
+      _snack('Indiquez un nombre de quotas valide.', erreur: true);
+      _liberer(<TextEditingController>[quotas, prix, libelle, ordre]);
+      return;
+    }
+    if (prixSaisi == null || prixSaisi < 0) {
+      _snack('Indiquez un prix valide.', erreur: true);
+      _liberer(<TextEditingController>[quotas, prix, libelle, ordre]);
+      return;
+    }
+
+    setState(() => _enregistrement = true);
+    try {
+      await _service.enregistrerPack(
+        id: pack?.id,
+        quotas: quotasSaisis,
+        prix: prixSaisi,
+        libelle: libelle.text.trim().isEmpty ? null : libelle.text.trim(),
+        ordre: int.tryParse(ordre.text.trim()),
+        actif: actif,
+      );
+      _snack(creation ? 'Pack créé.' : 'Pack enregistré.');
+      await _charger();
+    } on AgentServiceException catch (e) {
+      _snack(e.message, erreur: true);
+    } finally {
+      _liberer(<TextEditingController>[quotas, prix, libelle, ordre]);
+      if (mounted) setState(() => _enregistrement = false);
+    }
+  }
+
+  Future<void> _supprimerPack(PackQuotas pack) async {
+    final bool? confirme = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Supprimer ce pack ?'),
+        content: Text(
+          '${pack.libelleAffiche} — ${pack.quotas} quotas.\n\n'
+          'Les achats DÉJÀ effectués ne sont pas touchés. Préférez la '
+          'désactivation : elle fait disparaître le pack de la grille sans '
+          'effacer son histoire.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Renoncer'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirme != true || pack.id == null) return;
+
+    setState(() => _enregistrement = true);
+    try {
+      await _service.supprimerPack(pack.id!);
+      _snack('Pack supprimé.');
+      await _charger();
+    } on AgentServiceException catch (e) {
+      _snack(e.message, erreur: true);
+    } finally {
+      if (mounted) setState(() => _enregistrement = false);
+    }
+  }
+
+  static void _liberer(List<TextEditingController> controleurs) {
+    for (final TextEditingController c in controleurs) {
+      c.dispose();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // INTERFACE
   // ---------------------------------------------------------------------------
 
@@ -290,6 +492,8 @@ class _AgentIaConfigPageState extends State<AgentIaConfigPage> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    _carteCataloguePacks(),
                     const SizedBox(height: 16),
                     _carte(
                       titre: 'Bienvenue & activation',
@@ -453,6 +657,138 @@ class _AgentIaConfigPageState extends State<AgentIaConfigPage> {
       decoration: InputDecoration(
         labelText: label,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _carteCataloguePacks() {
+    final ThemeData theme = Theme.of(context);
+
+    return _carte(
+      titre: 'Catalogue des packs de quotas',
+      icone: Icons.inventory_2_rounded,
+      enfants: <Widget>[
+        //  Signalé CLAIREMENT : sans cette mention, le Super Admin pourrait
+        //  croire que ses modifications ont été enregistrées alors que la
+        //  grille affichée est celle de repli.
+        if (!_catalogueEnBase)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange, width: 0.8),
+            ),
+            child: const Text(
+              'Grille locale : la migration 68 n''est pas encore exécutée. Les '
+              'packs ci-dessous sont ceux d''origine — aucune modification ne '
+              'sera conservée.',
+              style: TextStyle(fontSize: 12),
+            ),
+          ),
+        const Text(
+          'Le client paie EXACTEMENT le prix du pack choisi. La taille d''un '
+          'pack est définitive : pour passer de 10 à 30 quotas, créez un '
+          'nouveau pack puis désactivez l''ancien.',
+          style: TextStyle(fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        if (_packs.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              'Aucun pack : plus aucun achat n''est possible.',
+              style: TextStyle(fontSize: 12.5),
+            ),
+          )
+        else
+          ..._packs.map((PackQuotas pack) => _lignePack(theme, pack)),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(
+            onPressed: _enregistrement ? null : () => _editerPack(),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Nouveau pack'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _lignePack(ThemeData theme, PackQuotas pack) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: pack.actif
+              ? theme.colorScheme.outlineVariant
+              : theme.colorScheme.error.withValues(alpha: 0.4),
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Text(
+                      '${pack.quotas} quotas',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 13.5),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(pack.libelleAffiche,
+                          style: const TextStyle(fontSize: 12)),
+                    ),
+                    if (!pack.actif) ...<Widget>[
+                      const SizedBox(width: 6),
+                      Text(
+                        'désactivé',
+                        style: TextStyle(
+                            fontSize: 11, color: theme.colorScheme.error),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatMontant(pack.prix)} • '
+                  '${formatMontant(pack.prixParQuota)} par quota',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          //  Un pack de repli n'existe pas en base : le modifier ou le
+          //  supprimer n'aurait aucun effet. On le dit plutôt que d'offrir un
+          //  bouton qui ne fait rien.
+          if (pack.vientDeLaBase) ...<Widget>[
+            IconButton(
+              tooltip: 'Modifier',
+              onPressed:
+                  _enregistrement ? null : () => _editerPack(pack: pack),
+              icon: const Icon(Icons.edit_rounded, size: 20),
+            ),
+            IconButton(
+              tooltip: 'Supprimer',
+              onPressed:
+                  _enregistrement ? null : () => _supprimerPack(pack),
+              icon: const Icon(Icons.delete_outline_rounded, size: 20),
+            ),
+          ] else
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Text('local', style: TextStyle(fontSize: 11)),
+            ),
+        ],
       ),
     );
   }
