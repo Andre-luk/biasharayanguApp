@@ -554,6 +554,32 @@ class GuideUtilisationPage extends StatelessWidget {
                   '« à envoyer » en attendant.',
             ],
           ),
+          _Etape(
+            numero: '33',
+            titre: 'Le code de validation (agents et Finance)',
+            icone: Icons.pin_outlined,
+            points: <String>[
+              'Quand un agent de terrain confirme la vérification d\'un '
+                  'compte, l\'application lui demande un CODE de validation : '
+                  'il le demande, la Finance le lui dicte au téléphone, il '
+                  'saisit les 6 chiffres. Le dossier part ensuite.',
+              'Si la Finance ne répond pas dans les 5 minutes, le bouton '
+                  '« Continuer sans code » apparaît : l\'agent n\'est JAMAIS '
+                  'bloqué, mais le dossier est alors marqué comme vérifié sans '
+                  'code.',
+              'Côté Finance (écran « Activations & paiements »), un bandeau '
+                  '« Codes de validation » affiche les demandes en cours, '
+                  'permet de dicter le code, de le renvoyer ou de révoquer la '
+                  'demande.',
+              'Le même bandeau liste les « dossiers à confirmer » : les '
+                  'comptes vérifiés sans code. Il précise QUI doit agir — '
+                  '« aucun code demandé par l\'agent » ou « la Finance n\'a pas '
+                  'répondu ».',
+              'Le code n\'apparaît JAMAIS dans le journal d\'audit et l\'agent '
+                  'ne peut pas le fabriquer lui-même : c\'est ce qui rend la '
+                  'trace fiable, pour le client comme pour la plateforme.',
+            ],
+          ),
         ],
       ),
     );
