@@ -158,10 +158,34 @@ Désormais, l'alerte se déclenche aussi :
   **une seule ligne changée** : la garde de rôle accepte désormais
   `AGENT_TERRAIN`. Un script extrait, remplace, et **vérifie que rien d'autre n'a
   bougé** ;
-- `rpc_activation_valider_finance` **n'est délibérément pas touchée** : un bloc
-  de contrôle **échoue** si `AGENT_TERRAIN` y apparaît un jour. L'agent peut
-  vérifier un dossier, il ne peut pas valider un paiement — et cette limite est
-  vérifiée automatiquement, pas seulement promise.
+- ⚠️ **CE QUI A ÉTÉ CORRIGÉ DANS CE FICHIER, ET POURQUOI.** La première version
+  affirmait que le serveur réservait la validation du paiement à
+  `FINANCE_LAPERLE` et `SUPER_ADMIN`, et **faisait échouer** la migration si
+  `AGENT_TERRAIN` apparaissait dans cette fonction. C'était une **erreur de
+  lecture** : la migration 43 (section 3.c) passe en revue **toutes** les
+  fonctions contenant `'SUPER_ADMIN'` et remplace dynamiquement
+  `('FINANCE_LAPERLE', 'SUPER_ADMIN')` par
+  `('FINANCE_LAPERLE', 'AGENT_TERRAIN', 'SUPER_ADMIN')`. La validation du
+  paiement accepte donc l'agent de terrain **depuis la 43, et volontairement**
+  (« il crée les entreprises, vérifie et active leurs dossiers et **valide les
+  paiements reçus** »). Le contrôle a donc bloqué un choix de conception déjà
+  installé, en le prenant pour une escalade de droits ;
+- **la leçon, et elle vaut pour tout le dépôt** : lire une vieille migration ne
+  donne **pas** la définition en vigueur. Une migration ultérieure peut
+  re-patcher une fonction par `replace()` sur `pg_get_functiondef`, et rien dans
+  le fichier d'origine ne le laisse voir. Le contrôle cherche désormais la
+  **garde réelle** (`v_role not in (...)`, extraite par expression régulière)
+  au lieu du mot `AGENT_TERRAIN` n'importe où dans le corps ;
+- ce qu'il **refuse** maintenant : que la Finance ou le Super Admin **perde** la
+  validation du paiement (le seul invariant défendu ici) ; ce qu'il **signale
+  sans juger** : la présence de l'agent dans cette garde, avec un `raise notice`
+  qui dit d'où elle vient ;
+- **pourquoi la migration est conservée** alors que la 43 avait déjà élargi la
+  garde : la migration 18 est idempotente (`create or replace`), et la rejouer —
+  un réflexe normal en cas de doute — **remettrait** la garde d'origine sans que
+  personne ne s'en aperçoive avant que l'agent voie son bouton refusé. Ce
+  fichier fige l'intention dans un texte lisible. Il est sans effet si la 43 a
+  déjà fait le travail.
 
 **Application** : `models/code_validation_agent.dart`,
 `services/code_validation_agent_service.dart`,
