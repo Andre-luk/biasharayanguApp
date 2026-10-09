@@ -18,6 +18,8 @@
 // Toutes les méthodes publiques lèvent [ProductionServiceException] : les
 // écrans n'ont jamais à manipuler une `PostgrestException`.
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,6 +28,7 @@ import 'package:biashara_yangu/models/production.dart';
 import 'package:biashara_yangu/models/production_tableau_bord.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart' show reponseRpcEnMap;
 import 'package:biashara_yangu/services/article_service.dart';
+import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -172,6 +175,16 @@ class ProductionService {
     required double stockReel,
     required String raison,
   }) async {
+    // 🔔 CORRECTIF 71 — le stock AVANT est relu ici, et pas déduit de la
+    // valeur affichée à l'écran (qui peut dater d'une autre session).
+    //
+    // ⚠️ Pourquoi une lecture, alors que `rpc_stock_ajuster` (articles)
+    // renvoie déjà `stock_avant` ? Parce que `rpc_matiere_ajuster` ne le
+    // renvoie pas — il ne rend que la ligne mise à jour. Une lecture de plus
+    // coûte moins cher qu'une migration supplémentaire pour une notification,
+    // et elle ne dépend d'aucune valeur fournie par l'appelant.
+    final MatierePremiere? avant = await _matiereOuNull(id);
+
     final Map<String, dynamic>? map = await _appelerRpc(
       'rpc_matiere_ajuster',
       params: <String, dynamic>{
@@ -181,7 +194,13 @@ class ProductionService {
       },
       actionLibelle: "l'ajustement de la matière première",
     );
-    return _matiereReponse(map, "l'ajustement de la matière première");
+    final MatierePremiere apres =
+        _matiereReponse(map, "l'ajustement de la matière première");
+
+    //  Best-effort, en tâche de fond : la réponse du serveur est déjà là,
+    //  l'écran ne doit pas attendre la notification.
+    unawaited(_alerterMatiereSiBaisse(id, avant));
+    return apres;
   }
 
   /// Supprime une matière (refusé si des productions l'ont consommée :
@@ -317,6 +336,12 @@ class ProductionService {
     required String matiereId,
     required double quantite,
   }) async {
+    // 🔔 CORRECTIF 71 — c'est LE chemin par lequel la farine, la levure et le
+    // sucre baissent vraiment dans une boulangerie, et il était totalement
+    // muet : rien n'avertissait le boulanger que sa réserve passait sous le
+    // seuil. Le stock avant est relu pour la même raison qu'à l'ajustement.
+    final MatierePremiere? avant = await _matiereOuNull(matiereId);
+
     final Map<String, dynamic>? map = await _appelerRpc(
       'rpc_production_consommer',
       params: <String, dynamic>{
@@ -326,7 +351,11 @@ class ProductionService {
       },
       actionLibelle: "l'ajout de la matière",
     );
-    return _productionReponse(map, "l'ajout de la matière");
+    final Production production =
+        _productionReponse(map, "l'ajout de la matière");
+
+    unawaited(_alerterMatiereSiBaisse(matiereId, avant));
+    return production;
   }
 
   /// Retire une matière consommée (rendue au stock).
@@ -480,6 +509,77 @@ class ProductionService {
       );
     }
     return Production.fromMap(production);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🔔 CORRECTIF 71 — ALERTE « STOCK FAIBLE » SUR LES MATIÈRES PREMIÈRES
+  // ---------------------------------------------------------------------------
+
+  /// Relit une matière, ou `null` si elle est introuvable / illisible.
+  ///
+  /// Ne lève JAMAIS : cette lecture ne sert qu'à l'alerte, et une alerte qui
+  /// échoue ne doit pas faire échouer l'opération de stock déjà enregistrée
+  /// côté serveur.
+  Future<MatierePremiere?> _matiereOuNull(String id) async {
+    try {
+      final dynamic data = await _client
+          .from('matieres_premieres')
+          .select()
+          .eq('id', id)
+          .maybeSingle();
+      final Map<String, dynamic>? map = parseMap(data);
+      return map == null ? null : MatierePremiere.fromMap(map);
+    } catch (e) {
+      debugPrint('ProductionService._matiereOuNull : $e');
+      return null;
+    }
+  }
+
+  /// Alerte si le stock d'une matière VIENT de passer sous son seuil.
+  ///
+  /// Avant ce correctif, seules les VENTES d'articles déclenchaient une alerte.
+  /// Les matières premières n'en avaient aucune : ni lors d'un ajustement
+  /// d'inventaire, ni lors d'une consommation en production — c'est-à-dire
+  /// jamais. Une boulangerie pouvait donc tomber à court de farine sans que
+  /// rien ne le lui dise.
+  ///
+  /// Comme pour les ventes, on n'alerte QUE si le seuil vient d'être franchi :
+  /// une matière déjà en alerte ne redéclenche rien à chaque consommation.
+  ///
+  /// Toute la méthode est en tâche de fond : elle relit le stock APRÈS en base
+  /// (et non depuis la réponse de la RPC, qui ne le renvoie que pour
+  /// l'ajustement) afin qu'un seul chemin serve les deux cas. `avant` manquant
+  /// ⇒ aucune alerte : mieux vaut pas d'alerte qu'une alerte calculée sur une
+  /// valeur inventée.
+  Future<void> _alerterMatiereSiBaisse(
+    String matiereId,
+    MatierePremiere? avant,
+  ) async {
+    if (avant == null) return;
+
+    try {
+      final MatierePremiere? apres = await _matiereOuNull(matiereId);
+      if (apres == null) return;
+
+      if (!NotificationService.aFranchiLeSeuil(
+        avant: avant.stock,
+        apres: apres.stock,
+        seuil: apres.seuilAlerte,
+      )) {
+        return;
+      }
+
+      await NotificationService.instance.notifierStockFaible(
+        nom: apres.nom,
+        quantite: apres.stock,
+        seuil: apres.seuilAlerte,
+        unite: apres.unite,
+      );
+    } catch (e) {
+      //  L'opération est DÉJÀ enregistrée côté serveur : une alerte ratée ne
+      //  doit jamais remonter comme un échec de stock.
+      debugPrint('ProductionService._alerterMatiereSiBaisse : $e');
+    }
   }
 
   Future<Map<String, dynamic>?> _appelerRpc(

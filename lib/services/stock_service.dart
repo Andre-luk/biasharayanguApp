@@ -18,6 +18,8 @@
 //     les RPC n'écrivent JAMAIS `produits.quantite` directement ;
 //   • chaque opération est journalisée dans `journal_audit` côté serveur.
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,6 +28,7 @@ import 'package:biashara_yangu/models/inventaire_ligne.dart';
 import 'package:biashara_yangu/models/mouvement_article.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart' show reponseRpcEnMap;
 import 'package:biashara_yangu/services/article_service.dart';
+import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -337,7 +340,26 @@ class StockService {
         "Réponse inattendue du serveur : l'ajustement n'est pas confirmé.",
       );
     }
-    return ResultatAjustement.depuisRpc(map);
+    final ResultatAjustement resultat = ResultatAjustement.depuisRpc(map);
+
+    // 🔔 CORRECTIF 71 — un ajustement est souvent la PREMIÈRE fois qu'on
+    // constate un manquant : s'il fait passer l'article sous son seuil,
+    // l'alerte doit partir exactement comme après une vente.
+    if (resultat.stockApres < resultat.stockAvant) {
+      unawaited(
+        _alerterStockFaibleApresBaisse(
+          <({int produitId, double avant, double apres})>[
+            (
+              produitId: resultat.produitId,
+              avant: resultat.stockAvant,
+              apres: resultat.stockApres,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return resultat;
   }
 
   // ---------------------------------------------------------------------------
@@ -382,12 +404,107 @@ class StockService {
         "Réponse inattendue du serveur : la clôture de l'inventaire n'est pas confirmée.",
       );
     }
-    return ResultatInventaire.depuisRpc(map);
+    final ResultatInventaire resultat = ResultatInventaire.depuisRpc(map);
+
+    // 🔔 CORRECTIF 71 — L'INVENTAIRE EST LE MOMENT CLÉ.
+    //
+    // Avant ce correctif, seule une VENTE pouvait déclencher l'alerte de
+    // stock. Un inventaire qui découvre une marchandise perdue, volée ou
+    // cassée ne disait rien — c'est-à-dire que le stock ne pouvait baisser
+    // sous le seuil QUE si le manquant avait été vendu. Le cas le plus grave
+    // était le seul cas muet.
+    final List<({int produitId, double avant, double apres})> baisses =
+        baissesDeStockApresInventaire(resultat.lignes);
+
+    if (baisses.isNotEmpty) {
+      //  ⚠️ Une SEULE tâche, et les lectures à la suite : un inventaire peut
+      //  porter sur des centaines de lignes, et lancer autant de requêtes en
+      //  parallèle forcerait inutilement sur le serveur.
+      unawaited(_alerterStockFaibleApresBaisse(baisses));
+    }
+
+    return resultat;
+  }
+
+  /// Les lignes d'un inventaire qui méritent un examen d'alerte.
+  ///
+  /// Deux conditions, et les deux comptent :
+  ///
+  ///   • `ajuste` — le serveur a RÉELLEMENT corrigé le stock. Sans correction
+  ///     (clôture en lecture seule), le stock n'a pas bougé : signaler une
+  ///     disparition qui n'a pas eu lieu serait un faux positif ;
+  ///   • `physique < theorique` — une BAISSE. Une hausse ne peut pas faire
+  ///     passer un article SOUS son seuil ; l'examiner ne coûterait qu'une
+  ///     lecture inutile.
+  ///
+  /// Fonction PURE et publique : c'est la règle qui décide quels articles
+  /// peuvent déclencher une alerte, et une règle qu'on ne peut pas tester est
+  /// une règle qu'on cassera sans s'en apercevoir.
+  static List<({int produitId, double avant, double apres})>
+      baissesDeStockApresInventaire(List<LigneResultatInventaire> lignes) {
+    return <({int produitId, double avant, double apres})>[
+      for (final LigneResultatInventaire ligne in lignes)
+        if (ligne.ajuste && ligne.physique < ligne.theorique)
+          (
+            produitId: ligne.produitId,
+            avant: ligne.theorique,
+            apres: ligne.physique,
+          ),
+    ];
   }
 
   // ---------------------------------------------------------------------------
   // OUTILS PARTAGÉS
   // ---------------------------------------------------------------------------
+
+  /// 🔔 CORRECTIF 71 — alerte « stock faible » après une BAISSE de stock.
+  ///
+  /// Jusqu'ici, seule une VENTE pouvait déclencher l'alerte
+  /// (`VenteService._alerterStockApresVente`). Un ajustement d'inventaire —
+  /// c'est-à-dire précisément le moment où l'on découvre que la marchandise a
+  /// disparu — ne disait rien : le commerçant n'était averti que si le
+  /// manquant était VENDU, jamais s'il était perdu, volé ou cassé.
+  ///
+  /// Seules les BAISSES sont examinées : une hausse ne peut pas faire passer un
+  /// article SOUS son seuil. Le seuil lui-même n'est pas dans la réponse du
+  /// serveur : il est relu sur l'article, et sèchement, pour les seuls articles
+  /// réellement concernés — pas tout le catalogue.
+  ///
+  /// Best-effort intégral : l'opération est DÉJÀ enregistrée côté serveur ; une
+  /// lecture impossible ou une notification refusée ne doit jamais la remettre
+  /// en cause.
+  Future<void> _alerterStockFaibleApresBaisse(
+    List<({int produitId, double avant, double apres})> baisses,
+  ) async {
+    for (final ({int produitId, double avant, double apres}) baisse
+        in baisses) {
+      try {
+        final Article? article =
+            await ArticleService.instance.getArticleById(baisse.produitId);
+        if (article == null) continue;
+
+        //  Comme après une vente : on n'alerte QUE si le seuil vient d'être
+        //  franchi. Un article déjà en alerte ne redéclenche rien à chaque
+        //  nouvelle baisse.
+        if (!NotificationService.aFranchiLeSeuil(
+          avant: baisse.avant,
+          apres: baisse.apres,
+          seuil: article.seuilAlerte,
+        )) {
+          continue;
+        }
+
+        await NotificationService.instance.notifierStockFaible(
+          nom: article.nom,
+          quantite: baisse.apres,
+          seuil: article.seuilAlerte,
+          unite: article.uniteMesure,
+        );
+      } catch (e) {
+        debugPrint('StockService._alerterStockFaibleApresBaisse : $e');
+      }
+    }
+  }
 
   /// Extrait le message utilisateur d'une erreur du serveur.
   ///

@@ -573,4 +573,123 @@ void main() {
       expect(formatQuantiteSignee(0), '0');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 🔔 CORRECTIF 71 — ALERTE DE STOCK APRÈS UN INVENTAIRE
+  //
+  // Avant ce correctif, seule une VENTE pouvait déclencher l'alerte de stock.
+  // Un inventaire qui découvre une marchandise perdue, volée ou cassée ne
+  // disait rien : le stock ne pouvait baisser sous le seuil QUE si le manquant
+  // avait été vendu. Autrement dit, le cas le plus grave était le seul cas
+  // muet.
+  //
+  // La règle ci-dessous n'est pas un détail d'implémentation : c'est elle qui
+  // décide QUELS articles méritent une alerte. Trop large, elle noie le
+  // commerçant sous de fausses alertes ; trop étroite, elle laisse passer
+  // exactement ce qu'elle devait rattraper.
+  // ---------------------------------------------------------------------------
+
+  group('StockService — baissesDeStockApresInventaire', () {
+    LigneResultatInventaire ligne({
+      int produitId = 1,
+      double theorique = 20,
+      double physique = 3,
+      bool ajuste = true,
+    }) {
+      return LigneResultatInventaire(
+        produitId: produitId,
+        nom: 'Article $produitId',
+        unite: 'pièce',
+        theorique: theorique,
+        physique: physique,
+        ecart: physique - theorique,
+        ajuste: ajuste,
+      );
+    }
+
+    test('retient une baisse réellement corrigée', () {
+      final List<({int produitId, double avant, double apres})> baisses =
+          StockService.baissesDeStockApresInventaire(<LigneResultatInventaire>[
+        ligne(produitId: 7, theorique: 20, physique: 3),
+      ]);
+
+      expect(baisses.length, 1);
+      expect(baisses.first.produitId, 7);
+      expect(baisses.first.avant, 20);
+      expect(baisses.first.apres, 3);
+    });
+
+    test('ignore un écart NON corrigé', () {
+      //  Clôture en lecture seule : le stock n'a pas bougé. Signaler une
+      //  disparition qui n'a pas eu lieu serait un faux positif — et une
+      //  fausse alerte apprend au commerçant à ignorer les alertes.
+      expect(
+        StockService.baissesDeStockApresInventaire(<LigneResultatInventaire>[
+          ligne(ajuste: false),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('ignore un écart NUL (le stock n\'a pas bougé)', () {
+      expect(
+        StockService.baissesDeStockApresInventaire(<LigneResultatInventaire>[
+          ligne(theorique: 20, physique: 20),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('ignore un EXCÉDENT : une hausse ne franchit pas un seuil vers le bas', () {
+      //  Un excédent est une bonne nouvelle ; l'examiner ne coûterait qu'une
+      //  lecture réseau inutile.
+      expect(
+        StockService.baissesDeStockApresInventaire(<LigneResultatInventaire>[
+          ligne(theorique: 20, physique: 44),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('ignore une chute à ZÉRO non corrigée, mais la retient si corrigée', () {
+      //  Une chute à zéro est le cas extrême : disparition totale.
+      expect(
+        StockService.baissesDeStockApresInventaire(<LigneResultatInventaire>[
+          ligne(theorique: 5, physique: 0, ajuste: false),
+        ]),
+        isEmpty,
+      );
+      expect(
+        StockService.baissesDeStockApresInventaire(<LigneResultatInventaire>[
+          ligne(theorique: 5, physique: 0),
+        ]).length,
+        1,
+      );
+    });
+
+    test('trie le bon grain de l\'ivraie au milieu d\'un inventaire réel', () {
+      //  Un inventaire d'une journée : trois écarts, dont UNE seule
+      //  disparition réelle. C'est ce mélange qui rend la règle nécessaire.
+      final List<({int produitId, double avant, double apres})> baisses =
+          StockService.baissesDeStockApresInventaire(<LigneResultatInventaire>[
+        ligne(produitId: 1, theorique: 30, physique: 30), // conforme
+        ligne(produitId: 2, theorique: 12, physique: 20), // excédent
+        ligne(produitId: 3, theorique: 9, physique: 2, ajuste: false), // non corrigé
+        ligne(produitId: 4, theorique: 15, physique: 1), // disparition corrigée
+      ]);
+
+      expect(baisses.length, 1);
+      expect(baisses.first.produitId, 4);
+      expect(baisses.first.avant, 15);
+      expect(baisses.first.apres, 1);
+    });
+
+    test('une liste vide reste vide', () {
+      expect(
+        StockService.baissesDeStockApresInventaire(
+            const <LigneResultatInventaire>[]),
+        isEmpty,
+      );
+    });
+  });
 }
