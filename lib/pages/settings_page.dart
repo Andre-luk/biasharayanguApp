@@ -346,6 +346,29 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
 
+          // 🧾 CORRECTIF 67 — FACTURES D'ABONNEMENT.
+          //  Le client suit enfin ce qu'il a payé : chaque encaissement produit
+          //  une facture figée (prix d'installation, prix mensuel, avance
+          //  versée, versement reçu, reste à payer) qui dit qui l'a générée.
+          //  Il peut la consulter, la télécharger ou la redemander par
+          //  WhatsApp. Il ne peut ni l'émettre ni l'annuler : ce sont des
+          //  documents de la plateforme.
+          if (permissions.peutVoir(PageAccess.facturesAbonnement))
+            _SectionParametres(
+              titre: 'Abonnement',
+              tuiles: <Widget>[
+                _TuileParametre(
+                  icone: Icons.description_rounded,
+                  titre: 'Mes factures d\'abonnement',
+                  sousTitre:
+                      'Installation, mensuel, avances et reste à payer — '
+                      'chaque facture, avec son auteur',
+                  onTap: () =>
+                      context.pushNamed('factures-abonnement'),
+                ),
+              ],
+            ),
+
           // 🛒 MODULE 19 — MARKETPLACE PUBLIC « BIASHARA ».
           //  Le patron gère SA présence publique : vitrine (position, horaires,
           //  contacts), articles publiés, tableau de bord de visibilité et

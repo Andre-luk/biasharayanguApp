@@ -27,6 +27,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
+import 'package:biashara_yangu/widgets/envoi_facture_automatique.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 /// Filtres proposés (valeurs d'étape SQL — `null` = tous).
@@ -179,6 +180,20 @@ class _ActivationsFinancePageState extends State<ActivationsFinancePage> {
           duration: const Duration(seconds: 5),
         ),
       );
+
+      // 🧾 CORRECTIF 67 — LA FACTURE PART TOUTE SEULE.
+      //  Le déclencheur en base l'a déjà écrite (à chaque encaissement, quel
+      //  que soit le rôle). Ici on la TRANSMET au client sur son WhatsApp,
+      //  sans rien demander : c'est la contrepartie de l'argent reçu, et
+      //  c'est aussi ce qui rend vérifiable « ce que le client paie et ce que
+      //  l'agent demande ». L'appel est protégé : il ne peut pas faire croire
+      //  que le paiement a échoué.
+      await envoyerFactureAbonnementAutomatique(
+        context,
+        entrepriseId: dossier.id,
+        nomEtablissement: dossier.nom,
+      );
+
       await _charger();
     } on ActivationServiceException catch (e) {
       if (!mounted) return;

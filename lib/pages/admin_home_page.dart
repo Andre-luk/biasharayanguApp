@@ -643,6 +643,27 @@ class AdminSettingsPage extends StatelessWidget {
             ),
           ),
 
+          // 🧾 CORRECTIF 67 — FACTURES D'ABONNEMENT : chaque encaissement
+          // produit automatiquement une facture figée (installation, mensuel,
+          // avance, reste à payer) qui dit QUI l'a générée et sur quel numéro
+          // elle a été envoyée au client.
+          PermissionGate(
+            page: PageAccess.facturesAbonnement,
+            action: ActionAccess.voir,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.description_rounded,
+              color: Colors.indigo.shade600,
+              title: 'Factures d\'abonnement',
+              subtitle:
+                  'Consulter, envoyer sur WhatsApp, imprimer ou annuler les '
+                  'factures des boutiques. Chaque encaissement en crée une '
+                  'automatiquement.',
+              onTap: () => GoRouter.of(context).push('/factures-abonnement'),
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           // 🛡️ Section Maintenance

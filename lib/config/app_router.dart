@@ -141,6 +141,7 @@ import 'package:biashara_yangu/pages/qr_codes_page.dart';
 import 'package:biashara_yangu/pages/scanner_page.dart';
 
 // ========== MODULE 12 : AUDIT, SÉCURITÉ & IMPORT DE PRODUITS ==========
+import 'package:biashara_yangu/pages/factures_abonnement_page.dart';
 import 'package:biashara_yangu/pages/import_produits_page.dart';
 import 'package:biashara_yangu/pages/journal_audit_page.dart';
 import 'package:biashara_yangu/pages/securite_page.dart';
@@ -319,6 +320,26 @@ final GoRouter appRouter = GoRouter(
       path: '/import-produits',
       name: 'import-produits',
       builder: (context, state) => const ImportProduitsPage(),
+    ),
+
+    // 🧾 CORRECTIF 67 — FACTURES D'ABONNEMENT. Route de premier niveau : elle
+    // sert dans les deux espaces (la plateforme gère toutes les factures, le
+    // client consulte les siennes).
+    //   • plateforme → choix de la boutique, puis ses factures ;
+    //   • entreprise → directement les siennes (le serveur filtre de toute
+    //     façon : même si l'URL était forcée, la RPC ne renverrait que ce que
+    //     l'appelant a le droit de voir).
+    GoRoute(
+      path: '/factures-abonnement',
+      name: 'factures-abonnement',
+      builder: (context, state) {
+        final bool plateforme = PermissionService.instance.roleCourant
+            .estPlateforme;
+
+        return plateforme
+            ? const FacturesAbonnementBoutiquePage()
+            : const FacturesAbonnementPage();
+      },
     ),
 
     // 🏢 MODE PLATEFORME — production des étiquettes QR des boutiques

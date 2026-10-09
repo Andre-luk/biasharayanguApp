@@ -154,24 +154,37 @@ class PermissionService {
         },
       },
     ),
-    RoleUtilisateur.financeLaperle: RolePermission.uniforme(
-      const <PageAccess>[
-        PageAccess.dashboard,
-        PageAccess.abonnements, // renouvellements, impayés
-        // 🧾 MODULE 14 — deuxième validation : validation du paiement
-        // (montant, mode, référence) et activation automatique du compte.
-        PageAccess.activationsFinance,
-        PageAccess.paiements, // avances, soldes, historique des paiements
-        PageAccess.finance, // rapports financiers
-        PageAccess.rapports,
-        PageAccess.audit,
-        PageAccess.notifications,
-      ],
-      const <ActionAccess>[
-        ActionAccess.voir,
-        ActionAccess.creer,
-        ActionAccess.valider,
-      ],
+    RoleUtilisateur.financeLaperle: RolePermission.personnalise(
+      <PageAccess, Set<ActionAccess>>{
+        for (final PageAccess page in const <PageAccess>[
+          PageAccess.dashboard,
+          PageAccess.abonnements, // renouvellements, impayés
+          // 🧾 MODULE 14 — deuxième validation : validation du paiement
+          // (montant, mode, référence) et activation automatique du compte.
+          PageAccess.activationsFinance,
+          PageAccess.paiements, // avances, soldes, historique des paiements
+          PageAccess.finance, // rapports financiers
+          PageAccess.rapports,
+          PageAccess.audit,
+          PageAccess.notifications,
+        ])
+          page: const <ActionAccess>{
+            ActionAccess.voir,
+            ActionAccess.creer,
+            ActionAccess.valider,
+          },
+        // 🧾 CORRECTIF 67 — FACTURES D'ABONNEMENT : la Finance est, avec le
+        // Super Admin, l'un des deux seuls rôles qui peuvent ÉDITER une
+        // facture à la main et l'ANNULER (motif obligatoire). C'est une
+        // permission à part : sur les autres pages, la Finance garde
+        // exactement les droits qu'elle avait (voir / créer / valider).
+        PageAccess.facturesAbonnement: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer, // facture d'échéance ou état de compte
+          ActionAccess.modifier, // envoyer / tracer l'envoi WhatsApp
+          ActionAccess.supprimer, // annuler (une facture non encaissée)
+        },
+      },
     ),
     // 🧑‍🌾 MODULE 21 — AGENT TERRAIN : collaborateur de la plateforme qui va
     // sur le terrain. Il CRÉE l'entreprise du commerçant, VÉRIFIE et ACTIVE
@@ -191,6 +204,12 @@ class PermissionService {
           PageAccess.paiements,
           PageAccess.boutiques,
           PageAccess.notifications,
+          // 🧾 CORRECTIF 67 — l'agent de terrain encaisse dans la rue : il
+          // doit pouvoir MONTRER et ENVOYER la facture au client. C'est ce
+          // qui rend vérifiable « ce que l'agent demande et ce que le client
+          // paie ». Il ne peut ni l'éditer à la main ni l'annuler (le serveur
+          // le refuse de toute façon).
+          PageAccess.facturesAbonnement,
         ])
           page: const <ActionAccess>{
             ActionAccess.voir,
@@ -262,6 +281,11 @@ class PermissionService {
         PageAccess.collaborateurs,
         PageAccess.rapports,
         PageAccess.abonnements, // suivi de son propre abonnement
+        // 🧾 CORRECTIF 67 — le client consulte les factures de son
+        // abonnement et peut les redemander. Il ne les ÉMET ni ne les
+        // ANNULE : ce sont des documents de la plateforme (le serveur refuse
+        // ces deux opérations à tout autre rôle que Finance / Super Admin).
+        PageAccess.facturesAbonnement,
         PageAccess.audit, // 🔐 MODULE 12 — journal de SA boutique
         PageAccess.assistantIa, // 🤖 MODULE 13 — assistant IA
         PageAccess.parametres,
@@ -425,6 +449,11 @@ class PermissionService {
     // par les RPC : le gestionnaire n'active pas, la finance valide.
     _RegleRoute('/admin/verification-comptes', PageAccess.verificationComptes),
     _RegleRoute('/admin/activations-finance', PageAccess.activationsFinance),
+    // 🧾 CORRECTIF 67 — factures d'abonnement : route de PREMIER NIVEAU, car
+    // l'écran sert dans les deux espaces (la plateforme gère toutes les
+    // factures, le client consulte les siennes). La service RPC décide ce que
+    // chacun voit.
+    _RegleRoute('/factures-abonnement', PageAccess.facturesAbonnement),
     _RegleRoute('/admin', PageAccess.dashboard),
 
     // 🔐 MODULE 12 — journal d'audit (plateforme : toutes les boutiques ;
@@ -905,6 +934,9 @@ class PermissionService {
     // 🧾 MODULE 14 — écrans du workflow d'activation.
     PageAccess.verificationComptes: '/admin/verification-comptes',
     PageAccess.activationsFinance: '/admin/activations-finance',
+    // 🧾 CORRECTIF 67 — factures d'abonnement (route de premier niveau :
+    // l'écran sert dans les deux espaces).
+    PageAccess.facturesAbonnement: '/factures-abonnement',
     PageAccess.villes: '/admin',
     PageAccess.activites: '/admin',
     PageAccess.groupesTarifaires: '/admin',

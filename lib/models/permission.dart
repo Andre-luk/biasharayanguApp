@@ -168,6 +168,12 @@ enum PageAccess {
   activationsFinance('activations_finance', 'Activations & paiements',
       [EspaceApplication.plateforme],
       alias: ['activation_finance', 'paiements_activation']),
+  // 🧾 CORRECTIF 67 — FACTURES D'ABONNEMENT : documents TRAÇABLES remis au
+  // client (qui les a générés, quand, à quel numéro WhatsApp elles ont été
+  // envoyées). La plateforme les gère ; le client consulte les siennes.
+  facturesAbonnement('factures_abonnement', 'Factures d\'abonnement',
+      [EspaceApplication.plateforme, EspaceApplication.entreprise],
+      alias: ['factures', 'facture_abonnement', 'facturation']),
   paiements('paiements', 'Paiements', [EspaceApplication.plateforme],
       alias: ['avances', 'soldes', 'historique_paiements']),
   finance('finance', 'Finance', [EspaceApplication.plateforme, EspaceApplication.entreprise],

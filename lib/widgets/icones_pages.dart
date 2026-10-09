@@ -50,6 +50,9 @@ IconData iconePourPage(PageAccess page) {
       return Icons.insights_rounded;
     case PageAccess.publicites:
       return Icons.campaign_rounded;
+    // 🧾 CORRECTIF 67 — factures d'abonnement traçables.
+    case PageAccess.facturesAbonnement:
+      return Icons.description_rounded;
     // 🛡️ MODULE 20 — administration plateforme.
     case PageAccess.boutiques:
       return Icons.store_mall_directory_rounded;
