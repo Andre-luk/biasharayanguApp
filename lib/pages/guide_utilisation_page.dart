@@ -450,7 +450,14 @@ class GuideUtilisationPage extends StatelessWidget {
             icone: Icons.smart_toy_rounded,
             points: <String>[
               'Assistant IA : posez vos questions (ventes du jour, conseils, '
-                  'résumés) — les quotas se rechargent par packs de 10 à 100.',
+                  'résumés) — les quotas se rechargent par packs.',
+              'Où sont passés mes quotas ? L\'écran des quotas montre le pool '
+                  'restant de l\'entreprise ET le solde de chaque '
+                  'collaborateur, avec qui les a attribués.',
+              'Vous pouvez REPRENDRE les quotas non consommés d\'un '
+                  'collaborateur : ils reviennent dans le pool. En revanche, '
+                  'les quotas déjà utilisés ne sont jamais reprenables — le '
+                  'travail de l\'assistant a été rendu, il est dû.',
               'Mon abonnement : suivez votre dossier d\'activation, vos '
                   'montants et vos échéances (montants d\'abonnement facturés '
                   'en CDF, avec l\'équivalent dans votre devise au taux '
