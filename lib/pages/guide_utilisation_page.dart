@@ -378,6 +378,10 @@ class GuideUtilisationPage extends StatelessWidget {
                   'prix payé (le stock augmente immédiatement).',
               '« Inventaire (ajuster) » corrige le stock au niveau réellement '
                   'constaté (raison obligatoire : pesée, casse…).',
+              'L\'alerte « stock faible » se déclenche AUSSI sur un '
+                  'ajustement et sur une consommation de production — pas '
+                  'seulement sur une vente. Une perte ou un vol vous est donc '
+                  'signalé même si rien n\'a été vendu.',
               'Le filtre « Alertes » liste ce qui manque avant la fournée.',
             ],
           ),
@@ -394,6 +398,9 @@ class GuideUtilisationPage extends StatelessWidget {
                   'produit fini ENTRE EN STOCK, les pertes et le coût de '
                   'revient unitaire sont calculés automatiquement.',
               'Annuler une production en cours rend les matières au stock.',
+              'Depuis la version 2.8.0, la matière première que vous '
+                  'consommez prévient si elle passe sous son seuil : fini les '
+                  'fournées interrompues faute de farine sans avertissement.',
             ],
           ),
           _TitreSection(

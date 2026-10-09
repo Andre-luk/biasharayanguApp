@@ -53,7 +53,7 @@ lib/
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
 supabase/migrations/   → 71 migrations SQL idempotentes (0000 → 0070)
-test/                  → 835 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration)
+test/                  → 842 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
@@ -198,7 +198,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 835 tests — doit rester 100 % vert
+flutter test             # 842 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -219,7 +219,7 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **2.8.0+31**
+- Flutter **3.47.4** / Dart **3.13.3**, app **2.8.0+32**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`,
   `flutter_map` + `latlong2` (carte OpenStreetMap, **aucune clé d'API**),
   `geolocator` (position du visiteur, avec consentement), `http` (recherche

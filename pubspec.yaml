@@ -2,7 +2,7 @@ name: biashara_yangu
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 2.8.0+31
+version: 2.8.0+32
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

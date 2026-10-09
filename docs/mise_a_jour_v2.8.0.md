@@ -1,18 +1,18 @@
-# Mise à jour v2.8.0 — Le code de validation des agents
+# Mise à jour v2.8.0 — Code de validation des agents & alerte de stock
 
-**Version :** 2.8.0 (build 31)
+**Version :** 2.8.0 (build 32)
 **Migrations SQL :** `20260916000069_code_validation_agent.sql` puis
 `20260916000070_agent_verifie_dossier.sql` *(à exécuter après les correctifs 67
 et 68)*
-**Tests :** 835/835 ✅
+**Tests :** 842/842 ✅
 
 ---
 
 ## En une phrase
 
-**Une vérification de compte ne peut plus être signée par le seul agent : la
-Finance doit lui dicter un code à 6 chiffres, et si elle ne le fait pas dans les
-5 minutes, l'agent continue — mais la Finance le voit.**
+**Une vérification de compte ne peut plus être signée par le seul agent — la
+Finance doit lui dicter un code à 6 chiffres — et l'alerte de stock se déclenche
+enfin quand la marchandise disparaît, pas seulement quand elle est vendue.**
 
 ---
 
@@ -74,7 +74,59 @@ la même personne**, et les mélanger rendrait le contrôle inutilisable.
 
 ---
 
+## Alerte de stock : les ajustements et l'inventaire comptent enfin
+
+### 📦 Ce qui n'allait pas
+
+Seule une **vente** pouvait déclencher l'alerte « stock faible ». Un
+**ajustement d'inventaire** — c'est-à-dire précisément le moment où l'on
+constate que la marchandise a disparu — ne disait rien.
+
+Autrement dit : **le stock ne pouvait passer sous son seuil que si le manquant
+avait été vendu.** Une perte, un vol, une casse — le cas le plus grave — était
+le seul cas parfaitement muet.
+
+### ✅ Ce qui change
+
+Désormais, l'alerte se déclenche aussi :
+
+- après un **ajustement d'inventaire** d'un article ;
+- après une **clôture d'inventaire quotidien** (pour chaque article dont le
+  comptage a fait baisser le stock) ;
+- après un **ajustement de matière première** (farine, levure, sucre…) ;
+- après une **consommation de matière première** en production — le chemin par
+  lequel une boulangerie vide vraiment ses réserves, et qui n'émettait
+  strictement aucune alerte.
+
+### 🎯 Deux précautions qui évitent de noyer l'alerte
+
+- **On n'alerte que si le seuil vient d'être franchi.** Une marchandise déjà en
+  alerte ne redéclenche rien à chaque nouveau mouvement — sinon l'alerte
+  perdrait tout sens et on cesserait de la lire.
+- **Un écart d'inventaire non appliqué n'alerte pas.** Si vous comptez sans
+  corriger le stock (clôture en lecture seule), le stock n'a pas bougé :
+  signaler une disparition qui n'a pas eu lieu serait une fausse alerte. Or une
+  fausse alerte apprend à ignorer les vraies.
+
+---
+
 ## Notes techniques (pour la fiche store)
+
+**Application — correctif 71** (aucune migration) :
+
+- `services/stock_service.dart` : alerte après `ajuster()` (le serveur renvoie
+  déjà `stock_avant` / `stock_apres`) et après `cloturerInventaire()` ;
+- la **règle de sélection** des articles à examiner est extraite dans une
+  fonction **pure et publique** `StockService.baissesDeStockApresInventaire` :
+  écart **réellement corrigé** ET **en baisse**. Une règle qu'on ne peut pas
+  tester est une règle qu'on cassera sans s'en apercevoir ;
+- `services/production_service.dart` : alerte après `ajusterMatiere()` et
+  `consommer()`. **`rpc_matiere_ajuster` ne renvoie pas le stock avant**
+  (contrairement à `rpc_stock_ajuster`) : il est donc **relu en base** — une
+  lecture coûte moins cher qu'une migration supplémentaire pour une
+  notification, et elle ne dépend d'aucune valeur fournie par l'appelant ;
+- **tout est best-effort** : l'opération est déjà enregistrée côté serveur, une
+  alerte ratée ne doit jamais remonter comme un échec de stock.
 
 **Base de données — correctif 69** (`20260916000069_code_validation_agent.sql`) :
 
