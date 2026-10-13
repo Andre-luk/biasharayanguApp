@@ -42,12 +42,36 @@ jobs:
         uses: actions/checkout@v4
 
       # Les serveurs GitHub n'ont que ~14 Go utiles : on retire les outils
-      # préinstallés inutiles ici (dotnet, ghc, boost…) pour éviter le
-      # « No space left on device » pendant la compilation Android.
+      # préinstallés inutiles ici pour éviter le « No space left on device »
+      # pendant la compilation Android.
+      # ⚠️ La liste courte ne suffisait plus (échecs du 2026-10-13) : les
+      # images de runners embarquent désormais aussi des images d'émulateur,
+      # Rust et le SDK .NET complet. On élargit — mais on ne touche JAMAIS au
+      # cache d'outils de Java ni de Flutter, ni à un JDK.
       - name: Libérer de l'espace disque
         run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost \
-                      /usr/share/swift /opt/hostedtoolcache/CodeQL || true
+          echo "── Disque avant ──"
+          df -h / | tail -1
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL \
+            /opt/hostedtoolcache/PyPy \
+            /opt/hostedtoolcache/Ruby \
+            /usr/local/share/boost \
+            /usr/share/swift \
+            /opt/az \
+            /usr/share/miniconda \
+            /usr/local/share/powershell \
+            /usr/local/lib/android/sdk/system-images \
+            /usr/local/lib/android/sdk/emulator \
+            /usr/local/rustup \
+            /usr/local/cargo/registry \
+            || true
+          docker image prune -af || true
+          sudo apt-get clean || true
+          echo "── Disque après ──"
           df -h / | tail -1
 
       - name: Installer Java

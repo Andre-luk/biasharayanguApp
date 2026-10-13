@@ -85,6 +85,41 @@ jobs:
       - name: Récupérer le code
         uses: actions/checkout@v4
 
+      # 💾 ESPACE DISQUE — les images de runners GitHub embarquent de plus en
+      # plus d'outils (CodeQL, .NET, GHC, Swift, images d'émulateur…) et le
+      # disque finit PLEIN : la compilation s'arrête alors sur
+      # « No space left on device », avec des messages qui accusent à tort
+      # Gradle ou la signature. Le 2026-10-13, l'APK de la v2.9.0 a échoué
+      # exactement pour cette raison.
+      # On ne supprime QUE ce qu'une compilation Flutter Android n'utilise pas :
+      # jamais le cache d'outils de Java ni de Flutter (les étapes suivantes
+      # s'en servent), jamais un JDK.
+      - name: Libérer de l'espace disque
+        run: |
+          echo "── Disque avant ──"
+          df -h / | tail -1
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL \
+            /opt/hostedtoolcache/PyPy \
+            /opt/hostedtoolcache/Ruby \
+            /usr/local/share/boost \
+            /usr/share/swift \
+            /opt/az \
+            /usr/share/miniconda \
+            /usr/local/share/powershell \
+            /usr/local/lib/android/sdk/system-images \
+            /usr/local/lib/android/sdk/emulator \
+            /usr/local/rustup \
+            /usr/local/cargo/registry \
+            || true
+          docker image prune -af || true
+          sudo apt-get clean || true
+          echo "── Disque après ──"
+          df -h / | tail -1
+
       - name: Installer Java
         uses: actions/setup-java@v4
         with:
