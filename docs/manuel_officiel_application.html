@@ -159,11 +159,19 @@ où les clients te trouvent près d'eux.
   <tr><td><strong>Restaurant</strong></td><td>Prendre les commandes, les envoyer en cuisine, encaisser à table.</td><td>Tables (plan, occupation) · Commandes · Cuisine (écran de préparation)</td></tr>
   <tr><td><strong>Salle des fêtes</strong></td><td>Louer la salle par événement, gérer l'acompte et le solde.</td><td>Salles · Événements (date, client, montant, solde)</td></tr>
   <tr><td><strong>Boulangerie</strong></td><td>Produire, suivre les fournées et les ingrédients.</td><td>Production (recette, quantité, coût)</td></tr>
-  <tr><td><strong>Pharmacie</strong></td><td>Vendre en respectant les dates de péremption et les lots.</td><td>Articles (lot, péremption) · Alertes de péremption</td></tr>
+  <tr><td><strong>Pharmacie</strong></td><td>Vendre en respectant les dates de péremption et les lots.</td><td>Articles (lot, péremption) · Alertes de péremption (délai réglable par entreprise)</td></tr>
   <tr><td><strong>Boucherie</strong></td><td>Vendre au poids, gérer les découpes.</td><td>Pesée · Variantes de poids</td></tr>
   <tr><td><strong>Production</strong></td><td>Transformer des matières premières en produits finis.</td><td>Matières · Production · Coût de revient</td></tr>
 </table>
 <p class="sous">Le <strong>type d'activité</strong> choisi à la création de l'entreprise détermine les modules visibles. Il se modifie ensuite dans <strong>Types d'activités</strong>.</p>
+
+<h3>Le délai d'alerte de péremption</h3>
+<div class="bloc">
+<p><span class="lbl">À quoi ça sert :</span> être prévenu <em>assez tôt</em> pour écouler un produit avant qu'il ne périme — et pas trois mois à l'avance pour un yaourt, ni trois jours pour un sirop.</p>
+<p><span class="lbl">Comment :</span> <strong>Paramètres → Alerte de péremption</strong>. Choisissez 7, 15, 30, 60 ou 90 jours, ou saisissez la valeur exacte qui convient à votre rayon (<strong>1 à 365</strong>). La valeur par défaut est <strong>30 jours</strong>.</p>
+<p><span class="lbl">Les 3 gestes :</span> régler le délai <strong>par entreprise</strong> (chaque boutique garde le sien) ; le seuil est <strong>inclusif</strong> — à exactement 30 jours avec un délai de 30, l'alerte est déjà là ; vérifier ensuite l'écran <strong>Expirations</strong>, qui suit le délai choisi.</p>
+<p><span class="lbl">Ce que le délai change :</span> le badge sur la <strong>fiche article</strong>, le compteur rouge de la carte <strong>Expirations</strong>, le compteur de <strong>notifications</strong>, les <strong>filtres</strong> et le tri par urgence de l'écran Expirations, et le bandeau du <strong>formulaire article</strong>. Un seul réglage, un seul seuil partout.</p>
+</div>
 
 <h2>5. Les fonctions transverses</h2>
 
@@ -207,7 +215,7 @@ où les clients te trouvent près d'eux.
 <h3>5.6 Paramètres et sauvegarde</h3>
 <div class="bloc">
 <p><span class="lbl">À quoi ça sert :</span> régler l'application, imprimer les QR codes, sauvegarder et restaurer.</p>
-<p><span class="lbl">Comment :</span> <strong>Paramètres</strong> : Ma vitrine Biashara · QR codes · Import d'articles · <strong>Sauvegarde / Restauration</strong> · Notifications · Guide d'utilisation.</p>
+<p><span class="lbl">Comment :</span> <strong>Paramètres</strong> : Ma vitrine Biashara · QR codes · Import d'articles · <strong>Sauvegarde / Restauration</strong> · Notifications · <strong>Alerte de péremption</strong> · Guide d'utilisation.</p>
 <p><span class="lbl">Les 3 gestes :</span> faire une <strong>sauvegarde</strong> avant tout changement important ; imprimer les QR codes après chaque nouvel article ; utiliser le <strong>guide intégré</strong> pour former un employé.</p>
 </div>
 

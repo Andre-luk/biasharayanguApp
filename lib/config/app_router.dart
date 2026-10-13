@@ -66,7 +66,9 @@ import 'package:biashara_yangu/pages/add_user_page.dart';
 import 'package:biashara_yangu/pages/collaborateurs_stats_page.dart';
 
 // ================== MODULE 1 : ENTREPRISES ==================
+import 'package:biashara_yangu/pages/entreprise_creation_page.dart';
 import 'package:biashara_yangu/pages/entreprise_detail_page.dart';
+import 'package:biashara_yangu/pages/entreprise_fiche_page.dart';
 import 'package:biashara_yangu/pages/entreprise_form_page.dart';
 
 // ============ MODULE 2 : ACTIVITÉS & GROUPES TARIFAIRES ============
@@ -566,6 +568,14 @@ final GoRouter appRouter = GoRouter(
           name: 'entreprise-new',
           builder: (context, state) => const EntrepriseFormPage(),
         ),
+        // 🆕 CORRECTIF 73 — création COMPLÈTE : l'entreprise ET le compte de
+        // son propriétaire en une seule fois. Déclarée AVANT `:id`, sinon
+        // « new-complet » serait pris pour un identifiant.
+        GoRoute(
+          path: 'entreprises/new-complet',
+          name: 'entreprise-creation-complete',
+          builder: (context, state) => const EntrepriseCreationPage(),
+        ),
         GoRoute(
           path: 'entreprises/:id',
           name: 'entreprise-detail',
@@ -583,6 +593,18 @@ final GoRouter appRouter = GoRouter(
                     ? state.extra as Entreprise
                     : null,
                 entrepriseId: state.pathParameters['id'],
+              ),
+            ),
+            // 🆕 CORRECTIF 73 — LA FICHE UNIQUE : abonnement, installation,
+            // suivi et avance sur un seul écran.
+            GoRoute(
+              path: 'fiche',
+              name: 'entreprise-fiche',
+              builder: (context, state) => EntrepriseFichePage(
+                entrepriseId: state.pathParameters['id']!,
+                nom: state.extra is Entreprise
+                    ? (state.extra as Entreprise).nom
+                    : null,
               ),
             ),
           ],

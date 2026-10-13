@@ -359,4 +359,100 @@ void main() {
       );
     });
   });
+
+  // =========================================================================
+  //  CORRECTIF 75 — L'ÉMISSION DU CODE OUVRE LE COMPTE
+  // =========================================================================
+  //  Le geste de la Finance suffit : le serveur active le compte (essai de
+  //  7 jours) et renvoie le résultat. On vérifie la lecture de cette réponse,
+  //  y compris ses cas limites, car c'est ce que l'opératrice lit à l'écran.
+
+  group('ActivationParCode', () {
+    test('activation réussie : phrase d\'essai', () {
+      final EmissionCodeAgent? emission = EmissionCodeAgent.depuisJson(
+        <String, dynamic>{
+          'ok': true,
+          'demande_id': 'd-1',
+          'code': '123456',
+          'expire_le': '2026-10-13T10:05:00Z',
+          'activation': <String, dynamic>{
+            'ok': true,
+            'deja_actif': false,
+            'activation_etape': 'actif',
+            'statut': 'ESSAI_7J',
+            'essai_jours': 7,
+            'date_expiration': '2026-10-20T10:00:00Z',
+          },
+        },
+      );
+
+      expect(emission, isNotNull);
+      expect(emission!.code, '123456');
+      expect(emission.activation, isNotNull);
+      expect(emission.activation!.ok, isTrue);
+      expect(emission.activation!.dejaActif, isFalse);
+      expect(emission.activation!.etape, 'actif');
+      expect(emission.activation!.statut, 'ESSAI_7J');
+      expect(emission.activation!.essaiJours, 7);
+      expect(emission.activation!.dateExpiration, isNotNull);
+      expect(emission.activation!.resume,
+          'Compte ACTIVÉ automatiquement — essai de 7 jour(s).');
+    });
+
+    test('compte déjà ouvert : rien n\'a changé', () {
+      final ActivationParCode? act = ActivationParCode.depuisJson(
+        <String, dynamic>{'ok': true, 'deja_actif': true, 'activation_etape': 'actif'},
+      );
+
+      expect(act, isNotNull);
+      expect(act!.dejaActif, isTrue);
+      expect(act.resume, 'Ce compte était déjà ouvert : rien n\'a changé.');
+    });
+
+    test('activation refusée : le message du serveur est repris', () {
+      final ActivationParCode? act = ActivationParCode.depuisJson(
+        <String, dynamic>{
+          'ok': false,
+          'motif': 'COMPTE_RESTREINT',
+          'message': 'Ce compte est restreint : réglez le solde avant de l\'ouvrir.',
+        },
+      );
+
+      expect(act, isNotNull);
+      expect(act!.ok, isFalse);
+      expect(act.resume,
+          'Ce compte est restreint : réglez le solde avant de l\'ouvrir.');
+    });
+
+    test('activation refusée sans message : repli explicite', () {
+      final ActivationParCode? act =
+          ActivationParCode.depuisJson(<String, dynamic>{'ok': false});
+
+      expect(act, isNotNull);
+      expect(act!.resume, contains('n\'a pas pu être ouvert automatiquement'));
+    });
+
+    test('essai sans durée connue : phrase sans chiffre', () {
+      final ActivationParCode? act = ActivationParCode.depuisJson(
+        <String, dynamic>{'ok': true, 'deja_actif': false},
+      );
+
+      expect(act!.resume, 'Compte ACTIVÉ automatiquement.');
+    });
+
+    test('absence de section activation : champ nul, code toujours lu', () {
+      final EmissionCodeAgent? emission = EmissionCodeAgent.depuisJson(
+        <String, dynamic>{'demande_id': 'd-2', 'code': '000123'},
+      );
+
+      expect(emission, isNotNull);
+      expect(emission!.activation, isNull);
+      expect(emission.code, '000123');
+    });
+
+    test('ActivationParCode.depuisJson tolère une valeur inattendue', () {
+      expect(ActivationParCode.depuisJson(null), isNull);
+      expect(ActivationParCode.depuisJson('texte'), isNull);
+    });
+  });
 }

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:biashara_yangu/models/activite.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/fiche_entreprise.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
@@ -350,6 +351,128 @@ class EntrepriseService {
   /// par : `return groupe.montantAbonnement;`
   double calculerMontantTotalDu(GroupeTarifaire groupe) {
     return groupe.fraisOuverture + groupe.montantAbonnement;
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🆕 CORRECTIF 73 — CRÉATION COMPLÈTE ET FICHE UNIQUE
+  // ---------------------------------------------------------------------------
+
+  /// Crée l'entreprise **et** le compte de son propriétaire, en une fois.
+  ///
+  /// Côté serveur (`rpc_admin_entreprise_creer`), tout se passe dans la même
+  /// opération : compte Auth + profil PROPRIÉTAIRE, entreprise, espace typé,
+  /// dossier d'activation, les deux prix et la durée d'essai. Si une seule
+  /// validation échoue, **rien** n'est créé : jamais d'entreprise orpheline.
+  ///
+  /// Le créateur (`cree_par`) est enregistré automatiquement : c'est
+  /// l'utilisateur connecté.
+  Future<ResultatCreationEntreprise> creerEntrepriseAvecProprietaire({
+    required String nom,
+    required String proprietaireNom,
+    required String proprietaireEmail,
+    required String motDePasse,
+    String? proprietairePrenom,
+    String? proprietaireTelephone,
+    String? villeId,
+    String? activiteId,
+    String? groupeTarifaireId,
+    String typeEspace = 'boutique',
+    double? prixInstallation,
+    double? prixMensuel,
+    String? note,
+  }) {
+    return _executer(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_admin_entreprise_creer',
+          params: <String, dynamic>{
+            'p_nom': nom.trim(),
+            'p_ville_id': villeId,
+            'p_activite_id': activiteId,
+            'p_groupe_tarifaire_id': groupeTarifaireId,
+            'p_type_espace': typeEspace,
+            'p_proprietaire_nom': proprietaireNom.trim(),
+            'p_proprietaire_prenom':
+                (proprietairePrenom ?? '').trim().isEmpty
+                    ? null
+                    : proprietairePrenom!.trim(),
+            'p_proprietaire_email': proprietaireEmail.trim().toLowerCase(),
+            'p_proprietaire_telephone':
+                (proprietaireTelephone ?? '').trim().isEmpty
+                    ? null
+                    : proprietaireTelephone!.trim(),
+            'p_mot_de_passe': motDePasse,
+            'p_prix_installation': prixInstallation,
+            'p_prix_mensuel': prixMensuel,
+            'p_note': note,
+          },
+        );
+
+        final Map<String, dynamic>? map = parseMap(reponse);
+        if (map == null || parseString(map['entreprise_id']).isEmpty) {
+          throw const EntrepriseServiceException(
+            'Le serveur a r\u00e9pondu de fa\u00e7on inattendue. '
+            'V\u00e9rifiez la liste des entreprises avant de recommencer.',
+          );
+        }
+
+        return ResultatCreationEntreprise.depuisJson(map);
+      },
+      actionLibelle: "la cr\u00e9ation du compte",
+      messageEchec:
+          'Impossible de cr\u00e9er le compte. V\u00e9rifiez votre connexion internet puis r\u00e9essayez.',
+    );
+  }
+
+  /// LA FICHE UNIQUE : abonnement, installation, suivi et avance.
+  ///
+  /// Renvoie `null` si la réponse est illisible ; lève une exception métier
+  /// explicite si la migration n'est pas encore exécutée.
+  Future<FicheEntreprise?> chargerFiche(String entrepriseId) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_entreprise_fiche',
+        params: <String, dynamic>{'p_entreprise_id': entrepriseId},
+      );
+      return FicheEntreprise.depuisJson(reponse);
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' ||
+          e.message.toLowerCase().contains('schema cache')) {
+        throw const EntrepriseServiceException(
+          'La fiche compl\u00e8te n\u2019est pas encore install\u00e9e en base. '
+          'Ex\u00e9cutez la migration 73, puis r\u00e9essayez.',
+        );
+      }
+      throw EntrepriseServiceException(
+          _messagePostgrest(e, 'le chargement de la fiche'));
+    }
+  }
+
+  /// Fixe les DEUX prix d'une entreprise (correctif 60).
+  ///
+  /// Un param\u00e8tre laiss\u00e9 \u00e0 `null` n'est pas modifi\u00e9.
+  Future<void> definirPrix({
+    required String entrepriseId,
+    double? installation,
+    double? mensuel,
+    String? note,
+  }) {
+    return _executer(
+      () async {
+        await _client.rpc(
+          'rpc_abonnement_definir_prix',
+          params: <String, dynamic>{
+            'p_entreprise_id': entrepriseId,
+            'p_installation': installation,
+            'p_mensuel': mensuel,
+            'p_note': note,
+          },
+        );
+      },
+      actionLibelle: 'la mise \u00e0 jour des prix',
+      messageEchec:
+          'Impossible d\u2019enregistrer les prix. V\u00e9rifiez votre connexion internet puis r\u00e9essayez.',
+    );
   }
 
   /// Enregistre un encaissement sur l'abonnement d'une entreprise.

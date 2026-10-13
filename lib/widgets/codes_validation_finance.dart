@@ -25,6 +25,7 @@ import 'package:flutter/services.dart';
 
 import 'package:biashara_yangu/models/code_validation_agent.dart';
 import 'package:biashara_yangu/services/code_validation_agent_service.dart';
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
 
 /// Bandeau « codes de validation » pour l'écran Finance.
 ///
@@ -116,6 +117,8 @@ class _CodesValidationFinanceSectionState
           code: emission.code,
           nomCompte: demande.nomAffiche,
           expireLe: emission.expireLe,
+          // 🆕 CORRECTIF 75 — l'émission du code a OUVERT le compte.
+          activation: emission.activation,
         ),
       );
       await _charger();
@@ -491,6 +494,7 @@ class _DialogueCodeEmis extends StatelessWidget {
     required this.nomCompte,
     this.expireLe,
     this.minutesRestantes,
+    this.activation,
   });
 
   final String code;
@@ -498,8 +502,13 @@ class _DialogueCodeEmis extends StatelessWidget {
   final DateTime? expireLe;
   final int? minutesRestantes;
 
+  /// 🆕 CORRECTIF 75 — le compte a été ouvert en émettant ce code.
+  final ActivationParCode? activation;
+
   @override
   Widget build(BuildContext context) {
+    final ActivationParCode? act = activation;
+
     //  ⚠️ Le code est affiché en très gros et sélectionnable : la Finance doit
     //  pouvoir le lire au téléphone ou le recopier dans un message. En
     //  revanche il n'existe AUCUN champ « note » ici : prolonger la vie du
@@ -528,6 +537,42 @@ class _DialogueCodeEmis extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
           ),
+          if (act != null) ...<Widget>[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: (act.ok ? AppCouleurs.succes : Colors.orange)
+                    .withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: (act.ok ? AppCouleurs.succes : Colors.orange)
+                      .withValues(alpha: 0.45),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    act.ok
+                        ? Icons.verified_rounded
+                        : Icons.info_outline_rounded,
+                    size: 18,
+                    color: act.ok ? AppCouleurs.succes : Colors.orange.shade800,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      act.resume,
+                      style: const TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
       actions: <Widget>[

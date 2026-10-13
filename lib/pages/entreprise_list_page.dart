@@ -270,12 +270,69 @@ class _EntrepriseListPageState extends State<EntrepriseListPage> {
   // ---------------------------------------------------------------------------
 
   Future<void> _ouvrirCreation() async {
+    // 🆕 CORRECTIF 73 — deux façons de créer un compte :
+    //   • la CRÉATION COMPLÈTE (recommandée) crée en même temps le compte du
+    //     propriétaire et règle le pack, l'installation et l'essai ;
+    //   • l'ancien formulaire reste disponible pour une entreprise seule
+    //     dont le patron existe déjà.
+    final bool? complet = await showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.person_add_alt_1_outlined),
+                title: const Text('Créer avec son propriétaire'),
+                subtitle: const Text(
+                    'Compte du patron + pack + installation + essai, en une fois'),
+                onTap: () => Navigator.of(sheetContext).pop(true),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.add_business_outlined),
+                title: const Text('Entreprise seule'),
+                subtitle: const Text(
+                    'Le patron existe déjà ou s\'inscrira lui-même'),
+                onTap: () => Navigator.of(sheetContext).pop(false),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (!mounted || complet == null) return;
+
     final GoRouter router = GoRouter.of(context);
-    final bool? cree = await router.push<bool>('/admin/entreprises/new');
+    final bool? cree = await router.push<bool>(
+      complet
+          ? '/admin/entreprises/new-complet'
+          : '/admin/entreprises/new',
+    );
 
     if (!mounted || cree != true) return;
 
     _afficherMessage('Entreprise créée avec succès.');
+    await _charger(silencieux: true);
+  }
+
+  /// 🆕 CORRECTIF 73 — la fiche unique : abonnement, installation, suivi,
+  /// avance et historique, sur un seul écran.
+  Future<void> _ouvrirFiche(Entreprise entreprise) async {
+    final GoRouter router = GoRouter.of(context);
+    await router.push<void>(
+      '/admin/entreprises/${entreprise.id}/fiche',
+      extra: entreprise,
+    );
+
+    if (!mounted) return;
     await _charger(silencieux: true);
   }
 
@@ -606,6 +663,13 @@ class _EntrepriseListPageState extends State<EntrepriseListPage> {
                 ),
               ),
               const SizedBox(width: 4),
+              // 🆕 CORRECTIF 73 — LA FICHE UNIQUE d'un geste.
+              IconButton(
+                tooltip: 'Fiche complète',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => _ouvrirFiche(entreprise),
+                icon: const Icon(Icons.description_outlined, size: 18),
+              ),
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Icon(

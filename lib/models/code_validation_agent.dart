@@ -248,13 +248,86 @@ class DemandeCodeAgent {
   }
 }
 
+/// Correctif 75 — ce que l'émission du code a déclenché sur le compte.
+///
+/// La Finance n'a plus qu'UN geste à faire : émettre le code. Le serveur ouvre
+/// le compte dans la foulée (essai de 7 jours) et renvoie ici le résultat, pour
+/// que l'opératrice sache immédiatement ce qui vient de se passer.
+class ActivationParCode {
+  const ActivationParCode({
+    this.ok = false,
+    this.dejaActif = false,
+    this.etape,
+    this.statut,
+    this.essaiJours,
+    this.dateExpiration,
+    this.message,
+  });
+
+  /// Faux quand l'activation a été refusée (compte restreint, erreur…).
+  final bool ok;
+
+  /// Vrai si le compte était DÉJÀ ouvert : rien n'a été modifié.
+  final bool dejaActif;
+
+  final String? etape;
+  final String? statut;
+
+  /// Durée de l'essai accordée, en jours.
+  final int? essaiJours;
+
+  final DateTime? dateExpiration;
+
+  /// Message à afficher quand [ok] est faux.
+  final String? message;
+
+  static ActivationParCode? depuisJson(dynamic valeur) {
+    final Map<String, dynamic>? map = parseMap(valeur);
+    if (map == null) return null;
+
+    return ActivationParCode(
+      ok: map['ok'] == true,
+      dejaActif: map['deja_actif'] == true,
+      etape: parseStringOrNull(map['activation_etape']),
+      statut: parseStringOrNull(map['statut']),
+      essaiJours:
+          map['essai_jours'] == null ? null : parseInt(map['essai_jours']),
+      dateExpiration: parseDateTimeOrNull(map['date_expiration']),
+      message: parseStringOrNull(map['message']),
+    );
+  }
+
+  /// Phrase courte, directement affichable.
+  String get resume {
+    if (!ok) {
+      return message ??
+          'Le compte n\'a pas pu être ouvert automatiquement : ouvrez-le depuis '
+              'sa fiche.';
+    }
+    if (dejaActif) return 'Ce compte était déjà ouvert : rien n\'a changé.';
+
+    final int? jours = essaiJours;
+    return jours == null
+        ? 'Compte ACTIVÉ automatiquement.'
+        : 'Compte ACTIVÉ automatiquement — essai de $jours jour(s).';
+  }
+}
+
 /// Résultat de `rpc_agent_code_emettre` — le code, à transmettre à l'agent.
 class EmissionCodeAgent {
-  const EmissionCodeAgent({required this.demandeId, required this.code, this.expireLe});
+  const EmissionCodeAgent({
+    required this.demandeId,
+    required this.code,
+    this.expireLe,
+    this.activation,
+  });
 
   final String demandeId;
   final String code;
   final DateTime? expireLe;
+
+  /// 🆕 Correctif 75 — l'activation déclenchée par cette émission.
+  final ActivationParCode? activation;
 
   static EmissionCodeAgent? depuisJson(dynamic valeur) {
     final Map<String, dynamic>? map = parseMap(valeur);
@@ -270,6 +343,7 @@ class EmissionCodeAgent {
       demandeId: parseString(map['demande_id']).trim(),
       code: code,
       expireLe: parseDateTimeOrNull(map['expire_le']),
+      activation: ActivationParCode.depuisJson(map['activation']),
     );
   }
 }

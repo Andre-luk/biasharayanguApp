@@ -118,8 +118,29 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   Future<void> _changerRole(Utilisateur u) async {
     if (u.id == null || u.id!.isEmpty) return;
 
+    // 🔐 Correctif 73 — personne ne modifie son propre rôle.
+    //  C'est le chemin le plus court vers une élévation de privilèges : un
+    //  agent terrain pouvait se promouvoir lui-même « Super Administrateur »
+    //  depuis cet écran.
+    final String? moi = await SessionManager.getUserId();
+    if (!mounted) return;
+    if (moi != null && moi == u.id) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Vous ne pouvez pas modifier votre propre rôle.'),
+        backgroundColor: Colors.red,
+      ));
+      return;
+    }
+
+    // 🔐 Correctif 73 — on n'attribue que les rôles autorisés pour le compte
+    //  connecté (un non Super Administrateur n'attribue jamais un rôle de la
+    //  plateforme La Perle).
+    final List<RoleUtilisateur> attribuables =
+        RoleUtilisateur.attribuablesPar(PermissionService.instance.roleCourant);
+
     final RoleUtilisateur roleActuel = PermissionService.roleDepuisUtilisateur(u);
-    RoleUtilisateur choix = roleActuel == RoleUtilisateur.inconnu
+    RoleUtilisateur choix = roleActuel == RoleUtilisateur.inconnu ||
+            !attribuables.contains(roleActuel)
         ? RoleUtilisateur.vendeur
         : roleActuel;
 
@@ -155,7 +176,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      items: RoleUtilisateur.rolesSelectionnables
+                      items: attribuables
                           .map((RoleUtilisateur r) => DropdownMenuItem(
                                 value: r,
                                 child: Text(r.libelle),
@@ -202,6 +223,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
 
     if (confirme != true) return;
     if (choix == roleActuel) return;
+    // Défense en profondeur : la liste ne propose que des rôles autorisés,
+    // mais on re-vérifie avant d'écrire.
+    if (!attribuables.contains(choix)) return;
 
     try {
       await supabase
@@ -221,14 +245,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
         debugPrint('Rôle local non mis à jour: $e');
       }
 
-      // Si l'administrateur change son propre rôle, la session courante doit
-      // suivre immédiatement (sinon les menus resteraient sur l'ancien rôle).
-      final String? moi = await SessionManager.getUserId();
-      if (moi == u.id) {
-        await SessionManager.setUserRole(choix.code);
-        await PermissionService.instance
-            .initialiser(choix.code, forcerRechargement: true);
-      }
+      // 🔐 Correctif 73 — plus besoin de réaligner la session : modifier son
+      //  propre rôle est refusé plus haut, la session courante ne peut donc
+      //  pas être désynchronisée par cette action.
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

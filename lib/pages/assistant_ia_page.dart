@@ -210,6 +210,25 @@ class _AssistantIaPageState extends State<AssistantIaPage> {
 
     return Scaffold(
       appBar: AppBar(
+        // 🔐 Correctif 73 — retour au tableau de bord.
+        //  La page est une route de PREMIER NIVEAU : ouverte par la carte
+        //  d'accueil (`context.go`), elle REMPLACE la pile et la barre de
+        //  navigation disparaît. Il n'y a donc rien à dépiler : on renvoie
+        //  explicitement vers l'accueil du rôle. Ouverte depuis les
+        //  paramètres (`push`), la flèche dépile normalement.
+        leading: IconButton(
+          tooltip: 'Tableau de bord',
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            final String? accueil = PermissionService.instance
+                .accueilPour(PermissionService.instance.roleCourant);
+            context.go(accueil ?? '/main');
+          },
+        ),
         title: const Text(
           'Assistant IA',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),

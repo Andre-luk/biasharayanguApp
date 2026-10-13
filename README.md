@@ -52,8 +52,8 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 72 migrations SQL idempotentes (0000 → 0071)
-test/                  → 842 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration)
+supabase/migrations/   → 76 migrations SQL idempotentes (0000 → 0075)
+test/                  → 891 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration, péremption, fiche entreprise)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
@@ -98,6 +98,17 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               sans compte), comparaison des prix, carte, mesure de
               visibilité, codes d'attribution et publicités (7 tables,
               22 RPC, aucune donnée privée exposée)
+0041 → 0072   modules 20 et 21 (administration plateforme, marketplace
+0073          correctif 73 — créer une entreprise AVEC son propriétaire
+              (`proprietaire_id`, `cree_par`, `cree_le`) + la fiche unique
+              (`rpc_admin_entreprise_creer`, `rpc_entreprise_fiche`)
+0074          correctif 74 — garde-fou des rôles : `niveau_role()` et le
+              déclencheur `garder_role_utilisateur` (auto-promotion et rôle
+              glissé dans une inscription refusés)
+0075          correctif 75 — `activer_apres_code` : l'émission du code par la
+              Finance ouvre le compte (essai de 7 jours)
+              étendue, devises, quotas IA, codes de validation agent,
+              droits des agents, abonnements, péremption réglable)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
@@ -112,6 +123,19 @@ se terminent par des requêtes de vérification.
 | `ventes` | `{"bloquer_produits_expires": true}` | Bloque la vente d'un article dont la date de péremption est dépassée (pharmacie). Passer à `false` pour l'autoriser |
 | `permissions_roles` | `{"roles": {"VENDEUR": {"ventes": ["voir","creer"]}}}` | Personnalisation des permissions par rôle (écran Super Admin → Permissions) ; remplace la matrice par défaut |
 | `devises` | `{"taux_usd_cdf": 2800, "devise_defaut": "CDF"}` | Taux de change par défaut de la plateforme (Module 18) et devise proposée aux nouvelles entreprises ; réglable par le Super Admin (écran **Devises & taux**) |
+
+**Alerte de péremption (correctif 72)** — le délai d'alerte n'est pas dans
+`app_settings` : il est **propre à chaque entreprise**, dans la colonne
+`entreprises.alerte_peremption_jours` (`integer not null default 30`, contrainte
+`entreprises_alerte_peremption_plage` = **1..365**), réglable depuis
+**Paramètres → Alerte de péremption** (`rpc_peremption_config` /
+`rpc_peremption_definir_delai`, réservé au propriétaire). Ce délai **unique**
+pilote le badge de la carte article, le compteur de la carte *Expirations*, le
+compteur de notifications, les filtres et le tri de l'écran *Expirations*, et le
+bandeau du formulaire article. Le seuil est **inclusif** (à exactement N jours,
+l'alerte est déjà là). Le **blocage de vente**, lui, reste fondé sur
+`produits.date_expiration < current_date` (réglage `ventes.bloquer_produits_expires`)
+et **ignore** le délai d'alerte. Base non migrée : repli propre sur 30 jours.
 
 **Devises (Module 18)** — chaque entreprise travaille en **CDF** (défaut) ou
 **USD** : tous ses montants (prix, ventes, dépenses, caisse, rapports, reçus,
@@ -198,7 +222,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 842 tests — doit rester 100 % vert
+flutter test             # 891 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -219,7 +243,7 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **2.8.0+32**
+- Flutter **3.47.4** / Dart **3.13.3**, app **2.9.0+33**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`,
   `flutter_map` + `latlong2` (carte OpenStreetMap, **aucune clé d'API**),
   `geolocator` (position du visiteur, avec consentement), `http` (recherche

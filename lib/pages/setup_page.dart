@@ -6,7 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase_auth;
 
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/espace.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -35,6 +37,24 @@ class _SetupPageState extends State<SetupPage> {
   String _role = 'vendor';
   bool _saving = false;
   bool _obscurePassword = true;
+
+  /// Rôles proposables à la création d'un compte, selon celui qui crée.
+  ///
+  /// 🔐 Les valeurs envoyées restent les codes **hérités** (`role`), car c'est
+  /// ce que le déclencheur de la base traduit en rôle du Module 4. Or
+  /// `role_herite('admin')` vaut **SUPER_ADMIN** : proposer « Administrateur »
+  /// revenait donc à créer un Super Administrateur de la plateforme — y
+  /// compris depuis un compte d'agent. L'option est désormais réservée au
+  /// Super Administrateur, et disparaît pour tous les autres.
+  List<({String code, String libelle})> get _rolesProposables {
+    final RoleUtilisateur acteur = PermissionService.instance.roleCourant;
+    return <({String code, String libelle})>[
+      (code: 'vendor', libelle: 'Vendeur'),
+      (code: 'collaborator', libelle: 'Collaborateur'),
+      if (acteur == RoleUtilisateur.superAdmin)
+        (code: 'admin', libelle: 'Administrateur (plateforme)'),
+    ];
+  }
 
   /// 🧩 MODULE 17 — catégorie d'activité choisie à la création du compte
   /// (Hôtel, Restaurant, Pharmacie…). Elle détermine l'environnement du
@@ -489,10 +509,23 @@ class _SetupPageState extends State<SetupPage> {
                       DropdownButtonFormField<String>(
                         value: _role,
                         decoration: _buildInputDecoration(Icons.badge_outlined, ""),
-                        items: const [
-                          DropdownMenuItem(value: 'vendor', child: Text("Vendeur")),
-                          DropdownMenuItem(value: 'collaborator', child: Text("Collaborateur")),
-                          DropdownMenuItem(value: 'admin', child: Text("Administrateur")),
+                        items: <DropdownMenuItem<String>>[
+                          for (final ({String code, String libelle}) r
+                              in _rolesProposables)
+                            DropdownMenuItem(
+                                value: r.code, child: Text(r.libelle)),
+                          // Le rôle actuel du compte modifié peut être hors de
+                          // la liste (compte « Administrateur » modifié par un
+                          // non Super Administrateur) : on l'affiche sans le
+                          // rendre sélectionnable.
+                          if (!_rolesProposables.any(
+                              (({String code, String libelle}) r) =>
+                                  r.code == _role))
+                            DropdownMenuItem(
+                              value: _role,
+                              enabled: false,
+                              child: Text('$_role — non attribuable'),
+                            ),
                         ],
                         onChanged: (v) => setState(() => _role = v!),
                       ),

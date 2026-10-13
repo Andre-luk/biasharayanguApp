@@ -73,8 +73,8 @@ void main() {
       expect(RoleUtilisateur.fromCode('PIRATE'), RoleUtilisateur.inconnu);
       expect(service.getPagesAccessibles(RoleUtilisateur.inconnu), isEmpty);
       expect(
-        service.aAcces(RoleUtilisateur.inconnu, PageAccess.dashboard,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.inconnu, PageAccess.dashboard, ActionAccess.voir),
         isFalse,
       );
     });
@@ -113,15 +113,16 @@ void main() {
     test('accès total', () {
       for (final PageAccess page in PageAccess.values) {
         for (final ActionAccess action in ActionAccess.values) {
-          expect(service.aAcces(RoleUtilisateur.superAdmin, page, action),
-              isTrue,
+          expect(
+              service.aAcces(RoleUtilisateur.superAdmin, page, action), isTrue,
               reason: '${page.code}/${action.code}');
         }
       }
     });
   });
 
-  group('GESTIONNAIRE_COMPTES — comptes et référentiels, jamais la finance', () {
+  group('GESTIONNAIRE_COMPTES — comptes et référentiels, jamais la finance',
+      () {
     test('pages autorisées', () {
       final List<PageAccess> pages =
           service.getPagesAccessibles(RoleUtilisateur.gestionnaireComptes);
@@ -222,8 +223,8 @@ void main() {
         isFalse,
       );
       expect(
-        service.aAcces(RoleUtilisateur.support, PageAccess.finance,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.support, PageAccess.finance, ActionAccess.voir),
         isFalse,
       );
     });
@@ -335,13 +336,13 @@ void main() {
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.reception,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.reception, ActionAccess.creer),
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.chambres,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.chambres, ActionAccess.voir),
         isTrue,
       );
       // ❌ Aucune écriture sur les chambres (création, prix, suppression).
@@ -359,13 +360,13 @@ void main() {
 
       // 🍽️ MODULE 16 C3 — serveur : commandes + cuisine, sans configurer.
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.commandes,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.commandes, ActionAccess.creer),
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.cuisine,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.cuisine, ActionAccess.creer),
         isTrue,
       );
       for (final ActionAccess action in <ActionAccess>[
@@ -402,13 +403,13 @@ void main() {
 
     test('peut vendre', () {
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.caisse,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.caisse, ActionAccess.creer),
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.ventes,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.ventes, ActionAccess.voir),
         isTrue,
       );
     });
@@ -420,8 +421,8 @@ void main() {
         isFalse,
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.articles,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.articles, ActionAccess.voir),
         isFalse,
       );
     });
@@ -448,13 +449,13 @@ void main() {
 
     test('INTERDIT : abonnements et finances globales', () {
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.abonnements,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.abonnements, ActionAccess.voir),
         isFalse,
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.finance,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.finance, ActionAccess.voir),
         isFalse,
       );
     });
@@ -482,8 +483,8 @@ void main() {
 
     test('peut créer un mouvement mais pas modifier un article', () {
       expect(
-        service.aAcces(RoleUtilisateur.magasinier, PageAccess.stock,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.magasinier, PageAccess.stock, ActionAccess.creer),
         isTrue,
       );
       expect(
@@ -492,8 +493,8 @@ void main() {
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.magasinier, PageAccess.articles,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.magasinier, PageAccess.articles, ActionAccess.voir),
         isTrue,
       );
       expect(
@@ -502,8 +503,8 @@ void main() {
         isFalse,
       );
       expect(
-        service.aAcces(RoleUtilisateur.magasinier, PageAccess.ventes,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.magasinier, PageAccess.ventes, ActionAccess.creer),
         isFalse,
       );
     });
@@ -517,18 +518,18 @@ void main() {
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.comptableEntreprise,
-            PageAccess.depenses, ActionAccess.creer),
+        service.aAcces(RoleUtilisateur.comptableEntreprise, PageAccess.depenses,
+            ActionAccess.creer),
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.comptableEntreprise,
-            PageAccess.depenses, ActionAccess.valider),
+        service.aAcces(RoleUtilisateur.comptableEntreprise, PageAccess.depenses,
+            ActionAccess.valider),
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.comptableEntreprise,
-            PageAccess.rapports, ActionAccess.valider),
+        service.aAcces(RoleUtilisateur.comptableEntreprise, PageAccess.rapports,
+            ActionAccess.valider),
         isTrue,
       );
       // Il ne vend pas et ne modifie pas le catalogue.
@@ -538,8 +539,8 @@ void main() {
         isFalse,
       );
       expect(
-        service.aAcces(RoleUtilisateur.comptableEntreprise,
-            PageAccess.articles, ActionAccess.modifier),
+        service.aAcces(RoleUtilisateur.comptableEntreprise, PageAccess.articles,
+            ActionAccess.modifier),
         isFalse,
       );
       // 🤖 MODULE 13 — assistant IA : consultation et questions, jamais de
@@ -576,20 +577,20 @@ void main() {
       });
 
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.ventes,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.ventes, ActionAccess.creer),
         isFalse, // retiré par la personnalisation
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.caisse,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.caisse, ActionAccess.voir),
         isFalse, // page non listée = page interdite
       );
       expect(service.estPersonnalise(RoleUtilisateur.vendeur), isTrue);
       // Les autres rôles gardent leurs droits par défaut.
       expect(
-        service.aAcces(RoleUtilisateur.magasinier, PageAccess.stock,
-            ActionAccess.creer),
+        service.aAcces(
+            RoleUtilisateur.magasinier, PageAccess.stock, ActionAccess.creer),
         isTrue,
       );
     });
@@ -648,7 +649,8 @@ void main() {
         <ActionAccess>[ActionAccess.voir],
       );
 
-      permissions = permissions.avec(PageAccess.ventes, ActionAccess.voir, false);
+      permissions =
+          permissions.avec(PageAccess.ventes, ActionAccess.voir, false);
 
       expect(permissions.pages, isEmpty);
       expect(permissions.estVide, isTrue);
@@ -677,8 +679,8 @@ void main() {
     test(
         'le menu d\'un vendeur contient ses quatorze pages (hôtel, resto, fêtes & boulangerie)',
         () {
-      final List<EntreeMenu> menu =
-          service.menuPour(RoleUtilisateur.vendeur, EspaceApplication.entreprise);
+      final List<EntreeMenu> menu = service.menuPour(
+          RoleUtilisateur.vendeur, EspaceApplication.entreprise);
 
       expect(
         menu.map((EntreeMenu e) => e.page).toList(),
@@ -717,10 +719,12 @@ void main() {
           PageAccess.activites,
         ]),
       );
-      expect(menu.map((EntreeMenu e) => e.page), isNot(contains(PageAccess.finance)));
+      expect(menu.map((EntreeMenu e) => e.page),
+          isNot(contains(PageAccess.finance)));
     });
 
-    test('chaque entrée de menu correspond à une page autorisée en lecture', () {
+    test('chaque entrée de menu correspond à une page autorisée en lecture',
+        () {
       for (final RoleUtilisateur role in RoleUtilisateur.rolesSelectionnables) {
         for (final EspaceApplication espace in EspaceApplication.values) {
           for (final EntreeMenu entree in service.menuPour(role, espace)) {
@@ -741,22 +745,38 @@ void main() {
 
   group('Middleware de navigation', () {
     test('un vendeur ne peut pas ouvrir les rapports ni le stock', () {
-      expect(service.aAcces(RoleUtilisateur.vendeur, PageAccess.rapports, ActionAccess.voir), isFalse);
-      expect(service.aAcces(RoleUtilisateur.vendeur, PageAccess.stock, ActionAccess.voir), isFalse);
+      expect(
+          service.aAcces(
+              RoleUtilisateur.vendeur, PageAccess.rapports, ActionAccess.voir),
+          isFalse);
+      expect(
+          service.aAcces(
+              RoleUtilisateur.vendeur, PageAccess.stock, ActionAccess.voir),
+          isFalse);
     });
 
     test('les routes sensibles sont associées à la bonne page', () {
-      expect(PermissionService.pageRequisePour('/main/new-sale'), PageAccess.caisse);
-      expect(PermissionService.pageRequisePour('/main/add-product'), PageAccess.articles);
-      expect(PermissionService.pageRequisePour('/admin/entreprises/123'), PageAccess.entreprises);
-      expect(PermissionService.pageRequisePour('/admin/abonnements/123'), PageAccess.abonnements);
-      expect(PermissionService.pageRequisePour('/admin/abonnements/123/paiement'), PageAccess.paiements);
-      expect(PermissionService.pageRequisePour('/settings/manage-users'), PageAccess.collaborateurs);
+      expect(PermissionService.pageRequisePour('/main/new-sale'),
+          PageAccess.caisse);
+      expect(PermissionService.pageRequisePour('/main/add-product'),
+          PageAccess.articles);
+      expect(PermissionService.pageRequisePour('/admin/entreprises/123'),
+          PageAccess.entreprises);
+      expect(PermissionService.pageRequisePour('/admin/abonnements/123'),
+          PageAccess.abonnements);
+      expect(
+          PermissionService.pageRequisePour('/admin/abonnements/123/paiement'),
+          PageAccess.paiements);
+      expect(PermissionService.pageRequisePour('/settings/manage-users'),
+          PageAccess.collaborateurs);
       expect(PermissionService.pageRequisePour('/login'), isNull);
       // 🤖 MODULE 13 — chat, quotas et configuration IA.
-      expect(PermissionService.pageRequisePour('/assistant-ia'), PageAccess.assistantIa);
-      expect(PermissionService.pageRequisePour('/achat-quotas'), PageAccess.assistantIa);
-      expect(PermissionService.pageRequisePour('/agent-ia-config'), PageAccess.parametres);
+      expect(PermissionService.pageRequisePour('/assistant-ia'),
+          PageAccess.assistantIa);
+      expect(PermissionService.pageRequisePour('/achat-quotas'),
+          PageAccess.assistantIa);
+      expect(PermissionService.pageRequisePour('/agent-ia-config'),
+          PageAccess.parametres);
     });
 
     test('routeAutorisee respecte le rôle connecté', () {
@@ -772,7 +792,8 @@ void main() {
       service.definirRoleCourant(RoleUtilisateur.financeLaperle);
       expect(service.routeAutorisee('/admin/abonnements/42'), isTrue);
       expect(service.routeAutorisee('/admin/abonnements/42/paiement'), isTrue);
-      expect(service.routeAutorisee('/admin/permissions'), isFalse); // Super Admin seulement
+      expect(service.routeAutorisee('/admin/permissions'),
+          isFalse); // Super Admin seulement
       expect(service.routeAutorisee('/main/new-sale'), isFalse);
 
       service.definirRoleCourant(RoleUtilisateur.superAdmin);
@@ -800,7 +821,8 @@ void main() {
   // =========================================================================
 
   group('Critères d\'acceptation', () {
-    test('les 8 rôles ont des droits différents (aucun doublon de matrice)', () {
+    test('les 8 rôles ont des droits différents (aucun doublon de matrice)',
+        () {
       // Invariant conservé avec le 9ᵉ rôle (AGENT_TERRAIN) : deux rôles ne
       // doivent JAMAIS partager exactement la même matrice de permissions —
       // sinon la distinction des rôles ne sert plus à rien.
@@ -818,8 +840,8 @@ void main() {
         isTrue,
       );
       expect(
-        service.aAcces(RoleUtilisateur.vendeur, PageAccess.dashboard,
-            ActionAccess.voir),
+        service.aAcces(
+            RoleUtilisateur.vendeur, PageAccess.dashboard, ActionAccess.voir),
         isFalse,
       );
     });
@@ -838,8 +860,98 @@ void main() {
       ]);
       // Le propriétaire modifie SES paramètres, pas ceux de la plateforme :
       // l'écran des permissions exige en plus le rôle SUPER_ADMIN.
-      expect(service.aAcces(RoleUtilisateur.proprietaire, PageAccess.utilisateurs,
-          ActionAccess.voir), isFalse);
+      expect(
+          service.aAcces(RoleUtilisateur.proprietaire, PageAccess.utilisateurs,
+              ActionAccess.voir),
+          isFalse);
+    });
+  });
+
+  // =========================================================================
+  // 10. ATTRIBUTION DES RÔLES — on ne donne jamais plus de droits que soi
+  // =========================================================================
+  //
+  //  Règle née du défaut constaté dans l'application : l'écran « Ajouter un
+  //  utilisateur » proposait « Administrateur », valeur héritée que la base
+  //  traduit en SUPER_ADMIN (`role_herite('admin')`), et cela **même depuis un
+  //  compte d'agent terrain**. Un rôle de la plateforme ne doit être
+  //  attribuable que par un Super Administrateur.
+
+  group('Rôles attribuables', () {
+    test('les niveaux sont strictement ordonnés', () {
+      expect(RoleUtilisateur.superAdmin.niveau,
+          greaterThan(RoleUtilisateur.gestionnaireComptes.niveau));
+      expect(RoleUtilisateur.gestionnaireComptes.niveau,
+          greaterThan(RoleUtilisateur.financeLaperle.niveau));
+      expect(RoleUtilisateur.financeLaperle.niveau,
+          greaterThan(RoleUtilisateur.support.niveau));
+      expect(RoleUtilisateur.support.niveau,
+          greaterThan(RoleUtilisateur.agentTerrain.niveau));
+      expect(RoleUtilisateur.agentTerrain.niveau,
+          greaterThan(RoleUtilisateur.proprietaire.niveau));
+      expect(RoleUtilisateur.proprietaire.niveau,
+          greaterThan(RoleUtilisateur.comptableEntreprise.niveau));
+      expect(RoleUtilisateur.comptableEntreprise.niveau,
+          greaterThan(RoleUtilisateur.magasinier.niveau));
+      expect(RoleUtilisateur.magasinier.niveau,
+          greaterThan(RoleUtilisateur.vendeur.niveau));
+      expect(RoleUtilisateur.vendeur.niveau,
+          greaterThan(RoleUtilisateur.inconnu.niveau));
+    });
+
+    test('le Super Administrateur attribue tous les rôles sauf « inconnu »',
+        () {
+      expect(RoleUtilisateur.attribuablesPar(RoleUtilisateur.superAdmin),
+          RoleUtilisateur.rolesSelectionnables);
+    });
+
+    test('aucun autre rôle ne peut attribuer un rôle de la plateforme', () {
+      for (final RoleUtilisateur acteur in RoleUtilisateur.values) {
+        if (acteur == RoleUtilisateur.superAdmin) continue;
+        for (final RoleUtilisateur cible
+            in RoleUtilisateur.attribuablesPar(acteur)) {
+          expect(cible.estPlateforme, isFalse,
+              reason: '$acteur ne doit pas pouvoir attribuer $cible');
+        }
+      }
+    });
+
+    test('un agent terrain n\'attribue que des rôles d\'entreprise', () {
+      final List<RoleUtilisateur> possibles =
+          RoleUtilisateur.attribuablesPar(RoleUtilisateur.agentTerrain);
+
+      expect(possibles, isNot(contains(RoleUtilisateur.superAdmin)));
+      expect(possibles, isNot(contains(RoleUtilisateur.gestionnaireComptes)));
+      expect(possibles, isNot(contains(RoleUtilisateur.financeLaperle)));
+      expect(possibles, isNot(contains(RoleUtilisateur.support)));
+      // 🇨🇩 La création du compte d'un commerçant reste possible : c'est le
+      //    travail de l'agent terrain.
+      expect(possibles, contains(RoleUtilisateur.proprietaire));
+    });
+
+    test('un propriétaire n\'attribue que des rôles de son niveau ou moins',
+        () {
+      final List<RoleUtilisateur> possibles =
+          RoleUtilisateur.attribuablesPar(RoleUtilisateur.proprietaire);
+
+      expect(possibles, contains(RoleUtilisateur.vendeur));
+      expect(possibles, contains(RoleUtilisateur.magasinier));
+      expect(possibles, contains(RoleUtilisateur.comptableEntreprise));
+      expect(possibles, contains(RoleUtilisateur.proprietaire));
+      for (final RoleUtilisateur cible in possibles) {
+        expect(cible.niveau,
+            lessThanOrEqualTo(RoleUtilisateur.proprietaire.niveau));
+      }
+    });
+
+    test('un rôle inconnu n\'attribue rien (échec fermé)', () {
+      expect(RoleUtilisateur.attribuablesPar(RoleUtilisateur.inconnu), isEmpty);
+    });
+
+    test('la valeur héritée « admin » vaut bien SUPER_ADMIN côté base', () {
+      // C'est ce qui rendait l'ancienne liste déroulante dangereuse : elle
+      // proposait « Administrateur » à tout le monde (`role_herite('admin')`).
+      expect(RoleUtilisateur.fromCode('admin'), RoleUtilisateur.superAdmin);
     });
   });
 }

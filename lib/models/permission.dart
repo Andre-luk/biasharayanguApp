@@ -72,8 +72,47 @@ enum RoleUtilisateur {
 
   /// Rôles des entreprises (boutiques).
   static List<RoleUtilisateur> get rolesEntreprise => values
-      .where((RoleUtilisateur r) => !r.estPlateforme && r != RoleUtilisateur.inconnu)
+      .where((RoleUtilisateur r) =>
+          !r.estPlateforme && r != RoleUtilisateur.inconnu)
       .toList(growable: false);
+
+  /// Niveau de privilège du rôle (plus grand = plus de droits).
+  ///
+  /// Sert de règle unique : *on ne donne jamais plus de droits que l'on n'en
+  /// a*. Un rôle de la plateforme La Perle fait exception : il n'est
+  /// attribuable que par un Super Administrateur, quel que soit le niveau.
+  int get niveau => switch (this) {
+        RoleUtilisateur.superAdmin => 100,
+        RoleUtilisateur.gestionnaireComptes => 90,
+        RoleUtilisateur.financeLaperle => 80,
+        RoleUtilisateur.support => 70,
+        RoleUtilisateur.agentTerrain => 60,
+        RoleUtilisateur.proprietaire => 50,
+        RoleUtilisateur.comptableEntreprise => 40,
+        RoleUtilisateur.magasinier => 30,
+        RoleUtilisateur.vendeur => 20,
+        RoleUtilisateur.inconnu => 0,
+      };
+
+  /// Rôles que [acteur] a le droit d'attribuer à un autre compte.
+  ///
+  /// 🔐 Règle de sécurité :
+  /// * seul un **Super Administrateur** peut attribuer un rôle de la
+  ///   plateforme La Perle (Gestionnaire des comptes, Finance, Assistance,
+  ///   Super Administrateur) ;
+  /// * tous les autres acteurs — **y compris l'agent terrain** — ne peuvent
+  ///   attribuer que les rôles d'entreprise, et jamais au-dessus de leur
+  ///   propre niveau.
+  ///
+  /// Un acteur non reconnu ([RoleUtilisateur.inconnu]) n'attribue rien.
+  static List<RoleUtilisateur> attribuablesPar(RoleUtilisateur acteur) {
+    if (acteur == RoleUtilisateur.superAdmin) {
+      return rolesSelectionnables;
+    }
+    return rolesEntreprise
+        .where((RoleUtilisateur r) => r.niveau <= acteur.niveau)
+        .toList(growable: false);
+  }
 
   /// Convertit une valeur SQL en rôle applicatif.
   ///
@@ -149,12 +188,15 @@ enum RoleUtilisateur {
 /// Ces codes sont donc figés : on n'en change jamais un sans migration.
 enum PageAccess {
   // ---------------------------------------------------------------- plateforme
-  dashboard('dashboard', 'Tableau de bord', [EspaceApplication.plateforme, EspaceApplication.entreprise]),
+  dashboard('dashboard', 'Tableau de bord',
+      [EspaceApplication.plateforme, EspaceApplication.entreprise]),
   entreprises('entreprises', 'Entreprises', [EspaceApplication.plateforme]),
-  utilisateurs('utilisateurs', 'Utilisateurs & comptes', [EspaceApplication.plateforme]),
+  utilisateurs(
+      'utilisateurs', 'Utilisateurs & comptes', [EspaceApplication.plateforme]),
   villes('villes', 'Villes', [EspaceApplication.plateforme]),
   activites('activites', 'Activités', [EspaceApplication.plateforme]),
-  groupesTarifaires('groupes_tarifaires', 'Groupes tarifaires', [EspaceApplication.plateforme]),
+  groupesTarifaires('groupes_tarifaires', 'Groupes tarifaires',
+      [EspaceApplication.plateforme]),
   abonnements('abonnements', 'Abonnements', [EspaceApplication.plateforme],
       alias: ['abonnement', 'renouvellements', 'impayes']),
   // 🧾 MODULE 14 — workflow d'activation à double validation. Deux écrans,
@@ -176,20 +218,25 @@ enum PageAccess {
       alias: ['factures', 'facture_abonnement', 'facturation']),
   paiements('paiements', 'Paiements', [EspaceApplication.plateforme],
       alias: ['avances', 'soldes', 'historique_paiements']),
-  finance('finance', 'Finance', [EspaceApplication.plateforme, EspaceApplication.entreprise],
+  finance('finance', 'Finance',
+      [EspaceApplication.plateforme, EspaceApplication.entreprise],
       alias: ['rapports_financiers', 'soldes_globaux']),
   // 🔐 MODULE 12 — le journal d'audit existe désormais dans les DEUX espaces :
   // le personnel plateforme voit toutes les boutiques, le PROPRIÉTAIRE voit
   // la sienne (RLS serveur + `audit/voir`).
-  audit('audit', 'Journal d\'audit', [EspaceApplication.plateforme, EspaceApplication.entreprise],
+  audit('audit', 'Journal d\'audit',
+      [EspaceApplication.plateforme, EspaceApplication.entreprise],
       alias: ['journal']),
   // 🔐 MODULE 12 — écran de surveillance réservé au personnel plateforme.
   securite('securite', 'Sécurité', [EspaceApplication.plateforme],
       alias: ['alertes_securite']),
-  notifications('notifications', 'Notifications', [EspaceApplication.plateforme]),
-  assistance('assistance', 'Assistance (tickets)', [EspaceApplication.plateforme],
+  notifications(
+      'notifications', 'Notifications', [EspaceApplication.plateforme]),
+  assistance(
+      'assistance', 'Assistance (tickets)', [EspaceApplication.plateforme],
       alias: ['tickets', 'support']),
-  parametres('parametres', 'Paramètres', [EspaceApplication.plateforme, EspaceApplication.entreprise]),
+  parametres('parametres', 'Paramètres',
+      [EspaceApplication.plateforme, EspaceApplication.entreprise]),
 
   // ----------------------------------------------------------------- entreprise
   ventes('ventes', 'Ventes', [EspaceApplication.entreprise],
@@ -200,18 +247,27 @@ enum PageAccess {
   panier('panier', 'Panier', [EspaceApplication.entreprise]),
   articles('articles', 'Articles & catalogue', [EspaceApplication.entreprise],
       alias: ['categories', 'produits']),
-  stock('stock', 'Stock', [EspaceApplication.entreprise],
-      alias: ['entrees', 'sorties', 'inventaire', 'inventaires', 'approvisionnements']),
+  stock('stock', 'Stock', [
+    EspaceApplication.entreprise
+  ], alias: [
+    'entrees',
+    'sorties',
+    'inventaire',
+    'inventaires',
+    'approvisionnements'
+  ]),
   clients('clients', 'Clients', [EspaceApplication.entreprise]),
   fournisseurs('fournisseurs', 'Fournisseurs', [EspaceApplication.entreprise]),
   depenses('depenses', 'Dépenses', [EspaceApplication.entreprise]),
-  collaborateurs('collaborateurs', 'Collaborateurs', [EspaceApplication.entreprise],
+  collaborateurs(
+      'collaborateurs', 'Collaborateurs', [EspaceApplication.entreprise],
       alias: ['equipe']),
   // 🏢 MODE PLATEFORME — la production des étiquettes QR est un service de
   // l'administration (elle seule génère les codes produits) : les boutiques
   // n'ont plus accès à cet écran.
   qrCodes('qr_codes', 'QR codes', [EspaceApplication.plateforme]),
-  rapports('rapports', 'Rapports', [EspaceApplication.plateforme, EspaceApplication.entreprise],
+  rapports('rapports', 'Rapports',
+      [EspaceApplication.plateforme, EspaceApplication.entreprise],
       alias: ['resultats', 'statistiques']),
   // 🤖 MODULE 13 — assistant IA (espace entreprise ; les outils accessibles
   // dépendent du rôle, revérifié par le serveur à chaque action).
@@ -246,11 +302,11 @@ enum PageAccess {
   //    intentions, conversions attribuées) ;
   //  • `publicites`   : campagnes publicitaires (espace entreprise) et
   //    modération (espace plateforme).
-  publications('publications', 'Publications Biashara',
-      [EspaceApplication.entreprise],
+  publications(
+      'publications', 'Publications Biashara', [EspaceApplication.entreprise],
       alias: ['vitrine', 'ma_vitrine', 'catalogue_public']),
-  visibilite('visibilite', 'Visibilité Biashara',
-      [EspaceApplication.entreprise],
+  visibilite(
+      'visibilite', 'Visibilité Biashara', [EspaceApplication.entreprise],
       alias: ['ma_visibilite', 'statistiques_publiques']),
   publicites('publicites', 'Publicités Biashara',
       [EspaceApplication.entreprise, EspaceApplication.plateforme],
@@ -264,14 +320,14 @@ enum PageAccess {
   //    illicite ou trompeur, avec motif visible du commerçant).
   // Les alias couvrent le vocabulaire employé dans les échanges avec les
   // utilisateurs (« magasins », « espaces », « signalements »).
-  boutiques('boutiques', 'Boutiques & espaces',
-      [EspaceApplication.plateforme],
+  boutiques('boutiques', 'Boutiques & espaces', [EspaceApplication.plateforme],
       alias: ['espaces', 'magasins', 'vitrines']),
-  moderation('moderation', 'Modération marketplace',
-      [EspaceApplication.plateforme],
+  moderation(
+      'moderation', 'Modération marketplace', [EspaceApplication.plateforme],
       alias: ['signalements', 'moderation_marketplace', 'catalogue_public']);
 
-  const PageAccess(this.code, this.libelle, this.espaces, {this.alias = const <String>[]});
+  const PageAccess(this.code, this.libelle, this.espaces,
+      {this.alias = const <String>[]});
 
   /// Identifiant technique (base de données + SQL).
   final String code;
@@ -377,7 +433,8 @@ class RolePermission {
   ) {
     final Set<ActionAccess> set = actions.toSet();
     return RolePermission._(<PageAccess, Set<ActionAccess>>{
-      for (final PageAccess page in pages) page: Set<ActionAccess>.unmodifiable(set),
+      for (final PageAccess page in pages)
+        page: Set<ActionAccess>.unmodifiable(set),
     });
   }
 
@@ -385,7 +442,8 @@ class RolePermission {
   ///
   /// Les entrées dont l'ensemble d'actions est vide sont retirées : une page
   /// sans action n'est pas accessible.
-  factory RolePermission.personnalise(Map<PageAccess, Set<ActionAccess>> parPage) {
+  factory RolePermission.personnalise(
+      Map<PageAccess, Set<ActionAccess>> parPage) {
     return RolePermission._(<PageAccess, Set<ActionAccess>>{
       for (final MapEntry<PageAccess, Set<ActionAccess>> e in parPage.entries)
         if (e.value.isNotEmpty) e.key: Set<ActionAccess>.unmodifiable(e.value),
@@ -393,7 +451,8 @@ class RolePermission {
   }
 
   /// Aucune permission (rôle inconnu, ou rôle volontairement vidé).
-  static const RolePermission aucune = RolePermission._(<PageAccess, Set<ActionAccess>>{});
+  static const RolePermission aucune =
+      RolePermission._(<PageAccess, Set<ActionAccess>>{});
 
   /// Pages accessibles, dans l'ordre de déclaration de [PageAccess].
   List<PageAccess> get pages => PageAccess.values
@@ -412,8 +471,10 @@ class RolePermission {
       _parPage[page]?.contains(action) ?? false;
 
   /// Copie profonde de la table courante (les instances sont immuables).
-  Map<PageAccess, Set<ActionAccess>> _copie() => <PageAccess, Set<ActionAccess>>{
-        for (final MapEntry<PageAccess, Set<ActionAccess>> e in _parPage.entries)
+  Map<PageAccess, Set<ActionAccess>> _copie() =>
+      <PageAccess, Set<ActionAccess>>{
+        for (final MapEntry<PageAccess, Set<ActionAccess>> e
+            in _parPage.entries)
           e.key: <ActionAccess>{...e.value},
       };
 

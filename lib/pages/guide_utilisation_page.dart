@@ -159,15 +159,21 @@ class GuideUtilisationPage extends StatelessWidget {
           ),
           _Etape(
             numero: '8',
-            titre: 'Lots et dates de péremption',
+            titre: 'Lots, dates de péremption et délai d\'alerte',
             icone: Icons.medication_rounded,
             points: <String>[
               'Sur chaque article : renseignez le numéro de LOT et la DATE '
                   'D\'EXPIRATION (facultatifs, mais recommandés).',
+              'Réglez VOTRE délai d\'alerte : Paramètres → « Alerte de '
+                  'péremption » (7, 15, 30, 60, 90 jours, ou de 1 à 365). '
+                  '30 jours par défaut.',
               'Carte « Expirations » sur l\'accueil : compteur rouge dès '
-                  'qu\'un produit est expiré ou expire sous 30 jours.',
-              'Écran Expirations : tri par urgence (expirés → ≤ 30 jours) '
-                  'avec filtres et valeurs du stock.',
+                  'qu\'un produit est expiré ou entre dans votre délai.',
+              'Écran Expirations : tri par urgence (expirés d\'abord, puis '
+                  'ceux qui approchent) avec filtres et valeurs du stock.',
+              'Le seuil compte le jour même : avec un délai de 30 jours, un '
+                  'produit qui expire dans exactement 30 jours est déjà '
+                  'signalé.',
             ],
           ),
           _Etape(
@@ -179,6 +185,8 @@ class GuideUtilisationPage extends StatelessWidget {
                   'date est dépassée (message clair au comptoir).',
               'Un produit SANS date n\'est jamais bloqué — vos autres rayons '
                   'ne changent pas.',
+              'Le blocage s\'appuie sur la date, pas sur le délai d\'alerte : '
+                  'un produit signalé reste vendable jusqu\'à sa vraie date.',
               'Le patron peut autoriser la vente des expirés : réglage '
                   '`ventes.bloquer_produits_expires` (paramètre boutique).',
               'Rapport « Expirations » : la liste des produits à retirer, '
