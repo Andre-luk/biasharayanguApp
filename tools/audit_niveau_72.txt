@@ -1,0 +1,7 @@
+    -- 🧮 CORRECTIF 72 — délai d'alerte de péremption, réglé par la boutique.
+    --   MOYEN et non BAS : ce réglage décide QUAND on prévient qu'une
+    --   marchandise va périmer. Le rallonger trop fait crier l'alerte en
+    --   permanence (on cesse de la lire) ; le raccourcir trop fait découvrir
+    --   la péremption après coup. C'est donc un réglage qui a des
+    --   conséquences sur la marchandise, même s'il ne touche pas à l'argent.
+    when 'PEREMPTION_DELAI'     then 'MOYEN'
