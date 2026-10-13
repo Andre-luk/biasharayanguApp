@@ -17,7 +17,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/categorie.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/article_service.dart';
+import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
@@ -81,10 +83,29 @@ class _ArticlesPageState extends State<ArticlesPage> {
     );
   }
 
+  /// 🧮 CORRECTIF 72 — lit le délai d'alerte de péremption de la boutique.
+  ///
+  /// Best-effort : si la lecture échoue (réseau, migration non exécutée), le
+  /// délai reste celui par défaut. Aucun écran ne doit se vider parce qu'un
+  /// réglage n'a pas pu être lu.
+  Future<void> _chargerDelaiPeremption() async {
+    final int delai = await PeremptionService.instance.charger();
+    if (!mounted || delai == _delaiPeremption) return;
+    setState(() => _delaiPeremption = delai);
+  }
+
   List<Article> _articles = const <Article>[];
   List<Categorie> _categories = const <Categorie>[];
   bool _chargement = true;
   String? _erreur;
+
+  /// 🧮 CORRECTIF 72 — délai d'alerte de péremption RÉGLÉ PAR LA BOUTIQUE.
+  ///
+  /// Le service le garde en mémoire après la première lecture : les cartes de
+  /// la liste n'attendent donc rien. Sa valeur par défaut (30 jours) est celle
+  /// qui avait cours avant le correctif — aucune alerte ne change de camp au
+  /// premier affichage.
+  int _delaiPeremption = PeremptionService.delaiParDefaut;
 
   /// `null` = toutes les catégories.
   String? _filtreCategorie;
@@ -97,6 +118,7 @@ class _ArticlesPageState extends State<ArticlesPage> {
     super.initState();
     _rechercheController.addListener(_rafraichir);
     _demarrerEcouteTempsReel();
+    _chargerDelaiPeremption();
     _charger();
   }
 
@@ -379,6 +401,8 @@ class _ArticlesPageState extends State<ArticlesPage> {
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.primary),
                 ),
+              // 🧮 CORRECTIF 72 — la péremption, visible ICI, dans la boutique.
+              if (article.aDateExpiration) _lignePeremption(article),
             ],
           ),
         ),
@@ -406,6 +430,66 @@ class _ArticlesPageState extends State<ArticlesPage> {
       ),
     );
   }
+
+  /// 🧮 CORRECTIF 72 — la péremption d'un article, lisible d'un coup d'œil
+  /// DANS la boutique.
+  ///
+  /// Avant, il fallait penser à ouvrir l'écran « Expirations » : un commerçant
+  /// qui parcourait son catalogue ne voyait **rien**. Le modèle exposait
+  /// pourtant `estExpire` et `expireBientot` — aucun écran ne les utilisait.
+  ///
+  /// La couleur suit le statut calculé avec le DÉLAI DE LA BOUTIQUE, pas avec
+  /// un 30 jours figé : une pharmacie qui règle 90 jours doit voir la même
+  /// alerte ici que sur l'écran Expirations.
+  Widget _lignePeremption(Article article) {
+    final StatutExpiration? statut =
+        article.statutExpirationSelon(_delaiPeremption);
+    if (statut == null) return const SizedBox.shrink();
+
+    final int? jours = StatutExpiration.joursRestants(article.dateExpiration);
+
+    final (IconData icone, Color couleur) = switch (statut) {
+      StatutExpiration.expire => (Icons.dangerous_rounded, Colors.red.shade700),
+      StatutExpiration.proche => (
+          Icons.schedule_rounded,
+          Colors.orange.shade800
+        ),
+      StatutExpiration.valide => (
+          Icons.event_available_rounded,
+          Colors.grey.shade700
+        ),
+    };
+
+    final String lot =
+        (article.lotNumero ?? '').trim().isEmpty ? '' : 'Lot ${article.lotNumero} · ';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 3),
+      child: Row(
+        children: <Widget>[
+          Icon(icone, size: 14, color: couleur),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              '$lot${_jourAffiche(article.dateExpiration!)}'
+              ' · ${StatutExpiration.libelleJours(jours)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: couleur,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _jourAffiche(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/${date.year}';
 
   Widget _vueVide() {
     return Center(

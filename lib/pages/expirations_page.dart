@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/article_service.dart';
+import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 /// Filtres rapides de l'écran.
@@ -43,13 +44,26 @@ class _ExpirationsPageState extends State<ExpirationsPage> {
   List<Article> _articles = const <Article>[];
   _FiltreExpiration _filtre = _FiltreExpiration.tous;
 
+  /// 🧮 CORRECTIF 72 — délai d'alerte RÉGLÉ PAR LA BOUTIQUE. Les filtres et
+  /// les comptages suivent ce délai, comme la liste des articles et la
+  /// notification : un même produit doit être « proche » partout, ou nulle
+  /// part.
+  int _delaiPeremption = PeremptionService.delaiParDefaut;
+
   bool _chargement = true;
   String? _erreur;
 
   @override
   void initState() {
     super.initState();
+    _chargerDelai();
     _charger();
+  }
+
+  Future<void> _chargerDelai() async {
+    final int delai = await PeremptionService.instance.charger();
+    if (!mounted || delai == _delaiPeremption) return;
+    setState(() => _delaiPeremption = delai);
   }
 
   Future<void> _charger({bool silencieux = false}) async {
@@ -101,7 +115,7 @@ class _ExpirationsPageState extends State<ExpirationsPage> {
   // ---------------------------------------------------------------------------
 
   int _compter(StatutExpiration statut) => _articles
-      .where((Article a) => a.statutExpiration == statut)
+      .where((Article a) => a.statutExpirationSelon(_delaiPeremption) == statut)
       .length;
 
   List<Article> get _articlesFiltres {
@@ -110,15 +124,21 @@ class _ExpirationsPageState extends State<ExpirationsPage> {
         return _articles;
       case _FiltreExpiration.expires:
         return _articles
-            .where((Article a) => a.statutExpiration == StatutExpiration.expire)
+            .where((Article a) =>
+                a.statutExpirationSelon(_delaiPeremption) ==
+                StatutExpiration.expire)
             .toList(growable: false);
       case _FiltreExpiration.proches:
         return _articles
-            .where((Article a) => a.statutExpiration == StatutExpiration.proche)
+            .where((Article a) =>
+                a.statutExpirationSelon(_delaiPeremption) ==
+                StatutExpiration.proche)
             .toList(growable: false);
       case _FiltreExpiration.nonExpires:
         return _articles
-            .where((Article a) => a.statutExpiration == StatutExpiration.valide)
+            .where((Article a) =>
+                a.statutExpirationSelon(_delaiPeremption) ==
+                StatutExpiration.valide)
             .toList(growable: false);
     }
   }

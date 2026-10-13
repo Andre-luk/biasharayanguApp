@@ -26,6 +26,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
+import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -479,10 +480,18 @@ class NotificationService {
     }
   }
 
-  /// 🧩 MODULE 16 C1 — compteurs d'expiration des articles (déjà expirés,
-  /// bientôt périmés ≤ 30 j). Best-effort : (0, 0) en cas d'échec.
+  /// 🧩 MODULE 16 C1 — compteurs d'expiration des articles.
+  ///
+  /// 🧮 CORRECTIF 72 — le seuil « bientôt périmé » vient du RÉGLAGE DE LA
+  /// BOUTIQUE (30 jours par défaut) ; il n'est plus figé à 30 ici. Ce comptage
+  /// est indépendant de celui d'`ArticleService` : avec deux seuils
+  /// différents, la notification et le compteur d'accueil auraient annoncé
+  /// deux chiffres différents pour la même chose, sous les yeux du commerçant.
+  ///
+  /// Best-effort : (0, 0) en cas d'échec.
   Future<(int, int)> compterExpirations() async {
     try {
+      final int seuil = await PeremptionService.instance.charger();
       final String? proprietaire = await _proprietaireActif();
       if (proprietaire == null || proprietaire.isEmpty) return (0, 0);
 
@@ -509,7 +518,7 @@ class NotificationService {
         final DateTime jour = DateTime(date.year, date.month, date.day);
         if (jour.isBefore(reference)) {
           expires++;
-        } else if (jour.difference(reference).inDays <= 30) {
+        } else if (jour.difference(reference).inDays <= seuil) {
           proches++;
         }
       }

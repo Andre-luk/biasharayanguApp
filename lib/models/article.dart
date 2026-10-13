@@ -197,7 +197,23 @@ class Article {
   StatutExpiration? get statutExpiration =>
       StatutExpiration.depuis(dateExpiration);
 
+  /// 🧮 CORRECTIF 72 — statut avec le délai RÉGLÉ PAR LA BOUTIQUE.
+  ///
+  /// C'est la version à utiliser dès qu'on alerte l'utilisateur : le délai de
+  /// 30 jours codé en dur ne convient ni à une pharmacie (90 jours) ni à une
+  /// épicerie (7 jours). Le getter [statutExpiration] reste, avec le délai par
+  /// défaut, pour les appels qui n'ont pas accès au réglage.
+  StatutExpiration? statutExpirationSelon(int joursProches) =>
+      StatutExpiration.depuis(dateExpiration, joursProches: joursProches);
+
+  /// L'article demande-t-il une action, selon le délai de la boutique ?
+  bool estUrgentSelon(int joursProches) =>
+      statutExpirationSelon(joursProches)?.estUrgent ?? false;
+
   /// L'article est-il expiré (date dépassée) ?
+  ///
+  /// ⚠️ Indépendant du délai d'alerte : « expiré » ne se négocie pas, seule
+  /// l'anticipation se règle.
   bool get estExpire => statutExpiration == StatutExpiration.expire;
 
   /// L'article expire-t-il bientôt (≤ 30 jours) ?

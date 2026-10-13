@@ -24,6 +24,7 @@ import 'package:biashara_yangu/services/image_service.dart';
 // 🧩 MODULE 16 C1 — les champs lot/date n'apparaissent que si l'activité
 // a le module « lots_expiration » (pharmacie…).
 import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
@@ -63,6 +64,13 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   final TextEditingController _lotController = TextEditingController();
   DateTime? _dateExpiration;
 
+  /// 🧮 CORRECTIF 72 — délai d'alerte RÉGLÉ PAR LA BOUTIQUE.
+  ///
+  /// La bande d'avertissement de ce formulaire doit dire la MÊME chose que la
+  /// liste et l'écran Expirations : un produit annoncé « expire bientôt » ici
+  /// doit l'être partout, sinon l'avertissement perd toute autorité.
+  int _delaiPeremption = PeremptionService.delaiParDefaut;
+
   // 🥩 MODULE 16 C6 — boucherie : article vendu au poids (kg).
   bool _vendableAuPoids = false;
 
@@ -89,6 +97,15 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   void initState() {
     super.initState();
     _initialiser();
+    _chargerDelaiPeremption();
+  }
+
+  /// 🧮 CORRECTIF 72 — best-effort : si la lecture échoue, on garde le délai
+  /// par défaut (30 jours), celui qui avait cours avant le correctif.
+  Future<void> _chargerDelaiPeremption() async {
+    final int delai = await PeremptionService.instance.charger();
+    if (!mounted || delai == _delaiPeremption) return;
+    setState(() => _delaiPeremption = delai);
   }
 
   @override
@@ -439,7 +456,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   /// Section « Lot & péremption » (module lots_expiration actif uniquement).
   Widget _sectionLotsEtExpiration() {
     final ThemeData theme = Theme.of(context);
-    final StatutExpiration? statut = StatutExpiration.depuis(_dateExpiration);
+    final StatutExpiration? statut =
+        StatutExpiration.depuis(_dateExpiration, joursProches: _delaiPeremption);
     final int? jours = StatutExpiration.joursRestants(_dateExpiration);
 
     return Column(

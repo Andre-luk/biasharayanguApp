@@ -98,6 +98,14 @@ enum StatutExpiration {
   }
 
   /// Normalise une date en « jour » (minuit) — évite les écarts d'heures.
+  ///
+  /// ⚠️ EN UTC, ET PAS EN HEURE LOCALE. `difference().inDays` sur deux minuits
+  /// LOCAUX traversés par un changement d'heure vaut 29 ou 31 fois 24 h au
+  /// lieu de 30 : le seuil se décale alors d'un jour. C'est un test qui l'a
+  /// révélé (le 31ᵉ jour était compté comme « proche »). Le Congo n'applique
+  /// pas l'heure d'été, mais rien ne dit où cette application sera utilisée.
+  /// En UTC, une journée vaut toujours exactement 24 h : le compte est juste
+  /// partout.
   static DateTime _jour(DateTime date) =>
-      DateTime(date.year, date.month, date.day);
+      DateTime.utc(date.year, date.month, date.day);
 }

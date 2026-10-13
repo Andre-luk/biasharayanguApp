@@ -22,6 +22,7 @@ import 'package:biashara_yangu/models/categorie.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/mouvement_article.dart';
 import 'package:biashara_yangu/models/statut_expiration.dart';
+import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -389,14 +390,22 @@ class ArticleService {
 
   /// Nombre de produits EXPIRÉS ou expirant sous [jours] (carte d'accueil).
   /// Requête légère (identifiants seulement).
-  Future<int> compterExpirations({int jours = 30}) {
+  ///
+  /// 🧮 CORRECTIF 72 — sans [jours], c'est le délai RÉGLÉ PAR LA BOUTIQUE qui
+  /// s'applique (30 jours par défaut). Point important : le compteur d'accueil,
+  /// le badge de la liste et la notification de fin de journée doivent tous
+  /// compter la même chose — sinon ils se contrediraient sous les yeux du
+  /// commerçant, et c'est l'alerte entière qui perdrait sa crédibilité.
+  Future<int> compterExpirations({int? jours}) {
     return _executer(
       () async {
+        final int horizon =
+            jours ?? await PeremptionService.instance.charger();
         final String proprietaire = await _requireProprietaire();
         final DateTime reference = DateTime.now();
         final String limite = _isoJour(
           DateTime(reference.year, reference.month, reference.day)
-              .add(Duration(days: jours)),
+              .add(Duration(days: horizon)),
         )!;
 
         final List<dynamic> lignes = await _client

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +12,7 @@ import 'package:biashara_yangu/services/audit_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
+import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -82,15 +84,133 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _notifRapport = true;
   int _notifHeureMinutes = NotificationService.heureRapportParDefaut;
 
+  /// 🧮 CORRECTIF 72 — délai d'alerte de péremption de la boutique.
+  ///
+  /// `null` tant qu'il n'a pas été lu : la tuile affiche alors un libellé
+  /// neutre plutôt qu'un chiffre inventé — on n'annonce pas un délai qu'on
+  /// n'a pas vérifié.
+  int? _delaiPeremption;
+
   @override
   void initState() {
     super.initState();
     _loadUser();
+    _chargerDelaiPeremption();
     // Le service est initialisé au démarrage de l'application ; les valeurs
     // par défaut couvrent le cas où il serait indisponible.
     _notifVentes = NotificationService.instance.ventesActives;
     _notifRapport = NotificationService.instance.rapportActif;
     _notifHeureMinutes = NotificationService.instance.heureRapportMinutes;
+  }
+
+  Future<void> _chargerDelaiPeremption() async {
+    final int delai = await PeremptionService.instance.charger();
+    if (!mounted) return;
+    setState(() => _delaiPeremption = delai);
+  }
+
+  /// 🧮 CORRECTIF 72 — régler le délai d'alerte de péremption.
+  ///
+  /// On propose les valeurs courantes (7, 15, 30, 60, 90 jours) ET la saisie
+  /// libre : une pharmacie qui veut 45 jours ne doit pas être coincée entre
+  /// deux boutons.
+  Future<void> _reglerDelaiPeremption() async {
+    final int actuel =
+        _delaiPeremption ?? PeremptionService.delaiParDefaut;
+    final TextEditingController saisie =
+        TextEditingController(text: actuel.toString());
+
+    final int? nouveau = await showDialog<int>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Alerte de péremption'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'À partir de combien de jours avant la date de péremption '
+              'voulez-vous être prévenu ?',
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Un produit devient « expire bientôt » dans cette fenêtre. '
+              'Il est signalé dans votre liste d\'articles, sur l\'écran '
+              'Expirations, et rappelé par le rapport de fin de journée.',
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              children: <Widget>[
+                for (final int choix in <int>[7, 15, 30, 60, 90])
+                  ChoiceChip(
+                    label: Text('$choix j'),
+                    selected: actuel == choix,
+                    onSelected: (_) => Navigator.of(context).pop(choix),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: saisie,
+              keyboardType: TextInputType.number,
+              inputFormatters: <TextInputFormatter>[
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Ou un nombre de jours précis (1 à 365)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final int? valeur = int.tryParse(saisie.text.trim());
+              Navigator.of(context).pop(valeur);
+            },
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+
+    saisie.dispose();
+    if (nouveau == null || !mounted) return;
+
+    try {
+      final int retenu = await PeremptionService.instance.definirDelai(nouveau);
+      if (!mounted) return;
+      setState(() => _delaiPeremption = retenu);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Alertes de péremption réglées à $retenu jours.'),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+    } on PeremptionException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Réglage impossible : $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
   }
 
   Future<void> _loadUser() async {
@@ -290,6 +410,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final bool assistantDisponible =
         modules.moduleActif(ModuleCode.assistantIa);
 
+    // 🧮 CORRECTIF 72 — le délai d'alerte de péremption ne concerne que les
+    // activités qui suivent les dates (pharmacie, alimentaire…). L'afficher
+    // ailleurs serait un réglage sans effet, donc un piège.
+    final bool peremptionDisponible =
+        modules.moduleActif(ModuleCode.lotsExpiration);
+
     return Scaffold(
       appBar: AppBar(title: Text(T.settingsTitle)),
       body: ListView(
@@ -444,6 +570,19 @@ class _SettingsPageState extends State<SettingsPage> {
                     'Devise de travail (CDF/USD) et taux de change 1 USD = X CDF',
                 onTap: () => context.pushNamed('devise'),
               ),
+              // 🧮 CORRECTIF 72 — délai d'alerte de péremption, réglé PAR la
+              // boutique. Sans cette tuile, le réglage n'existait que dans la
+              // base : le commerçant voyait des alertes sans pouvoir dire à
+              // partir de quand il voulait être prévenu.
+              if (peremptionDisponible)
+                _TuileParametre(
+                  icone: Icons.event_busy_rounded,
+                  titre: 'Alerte de péremption',
+                  sousTitre: _delaiPeremption == null
+                      ? 'Être prévenu avant la date de péremption'
+                      : 'Prévenu $_delaiPeremption jours avant la date',
+                  onTap: _reglerDelaiPeremption,
+                ),
               if (catalogueDisponible)
                 _TuileParametre(
                   icone: Icons.category_rounded,
