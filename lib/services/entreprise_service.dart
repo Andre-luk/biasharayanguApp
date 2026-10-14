@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:biashara_yangu/models/activite.dart';
+import 'package:biashara_yangu/models/boutique_agent.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/fiche_entreprise.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
@@ -445,6 +446,41 @@ class EntrepriseService {
       }
       throw EntrepriseServiceException(
           _messagePostgrest(e, 'le chargement de la fiche'));
+    }
+  }
+
+  // ------------------------------------------------------------------------
+  // LES BOUTIQUES DE L'AGENT (correctif 76)
+  // ------------------------------------------------------------------------
+
+  /// Les boutiques de l'agent connecté, avec le suivi de leur abonnement.
+  ///
+  /// Renvoie les comptes dont il est le référent (`agent_id`), qu'il a créés
+  /// (`cree_par`) ou dont il a traité un dossier — avec l'étape d'activation,
+  /// l'échéance, les jours restants, les montants et le solde.
+  ///
+  /// LECTURE SEULE : encaisser et activer restent l'affaire de la Finance.
+  Future<MesBoutiquesAgent> mesBoutiquesAgent() async {
+    try {
+      final dynamic reponse =
+          await _client.rpc('rpc_agent_mes_boutiques');
+      final MesBoutiquesAgent? resultat =
+          MesBoutiquesAgent.depuisJson(reponse);
+      if (resultat == null) {
+        throw const EntrepriseServiceException(
+            'Réponse du serveur illisible pour vos boutiques.');
+      }
+      return resultat;
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' ||
+          e.message.toLowerCase().contains('schema cache')) {
+        throw const EntrepriseServiceException(
+          'Le suivi des boutiques n\u2019est pas encore installé en base. '
+          'Exécutez la migration 76, puis réessayez.',
+        );
+      }
+      throw EntrepriseServiceException(
+          _messagePostgrest(e, 'le chargement de vos boutiques'));
     }
   }
 

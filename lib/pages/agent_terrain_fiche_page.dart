@@ -13,6 +13,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:biashara_yangu/models/agent_terrain.dart';
+import 'package:biashara_yangu/pages/agent_abonnements_page.dart';
 import 'package:biashara_yangu/pages/agent_boutiques_page.dart';
 import 'package:biashara_yangu/pages/qr_codes_page.dart';
 import 'package:biashara_yangu/services/agent_terrain_service.dart';
@@ -234,6 +235,17 @@ class _AgentTerrainFichePageState extends State<AgentTerrainFichePage> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => const AgentBoutiquesPage())),
+              ),
+              const Divider(height: 1),
+              // CORRECTIF 76 — suivre l'abonnement des clients qu'il a apportés.
+              ListTile(
+                leading: const Icon(Icons.receipt_long_rounded),
+                title: const Text('Abonnements de mes clients'),
+                subtitle: const Text(
+                    'Activation, échéance, jours restants, encaissé et solde'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => const AgentAbonnementsPage())),
               ),
               const Divider(height: 1),
               ListTile(

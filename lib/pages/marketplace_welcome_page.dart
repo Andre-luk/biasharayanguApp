@@ -19,6 +19,7 @@ import 'package:biashara_yangu/models/accueil_public.dart';
 import 'package:biashara_yangu/models/produit_public.dart';
 import 'package:biashara_yangu/models/publicite_biashara.dart';
 import 'package:biashara_yangu/services/marketplace_service.dart';
+import 'package:biashara_yangu/ui/mise_en_page_adaptative.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/geolocalisation.dart';
@@ -429,26 +430,51 @@ class _MarketplaceWelcomePageState extends State<MarketplaceWelcomePage> {
         _section(
           context,
           titre: 'Produits autour de vous',
-          sousTitre: 'Prix, boutique et distance en un coup d\'œil',
-          enfant: SizedBox(
-            height: 268,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              itemCount: accueil.produits.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (BuildContext c, int i) {
-                final ProduitPublic produit = accueil.produits[i];
-                return SizedBox(
-                  width: 196,
-                  child: CarteProduitPublic(
-                    produit: produit,
-                    compacte: true,
-                    onTap: () => _ouvrirProduit(produit),
-                  ),
-                );
-              },
-            ),
+          sousTitre:
+              'Photo, prix, boutique et distance — comme dans une vitrine',
+          enfant: Column(
+            children: <Widget>[
+              // 🎨 CORRECTIF 76 — la vitrine passe de la vignette horizontale à
+              // une GRILLE : 2 colonnes sur téléphone, plus large sur tablette
+              // et bureau. La proportion s'adapte à l'échelle de texte pour
+              // qu'aucune carte ne déborde en accessibilité.
+              LayoutBuilder(
+                builder: (BuildContext ctx, BoxConstraints contraintes) {
+                  final int colonnes = contraintes.maxWidth < 520
+                      ? 2
+                      : (contraintes.maxWidth < 900 ? 3 : 4);
+                  return GridView.count(
+                    crossAxisCount: colonnes,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: MiseEnPageAdaptative.proportionCarte(
+                      context,
+                      0.66,
+                      minimum: 0.52,
+                    ),
+                    children: <Widget>[
+                      for (final ProduitPublic produit in accueil.produits)
+                        CarteProduitPublic(
+                          produit: produit,
+                          compacte: true,
+                          onTap: () => _ouvrirProduit(produit),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/biashara/recherche'),
+                icon: const Icon(Icons.grid_view_rounded, size: 18),
+                label: const Text('Voir tout le catalogue'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+            ],
           ),
         ),
 

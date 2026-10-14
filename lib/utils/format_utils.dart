@@ -74,6 +74,50 @@ String formatMontant(double montant, {String? devise}) {
   return '${_signe(montant)}${_milliers(chiffres)} $unite';
 }
 
+/// Lit un montant SAISI À LA MAIN, sans se tromper de convention.
+///
+/// Sans cela, « 30.000 » (trente mille, comme on l'écrit ici) était lu **30** :
+/// le prix saisi devenait dérisoire sans que rien ne le signale. C'est
+/// précisément ce qui faisait dire « le prix que je donne ne joue pas de rôle ».
+///
+/// Accepte `30 000`, `30.000`, `30,000`, `30 000,50`, `1.500,50`, `12,5`,
+/// `30000`, avec ou sans devise (`30 000 CDF`).
+///
+/// Règle : le DERNIER séparateur est décimal **seulement s'il est suivi d'un ou
+/// deux chiffres** ; sinon c'est un séparateur de milliers.
+///
+/// Renvoie `null` si l'on ne peut rien lire : l'appelant décide alors quoi
+/// afficher (jamais un montant inventé).
+double? parseMontantSaisi(String? texte) {
+  if (texte == null) return null;
+
+  // On ne garde que les chiffres et les séparateurs : espaces insécables,
+  // « CDF », « $ », « FC »… n'ont rien à faire dans un calcul.
+  final String nettoye =
+      texte.trim().replaceAll(RegExp(r'[^0-9.,\-]'), '');
+  if (nettoye.isEmpty) return null;
+
+  final int dernierPoint = nettoye.lastIndexOf('.');
+  final int derniereVirgule = nettoye.lastIndexOf(',');
+  final int dernier =
+      dernierPoint > derniereVirgule ? dernierPoint : derniereVirgule;
+
+  if (dernier < 0) return double.tryParse(nettoye);
+
+  final String apres = nettoye.substring(dernier + 1);
+  final String avant =
+      nettoye.substring(0, dernier).replaceAll(RegExp(r'[.,]'), '');
+
+  // Un ou deux chiffres après le séparateur → c'est une partie décimale.
+  if (apres.isNotEmpty && apres.length <= 2) {
+    final String entier = avant.isEmpty ? '0' : avant;
+    return double.tryParse('$entier.$apres');
+  }
+
+  // Sinon c'est un séparateur de milliers : on le retire.
+  return double.tryParse(nettoye.replaceAll(RegExp(r'[.,]'), ''));
+}
+
 /// Formate une date au format `jj/mm/aaaa`.
 ///
 /// Renvoie [valeurAbsente] si [date] est `null`.

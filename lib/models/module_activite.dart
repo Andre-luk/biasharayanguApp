@@ -347,7 +347,8 @@ class ModuleActivite {
     ModuleActivite(
       code: ModuleCode.lotsExpiration,
       libelle: 'Lots & péremption',
-      description: "Lots, dates d'expiration et alertes (pharmacie).",
+      description:
+          "Lots, dates d'expiration et alertes (pharmacie, alimentation, dépôt…).",
       icone: Icons.science,
       categorie: ModuleCategorie.commerceSpecialise,
     ),

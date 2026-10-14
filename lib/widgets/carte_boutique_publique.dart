@@ -32,119 +32,194 @@ class CarteBoutiquePublique extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final String? distance = boutique.distanceLibelle;
 
-    return Card(
-      margin: EdgeInsets.zero,
+    return Material(
+      color: theme.cardColor,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.32)),
+      ),
+      elevation: 1.5,
+      shadowColor: Colors.black.withValues(alpha: 0.16),
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              PhotoBiashara(
-                url: boutique.logoUrl ?? boutique.photoUrl,
-                largeur: 58,
-                hauteur: 58,
-                rayon: 14,
-                icone: Icons.storefront_rounded,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            boutique.nom,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // ------------------------------------------- bandeau vitrine
+            Stack(
+              children: <Widget>[
+                PhotoBiashara(
+                  url: boutique.photoUrl ?? boutique.logoUrl,
+                  hauteur: 92,
+                  rayon: 0,
+                  icone: Icons.storefront_rounded,
+                ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[
+                            Colors.black.withValues(alpha: 0.05),
+                            Colors.black.withValues(alpha: 0.58),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Vignette de la boutique, à cheval sur le bandeau : la même
+                // lecture que la fiche d'une application (visuel + nom).
+                Positioned(
+                  left: 12,
+                  bottom: -1,
+                  child: PhotoBiashara(
+                    url: boutique.logoUrl,
+                    largeur: 46,
+                    hauteur: 46,
+                    rayon: 12,
+                    icone: Icons.storefront_rounded,
+                  ),
+                ),
+                Positioned(
+                  left: 66,
+                  right: 12,
+                  bottom: 10,
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          boutique.nom,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                        if (distance != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppCouleurs.marine.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              distance,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: AppCouleurs.marine,
-                                fontWeight: FontWeight.w800,
+                      ),
+                      if (distance != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(Icons.place_rounded,
+                                  size: 12, color: Colors.white),
+                              const SizedBox(width: 3),
+                              Text(
+                                distance,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // ---------------------------------------------------- contenu
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    boutique.typeLibelle,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppCouleurs.orangeFonce,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    boutique.adresseLisible.isEmpty
+                        ? 'Adresse non renseignée'
+                        : boutique.adresseLisible,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  if (!jamaisSansProduit) ...<Widget>[
+                    const SizedBox(height: 8),
+                    // ♿ `Wrap` et non `Row` : à grande échelle de texte, les
+                    // mentions passent à la ligne au lieu de déborder.
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${boutique.nbProduits} article'
+                              '${boutique.nbProduits > 1 ? 's' : ''} visible'
+                              '${boutique.nbProduits > 1 ? 's' : ''}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (boutique.localisationVerifiee)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(
+                                Icons.verified_rounded,
+                                size: 14,
+                                color: AppCouleurs.succes,
+                              ),
+                              const SizedBox(width: 3),
+                              Text(
+                                'Position confirmée',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: AppCouleurs.succes,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (onTap != null)
+                          Text(
+                            'Voir la boutique',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppCouleurs.marineClair,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      boutique.typeLibelle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: AppCouleurs.orangeFonce,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      boutique.adresseLisible.isEmpty
-                          ? 'Adresse non renseignée'
-                          : boutique.adresseLisible,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (!jamaisSansProduit) ...<Widget>[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: <Widget>[
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 14,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${boutique.nbProduits} article'
-                            '${boutique.nbProduits > 1 ? 's' : ''} visible'
-                            '${boutique.nbProduits > 1 ? 's' : ''}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          if (boutique.localisationVerifiee) ...<Widget>[
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.verified_rounded,
-                              size: 14,
-                              color: AppCouleurs.succes,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              'Position confirmée',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: AppCouleurs.succes,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

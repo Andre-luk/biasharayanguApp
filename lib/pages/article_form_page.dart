@@ -22,7 +22,7 @@ import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/image_service.dart';
 // 🧩 MODULE 16 C1 — les champs lot/date n'apparaissent que si l'activité
-// a le module « lots_expiration » (pharmacie…).
+// a le module « lots_expiration » (pharmacie, alimentation, dépôt…).
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';

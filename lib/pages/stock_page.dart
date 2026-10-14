@@ -140,10 +140,10 @@ class _StockPageState extends State<StockPage> {
   }
 
   Future<void> _navigateToAddProduct() async {
-    final result = await context.pushNamed('add-product');
-    if (result == true) {
-      await _reloadProducts();
-    }
+    // CORRECTIF 76 — un seul formulaire d'article (l'ancien écran « produit »
+    // a été retiré) : on rafraîchit la liste au retour.
+    await context.push('/main/articles/new');
+    if (mounted) await _reloadProducts();
   }
 
   String _formatQty(double qty) {

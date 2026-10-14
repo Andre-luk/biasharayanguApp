@@ -124,13 +124,15 @@ class _StockManagementPageState extends State<StockManagementPage> {
   }
 
   Future<void> _navigateToEditProduct(Produit produit) async {
-    final res = await context.push('/main/edit-product', extra: produit);
-    if (res == true) await _loadProduits();
+    // CORRECTIF 76 — un seul formulaire d'article : on le pousse puis on
+    // rafraîchit systématiquement (le formulaire unifié ne renvoie pas `true`).
+    await context.push('/main/articles');
+    if (mounted) await _loadProduits();
   }
 
   Future<void> _navigateToAddProduct() async {
-    final res = await context.push('/main/add-product');
-    if (res == true) await _loadProduits();
+    await context.push('/main/articles/new');
+    if (mounted) await _loadProduits();
   }
 
   Future<void> _showStockDialog(Produit p) async {

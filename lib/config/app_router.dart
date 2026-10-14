@@ -11,7 +11,6 @@ import 'package:biashara_yangu/models/groupe_tarifaire.dart';
 // 🧩 MODULE 16 — profils de modules des types d'activités.
 import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
-import 'package:biashara_yangu/models/produit.dart';
 // 🛒 MODULE 19 — campagne publicitaire passée en `extra` pour l'édition.
 import 'package:biashara_yangu/models/publicite_biashara.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
@@ -32,7 +31,6 @@ import 'package:biashara_yangu/pages/devise_page.dart';
 // (SQLite) est débranché ; le fichier est conservé comme pour les Modules 9/10.
 import 'package:biashara_yangu/pages/rapports_page.dart';
 import 'package:biashara_yangu/pages/settings_page.dart'; // Contient SettingsPage et AboutPage
-import 'package:biashara_yangu/pages/add_product_page.dart';
 import 'package:biashara_yangu/pages/new_sale_page.dart';
 import 'package:biashara_yangu/pages/admin_home_page.dart';
 import 'package:biashara_yangu/pages/scaffold_with_nav_bar.dart';
@@ -150,6 +148,7 @@ import 'package:biashara_yangu/pages/securite_page.dart';
 
 // ========== MODULE 13 : ASSISTANT IA (DEEPSEEK) ==========
 import 'package:biashara_yangu/pages/achat_quotas_page.dart';
+import 'package:biashara_yangu/pages/agent_abonnements_page.dart';
 import 'package:biashara_yangu/pages/agent_ia_config_page.dart';
 import 'package:biashara_yangu/pages/tokens_ia_page.dart';
 import 'package:biashara_yangu/pages/assistant_ia_page.dart';
@@ -421,6 +420,16 @@ final GoRouter appRouter = GoRouter(
       path: '/agent-ia-config',
       name: 'agent-ia-config',
       builder: (context, state) => const AgentIaConfigPage(),
+    ),
+
+    // 🧩 CORRECTIF 76 — LES ABONNEMENTS DES BOUTIQUES DE L'AGENT TERRAIN :
+    // il suit les comptes qu'il a créés ou pris en charge (étape d'activation,
+    // échéance, jours restants, encaissé, solde). Lecture seule : la Finance
+    // reste seule à encaisser et à activer.
+    GoRoute(
+      path: '/agent/abonnements',
+      name: 'agent-abonnements',
+      builder: (context, state) => const AgentAbonnementsPage(),
     ),
     GoRoute(
       path: '/tokens-ia',
@@ -816,17 +825,27 @@ final GoRouter appRouter = GoRouter(
                     ),
                   ],
                 ),
+                // 🧩 CORRECTIF 76 — UN SEUL formulaire de création.
+                //
+                // « Ajouter un produit » (ancien écran SQLite, hors ligne) et
+                // « Nouvel article » étaient DEUX écrans différents pour la
+                // même chose : deux jeux de champs, deux comportements (pas de
+                // lot, pas de péremption, pas de variantes d'un côté). Le
+                // patron ne pouvait pas savoir lequel ouvrait quoi.
+                //
+                // Désormais l'ancienne adresse REDIRIGE vers le formulaire
+                // d'article : tous les boutons qui pointaient ici (« Stock »,
+                // « Gestion du stock », raccourcis) ouvrent exactement le même
+                // formulaire, avec les mêmes champs.
                 GoRoute(
                   path: 'add-product',
                   name: 'add-product',
-                  builder: (context, state) => const AddProductPage(),
+                  redirect: (context, state) => '/main/articles/new',
                 ),
                 GoRoute(
                   path: 'edit-product',
                   name: 'edit-product',
-                  builder: (context, state) => AddProductPage(
-                    produitToEdit: state.extra as Produit?,
-                  ),
+                  redirect: (context, state) => '/main/articles',
                 ),
 
                 // ⭐ ROUTES COMMERCIALES

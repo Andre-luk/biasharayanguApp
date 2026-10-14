@@ -886,7 +886,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               libelle: T.buttonAddProduct,
               icone: Icons.add_circle_outline_rounded,
               verrouille: verrouille,
-              onTap: () => _navTo('/main/add-product'),
+              onTap: () => _navTo('/main/articles/new'),
             ),
           ),
         if (peutAjouterProduit && peutGererCollaborateurs)

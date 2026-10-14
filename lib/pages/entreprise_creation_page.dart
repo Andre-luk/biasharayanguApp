@@ -58,6 +58,11 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
   final TextEditingController _installationCtrl = TextEditingController();
   final TextEditingController _mensuelCtrl = TextEditingController();
 
+  /// Vrai dès que l'opérateur a touché au prix lui-même : le pack ne doit plus
+  /// le remplacer (voir `_choisirGroupe`).
+  bool _installationSaisie = false;
+  bool _mensuelSaisi = false;
+
   // 3. Le propriétaire
   final TextEditingController _propNomCtrl = TextEditingController();
   final TextEditingController _propPrenomCtrl = TextEditingController();
@@ -170,7 +175,12 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
     }
   }
 
-  /// Sélectionne un pack et PROPOSE ses deux prix (modifiables ensuite).
+  /// Sélectionne un pack et PROPOSE ses deux prix.
+  ///
+  /// ⚠️ Un prix DÉJÀ SAISI par l'opérateur n'est JAMAIS écrasé : sinon, il
+  /// tape ses montants, corrige une activité — et le pack reprend la main sans
+  /// qu'il s'en aperçoive. C'est exactement ce qui donnait l'impression que
+  /// « le prix saisi ne joue aucun rôle ».
   ///
   /// Règle métier : le prix d'installation comprend le premier mois, donc
   /// `frais d'ouverture + abonnement` ; le prix mensuel est l'abonnement seul.
@@ -178,14 +188,18 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
     setState(() {
       _groupe = groupe;
       _erreurs['groupe'] = null;
-      final double installation =
-          groupe.fraisOuverture + groupe.montantAbonnement;
-      _installationCtrl.text = installation > 0
-          ? installation.toStringAsFixed(0)
-          : '';
-      _mensuelCtrl.text = groupe.montantAbonnement > 0
-          ? groupe.montantAbonnement.toStringAsFixed(0)
-          : '';
+
+      if (!_installationSaisie) {
+        final double installation =
+            groupe.fraisOuverture + groupe.montantAbonnement;
+        _installationCtrl.text =
+            installation > 0 ? installation.toStringAsFixed(0) : '';
+      }
+      if (!_mensuelSaisi) {
+        _mensuelCtrl.text = groupe.montantAbonnement > 0
+            ? groupe.montantAbonnement.toStringAsFixed(0)
+            : '';
+      }
     });
   }
 
@@ -242,12 +256,7 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
     return erreurs.isEmpty;
   }
 
-  double? _montant(String texte) {
-    final String nettoye =
-        texte.replaceAll(' ', '').replaceAll('\u00A0', '').replaceAll(',', '.');
-    if (nettoye.isEmpty) return null;
-    return double.tryParse(nettoye);
-  }
+  double? _montant(String texte) => parseMontantSaisi(texte);
 
   // ---------------------------------------------------------------------------
   // ENREGISTREMENT
@@ -506,6 +515,7 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
               child: TextField(
                 controller: _installationCtrl,
                 keyboardType: TextInputType.number,
+                onChanged: (_) => _installationSaisie = true,
                 decoration: InputDecoration(
                   labelText: 'Prix d\'installation *',
                   helperText: 'Comprend le 1er mois',
@@ -520,6 +530,7 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
               child: TextField(
                 controller: _mensuelCtrl,
                 keyboardType: TextInputType.number,
+                onChanged: (_) => _mensuelSaisi = true,
                 decoration: InputDecoration(
                   labelText: 'Prix mensuel',
                   helperText: 'Renouvellements',
@@ -530,6 +541,37 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 8),
+        // Règle d'or, écrite noir sur blanc : le pack PROPOSE, l'opérateur
+        // DÉCIDE. Un montant saisi remplace celui du pack — et il se relit
+        // juste en dessous avant d'enregistrer.
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppCouleurs.info.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Icon(Icons.info_outline_rounded,
+                  size: 18, color: AppCouleurs.info),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Le pack remplit ces deux montants. Si vous en écrivez un '
+                  'vous-même, c\'est LE VÔTRE qui est enregistré — le pack ne '
+                  'le remplace pas.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         if (_groupe != null) ...[
           const SizedBox(height: 10),
