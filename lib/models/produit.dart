@@ -32,6 +32,25 @@ class Produit {
   DateTime? get updatedAtDate => updatedAt == null ? null : DateTime.tryParse(updatedAt!);
   DateTime? get createdAtDate => createdAt == null ? null : DateTime.tryParse(createdAt!);
 
+  /// 🔴 CORRECTIF 77 — L'IDENTIFIANT QUI COMPTE POUR LE SERVEUR.
+  ///
+  /// `id` est l'identifiant **LOCAL** (SQLite, auto-incrémenté) : il ne veut
+  /// rien dire pour Supabase. L'identifiant de la ligne dans
+  /// `public.produits` est [supabaseId], attribué au premier envoi (ou reçu au
+  /// téléchargement).
+  ///
+  /// ⚠️ Toute opération côté serveur — vente (`rpc_vente_valider`), stock,
+  ///    QR code, fiche article — DOIT utiliser [idServeur]. Envoyer `id` à la
+  ///    place produit l'erreur « Article n° 83 introuvable : il a peut-être
+  ///    été supprimé. » alors que l'article existe.
+  int? get idServeur => int.tryParse((supabaseId ?? '').trim());
+
+  /// L'article existe-t-il dans la base serveur ?
+  ///
+  /// `false` = créé sur ce téléphone et pas encore envoyé : il ne peut pas
+  /// être vendu tant que la synchronisation n'a pas abouti.
+  bool get synchronise => idServeur != null;
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

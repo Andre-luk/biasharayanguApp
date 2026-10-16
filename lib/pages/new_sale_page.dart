@@ -196,12 +196,30 @@ class _NewSalePageState extends State<NewSalePage> {
     }
   }
 
+  /// 🔴 CORRECTIF 77 — LA CAISSE PARLE EN IDENTIFIANTS SERVEUR.
+  ///
+  /// `Produit.id` est l'identifiant LOCAL (SQLite) : envoyé au serveur, il
+  /// produisait « Article n° 83 introuvable : il a peut-être été supprimé. »
+  /// On travaille donc avec [Produit.idServeur] — le vrai numéro de la ligne
+  /// dans `public.produits` — y compris pour les clés du panier.
+  ///
+  /// Un article jamais envoyé au serveur (créé hors ligne, synchronisation en
+  /// attente) ne peut pas être vendu : on le DIT, au lieu de laisser le
+  /// serveur refuser à l'encaissement.
   void _updateQuantity(Produit p, double qty) {
-    if (p.id == null) return;
+    final int? idServeur = p.idServeur;
+    if (idServeur == null) {
+      _showSnackBar(
+        '« ${p.nom} » n\'est pas encore enregistré sur le serveur : '
+        'synchronisez (Paramètres → Synchroniser) puis réessayez.',
+        isError: true,
+      );
+      return;
+    }
 
     // Quantité nulle : la ligne quitte le panier.
     if (qty <= 0) {
-      _panier.retirer('PROD:${p.id}');
+      _panier.retirer('PROD:$idServeur');
       return;
     }
 
@@ -221,10 +239,15 @@ class _NewSalePageState extends State<NewSalePage> {
   /// Sans conditionnement (ou hors ligne), on retombe sur l'ajout à l'unité :
   /// la vente n'est jamais bloquée par un problème réseau.
   Future<void> _ajouterAvecFormat(Produit p) async {
-    if (p.id == null) return;
+    final int? idServeur = p.idServeur;
+    if (idServeur == null) {
+      _updateQuantity(p, 1);
+      return;
+    }
+
     try {
       final Article? article =
-          await ArticleService.instance.getArticleById(p.id!);
+          await ArticleService.instance.getArticleById(idServeur);
       if (!mounted) return;
 
       final List<Conditionnement> formats =
@@ -253,8 +276,12 @@ class _NewSalePageState extends State<NewSalePage> {
   }
 
   void _incrementProductQuantity(Produit p, {double step = 1.0}) {
-    if (p.id == null) return;
-    final double current = _panier.quantiteProduit(p.id!);
+    final int? idServeur = p.idServeur;
+    if (idServeur == null) {
+      _updateQuantity(p, step);
+      return;
+    }
+    final double current = _panier.quantiteProduit(idServeur);
     _updateQuantity(p, current + step);
   }
 
@@ -423,7 +450,9 @@ class _NewSalePageState extends State<NewSalePage> {
 
   void _showSetQuantityDialog(Produit p) {
     final T = AppLocalizations.of(context)!;
-    final double enPanier = p.id == null ? 0 : _panier.quantiteProduit(p.id!);
+    final int? idServeur = p.idServeur;
+    final double enPanier =
+        idServeur == null ? 0 : _panier.quantiteProduit(idServeur);
     final double currentQty = enPanier > 0 ? enPanier : 1.0;
     _quantityController.text = currentQty.toStringAsFixed(
       currentQty.truncateToDouble() == currentQty ? 0 : 2,
@@ -654,7 +683,9 @@ class _NewSalePageState extends State<NewSalePage> {
 
   Widget _buildProductCard(Produit p, AppLocalizations T) {
     final theme = Theme.of(context);
-    final double q = p.id == null ? 0.0 : _panier.quantiteProduit(p.id!);
+    final int? idServeur = p.idServeur;
+    final double q =
+        idServeur == null ? 0.0 : _panier.quantiteProduit(idServeur);
     final isSelected = q > 0;
 
     return Card(

@@ -25,6 +25,7 @@ class ArticleScanne {
   const ArticleScanne({
     required this.article,
     this.conditionnement,
+    this.idServeurEnAttente = false,
   });
 
   /// Article de base, relu dans `public.produits`.
@@ -33,14 +34,37 @@ class ArticleScanne {
   /// Conditionnement scanné, ou `null` quand l'unité de base est vendue.
   final Conditionnement? conditionnement;
 
+  /// `true` quand la ligne vient d'un article local **pas encore envoyé** au
+  /// serveur (correctif 77) : sa vente doit attendre la synchronisation.
+  final bool idServeurEnAttente;
+
   /// Construit l'article scanné depuis la copie locale (SQLite) d'un produit.
   ///
-  /// Utilisé par l'écran de vente classique, qui travaille avec [Produit] :
-  /// les deux représentations désignent la même ligne de `public.produits`.
-  factory ArticleScanne.depuisProduit(Produit produit) {
+  /// Utilisé par l'écran de vente classique, qui travaille avec [Produit].
+  ///
+  /// 🔴 CORRECTIF 77 — C'EST ICI QUE SE JOUAIT LA PANNE.
+  ///
+  /// On prenait `produit.id` — l'identifiant **LOCAL** de SQLite — pour
+  /// l'identifiant serveur. Le panier envoyait donc « 83 » à
+  /// `rpc_vente_valider`, qui répondait « Article n° 83 introuvable : il a
+  /// peut-être été supprimé. » alors que l'article existait bel et bien (sous
+  /// son vrai numéro, par exemple 503).
+  ///
+  /// C'est pourquoi la vente fonctionnait au SCANNER (le scan relit l'article
+  /// dans la base, donc avec le bon numéro) et échouait depuis la LISTE de la
+  /// caisse.
+  ///
+  /// Désormais on envoie [Produit.idServeur]. Si l'article n'a pas encore été
+  /// envoyé au serveur, [idServeurEnAttente] vaut `true` : la caisse prévient
+  /// au lieu de laisser le serveur refuser.
+  factory ArticleScanne.depuisProduit(
+    Produit produit, {
+    Conditionnement? conditionnement,
+  }) {
+    final int? idServeur = produit.idServeur;
     return ArticleScanne(
       article: Article(
-        id: produit.id ?? 0,
+        id: idServeur ?? produit.id ?? 0,
         nom: produit.nom,
         categorie: produit.categorie,
         prixAchat: produit.prixAchat,
@@ -50,6 +74,8 @@ class ArticleScanne {
         photo: produit.photo,
         ownerId: produit.ownerId,
       ),
+      conditionnement: conditionnement,
+      idServeurEnAttente: idServeur == null,
     );
   }
 

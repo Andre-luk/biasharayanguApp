@@ -102,11 +102,31 @@ class VenteService {
   ///
   /// La fonction SQL préfixe ses messages d'un code (`STOCK_INSUFFISANT|…`) :
   /// l'application n'affiche que la partie française.
+  ///
+  /// 🔴 CORRECTIF 77 — « Article n° 83 introuvable ».
+  ///
+  /// Le message brut du serveur laisse le commerçant sans solution. On le
+  /// complète par ce qu'il peut FAIRE, car le cas a deux origines bien
+  /// distinctes : l'article a été créé sur ce téléphone sans jamais atteindre
+  /// le serveur, ou la ligne du catalogue local ne correspond plus à aucun
+  /// article (article supprimé ailleurs).
   static String messageErreur(String brut) {
     final String texte = brut.trim();
     final int separateur = texte.indexOf('|');
     if (separateur < 0 || separateur == texte.length - 1) return texte;
-    return texte.substring(separateur + 1).trim();
+
+    final String code = texte.substring(0, separateur).trim().toUpperCase();
+    final String message = texte.substring(separateur + 1).trim();
+
+    if (code == 'PRODUIT_INTROUVABLE') {
+      return '$message\n\n'
+          'Cet article n\'existe pas dans la base de votre boutique. '
+          'Ouvrez « Articles » : s\'il n\'y figure pas, recréez-le avec '
+          '« Nouvel article » ; s\'il y figure déjà, demandez à la plateforme '
+          'de le restaurer sous son numéro.';
+    }
+
+    return message;
   }
 
   static TypeErreurVente _typeDepuisMessage(String brut) {
