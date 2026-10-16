@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BIASHARA YANGU — Fiche de prospection commerçant</title>
+<link rel="stylesheet" href="../_build/theme.css">
+<style>
+  /* La fiche de prospection vise la décision rapide : un chiffre, une phrase,
+     une action. Les règles communes (theme.css) restent la base. */
+  .action-rapide {
+    background: linear-gradient(135deg, var(--marine) 0%, #2a4a83 100%);
+    color: #fff; border-radius: 3mm; padding: 5.5mm 6mm; margin: 4mm 0;
+    page-break-inside: avoid;
+  }
+  .action-rapide h3 { color: #fff; margin: 0 0 2mm; font-size: 13pt; }
+  .action-rapide p { margin: 0 0 3mm; color: rgba(255,255,255,.92); font-size: 10pt; }
+  .action-rapide .num {
+    font-size: 15pt; font-weight: 900; letter-spacing: .3pt;
+    background: var(--orange); color: var(--marine-profond);
+    display: inline-block; padding: 2mm 4mm; border-radius: 2mm; margin-right: 2mm;
+  }
+  .action-rapide .mail { font-size: 10.5pt; font-weight: 700; }
+  .le-her0 {
+    background: var(--fond); border: 0.3mm solid var(--trait);
+    border-radius: 3mm; padding: 4.5mm; margin: 4mm 0;
+    page-break-inside: avoid;
+  }
+  .le-her0 h4 { margin-top: 0; }
+  .plan { counter-reset: etape; }
+  .plan .etape {
+    display: grid; grid-template-columns: 13mm 1fr; gap: 4mm;
+    margin-bottom: 3.5mm; page-break-inside: avoid;
+  }
+  .plan .etape .rond {
+    width: 13mm; height: 13mm; border-radius: 50%;
+    background: var(--marine); color: #fff; font-weight: 900; font-size: 14pt;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .plan .etape:nth-child(2) .rond { background: var(--marine-clair); }
+  .plan .etape:nth-child(3) .rond { background: var(--orange); color: var(--marine-profond); }
+  .plan .etape h4 { margin: 0 0 0.8mm; }
+  .plan .etape p { margin: 0; font-size: 9.5pt; }
+  .chiffre-cle { font-size: 20pt; font-weight: 900; color: var(--orange-fonce); letter-spacing: -1pt; }
+  .client-box {
+    border: 0.5mm dashed var(--marine-clair); border-radius: 3mm;
+    padding: 4.5mm; background: #fbfcff; margin: 3mm 0;
+    page-break-inside: avoid;
+  }
+  .client-box h4 { margin-top: 0; }
+  .client-box .texte-message {
+    background: #fff; border: 0.3mm solid var(--trait); border-radius: 2mm;
+    padding: 3.5mm; font-size: 9.5pt; line-height: 1.5;
+  }
+  .detachable { border-left: 1.2mm solid var(--orange); padding-left: 4mm; }
+</style>
+</head>
+<body>
+
+<!-- ===================== COUVERTURE ===================== -->
+<section class="couverture">
+  <div class="marque">
+    <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+    <span class="nom">Biashara&nbsp;Yangu</span>
+  </div>
+  <div class="etiquette">Fiche de prospection · à lire en 3 minutes</div>
+
+  <div class="bloc-titre">
+    <h1>Votre boutique,<br><em>dans le téléphone de vos clients.</em></h1>
+    <p class="sous-titre">
+      Un seul outil pour encaisser, suivre votre stock et savoir chaque soir ce
+      que vous avez réellement gagné — et une vitrine locale qui rend votre
+      commerce trouvable par les clients de votre quartier.
+    </p>
+    <div class="pastilles">
+      <span>Encaissement</span><span>Stock</span><span>Dettes clients</span>
+      <span>Rapports</span><span>Vitrine locale</span><span>Assistant IA</span>
+    </div>
+  </div>
+
+  <div class="pied-couverture">
+    <div><strong>Biashara Tech</strong>Lubumbashi · République Démocratique du Congo</div>
+    <div style="text-align:right">
+      <strong>WhatsApp : +243 974 084 668</strong>
+      biasharatech9@gmail.com
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 1. L'ESSENTIEL ===================== -->
+<section class="section">
+  <h2><span class="num">1.</span>L'essentiel, tout de suite</h2>
+
+  <p class="intro">
+    Vous faites tourner votre commerce. Ce qui vous manque n'est pas le
+    savoir-faire : c'est la <strong>trace écrite</strong> de ce qui entre et
+    sort — et la <strong>visibilité</strong> nécessaire pour que le client du
+    quartier sache que vous vendez ce qu'il cherche.
+  </p>
+
+  <div class="grille-3">
+    <div class="kpi">
+      <div class="valeur">1 geste</div>
+      <div class="libelle">
+        Le vendeur scanne le code-barres : la vente, le reçu, la caisse et le
+        stock se mettent à jour <strong>automatiquement</strong>.
+      </div>
+    </div>
+    <div class="kpi orange">
+      <div class="valeur">Trouvable</div>
+      <div class="libelle">
+        Vos produits apparaissent dans la recherche publique
+        <strong>sans que le client ait besoin d'un compte</strong> : prix, distance,
+        itinéraire, appel et WhatsApp direct.
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="valeur">Chaque soir</div>
+      <div class="libelle">
+        Une notification vous donne le <strong>résumé de la journée</strong> :
+        ventes, montant, bénéfice. Vous ne découvrez plus les chiffres à la fin
+        du mois.
+      </div>
+    </div>
+  </div>
+
+  <div class="action-rapide">
+    <h3>Pour en parler, un seul réflexe : WhatsApp</h3>
+    <p>
+      Envoyez-nous « <strong>DÉMO</strong> » avec le nom de votre boutique.
+      Nous vous montrons l'application sur votre propre commerce — en
+      15 minutes, sur place ou par appel.
+    </p>
+    <div>
+      <span class="num">+243 974 084 668</span>
+      <span class="mail">biasharatech9@gmail.com</span>
+    </div>
+  </div>
+
+  <div class="encart principe">
+    <h4>Ce que vous risquez de perdre, chaque jour, sans le voir</h4>
+    <ul>
+      <li>Une vente au comptoir mal notée : l'argent entre, mais aucun chiffre ne le prouve.</li>
+      <li>Un crédit client accordé de mémoire : au bout de trois semaines, plus personne ne sait combien il reste.</li>
+      <li>Un article en rupture que personne ne signale : le client se sert ailleurs.</li>
+      <li>Un produit périmé vendu par erreur : la réputation, elle, ne se rembourse pas.</li>
+      <li>Un client du quartier qui cherche votre produit… et ne vous trouve pas.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ===================== 2. LE GAIN VISIBLE ===================== -->
+<section class="section">
+  <h2><span class="num">2.</span>Le gain, noir sur blanc</h2>
+
+  <p class="intro">
+    Prenons un exemple volontairement simple — <em>chiffres d'illustration</em>,
+    les vôtres seront différents :
+  </p>
+
+  <div class="carte">
+    <h4>L'exemple d'une boutique ordinaire</h4>
+    <ul>
+      <li>40 articles vendus par jour, avec <strong>2 000 CDF</strong> de marge moyenne.</li>
+      <li>Marge du jour : 40 × 2 000 = <strong>80 000 CDF</strong>.</li>
+    </ul>
+    <p>
+      Si Biashara Yangu vous fait seulement <strong>récupérer 5 %</strong> de ce
+      qui se perd aujourd'hui (erreurs de caisse, ruptures, crédits oubliés,
+      démarque), cela représente <strong>4 000 CDF par jour</strong> — de
+      l'ordre de <strong>100 000 CDF par mois</strong>.
+    </p>
+    <p style="margin-bottom:0">
+      L'abonnement commence à <strong>5 000 CDF par mois</strong>.
+      Autrement dit : <span class="chiffre-cle">le premier jour</span> couvre
+      largement le mois.
+    </p>
+  </div>
+
+  <h3>Les cinq fuites que l'application ferme</h3>
+  <table class="compact">
+    <thead>
+      <tr><th>Fuite</th><th>Ce que fait Biashara Yangu</th><th>Résultat</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Ventes non tracées</td>
+        <td>Chaque vente génère un ticket numéroté, enregistré en caisse et dans le journal.</td>
+        <td>On sait qui a vendu quoi, quand et à quel prix.</td>
+      </tr>
+      <tr>
+        <td>Crédits oubliés</td>
+        <td>Fiche client, dette, remboursements, relance WhatsApp en un clic.</td>
+        <td>Ce qu'on vous doit reste écrit et réclamable.</td>
+      </tr>
+      <tr>
+        <td>Stock faux</td>
+        <td>Seuil d'alerte, approvisionnements, ajustements, inventaire quotidien.</td>
+        <td>Moins de ruptures, moins d'argent dormant.</td>
+      </tr>
+      <tr>
+        <td>Péremption</td>
+        <td>Lot et date sur chaque article, alerte avant échéance, vente bloquée si expiré.</td>
+        <td>Plus de produit périmé remis au client.</td>
+      </tr>
+      <tr>
+        <td>Boutique invisible</td>
+        <td>Vitrine publique dans la marketplace locale, géolocalisée.</td>
+        <td>Des clients qui ne vous connaissaient pas vous trouvent.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="encart succes">
+    <h4>Et les chiffres du patron, pas seulement ceux de la caisse</h4>
+    <p style="margin-bottom:0">
+      Tableau de bord du jour, bénéfice net (marchandises et dépenses déduites),
+      14 types de rapports d'entreprise exportables en <strong>PDF signé</strong>
+      et en <strong>Excel</strong> — utiles pour vous, mais aussi pour une banque
+      ou un fournisseur qui demande des preuves.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== 3. LA VISIBILITÉ ===================== -->
+<section class="section">
+  <h2><span class="num">3.</span>La différence : être trouvable</h2>
+
+  <div class="le-her0">
+    <h4>Une bonne boutique ne suffit plus. Il faut être <em>remarquable</em>.</h4>
+    <p style="margin-bottom:0">
+      Dans un quartier, dix commerces vendent souvent la même chose. Le client
+      ne compare pas dix boutiques : il prend <strong>la première qu'il
+      trouve</strong> — en général, celle qui apparaît sur son téléphone. Être
+      « très bien » ne sert à rien si personne ne le sait. C'est l'idée de la
+      « vache pourpre » : se rendre impossible à ignorer.
+    </p>
+  </div>
+
+  <div class="grille-2">
+    <div class="carte">
+      <h4>Ce que fait votre client, sans compte</h4>
+      <ul>
+        <li>Il cherche un produit — « ciment », « paracétamol », « riz ».</li>
+        <li>Il voit votre boutique, votre <strong>prix affiché</strong>, votre distance.</li>
+        <li>Il <strong>compare les prix</strong> entre les boutiques qui l'ont.</li>
+        <li>Il demande l'<strong>itinéraire</strong>, vous <strong>appelle</strong> ou vous écrit sur <strong>WhatsApp</strong>.</li>
+      </ul>
+      <p style="margin-bottom:0">
+        Aucun compte à créer, aucune application à installer : c'est ce qui
+        transforme un passant en client.
+      </p>
+    </div>
+    <div class="carte">
+      <h4>Ce que vous, vous voyez</h4>
+      <ul>
+        <li>« <strong>Ma visibilité Biashara</strong> » : combien de personnes ont vu votre boutique.</li>
+        <li>Les <strong>produits les plus consultés</strong> chez vous.</li>
+        <li>Les <strong>recherches</strong> qui vous ont amenées des visiteurs.</li>
+        <li>Les itinéraires demandés, les appels, les WhatsApp : ce qui se transforme vraiment en visite.</li>
+      </ul>
+      <p style="margin-bottom:0">
+        Vous ne devinez plus : vous mesurez. Et vous pouvez mettre en avant un
+        produit qui mérite plus de regards.
+      </p>
+    </div>
+  </div>
+
+  <figure class="ecran">
+    <img src="../../marketing/depliant/assets/ecrans/linux-accueil.png" alt="Tableau de bord Biashara Yangu">
+    <figcaption>Le patron ouvre l'application : ventes du jour, stock en alerte et accès direct à chaque module.</figcaption>
+  </figure>
+
+  <div class="encart">
+    <h4>La vitrine ne remplace pas votre boutique. Elle l'ouvre.</h4>
+    <p style="margin-bottom:0">
+      Adresse lisible, point de repère, horaires, photos, téléphone et WhatsApp
+      publics, produits publiés avec leur prix : votre fiche est partageable sur
+      WhatsApp et dans les groupes de votre quartier. Ce que vos clients
+      partagent, c'est votre vitrine.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== 4. LE PLAN ===================== -->
+<section class="section">
+  <h2><span class="num">4.</span>Comment on démarre</h2>
+
+  <p class="intro">
+    Pas de formation interminable, pas de matériel à acheter. Trois étapes.
+  </p>
+
+  <div class="plan">
+    <div class="etape">
+      <div class="rond">1</div>
+      <div>
+        <h4>Vous écrivez sur WhatsApp — 2 minutes</h4>
+        <p>« DÉMO » + le nom de votre boutique, au <strong>+243 974 084 668</strong>.
+        Nous vous rappelons et nous fixons un rendez-vous.</p>
+      </div>
+    </div>
+    <div class="etape">
+      <div class="rond">2</div>
+      <div>
+        <h4>Nous installons et configurons AVEC vous — le même jour</h4>
+        <p>Création du compte, vos articles et vos prix, vos formats de vente
+        (unité, sachet, carton), vos étiquettes à scanner, votre équipe et ses
+        droits, votre vitrine. Vous ne restez pas seul devant l'écran.</p>
+      </div>
+    </div>
+    <div class="etape">
+      <div class="rond">3</div>
+      <div>
+        <h4>Vous vendez, vous suivez, vous êtes trouvé</h4>
+        <p>Vos vendeurs encaissent au scan. Chaque soir, votre résumé tombe sur
+        le téléphone. Et vos produits sont visibles des clients de votre
+        quartier, sur la marketplace.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Nos deux engagements</h3>
+  <div class="grille-2">
+    <div class="kpi">
+      <div class="valeur">Ici</div>
+      <div class="libelle">
+        Application conçue et suivie à <strong>Lubumbashi</strong>. Assistance
+        en français, sur WhatsApp, par des gens que vous pouvez joindre.
+      </div>
+    </div>
+    <div class="kpi orange">
+      <div class="valeur">Vos données</div>
+      <div class="libelle">
+        Chaque boutique ne voit que ses propres données. Toutes les actions
+        sensibles sont <strong>journalisées</strong> : une vente annulée ou un
+        prix modifié laisse une trace.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 5. CE QUE L'APP FAIT ===================== -->
+<section class="section">
+  <h2><span class="num">5.</span>Ce que fait l'application, concrètement</h2>
+
+  <table class="compact">
+    <thead><tr><th>Domaine</th><th>Fonctions</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Ventes</strong></td><td>Panier, <strong>scan code-barres et QR</strong>, encaissement (espèces, mobile money, carte, dette), reçus, historique, annulation motivée et tracée.</td></tr>
+      <tr><td><strong>Articles &amp; stock</strong></td><td>Fiche unique d'article, catégories, <strong>formats de vente</strong> (unité, plaquette, sachet, carton, prix propres), code-barres, approvisionnements, ajustements, <strong>inventaire quotidien</strong>, seuils d'alerte.</td></tr>
+      <tr><td><strong>Clients &amp; dettes</strong></td><td>Fiches clients, crédits, remboursements, <strong>relance WhatsApp</strong> du débiteur.</td></tr>
+      <tr><td><strong>Caisse &amp; finance</strong></td><td>Encaissements, clôture de caisse, dépenses, <strong>bénéfice net</strong>, graphiques, montants en <strong>CDF ou USD</strong>.</td></tr>
+      <tr><td><strong>Rapports</strong></td><td>14 rapports d'entreprise (ventes, articles, vendeurs, top produits, finance, stock, caisse, dépenses, dettes, expirations…) — <strong>exports PDF et Excel</strong>.</td></tr>
+      <tr><td><strong>Équipe</strong></td><td>Collaborateurs, rôles (vendeur, magasinier, comptable…), permissions réglables par le patron.</td></tr>
+      <tr><td><strong>Notifications</strong></td><td>Alerte à chaque vente et à chaque rupture, plus le <strong>résumé de fin de journée</strong> à l'heure que vous choisissez.</td></tr>
+      <tr><td><strong>Assistant IA</strong></td><td>Vous posez vos questions en français : « combien j'ai gagné cette semaine ? », « qu'est-ce qui manque en stock ? ». Il répond à partir de vos vraies données.</td></tr>
+      <tr><td><strong>Vitrine publique</strong></td><td>Marketplace locale : recherche sans compte, carte, comparaison des prix, itinéraire, appel, WhatsApp, partage.</td></tr>
+      <tr><td><strong>Métiers</strong></td><td>Boutique, dépôt, pharmacie (lots &amp; péremption), <strong>hôtel</strong> (chambres, réservations, réception), <strong>restaurant</strong> (tables, cuisine), <strong>salle des fêtes</strong>, <strong>boulangerie</strong> (matières, productions), <strong>boucherie</strong> (vente au poids), <strong>mode</strong> (tailles, couleurs).</td></tr>
+      <tr><td><strong>Partout</strong></td><td>Android, ordinateur (Windows, Linux) et navigateur Web. Les applications natives continuent de fonctionner <strong>sans internet</strong>, puis synchronisent.</td></tr>
+      <tr><td><strong>Sécurité</strong></td><td>Données cloisonnées par boutique, journal d'audit inaltérable, comptes non activés verrouillés.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="duo">
+    <figure class="tel">
+      <img src="../../marketing/depliant/assets/ecrans/mobile-connexion.png" alt="Connexion sur téléphone">
+      <figcaption>Sur téléphone : un compte, une boutique, un accès par code.</figcaption>
+    </figure>
+    <figure class="tel">
+      <img src="../../marketing/depliant/assets/ecrans/mobile-creation.png" alt="Création de la boutique">
+      <figcaption>Création de la boutique : nom, catégorie d'activité, contact.</figcaption>
+    </figure>
+  </div>
+
+  <div class="encart alerte">
+    <h4>Une question que tout patron se pose</h4>
+    <p style="margin-bottom:0">
+      <strong>« Et si mon vendeur se trompe, ou pire ? »</strong> — Chaque vente,
+      chaque annulation, chaque modification de prix et chaque connexion sont
+      enregistrées avec l'auteur et l'heure. Vous pouvez vérifier a posteriori,
+      au lieu de suspecter. C'est la première fois que beaucoup de patrons
+      dorment mieux.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== 6. OFFRE ===================== -->
+<section class="section">
+  <h2><span class="num">6.</span>L'offre</h2>
+
+  <p class="intro">
+    Un prix d'installation (le premier mois est inclus) puis un abonnement
+    mensuel. Les montants sont ajustés à votre commerce, et le prix retenu est
+    écrit noir sur blanc.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Niveau</th><th class="num">Mensuel indicatif</th><th>Inclus</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Essentiel</strong></td>
+        <td class="num">5 000 CDF</td>
+        <td>Ventes, produits, stock, caisse, clients, rapports.</td>
+      </tr>
+      <tr>
+        <td><strong>Pro</strong></td>
+        <td class="num">10 000 CDF</td>
+        <td>Tout l'Essentiel + QR codes, finance, employés, assistant IA.</td>
+      </tr>
+      <tr>
+        <td><strong>Premium</strong></td>
+        <td class="num">20 000 CDF</td>
+        <td>Toutes les fonctionnalités de votre activité, vitrine complète.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="grille-3">
+    <div class="kpi"><div class="valeur">✔</div><div class="libelle">Installation accompagnée : nous créons la boutique avec vous.</div></div>
+    <div class="kpi"><div class="valeur">✔</div><div class="libelle">Factures d'abonnement téléchargeables et envoyées sur WhatsApp.</div></div>
+    <div class="kpi"><div class="valeur">✔</div><div class="libelle">Possibilité de régler une avance, puis le complément.</div></div>
+  </div>
+
+  <div class="action-rapide">
+    <h3>Le prochain pas est le plus simple</h3>
+    <p>
+      Écrivez-nous « <strong>DÉMO</strong> » sur WhatsApp avec le nom de votre
+      boutique. Nous vous montrons, sur vos propres articles, ce que vous
+      verriez à l'écran ce soir.
+    </p>
+    <div>
+      <span class="num">+243 974 084 668</span>
+      <span class="mail">biasharatech9@gmail.com</span>
+    </div>
+    <p style="margin:3mm 0 0; font-size:9pt; color:rgba(255,255,255,.8)">
+      Biashara Tech — Éditeur de Biashara Yangu, Lubumbashi.
+    </p>
+  </div>
+</section>
+
+<!-- ===================== 7. À TRANSMETTRE AUX CLIENTS ===================== -->
+<section class="section">
+  <h2><span class="num">7.</span>À transmettre à vos clients</h2>
+
+  <p class="intro">
+    Votre vitrine ne sert que si vos clients la connaissent. Cette page se
+    détache : recopiez le message ci-dessous dans votre statut WhatsApp, vos
+    groupes de quartier, ou imprimez le bloc et posez-le en caisse.
+  </p>
+
+  <div class="client-box detachable">
+    <h4>Message prêt à envoyer (statut WhatsApp, groupes, SMS)</h4>
+    <div class="texte-message">
+      🔎 <strong>Vous cherchez un produit ?</strong><br>
+      Trouvez-le chez <strong>[NOM DE VOTRE BOUTIQUE]</strong> — et comparez les
+      prix des boutiques de votre quartier, sans créer de compte.<br><br>
+      ✅ Voir le prix affiché<br>
+      ✅ Voir la distance et l'itinéraire<br>
+      ✅ Appeler ou écrire sur WhatsApp en un clic<br>
+      ✅ Passer commande et venir récupérer<br><br>
+      👉 C'est ici : <strong>[VOTRE LIEN DE BOUTIQUE]</strong><br>
+      📍 [VOTRE ADRESSE + POINT DE REPÈRE]<br>
+      ☎️ [VOTRE NUMÉRO WHATSAPP]<br><br>
+      <em>Biashara Yangu — la plus proche est la plus pratique.</em>
+    </div>
+  </div>
+
+  <figure>
+    <img src="../../marketing/depliant/images/partage-social.png" alt="Affiche de partage Biashara Yangu">
+    <figcaption>
+      L'affiche à partager : statut WhatsApp, groupes de quartier, page Facebook,
+      ou imprimée en A4 pour la devanture. Le texte du message ci-dessus doit
+      l'accompagner — l'image attire l'œil, le message déclenche le clic.
+    </figcaption>
+  </figure>
+
+  <div class="grille-2">
+    <div class="carte">
+      <h4>Pourquoi ce message fonctionne</h4>
+      <ul>
+        <li>Il ne parle pas de logiciel : il parle du problème du client (<em>trouver</em>, <em>vérifier le prix</em>, <em>ne pas se déplacer pour rien</em>).</li>
+        <li>Il donne un <strong>lien à cliquer</strong>, pas une explication à lire.</li>
+        <li>Il se partage : un client satisfait le renvoie à trois voisins.</li>
+      </ul>
+    </div>
+    <div class="carte">
+      <h4>Le réflexe à prendre</h4>
+      <ul>
+        <li>À chaque vente, glissez le lien dans le reçu (l'application imprime déjà votre ticket).</li>
+        <li>Publiez sur votre statut WhatsApp quand un produit est en promotion.</li>
+        <li>Demandez à l'application de vous donner vos <strong>produits les plus consultés</strong> : mettez-les en avant.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="encart principe">
+    <h4>Le cercle vertueux</h4>
+    <p style="margin-bottom:0">
+      Plus de clients cherchent → vous apparaissez → ils appellent → ils achètent
+      → l'application enregistre tout → vous mesurez et vous mettez en avant ce
+      qui marche → encore plus de clients. <strong>La visibilité nourrit la
+      gestion, la gestion crédibilise la visibilité.</strong>
+    </p>
+  </div>
+
+  <div class="mention-juridique">
+    <strong>Bon à savoir.</strong> Les montants cités dans ce document sont des
+    prix indicatifs, adaptés à chaque commerce et confirmés par écrit avant
+    l'activation. Les exemples de gain sont des illustrations de calcul, pas une
+    promesse de résultat : votre commerce, vos marges et votre activité
+    déterminent vos propres résultats. Les prix affichés sur votre vitrine
+    restent sous votre contrôle, et chaque boutique ne voit que ses propres
+    données.
+  </div>
+
+  <div class="pied">
+    <div>
+      <strong>Biashara Yangu</strong> — édité par Biashara Tech, Lubumbashi (RDC)<br>
+      WhatsApp +243 974 084 668 · biasharatech9@gmail.com
+    </div>
+    <div style="text-align:right">
+      <strong>Fiche de prospection</strong> — édition octobre 2026, version 3.0.0<br>
+      © 2026 Biashara Tech · droit congolais · tribunaux de Lubumbashi
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

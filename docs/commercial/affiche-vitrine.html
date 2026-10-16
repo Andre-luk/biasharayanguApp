@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>BIASHARA YANGU — Affiche vitrine</title>
+<style>
+  /* Affiche A4 plein cadre : conçue pour être imprimée ET envoyée telle quelle
+     sur WhatsApp (statut, groupes). Un seul message, un seul réflexe : écrire. */
+  @page { size: A4 portrait; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --marine: #1f3864;
+    --marine-profond: #14213c;
+    --orange: #f08a4b;
+  }
+  html { font-size: 11pt; }
+  body {
+    font-family: 'Noto Sans', 'Liberation Sans', 'DejaVu Sans', Arial, sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .affiche {
+    width: 210mm; height: 297mm; overflow: hidden;
+    background: linear-gradient(160deg, var(--marine-profond) 0%, #1f3864 45%, #2a4a83 100%);
+    color: #fff; padding: 16mm 14mm 12mm;
+    display: flex; flex-direction: column; position: relative;
+  }
+  .affiche::after {
+    content: ''; position: absolute; right: -70mm; bottom: -70mm;
+    width: 190mm; height: 190mm; border-radius: 50%;
+    background: rgba(240, 138, 75, 0.14);
+  }
+  .haut { display: flex; align-items: center; gap: 5mm; position: relative; z-index: 2; }
+  .haut .logo {
+    background: #fff; border-radius: 3mm; padding: 2.5mm 3mm;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .haut img { height: 18mm; display: block; }
+  .haut .nom { font-size: 22pt; font-weight: 900; letter-spacing: -0.6pt; }
+  .haut .sous { font-size: 9pt; color: rgba(255,255,255,.75); letter-spacing: 1.2pt; text-transform: uppercase; margin-top: 1mm; }
+
+  h1 {
+    font-size: 39pt; font-weight: 900; line-height: 1.05;
+    letter-spacing: -2.2pt; margin: 14mm 0 6mm; position: relative; z-index: 2;
+  }
+  h1 em { font-style: normal; color: var(--orange); display: block; }
+
+  .accroche {
+    font-size: 12.5pt; line-height: 1.5; color: rgba(255,255,255,.92);
+    max-width: 165mm; position: relative; z-index: 2;
+  }
+
+  .atouts { margin: 10mm 0 0; position: relative; z-index: 2; }
+  .atout {
+    display: grid; grid-template-columns: 11mm 1fr; gap: 4mm;
+    margin-bottom: 6mm; align-items: start;
+  }
+  .atout .puce {
+    width: 11mm; height: 11mm; border-radius: 2.5mm; background: var(--orange);
+    color: var(--marine-profond); font-size: 15pt; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .atout h2 { font-size: 13.5pt; font-weight: 800; margin-bottom: 1.2mm; }
+  .atout p { font-size: 10pt; color: rgba(255,255,255,.82); line-height: 1.45; }
+
+  .bas {
+    margin-top: auto; position: relative; z-index: 2;
+    background: rgba(255,255,255,.10); border: 0.5mm solid rgba(255,255,255,.28);
+    border-radius: 4mm; padding: 7mm; display: flex; gap: 7mm; align-items: center;
+  }
+  .bas .qr { background: #fff; border-radius: 3mm; padding: 2.5mm; flex: 0 0 auto; }
+  .bas .qr img { width: 32mm; height: 32mm; display: block; }
+  .bas h3 { font-size: 15pt; font-weight: 900; margin-bottom: 2mm; }
+  .bas .num { font-size: 20pt; font-weight: 900; color: var(--orange); letter-spacing: -0.6pt; display: block; }
+  .bas .mail { font-size: 11pt; font-weight: 700; }
+  .bas .mention { font-size: 8.5pt; color: rgba(255,255,255,.72); margin-top: 3mm; }
+
+  .activites {
+    position: relative; z-index: 2; margin-top: 6mm;
+    font-size: 8.5pt; color: rgba(255,255,255,.7);
+    border-top: 0.3mm solid rgba(255,255,255,.22); padding-top: 4mm;
+    display: flex; justify-content: space-between; gap: 4mm;
+  }
+  .activites strong { color: #fff; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="affiche">
+
+  <div class="haut">
+    <div class="logo">
+      <img src="../../marketing/depliant/assets/logo-biashara.png" alt="Biashara Yangu">
+    </div>
+    <div>
+      <div class="nom">Biashara&nbsp;Yangu</div>
+      <div class="sous">Gestion de commerce multi-activités</div>
+    </div>
+  </div>
+
+  <h1>Vos ventes en ordre.<br><em>Votre boutique trouvable.</em></h1>
+
+  <p class="accroche">
+    Encaissez au scan, sachez chaque soir ce que vous avez gagné — et laissez les
+    clients de votre quartier vous trouver sur leur téléphone, sans créer de compte.
+  </p>
+
+  <div class="atouts">
+    <div class="atout">
+      <div class="puce">1</div>
+      <div>
+        <h2>Un seul geste pour vendre</h2>
+        <p>Le vendeur scanne l'article : ticket imprimé, caisse et stock à jour. Les erreurs de caisse et les oublis disparaissent.</p>
+      </div>
+    </div>
+    <div class="atout">
+      <div class="puce">2</div>
+      <div>
+        <h2>Vos chiffres, chaque soir</h2>
+        <p>Résumé de la journée sur votre téléphone : ventes, montant, bénéfice net, stock en alerte, ce qu'on vous doit.</p>
+      </div>
+    </div>
+    <div class="atout">
+      <div class="puce">3</div>
+      <div>
+        <h2>Votre boutique visible</h2>
+        <p>Vos produits apparaissent dans la recherche publique : prix affiché, distance, itinéraire, appel et WhatsApp direct.</p>
+      </div>
+    </div>
+    <div class="atout">
+      <div class="puce">4</div>
+      <div>
+        <h2>Vous gardez le contrôle</h2>
+        <p>Rôles pour chaque vendeur, journal de toutes les actions sensibles : vous vérifiez au lieu de suspecter.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="bas">
+    <div class="qr">
+      <img src="../../marketing/depliant/assets/qr-whatsapp.png" alt="QR code WhatsApp">
+    </div>
+    <div>
+      <h3>Demandez votre démonstration gratuite</h3>
+      <span class="num">+243 974 084 668</span>
+      <span class="mail">biasharatech9@gmail.com</span>
+      <div class="mention">
+        Scannez le QR code ou écrivez « DÉMO » avec le nom de votre boutique.
+        Installation accompagnée par notre équipe, à Lubumbashi.
+      </div>
+    </div>
+  </div>
+
+  <div class="activites">
+    <div><strong>Boutique</strong> · Dépôt · Pharmacie · Hôtel</div>
+    <div>Restaurant · Salle des fêtes · <strong>Boulangerie</strong> · Boucherie · Mode</div>
+    <div style="text-align:right"><strong>Biashara Tech</strong> — éditeur, Lubumbashi (RDC)</div>
+  </div>
+
+</div>
+</body>
+</html>
