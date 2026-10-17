@@ -22,6 +22,7 @@ import 'package:biashara_yangu/models/categorie.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/mouvement_article.dart';
 import 'package:biashara_yangu/models/statut_expiration.dart';
+import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -291,7 +292,11 @@ class ArticleService {
             .select()
             .single();
 
-        return Article.fromMap(reponse);
+        final Article article = Article.fromMap(reponse);
+        // 🔔 CORRECTIF 78 — un article de plus : le tableau de bord et le
+        // marché se mettent à jour sans attendre.
+        DonneesService.instance.signale('article-cree');
+        return article;
       },
       actionLibelle: "la création de l'article",
       messageEchec:
@@ -357,7 +362,10 @@ class ArticleService {
             .select()
             .single();
 
-        return Article.fromMap(reponse);
+        final Article article = Article.fromMap(reponse);
+        // 🔔 CORRECTIF 78 — prix, stock, photo modifiés : on prévient.
+        DonneesService.instance.signale('article-modifie');
+        return article;
       },
       actionLibelle: "l'enregistrement de l'article",
       messageEchec:
@@ -439,6 +447,8 @@ class ArticleService {
     return _executer(
       () async {
         await _client.from('produits').delete().eq('id', id);
+        // 🔔 CORRECTIF 78 — stock et compteurs changent : on prévient.
+        DonneesService.instance.signale('article-supprime');
       },
       actionLibelle: "la suppression de l'article",
       messageEchec:

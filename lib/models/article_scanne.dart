@@ -26,6 +26,7 @@ class ArticleScanne {
     required this.article,
     this.conditionnement,
     this.idServeurEnAttente = false,
+    this.produitIdLocal,
   });
 
   /// Article de base, relu dans `public.produits`.
@@ -37,6 +38,16 @@ class ArticleScanne {
   /// `true` quand la ligne vient d'un article local **pas encore envoyé** au
   /// serveur (correctif 77) : sa vente doit attendre la synchronisation.
   final bool idServeurEnAttente;
+
+  /// 🔴 CORRECTIF 78 — LE NUMÉRO LOCAL, INDISPENSABLE AU STOCK DU TÉLÉPHONE.
+  ///
+  /// `article.id` est le numéro de la BASE (celui que le serveur comprend).
+  /// La copie locale SQLite a le sien, différent : c'est lui qu'il faut pour
+  /// décrémenter le stock du téléphone et enregistrer une vente hors ligne.
+  ///
+  /// Les deux doivent donc voyager ensemble : sans [produitIdLocal],
+  /// l'enregistrement local répond « Produit ID 503 introuvable ».
+  final int? produitIdLocal;
 
   /// Construit l'article scanné depuis la copie locale (SQLite) d'un produit.
   ///
@@ -76,6 +87,7 @@ class ArticleScanne {
       ),
       conditionnement: conditionnement,
       idServeurEnAttente: idServeur == null,
+      produitIdLocal: produit.id,
     );
   }
 

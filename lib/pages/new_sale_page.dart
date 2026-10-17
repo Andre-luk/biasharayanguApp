@@ -23,6 +23,7 @@ import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 // 🪙 MODULE 18 — montants formatés dans la devise de l'entreprise.
@@ -233,46 +234,95 @@ class _NewSalePageState extends State<NewSalePage> {
 
   void _setProductQuantity(Produit p, double qty) => _updateQuantity(p, qty);
 
-  /// 🧾 MULTI-FORMATS — ajoute un produit au panier en laissant choisir le
-  /// format de vente (unité / plaquette / sachet / carton) quand il en a.
+  /// 🔎 Retrouve l'article du TÉLÉPHONE correspondant à une ligne du panier.
   ///
-  /// Sans conditionnement (ou hors ligne), on retombe sur l'ajout à l'unité :
-  /// la vente n'est jamais bloquée par un problème réseau.
-  Future<void> _ajouterAvecFormat(Produit p) async {
-    final int? idServeur = p.idServeur;
-    if (idServeur == null) {
-      _updateQuantity(p, 1);
-      return;
+  /// Une ligne connaît son numéro de base ; la copie locale, elle, a le sien.
+  /// On cherche d'abord par numéro local, puis — pour une ligne scannée — par
+  /// `supabase_id`. `null` = article absent de ce téléphone.
+  Produit? _produitLocal(LignePanier ligne) {
+    final int? idLocal = ligne.produitIdLocal;
+    if (idLocal != null) {
+      for (final Produit p in produits) {
+        if (p.id == idLocal) return p;
+      }
     }
+    final String numeroServeur = ligne.produitId.toString();
+    for (final Produit p in produits) {
+      if (p.supabaseId == numeroServeur) return p;
+    }
+    return null;
+  }
+
+  /// ➕ AJOUTER AU PANIER — IMMÉDIAT.
+  ///
+  /// 🔴 CORRECTIF 78 — l'ajout attendait auparavant une réponse du serveur
+  /// (`getArticleById`) AVANT d'inscrire quoi que ce soit : d'où le temps
+  /// d'attente, les appuis répétés et l'impression que « le produit ne
+  /// s'ajoute pas en une seule fois ».
+  ///
+  /// Désormais la ligne est ajoutée TOUT DE SUITE (données du téléphone), et
+  /// les emballages éventuels (farde, carton…) sont proposés **après**, par un
+  /// message discret : la vente n'attend plus jamais le réseau.
+  void _ajouterAuPanier(Produit p) {
+    final int? idServeur = p.idServeur;
+    final double actuel =
+        idServeur == null ? 0 : _panier.quantiteProduit(idServeur);
+    _updateQuantity(p, actuel + 1);
+
+    // Proposer les emballages sans bloquer ni ralentir l'ajout.
+    unawaited(_proposerFormats(p));
+  }
+
+  /// 🧾 MULTI-FORMATS (en arrière-plan) — si l'article a des emballages, on
+  /// le signale par un message avec un bouton « Choisir ». Aucun échec réseau
+  /// n'a d'effet sur le panier : la ligne est déjà ajoutée.
+  Future<void> _proposerFormats(Produit p) async {
+    final int? idServeur = p.idServeur;
+    if (idServeur == null) return;
 
     try {
       final Article? article =
           await ArticleService.instance.getArticleById(idServeur);
-      if (!mounted) return;
+      if (!mounted || article == null) return;
 
-      final List<Conditionnement> formats =
-          article?.conditionnements ?? const <Conditionnement>[];
-      if (article == null || formats.isEmpty) {
-        _updateQuantity(p, 1);
-        return;
-      }
+      final List<Conditionnement> formats = article.conditionnements;
+      if (formats.isEmpty) return;
 
-      final ChoixFormatVente? choix = await choisirFormatVente(
-        context,
-        article: article,
-        conditionnements: formats,
-      );
-      if (choix == null || !mounted) return;
-
-      _panier.ajouterArticle(
-        ArticleScanne(article: article, conditionnement: choix.format),
-        quantite: choix.quantite,
+      final String liste =
+          formats.map((Conditionnement c) => c.libelle).take(3).join(', ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('« ${p.nom} » se vend aussi par : $liste'),
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(
+            label: 'Choisir',
+            onPressed: () => _choisirFormat(article, formats),
+          ),
+        ),
       );
     } catch (e) {
-      debugPrint('Format de vente indisponible : $e');
-      if (!mounted) return;
-      _updateQuantity(p, 1);
+      // Silencieux : un emballage indisponible ne doit jamais gêner la vente.
+      debugPrint('Formats indisponibles pour ${p.nom} : $e');
     }
+  }
+
+  Future<void> _choisirFormat(
+    Article article,
+    List<Conditionnement> formats,
+  ) async {
+    final ChoixFormatVente? choix = await choisirFormatVente(
+      context,
+      article: article,
+      conditionnements: formats,
+    );
+    if (choix == null || !mounted) return;
+
+    // La ligne à l'unité laisse la place à l'emballage choisi.
+    _panier.retirer('PROD:${article.id}');
+    _panier.ajouterArticle(
+      ArticleScanne(article: article, conditionnement: choix.format),
+      quantite: choix.quantite,
+    );
   }
 
   void _incrementProductQuantity(Produit p, {double step = 1.0}) {
@@ -356,12 +406,31 @@ class _NewSalePageState extends State<NewSalePage> {
       //   • `quantite` de la vente = unités de BASE retirées du stock
       //     (une farde de 12 = 12 bouteilles) ;
       //   • `prix` = TOTAL de la ligne (prix du conditionnement × quantité).
+      //
+      // 🔴 CORRECTIF 78 — ON ENREGISTRE AVEC LE NUMÉRO LOCAL.
+      //   `ligne.produitId` est le numéro de la BASE (503…) : la table locale
+      //   ne le connaît pas, d'où « Erreur lors de l'enregistrement de la
+      //   vente : Exception: Produit ID 503 introuvable ». Ici, tout est local :
+      //   on repasse par l'article du téléphone ([_produitLocal]).
       for (final LignePanier ligne in _panier.lignes) {
         final double totalAmount = ligne.total;
 
+        final Produit? local = _produitLocal(ligne);
+        if (local == null || local.id == null) {
+          if (mounted) {
+            setState(() => _loading = false);
+            _showSnackBar(
+              '« ${ligne.nom} » n\'est pas encore enregistré sur ce téléphone : '
+              'synchronisez puis réessayez.',
+              isError: true,
+            );
+          }
+          return;
+        }
+
         ventes.add(
           Vente(
-            produitId: ligne.produitId,
+            produitId: local.id!,
             quantite: ligne.unitesBase,
             prix: totalAmount,
             modePaiement: isModeDette ? 'dette' : modePaiement,
@@ -383,7 +452,7 @@ class _NewSalePageState extends State<NewSalePage> {
         );
 
         final int index =
-            produits.indexWhere((Produit pr) => pr.id == ligne.produitId);
+            produits.indexWhere((Produit pr) => pr.id == local.id);
         if (index >= 0) produits[index].quantite -= ligne.unitesBase;
       }
 
@@ -425,6 +494,10 @@ class _NewSalePageState extends State<NewSalePage> {
       }
 
       _triggerImmediateSync();
+
+      // 🔔 CORRECTIF 78 — la vente est enregistrée : le tableau de bord se
+      // remet à jour tout seul (totaux, ventes du jour, stock faible).
+      DonneesService.instance.signale('vente-caisse');
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -792,7 +865,7 @@ class _NewSalePageState extends State<NewSalePage> {
                   )
                 else
                   FilledButton.tonal(
-                    onPressed: () => _ajouterAvecFormat(p),
+                    onPressed: () => _ajouterAuPanier(p),
                     child: Text(T.addButton),
                   ),
               ],

@@ -52,8 +52,8 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 78 migrations SQL idempotentes (0000 → 0077)
-test/                  → 923 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration, péremption, fiche entreprise)
+supabase/migrations/   → 79 migrations SQL idempotentes (0000 → 0078)
+test/                  → 929 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration, péremption, fiche entreprise)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
@@ -115,6 +115,9 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               l'identifiant LOCAL de SQLite au lieu du numéro de la base ;
               réparation côté base (`rpc_articles_verifier`,
               `rpc_article_restaurer`) pour les téléphones déjà installés
+0078          correctif 78 — le marché se remplit tout seul : vitrine visible
+              par défaut, vue publique sans coordonnées GPS obligatoires,
+              publication automatique de chaque article (déclencheur)
               étendue, devises, quotas IA, codes de validation agent,
               droits des agents, abonnements, péremption réglable)
 ```
@@ -230,7 +233,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 923 tests — doit rester 100 % vert
+flutter test             # 929 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -251,7 +254,7 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **3.1.0+35**
+- Flutter **3.47.4** / Dart **3.13.3**, app **3.2.0+36**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`,
   `flutter_map` + `latlong2` (carte OpenStreetMap, **aucune clé d'API**),
   `geolocator` (position du visiteur, avec consentement), `http` (recherche

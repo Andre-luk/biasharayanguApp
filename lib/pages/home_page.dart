@@ -49,6 +49,9 @@ import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 // 🪙 MODULE 18 — devise de travail (CDF/USD) affichée dans l'entête.
 import 'package:biashara_yangu/services/devise_service.dart';
+// 🔔 CORRECTIF 78 — chaque écriture (vente, article, stock) prévient ici :
+// le tableau de bord se rafraîchit tout seul, sans quitter l'écran.
+import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/widgets/selecteur_espace.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -145,6 +148,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // 🪙 MODULE 18 — la devise de l'entreprise peut changer (écran Devise,
     // bascule d'entreprise) : les montants affichés se remettent à jour.
     DeviseService.instance.etat.addListener(_onDeviseChange);
+    // 🔔 CORRECTIF 78 — vente encaissée, article ajouté, stock modifié :
+    // les totaux se recalculent IMMÉDIATEMENT (sans quitter l'accueil, sans
+    // tirer l'écran vers le bas).
+    DonneesService.instance.revision.addListener(_onDonneesChange);
     WidgetsBinding.instance.addObserver(this);
     // L'état a pu évoluer pendant que l'application était fermée.
     AbonnementService.instance.rafraichirSilencieux();
@@ -156,6 +163,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     ModulesService.instance.modules.removeListener(_onModulesChange);
     AbonnementService.instance.acces.removeListener(_onAccesChange);
     DeviseService.instance.etat.removeListener(_onDeviseChange);
+    DonneesService.instance.revision.removeListener(_onDonneesChange);
     WidgetsBinding.instance.removeObserver(this);
     _minuteurRealtime?.cancel();
     if (_dashboardChannel != null) {
@@ -199,6 +207,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _onModulesChange() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  /// 🔔 CORRECTIF 78 — une écriture vient d'avoir lieu (vente enregistrée ou
+  /// encaissée, article créé/modifié/supprimé, stock ajusté).
+  ///
+  /// On relit TOUT de force : `force: true` court-circuite l'anti-rebond, qui
+  /// existe pour absorber les salves du temps réel — pas pour retarder une
+  /// action du commerçant.
+  void _onDonneesChange() {
+    if (!mounted) return;
+    _loadStats(force: true);
   }
 
   Future<void> _initialLoad() async {

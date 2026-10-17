@@ -62,6 +62,18 @@ void main() {
       expect(ligne.idServeurEnAttente, isFalse);
     });
 
+    test('conserve le numéro LOCAL pour le stock du téléphone', () {
+      // 🔴 CORRECTIF 78 — les deux numéros voyagent ensemble : le serveur
+      // comprend 503, la copie SQLite connaît 83. Sans le second,
+      // « Enregistrer vente » répondait « Produit ID 503 introuvable ».
+      final ArticleScanne ligne = ArticleScanne.depuisProduit(
+        _produit(id: 83, supabaseId: '503'),
+      );
+
+      expect(ligne.produitId, 503);
+      expect(ligne.produitIdLocal, 83);
+    });
+
     test('article pas encore synchronisé : signalé, jamais envoyé en aveugle',
         () {
       final ArticleScanne ligne = ArticleScanne.depuisProduit(

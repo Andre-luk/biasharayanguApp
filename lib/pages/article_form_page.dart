@@ -25,6 +25,7 @@ import 'package:biashara_yangu/services/image_service.dart';
 // a le module « lots_expiration » (pharmacie, alimentation, dépôt…).
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
+import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
@@ -895,6 +896,41 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
+                      // 🌍 CORRECTIF 78 — LE MARCHÉ SE REMPLIT TOUT SEUL.
+                      //
+                      // La publication n'est plus un geste à faire : dès
+                      // l'enregistrement, l'article entre dans le marché
+                      // Biashara (le serveur crée sa publication). On le dit
+                      // ici, à l'endroit où le commerçant décide, plutôt que
+                      // de laisser croire qu'il reste une case à cocher.
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppCouleurs.info.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const Icon(Icons.public_rounded,
+                                size: 18, color: AppCouleurs.info),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Enregistrer suffit : cet article est '
+                                'immédiatement visible dans le marché Biashara. '
+                                'Aucune publication à préparer.',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(height: 1.35),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       // ------------------------------------------------ photo
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,

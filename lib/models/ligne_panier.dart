@@ -33,6 +33,14 @@ class LignePanier {
   /// Identifiant de l'article en base.
   int get produitId => vendu.produitId;
 
+  /// 🔴 CORRECTIF 78 — identifiant de l'article dans la copie LOCALE (SQLite).
+  ///
+  /// `produitId` est le numéro de la base (celui que le serveur comprend) ;
+  /// le stock du téléphone et la vente hors ligne, eux, se repèrent avec le
+  /// numéro local. `null` pour une ligne scannée : on la retrouve alors par
+  /// `supabase_id`.
+  int? get produitIdLocal => vendu.produitIdLocal;
+
   /// Conditionnement vendu, ou `null` pour l'unité de base.
   String? get conditionnementId => vendu.conditionnement?.id;
 

@@ -24,6 +24,7 @@ import 'package:biashara_yangu/models/ligne_panier.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
@@ -261,6 +262,10 @@ class VenteService {
     await _appliquerSortieStockLocale(lignesPanier);
     panier.vider();
     unawaited(_resynchroniser());
+
+    // 🔔 CORRECTIF 78 — la vente est confirmée : tout écran affichant des
+    // totaux (tableau de bord, caisse, rapports) se rafraîchit aussitôt.
+    DonneesService.instance.signale('vente-panier');
 
     // 🔔 NOTIFICATIONS — « chaque vente » (best-effort : un échec de
     // notification ne remet jamais en cause la vente confirmée).
