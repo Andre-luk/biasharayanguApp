@@ -1,111 +1,119 @@
-<!DOCTYPE html><html><head>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
   <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
+    Page d'entrée de la version web.
+    • base href : remplacé par `flutter build web --base-href` (racine par défaut).
+    • L'écran de démarrage (#splash) est retiré par FlutterNativeSplash.remove()
+      dès que l'application est prête : il sert de « chargement » crédible au lieu
+      d'une page blanche.
+    • Les ressources lourdes (main.dart.js, canvaskit) sont mises en cache très
+      longtemps par netlify.toml → seules les toutes premières visites attendent.
   -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Biashara Yangu — gestion de commerce : ventes, stock, comptabilité et multi-activités (CDF).">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="Biashara Yangu — gestion de commerce : ventes, stock, caisse, distribution terrain, marketplace et comptabilité (CDF / USD).">
+  <meta name="theme-color" content="#1F3864">
 
-  <!-- iOS meta tags & icons -->
+  <!-- Partage sur les réseaux / WhatsApp -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Biashara Yangu">
+  <meta property="og:title" content="Biashara Yangu — la gestion de votre commerce">
+  <meta property="og:description" content="Ventes, stock, caisse, tournées de distribution et marketplace local. Fonctionne en CDF et en USD.">
+  <meta property="og:image" content="icons/Icon-512.png">
+  <meta name="twitter:card" content="summary">
+
+  <!-- iOS -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Biashara Yangu">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png">
-
-  <title>Biashara Yangu</title>
+  <!-- Icônes -->
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/Icon-192.png">
   <link rel="manifest" href="manifest.json">
-  
-  
-  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
-  <style id="splash-screen-style">
-    html {
-      height: 100%
-    }
 
+  <!-- Connexions anticipées : le serveur de données est joignable plus tôt. -->
+  <link rel="preconnect" href="https://pqzcliibocndiyqbyddr.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="//pqzcliibocndiyqbyddr.supabase.co">
+
+  <title>Biashara Yangu — gestion de commerce</title>
+
+  <style>
+    html { height: 100%; }
     body {
       margin: 0;
       min-height: 100%;
-      background-color: #FFFFFF;
-          background-size: 100% 100%;
+      background: #ffffff;
+      color: #1f3864;
+      font-family: "Segoe UI", Roboto, "DejaVu Sans", Arial, sans-serif;
     }
-
-    .center {
+    #splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: #ffffff;
+      z-index: 9999;
+    }
+    #splash picture,
+    #splash img {
+      display: block;
+      width: min(38vw, 168px);
+      height: auto;
+    }
+    /* Anneau de chargement : perçu comme « ça travaille », pas comme un gel. */
+    .chargement-anneau {
+      width: 34px;
+      height: 34px;
+      border: 4px solid #dfe6f3;
+      border-top-color: #f08a4b;
+      border-radius: 50%;
+      animation: rotation 0.9s linear infinite;
+    }
+    @keyframes rotation { to { transform: rotate(360deg); } }
+    .chargement-texte {
+      font-size: 14px;
+      letter-spacing: 0.2px;
+      color: #5a6478;
       margin: 0;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      -ms-transform: translate(-50%, -50%);
-      transform: translate(-50%, -50%);
     }
-
-    .contain {
-      display:block;
-      width:100%; height:100%;
-      object-fit: contain;
-    }
-
-    .stretch {
-      display:block;
-      width:100%; height:100%;
-    }
-
-    .cover {
-      display:block;
-      width:100%; height:100%;
-      object-fit: cover;
-    }
-
-    .bottom {
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      -ms-transform: translate(-50%, 0);
-      transform: translate(-50%, 0);
-    }
-
-    .bottomLeft {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-    }
-
-    .bottomRight {
-      position: absolute;
-      bottom: 0;
-      right: 0;
+    .chargement-texte b { color: #1f3864; }
+    /* Respecte les réglages d'accessibilité : pas d'animation si demandé. */
+    @media (prefers-reduced-motion: reduce) {
+      .chargement-anneau { animation-duration: 3s; }
     }
   </style>
-  <script id="splash-screen-script">
+
+  <script>
+    // Appelé par FlutterNativeSplash.remove() côté Dart, et par sécurité
+    // après le premier rendu si le paquet n'est pas chargé.
     function removeSplashFromWeb() {
-      document.getElementById("splash")?.remove();
-      document.getElementById("splash-branding")?.remove();
-      document.body.style.background = "transparent";
+      var s = document.getElementById('splash');
+      if (s && s.parentNode) { s.parentNode.removeChild(s); }
+      document.body.style.background = 'transparent';
     }
   </script>
 </head>
 <body>
-  <picture id="splash">
+  <div id="splash">
+    <picture>
       <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
       <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
-      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
-  </picture>
-  
-  <script src="flutter_bootstrap.js" async=""></script>
+      <img src="splash/img/light-2x.png" alt="Biashara Yangu">
+    </picture>
+    <div class="chargement-anneau" role="progressbar" aria-label="Chargement de l'application"></div>
+    <p class="chargement-texte">Chargement de <b>Biashara&nbsp;Yangu</b>…</p>
+  </div>
 
-
-</body></html>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

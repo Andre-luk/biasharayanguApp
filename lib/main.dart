@@ -38,10 +38,32 @@ import 'services/devise_service.dart';
 import 'services/permission_service.dart';
 import 'db_helper.dart';
 
-import 'dart:async' show unawaited;
+import 'dart:async' show TimeoutException, unawaited;
 import 'dart:ui' show PlatformDispatcher;
 
 late final SupabaseClient supabase;
+
+/// Exécute [action] en la bornant dans le temps.
+///
+/// Pourquoi : au démarrage, une étape réseau lente (rafraîchissement de
+/// session, service de notifications, lecture du mode) retenait l'écran de
+/// démarrage parfois plusieurs dizaines de secondes — l'application semblait
+/// « plantée ». Ici, un dépassement est simplement journalisé : on continue
+/// avec ce que l'on a, et la session se rétablit ensuite en arrière-plan.
+Future<void> _avecDelai(
+  Future<void> action,
+  Duration limite,
+  String etape,
+) async {
+  try {
+    await action.timeout(limite);
+  } on TimeoutException {
+    debugPrint('⏱️ Démarrage : « $etape » a dépassé ${limite.inSeconds}s — '
+        'on continue sans attendre.');
+  } catch (e) {
+    debugPrint('Démarrage : « $etape » ignorée ($e)');
+  }
+}
 
 /// Initialise le backend Supabase (isolé pour être lancé EN PARALLÈLE des
 /// autres préparatifs du démarrage).
@@ -105,11 +127,17 @@ void main() async {
 
   // 2. 🚀 Préparatifs EN PARALLÈLE : formats de date (fix crash PDF/Vivo Y93)
   //    et initialisation Supabase — le lancement est ainsi plus rapide.
+  //
+  //    ⏱️ CHAQUE étape réseau est BORNÉE : sur une connexion lente (ou une
+  //    session à rafraîchir), le splash restait affiché parfois très
+  //    longtemps. Un dépassement laisse simplement l'application démarrer
+  //    sans session (elle se reconnecte ensuite) au lieu de bloquer.
   await Future.wait<void>([
     initializeDateFormatting('fr_FR', null),
     initializeDateFormatting('en_US', null),
     initializeDateFormatting('sw_KE', null),
-    _initialiserSupabase(),
+    _avecDelai(_initialiserSupabase(), const Duration(seconds: 6),
+        'initialisation Supabase'),
   ]);
 
   // Lancement du Realtime en arrière-plan
@@ -118,8 +146,13 @@ void main() async {
   // 🔔 Notifications locales : initialisation + surveillance du rapport de
   // fin de journée (best-effort — jamais bloquant au démarrage).
   try {
-    await NotificationService.instance.initialiser();
-    NotificationService.instance.demarrerSurveillanceQuotidienne();
+    await _avecDelai(
+        Future<void>(() async {
+          await NotificationService.instance.initialiser();
+          NotificationService.instance.demarrerSurveillanceQuotidienne();
+        }),
+        const Duration(seconds: 3),
+        'notifications');
   } catch (e) {
     debugPrint('Notifications désactivées : $e');
   }
@@ -132,7 +165,8 @@ void main() async {
   // ⚡ MODULE 23 — MODE RAPIDE / COMPLET : lu avant le premier rendu pour que
   // l'accueil s'affiche directement dans le bon mode.
   try {
-    await ModeApplicationService.instance.charger();
+    await _avecDelai(ModeApplicationService.instance.charger(),
+        const Duration(seconds: 3), 'mode d\'application');
   } catch (e) {
     debugPrint('Mode d\'application (ignoré) : $e');
   }

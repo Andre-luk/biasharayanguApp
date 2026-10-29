@@ -13,20 +13,20 @@ class AppVersion {
   AppVersion._();
 
   /// Version commerciale (sans le « +build »).
-  static const String numero = '3.3.1';
+  static const String numero = '3.3.2';
 
   /// Numéro de build Android / iOS.
-  static const String build = '38';
+  static const String build = '39';
 
-  /// « 3.3.1 » — usage courant dans les textes.
+  /// « 3.3.2 » — usage courant dans les textes.
   static const String court = numero;
 
-  /// « 3.3.1 (38) » — écrans techniques, support, à propos.
+  /// « 3.3.2 (39) » — écrans techniques, support, à propos.
   static const String complet = '$numero ($build)';
 
-  /// « Version 3.3.1 (38) » — pied de page.
+  /// « Version 3.3.2 (39) » — pied de page.
   static const String libelle = 'Version $complet';
 
-  /// « Biashara Yangu • v3.3.1 (38) » — splash / connexion.
+  /// « Biashara Yangu • v3.3.2 (39) » — splash / connexion.
   static const String mention = 'Biashara Yangu • v$complet';
 }

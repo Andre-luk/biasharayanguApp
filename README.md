@@ -272,7 +272,7 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **3.3.1+38**
+- Flutter **3.47.4** / Dart **3.13.3**, app **3.3.2+39**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`,
   `flutter_map` + `latlong2` (carte OpenStreetMap, **aucune clé d'API**),
   `geolocator` (position du visiteur, avec consentement), `http` (recherche
