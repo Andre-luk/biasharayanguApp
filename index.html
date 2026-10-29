@@ -91,6 +91,15 @@
     @media (prefers-reduced-motion: reduce) {
       .chargement-anneau { animation-duration: 3s; }
     }
+    /* Le bandeau « Powered by Netlify » est injecté par l'hébergeur en bas à
+       droite : sur un téléphone il recouvre le texte du pied de page. */
+    #nl-badge-frame,
+    iframe[src*="netlify.com"],
+    iframe[data-netlify-hud] {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
   </style>
 
   <script>
