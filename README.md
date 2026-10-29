@@ -281,6 +281,9 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
   (SQLite embarquée), `pdf`/`printing` (exports), `mobile_scanner` (scanner)
 - Web : `flutter build web --release` validé par la CI ; exports de fichiers et
   impressions disponibles, base SQLite locale réservée aux apps natives
+- Site web en ligne : **https://biashara-yangu-app.netlify.app** (Netlify,
+  déploiement par `netlify.toml` + script `deployer-site-web.sh` du dossier de
+  diffusion ; GitHub Pages est indisponible pour un dépôt privé en offre gratuite)
 
 ---
 
