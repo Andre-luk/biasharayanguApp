@@ -3,8 +3,12 @@
 **Version** : 3.3.0 (build 37) — voir `lib/config/app_version.dart`.
 **Migrations à exécuter** (SQL Editor, dans cet ordre) :
 
-1. `20260916000080_module23_distribution_terrain.sql`
-2. `20260916000081_module23b_mode_simple.sql`
+1. `20260916000079_passerelle_serdipay.sql` (paiement en ligne)
+2. `20260916000080_module23_distribution_terrain.sql`
+3. `20260916000081_module23b_mode_simple.sql`
+
+> Sans la 0079, l'application fonctionne : seul l'écran de paiement SerdiPay
+> affiche « module non installé ».
 
 ---
 
