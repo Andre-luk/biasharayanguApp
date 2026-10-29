@@ -71,6 +71,14 @@ const SERDIPAY_CLIENT_SECRET = (Deno.env.get('SERDIPAY_CLIENT_SECRET') ?? '')
 const SERDIPAY_WEBHOOK_SECRET = (Deno.env.get('SERDIPAY_WEBHOOK_SECRET') ?? '')
   .trim();
 
+// 🔒 RELAIS À IP FIXE (tools/relais_serdipay).
+// Si SERDIPAY_BASE_URL pointe vers notre relais (ex. https://serdipay.domaine.cd/api),
+// ce jeton prouve au relais que l'appel vient bien de NOUS : sans lui, le
+// relais refuserait de transmettre et ne pourrait pas servir de proxy ouvert
+// vers l'API SerdiPay. Vide = aucun en-tête envoyé (appel direct à SerdiPay).
+const SERDIPAY_RELAIS_TOKEN = (Deno.env.get('SERDIPAY_RELAIS_TOKEN') ?? '')
+  .trim();
+
 const SERDIPAY_PATH_INITIER = Deno.env.get('SERDIPAY_PATH_INITIER') ??
   '/api/v1/payments';
 const SERDIPAY_PATH_STATUT = Deno.env.get('SERDIPAY_PATH_STATUT') ??
@@ -213,6 +221,9 @@ async function jetonSerdipay(): Promise<string> {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       Accept: 'application/json',
+      ...(SERDIPAY_RELAIS_TOKEN
+        ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
+        : {}),
     },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
@@ -262,6 +273,9 @@ async function appelFournisseur(
     headers: {
       Authorization: `Bearer ${jeton}`,
       Accept: 'application/json',
+      ...(SERDIPAY_RELAIS_TOKEN
+        ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
+        : {}),
       ...(corps ? { 'Content-Type': 'application/json' } : {}),
     },
     body: corps ? JSON.stringify(corps) : undefined,

@@ -1,0 +1,32 @@
+# ============================================================================
+#  Relais SerdiPay — réécriture des URL vers relais.php
+#  À placer à côté de relais.php (racine du sous-domaine).
+# ============================================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Le webhook SerdiPay arrive sur le chemin Supabase : on le remet tel quel
+    # au script, qui transmet le corps brut et les en-têtes (signature HMAC).
+    RewriteRule ^functions/v1/serdipay(/.*)?$ relais.php [L,QSA]
+
+    # Appels sortants vers l'API SerdiPay (jeton exigé par relais.php).
+    RewriteRule ^api(/.*)?$ relais.php [L,QSA]
+</IfModule>
+
+# Aucune mise en cache, aucun corps de requête dans les journaux.
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-store"
+    Header unset ETag
+</IfModule>
+
+# Le corps envoyé par SerdiPay doit être transmis intact : pas de compression
+# côté serveur sur ces réponses.
+<IfModule mod_deflate.c>
+    SetEnvIf Request_URI "^/(functions|api)/" no-gzip
+</IfModule>
+
+# Bloquer l'accès direct au fichier de configuration (sécurité de base).
+<FilesMatch "^(\.htaccess|relais\.php~|.*\.bak)$">
+    Require all denied
+</FilesMatch>

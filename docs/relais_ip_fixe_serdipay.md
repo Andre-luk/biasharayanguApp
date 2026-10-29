@@ -83,16 +83,41 @@ exécuter.
 
 ### Ce qu'il faut
 
-Un petit serveur Linux public, **une seule fois**. Trois choix possibles :
+Un point d'entrée public avec **une IP fixe**. Trois choix possibles :
 
 | Fournisseur | Prix | Remarque |
 |---|---|---|
-| **Oracle Cloud — Always Free** | **0 €** (carte bancaire pour vérification) | Instance « VM.Standard.E2.1.Micro », IP publique réservée : parfait pour ce rôle |
-| Hetzner / Contabo / Vultr | 4 à 6 € / mois | Mise en route plus simple, IP fixe incluse |
-| Serveur existant | déjà payé | N'importe quel Ubuntu 22.04/24.04 avec accès root |
+| **Hostinger — sous-domaine d'un site existant** ⭐ | **0 €** | L'hébergement possède déjà une IP fixe ; un sous-domaine ne consomme **pas** d'emplacement de site. Deux fichiers PHP suffisent (voir `tools/relais_serdipay/hostinger/`). |
+| Oracle Cloud — Always Free | 0 € (carte pour vérification) | Instance « VM.Standard.E2.1.Micro », IP publique réservée |
+| Hetzner / Contabo / Vultr | 4 à 6 € / mois | IP fixe incluse, mise en route simple |
 
-> Le relais ne stocke **aucune** donnée de paiement : il termine le TLS et
-> transmet les requêtes. 1 Go de RAM et 1 vCPU suffisent.
+> Le relais ne stocke **aucune** donnée de paiement : il transmet les requêtes.
+
+### Voie Hostinger (retenue le 29/10/2026)
+
+L'offre compte 3 sites, **tous déjà utilisés** : on crée donc un
+**sous-domaine** (`serdipay.mondomaine.cd`), qui ne consomme aucun emplacement.
+
+1. Hostinger → **Sites web** → le domaine → **Sous-domaines** → créer
+   `serdipay`, puis activer le **SSL gratuit**.
+2. Copier `relais.php` et `.htaccess` de `tools/relais_serdipay/hostinger/`
+   dans le dossier du sous-domaine.
+3. Dans `relais.php`, remplacer `JETON_RELAIS` par une valeur aléatoire
+   (`openssl rand -hex 32`).
+4. Vérifier : `https://serdipay.mondomaine.cd/functions/v1/serdipay/webhook`
+   doit répondre `{"ok":true,"service":"serdipay","webhook":"actif"}`.
+5. Relever l'**IP du serveur** dans Hostinger → tableau de bord → détails.
+
+Guide détaillé : [`tools/relais_serdipay/hostinger/README.md`](../tools/relais_serdipay/hostinger/README.md).
+
+### Voie VPS (alternative)
+
+Un serveur Ubuntu, **une seule fois** :
+
+| Fournisseur | Prix | Remarque |
+|---|---|---|
+| Oracle Cloud — Always Free | 0 € | « VM.Standard.E2.1.Micro », IP publique réservée |
+| Hetzner / Contabo / Vultr | 4 à 6 € / mois | Mise en route plus simple |
 
 ### Le nom d'hôte : pas besoin d'acheter un domaine
 
