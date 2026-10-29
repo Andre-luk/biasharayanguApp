@@ -72,6 +72,46 @@ SerdiPay partent eux aussi d'une infrastructure partagée, non garantie.
 >
 > Nous pouvons fournir une IP fixe sous 24 h via un relais dédié si nécessaire.
 
+### Message prêt à envoyer (version 29/10/2026 — site en ligne)
+
+> Bonjour,
+>
+> Voici les trois informations demandées pour l'activation du compte marchand
+> **Biashara Yangu** :
+>
+> **1. URL du site (domaine)**
+> `https://biashara-yangu-app.netlify.app`
+>
+> **2. URL de callback (webhook)**
+> `https://pqzcliibocndiyqbyddr.supabase.co/functions/v1/serdipay/webhook`
+> – méthode **POST**, corps **JSON** ;
+> – signature **HMAC-SHA256** du corps brut dans l'en-tête
+>   `x-serdipay-signature` (le nom de l'en-tête peut être adapté au vôtre) ;
+> – cette URL est **déjà en production** : un `GET` dessus répond
+>   `200 {"ok":true,"service":"serdipay","webhook":"actif"}`.
+>
+> **3. IP du serveur**
+> Notre plateforme est hébergée sur **Supabase** et servie par **Cloudflare**
+> (réseau anycast) : elle **ne dispose pas d'une adresse IP qui nous
+> appartienne**. Les adresses observées sont partagées par des milliers de
+> clients Cloudflare et peuvent changer sans préavis — une autorisation par IP
+> casserait l'intégration silencieusement.
+>
+> Merci donc de **whitelister le nom d'hôte**
+> `pqzcliibocndiyqbyddr.supabase.co` (et, pour nos appels sortants vers votre
+> API, d'autoriser ce même nom d'hôte).
+>
+> Si votre politique exige malgré tout une IP fixe, nous pouvons mettre en place
+> un **relais à IP dédiée** que nous contrôlons : dites-nous si cela vous
+> convient et nous vous transmettrons l'adresse sous 24 h.
+>
+> Merci de nous communiquer en parallèle :
+> – l'URL de base de votre API (test et production) ;
+> – vos identifiants (clé d'API, ou OAuth 2.0 `client_id` / `client_secret`) ;
+> – le secret de signature des webhooks et le nom exact de l'en-tête ;
+> – le format du corps de création de paiement et les codes opérateurs
+>   attendus (`orange`, `airtel`, `mpesa`, `afrimoney`, `card`…).
+
 ---
 
 ## 3. Déployer la fonction (prérequis pour valider l'URL)
