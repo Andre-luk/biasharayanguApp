@@ -363,6 +363,11 @@ class _LoginPageState extends State<LoginPage> {
     final bool sombre = theme.brightness == Brightness.dark;
     final Size size = MediaQuery.of(context).size;
     final bool isWide = size.width > 760;
+    // ⚠️ ÉCRANS BAS (ordinateur portable 1366×768 avec les barres du
+    // navigateur, fenêtre réduite, téléphone en paysage) : sans mode
+    // compact, la carte dépassait la hauteur disponible et le bouton
+    // « Se connecter » sortait de l'écran — la page semblait cassée.
+    final bool compact = size.height < 620;
 
     return Scaffold(
       body: DecoratedBox(
@@ -371,7 +376,10 @@ class _LoginPageState extends State<LoginPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 14 : 20,
+              vertical: compact ? 12 : 28,
+            ),
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: isWide ? 920 : 440),
               child: Container(
@@ -396,7 +404,11 @@ class _LoginPageState extends State<LoginPage> {
                         if (isWide) Expanded(child: _buildBanner(colorScheme)),
                         Expanded(
                           child: Padding(
-                            padding: EdgeInsets.all(isWide ? 40 : 26),
+                            padding: EdgeInsets.all(
+                              isWide
+                                  ? (compact ? 26 : 40)
+                                  : (compact ? 16 : 26),
+                            ),
                             child: Form(
                               key: _formKey,
                               child: Column(
@@ -406,7 +418,7 @@ class _LoginPageState extends State<LoginPage> {
                                   if (!isWide) ...[
                                     Center(
                                       child: Container(
-                                        padding: const EdgeInsets.all(10),
+                                        padding: EdgeInsets.all(compact ? 6 : 10),
                                         decoration: BoxDecoration(
                                           color: colorScheme.surface,
                                           borderRadius:
@@ -417,11 +429,11 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                         child: Image.asset(
                                           'assets/Biashara_app_off-.png',
-                                          height: 64,
+                                          height: compact ? 40 : 64,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 22),
+                                    SizedBox(height: compact ? 12 : 22),
                                   ],
                                   Text(
                                     'Connexion',
@@ -432,15 +444,19 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  Text(
-                                    'Accédez à votre espace de gestion.',
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
+                                  // Sur un écran bas, la phrase d'accroche est
+                                  // masquée : le formulaire reste entièrement
+                                  // visible et atteignable sans défilement.
+                                  if (!compact)
+                                    Text(
+                                      'Accédez à votre espace de gestion.',
+                                      textAlign: TextAlign.center,
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 30),
+                                  SizedBox(height: compact ? 14 : 30),
                                   _buildTextField(_emailController, 'Email',
                                       Icons.alternate_email_rounded),
                                   const SizedBox(height: 16),
@@ -453,7 +469,7 @@ class _LoginPageState extends State<LoginPage> {
                                   _buildForgotButton(colorScheme),
                                   const SizedBox(height: 18),
                                   _buildLoginButton(colorScheme),
-                                  const SizedBox(height: 22),
+                                  SizedBox(height: compact ? 12 : 22),
                                   _buildFooter(),
                                 ],
                               ),

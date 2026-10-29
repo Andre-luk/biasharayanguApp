@@ -41,7 +41,31 @@ import 'db_helper.dart';
 import 'dart:async' show TimeoutException, unawaited;
 import 'dart:ui' show PlatformDispatcher;
 
+// `kIsWeb` : la lecture de l'URL n'a de sens que dans un navigateur.
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 late final SupabaseClient supabase;
+
+/// Chemin demandé par l'adresse du navigateur (+ À LIRE AVANT `runApp`).
+///
+/// ⚠️ Le routeur réécrit l'URL d'adresse en `/login` dès son initialisation :
+/// il faut donc mémoriser le fragment AVANT de lancer l'application, sinon le
+/// lien profond est perdu et tout le monde finit sur la même page.
+String? _cheminAuDemarrage;
+
+/// Lit le fragment de l'URL (web seulement). `null` = rien d'explicite.
+String? _lireCheminUrl() {
+  if (!kIsWeb) return null;
+  try {
+    final String fragment = Uri.base.fragment.trim();
+    if (fragment.isEmpty) return null;
+    final String chemin = fragment.startsWith('/') ? fragment : '/$fragment';
+    if (chemin == '/') return null;
+    return chemin;
+  } catch (_) {
+    return null;
+  }
+}
 
 /// Exécute [action] en la bornant dans le temps.
 ///
@@ -103,9 +127,22 @@ Future<dynamic> _utilisateurLocal(String? uid) async {
 }
 
 void main() async {
+  // 0. 🔗 URL demandée : mémorisée AVANT toute initialisation (voir la note
+  //    sur `_cheminAuDemarrage`), pour respecter les liens profonds du web.
+  _cheminAuDemarrage = _lireCheminUrl();
+
   // 1. Initialisation des bindings et Splash Screen
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // 🖼️ CACHE D'IMAGES — réglé une fois pour toute l'application.
+  // Un catalogue riche défile vite : sans plafond explicite, Flutter vide son
+  // cache très tôt et retélécharge les vignettes en revenant en arrière. Ces
+  // valeurs gardent en mémoire l'équivalent de plusieurs écrans de photos,
+  // sans risque pour un téléphone modeste.
+  PaintingBinding.instance.imageCache
+    ..maximumSize = 220
+    ..maximumSizeBytes = 64 << 20; // 64 Mo
 
   // 🛡️ FILET DE SÉCURITÉ GLOBAL (audit final de professionnalisation).
   // Sans lui, une exception non capturée remplaçait l'écran par le panneau
@@ -270,6 +307,14 @@ class _BiasharaAppState extends State<BiasharaApp> {
       final currentSession = supabase.auth.currentSession;
       String targetRoute = '/login';
 
+      // 🔗 LIEN PROFOND (WEB) — un visiteur qui ouvre
+      // `…/#/login`, `…/#/setup` ou la fiche d'une boutique ne doit pas être
+      // téléporté sur le catalogue : c'est ce qui faisait croire que « la
+      // page de connexion ne s'affiche pas ». On ne lit l'URL que sur le web
+      // et uniquement si elle contient un chemin explicite (le lancement
+      // normal, lui, part de `/login` par défaut).
+      final String? cheminDemande = _cheminAuDemarrage;
+
       // Logique de routage intelligente
       //
       // 🛍️ MODULE 19 — « LE MARKETPLACE EST LA PORTE D'ENTRÉE »
@@ -285,7 +330,8 @@ class _BiasharaAppState extends State<BiasharaApp> {
           savedUserId != null || currentSession != null;
 
       if (!sessionRestauree) {
-        targetRoute = '/biashara';
+        // Le lien profond explicite gagne sur la page d'accueil par défaut.
+        targetRoute = cheminDemande ?? '/biashara';
       } else {
         final uid = savedUserId ?? currentSession?.user.id;
 
