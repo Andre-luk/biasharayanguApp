@@ -1,23 +1,36 @@
 {
-    "name": "Biashara Yangu",
+    "name": "Biashara Yangu — gestion de commerce",
     "short_name": "Biashara Yangu",
+    "id": "/",
     "start_url": ".",
+    "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "Gestion de commerce : ventes, stock, rapports et multi-activités (CDF).",
-    "orientation": "portrait-primary",
+    "display_override": ["standalone", "minimal-ui", "browser"],
+    "orientation": "any",
+    "background_color": "#FFFFFF",
+    "theme_color": "#1F3864",
+    "lang": "fr",
+    "dir": "ltr",
+    "description": "Ventes, stock, caisse, tournées de distribution, marketplace local et comptabilité. En CDF et en USD.",
+    "categories": ["business", "finance", "productivity"],
     "prefer_related_applications": false,
     "icons": [
         {
+            "src": "favicon.png",
+            "sizes": "64x64",
+            "type": "image/png"
+        },
+        {
             "src": "icons/Icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-maskable-192.png",
