@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Tous les modules et leur utilisation</title>
+<style>
+  @page { size: A4; margin: 14mm 13mm 16mm 13mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 9.6pt; color: #16212e; line-height: 1.40; }
+  h1 { font-size: 21pt; margin: 0 0 1mm; color: #1f3864; }
+  h2 { font-size: 13pt; margin: 7mm 0 2.5mm; color: #fff; background: #1f3864; padding: 2mm 3mm; border-radius: 2mm; page-break-after: avoid; }
+  h3 { font-size: 10.8pt; margin: 4.5mm 0 1mm; color: #2e5aa8; border-bottom: 1.5px solid #e3e7f0; padding-bottom: 0.8mm; page-break-after: avoid; }
+  h4 { font-size: 9.6pt; margin: 2.5mm 0 1mm; color: #1f3864; page-break-after: avoid; }
+  p.sous { color: #5a6478; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 8.6pt; }
+  th { background: #e8eff7; color: #1f3864; text-align: left; padding: 1.6mm; font-size: 8.2pt; }
+  td { border-bottom: 1px solid #e3e7f0; padding: 1.6mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 0.9mm; }
+  code { background: #f1f4fa; padding: 0.2mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 8.2pt; }
+  .bloc { border: 1px solid #dfe4ee; border-radius: 2mm; padding: 2mm 2.5mm; margin: 0 0 2.5mm; page-break-inside: avoid; }
+  .bloc p { margin: 0 0 1.2mm; }
+  .lbl { display: inline-block; font-weight: bold; color: #1f3864; }
+  .alerte { border-left: 3px solid #dc2626; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .astuce { border-left: 3px solid #16a34a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .frise { background: #f2f6fc; border-left: 3px solid #2e5aa8; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .module { border: 1px solid #dfe4ee; border-radius: 2mm; padding: 2.5mm 3mm; margin: 0 0 3mm; page-break-inside: avoid; }
+  .module .num { display: inline-block; background: #f08a4b; color: #fff; font-weight: bold; font-size: 8pt; padding: 0.4mm 1.6mm; border-radius: 1.5mm; margin-right: 1.5mm; }
+  .module h3 { border: none; margin-top: 0; }
+  .pied { margin-top: 6mm; border-top: 1px solid #e3e7f0; padding-top: 1.5mm; font-size: 8pt; color: #5a6478; }
+  .saut { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>Biashara Yangu — Tous les modules</h1>
+<p class="sous">Version 3.3.1 · Ce que fait chaque module, qui l'utilise, les gestes à faire et les pièges à éviter</p>
+
+<div class="frise">
+<strong>Comment lire ce document.</strong> Chaque module est présenté de la même façon :
+<em>à quoi ça sert</em>, <em>qui l'utilise</em>, <em>les gestes</em>, puis <em>les pièges</em>.
+Un module est une brique : l'activité choisie à la création de l'entreprise décide des briques visibles.
+Rien n'est jamais « cassé » quand un module est masqué — il est simplement hors de propos pour ce commerce.
+</div>
+
+<h2>Sommaire</h2>
+<table>
+  <tr><th style="width:12%">Partie</th><th>Contenu</th></tr>
+  <tr><td><strong>1</strong></td><td>Le socle : compte, entreprise, abonnement, rôles, espaces, devises</td></tr>
+  <tr><td><strong>2</strong></td><td>Le commerce quotidien : produits, ventes, caisse, scanner, pesée, clients, stock, inventaires, dépenses, rapports</td></tr>
+  <tr><td><strong>3</strong></td><td>La distribution terrain : tournées, dotations, consignes, bonus, rapport par agent</td></tr>
+  <tr><td><strong>4</strong></td><td>Les métiers : hôtel, restaurant, salle des fêtes, boulangerie, pharmacie, boucherie, production, variantes</td></tr>
+  <tr><td><strong>5</strong></td><td>La visibilité : marketplace local et catalogue public</td></tr>
+  <tr><td><strong>6</strong></td><td>L'assistant intelligent et la gestion des tokens</td></tr>
+  <tr><td><strong>7</strong></td><td>Le paiement en ligne (SerdiPay)</td></tr>
+  <tr><td><strong>8</strong></td><td>Le côté plateforme : Super Admin, agents terrain, modération</td></tr>
+  <tr><td><strong>9</strong></td><td>Le mode rapide (interface simplifiée)</td></tr>
+  <tr><td><strong>10</strong></td><td>Tableau récapitulatif module → écran → rôle</td></tr>
+  <tr><td><strong>11</strong></td><td>Ce que l'application ne fait pas · dépannage express</td></tr>
+</table>
+
+<h2 class="saut">1. Le socle</h2>
+
+<div class="module">
+<h3><span class="num">1</span>Compte et entreprise</h3>
+<p><span class="lbl">À quoi ça sert :</span> créer l'espace de travail d'un commerce et y rattacher son propriétaire.</p>
+<p><span class="lbl">Qui l'utilise :</span> le commerçant qui s'inscrit (ou l'agent terrain qui l'accompagne).</p>
+<p><span class="lbl">Les gestes :</span></p>
+<ol>
+  <li>Créer un compte (e-mail + mot de passe), puis se connecter.</li>
+  <li>Écran de création : saisir <strong>le nom</strong> du commerce, le <strong>téléphone</strong> et <strong>le type d'activité</strong> (boutique, dépôt, hôtel, restaurant, pharmacie, boulangerie, boucherie, salon…).</li>
+  <li>Choisir le <strong>mode</strong> : <strong>Rapide</strong> (nom + prix suffisent pour vendre, essai de 7 jours actif immédiatement) ou <strong>Complet</strong> (dossier validé par le gestionnaire des comptes puis par la finance).</li>
+</ol>
+<p><span class="lbl">Les pièges :</span> un même utilisateur peut posséder plusieurs entreprises — inutile de créer un second compte. Le type d'activité se change plus tard sans rien perdre.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">2</span>Abonnement, activation et verrouillage</h3>
+<p><span class="lbl">À quoi ça sert :</span> ouvrir le compte au bon moment et le refermer proprement si l'abonnement n'est pas réglé.</p>
+<p><span class="lbl">Qui l'utilise :</span> le propriétaire (paiement), le gestionnaire des comptes (vérification), la finance plateforme (validation), l'agent terrain (code de validation).</p>
+<table>
+  <tr><th style="width:28%">État du compte</th><th>Ce que le commerçant peut faire</th></tr>
+  <tr><td><strong>Activation en cours</strong></td><td>Consulter, préparer ses articles. <strong>Vendre est refusé</strong> (cadenas sur « Nouvelle vente », « Scanner », « Ajouter produit »).</td></tr>
+  <tr><td><strong>Essai 7 jours</strong></td><td>Tout, sans limite, sans montant réclamé.</td></tr>
+  <tr><td><strong>Actif</strong></td><td>Tout, jusqu'à la date d'expiration.</td></tr>
+  <tr><td><strong>Abonnement échu / bloqué</strong></td><td>Consultation seule ; le verrou est levé dès la validation du paiement.</td></tr>
+</table>
+<p><span class="lbl">Les gestes :</span> le propriétaire voit la date d'expiration et le solde restant dans <strong>Abonnement</strong> ; il paie (espèces, mobile money ou en ligne), la finance valide, le compte se rouvre automatiquement.</p>
+<p><span class="lbl">Les pièges :</span> le refus est décidé <strong>par le serveur</strong>, pas par l'écran : un lien direct ne contourne rien. Le code de validation d'un agent terrain n'est valable que pour l'entreprise qu'il accompagne.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">3</span>Rôles et permissions</h3>
+<p><span class="lbl">À quoi ça sert :</span> donner à chacun le strict nécessaire.</p>
+<table>
+  <tr><th style="width:30%">Rôle</th><th>Portée</th></tr>
+  <tr><td><strong>Propriétaire</strong></td><td>Tout dans son entreprise.</td></tr>
+  <tr><td><strong>Caissier (vendeur)</strong></td><td>Vendre, scanner, encaisser, consulter. Ne modifie jamais un prix.</td></tr>
+  <tr><td><strong>Magasinier</strong></td><td>Articles, stock, inventaires, approvisionnements. Pas de caisse ni de finances.</td></tr>
+  <tr><td><strong>Comptable entreprise</strong></td><td>Rapports, dépenses, finances (lecture et saisie selon réglage).</td></tr>
+  <tr><td><strong>Agent terrain</strong></td><td>Accompagne une boutique, saisit des codes de validation. Ne voit pas les chiffres du commerce.</td></tr>
+  <tr><td><strong>Gestionnaire des comptes · Finance plateforme · Support</strong></td><td>Rôles internes de la plateforme, sur des écrans dédiés.</td></tr>
+  <tr><td><strong>Super administrateur</strong></td><td>Toute la plateforme : entreprises, tarifs, devises, modération, permissions.</td></tr>
+</table>
+<p><span class="lbl">Les gestes :</span> <strong>Paramètres → Collaborateurs</strong> pour inviter ; <strong>Permissions</strong> (Super Admin) pour ajuster la matrice par rôle.</p>
+<p><span class="lbl">Les pièges :</span> masquer un écran n'est pas une sécurité — la permission est vérifiée à chaque appel serveur. Ne jamais partager le compte du propriétaire : chaque vente doit être attribuée à une personne.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">4</span>Espaces de travail multiples</h3>
+<p><span class="lbl">À quoi ça sert :</span> gérer plusieurs points de vente (boutiques, dépôts) sous le même compte, avec des chiffres séparés.</p>
+<p><span class="lbl">Les gestes :</span> le propriétaire crée un espace, y choisit un type et une devise ; le sélecteur d'espace bascule d'un point de vente à l'autre. Les ventes, le stock et les rapports restent ceux de l'espace courant.</p>
+<p><span class="lbl">Les pièges :</span> un collaborateur peut être rattaché à un seul espace ; le total consolidé se lit dans les rapports du compte, pas dans l'accueil d'un espace.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">5</span>Devises et taux de change</h3>
+<p><span class="lbl">À quoi ça sert :</span> travailler en <strong>CDF</strong> ou en <strong>USD</strong>, avec un taux maîtrisé.</p>
+<p><span class="lbl">Les gestes :</span> <strong>Paramètres → Devise &amp; conversion</strong> : choisir la devise de l'espace, saisir le taux « 1 USD = X CDF », vérifier le résultat dans le simulateur. Le Super Admin règle le taux par défaut de la plateforme (<strong>Devises &amp; taux</strong>).</p>
+<p><span class="lbl">Les pièges :</span> changer de devise change <strong>l'unité d'affichage</strong>, pas les montants déjà enregistrés. Un prix saisi en CDF reste un nombre ; c'est l'étiquette qui change. Vérifier le taux avant toute conversion réelle.</p>
+</div>
+
+<h2 class="saut">2. Le commerce quotidien</h2>
+
+<div class="module">
+<h3><span class="num">6</span>Produits et catalogue</h3>
+<p><span class="lbl">À quoi ça sert :</span> décrire ce que l'on vend : nom, prix, unité, catégorie, seuil d'alerte, code-barres.</p>
+<p><span class="lbl">Les gestes :</span> <strong>Produits → Ajouter</strong> (nom + prix suffisent) ; catégories et conditionnements pour ranger ; <strong>Importer</strong> pour charger un fichier ; les étiquettes QR pour imprimer des codes.</p>
+<p><span class="lbl">Les pièges :</span> un article sans prix ne peut pas être vendu au comptoir — l'application propose alors « Définir le prix ». Le <strong>seuil d'alerte</strong> déclenche l'alerte de stock : trop haut, il crie tout le temps ; trop bas, il prévient trop tard.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">7</span>Ventes et encaissement</h3>
+<p><span class="lbl">À quoi ça sert :</span> enregistrer une vente, l'encaisser et produire un reçu.</p>
+<p><span class="lbl">Les gestes :</span> choisir les articles, la quantité, le mode de paiement (espèces, mobile money, crédit), encaisser. Le stock est décrémenté et la vente reçoit un numéro définitif ; l'écran de confirmation rappelle <strong>ce qu'il reste en stock</strong> pour chaque article vendu.</p>
+<p><span class="lbl">Les pièges :</span> le prix appliqué est celui du <strong>serveur</strong>, jamais celui affiché sur le téléphone : une modification faite ailleurs est donc respectée. Une vente ne se « supprime » pas : elle se corrige par un avoir ou un ajustement, pour garder une piste d'audit.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">8</span>Scanner et codes-barres</h3>
+<p><span class="lbl">À quoi ça sert :</span> vendre sans taper de nom.</p>
+<p><span class="lbl">Les gestes :</span> ouvrir le scanner, viser le code. L'application propose alors deux actions :</p>
+<ul>
+  <li><strong>Encaisser maintenant</strong> — la vente part directement au paiement (client pressé) ;</li>
+  <li><strong>Ajouter au panier</strong> — pour continuer les scans puis payer une fois.</li>
+</ul>
+<p><span class="lbl">Les codes balance :</span> une balance peut envoyer <code>BAL:503:1250</code> = article 503, 1,250 kg. Le produit et le poids arrivent ensemble, l'écran de pesée s'ouvre déjà rempli.</p>
+<p><span class="lbl">Les pièges :</span> le scan est <strong>silencieux</strong> (plus de son ni de vibration) : c'est le retour visuel qu'il faut regarder. Un code inconnu n'est jamais perdu : il est proposé à la création de l'article.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">9</span>Pesée rapide (vente au kilo)</h3>
+<p><span class="lbl">À quoi ça sert :</span> vendre à la balance — viande, riz au détail, légumes — sans calcul mental.</p>
+<p><span class="lbl">Les gestes :</span></p>
+<ol>
+  <li>Choisir le produit pesé (son <strong>prix au kilo</strong> est rappelé ; sinon « Définir le prix au kilo » ouvre la fiche).</li>
+  <li>Saisir ou recevoir le poids ; ajuster avec <strong>−0,1</strong> / <strong>+0,1</strong> / <strong>+0,5</strong> kg.</li>
+  <li>Lire le total calculé, puis <strong>Encaisser maintenant</strong> ou <strong>Ajouter au panier</strong>.</li>
+</ol>
+<p><span class="lbl">Les pièges :</span> le prix au kilo doit être saisi sur la fiche article (une fois) ; l'écran conserve le produit après la vente, ce qui permet d'enchaîner les clients — penser à changer de produit au changement de denrée.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">10</span>Caisse et clôture</h3>
+<p><span class="lbl">À quoi ça sert :</span> savoir combien d'argent est réellement dans le tiroir en fin de journée.</p>
+<p><span class="lbl">Les gestes :</span> encaissements et dépenses de caisse sont enregistrés au fil de la journée ; en fin de service, la <strong>clôture</strong> compare l'attendu et le compté, et note l'écart.</p>
+<p><span class="lbl">Les pièges :</span> une sortie d'argent qui n'est pas saisie fausse la clôture. Clôturer chaque jour : un écart de trois jours est indéchiffrable.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">11</span>Clients et crédits</h3>
+<p><span class="lbl">À quoi ça sert :</span> suivre qui achète, et surtout <strong>qui doit de l'argent</strong>.</p>
+<p><span class="lbl">Les gestes :</span> fiche client (nom, téléphone, zone) ; vente à crédit ; remboursement partiel ou total ; écran des dettes trié par ancienneté.</p>
+<p><span class="lbl">Les pièges :</span> une vente à crédit n'est pas une rentrée d'argent : elle apparaît en dette, pas en caisse. Le renseignement de la <strong>zone</strong> sert ensuite aux tournées et au rapport de distribution.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">12</span>Stock, approvisionnement, inventaire</h3>
+<p><span class="lbl">À quoi ça sert :</span> savoir ce qui reste, ce qui entre, et corriger les écarts.</p>
+<p><span class="lbl">Les gestes :</span> <strong>Approvisionnement</strong> pour une entrée de marchandise ; <strong>Ajustement</strong> pour une casse ou une erreur ; <strong>Inventaire</strong> pour compter et aligner.</p>
+<p><span class="lbl">Les pièges :</span> un ajustement n'est pas une vente : il ne crée pas de chiffre d'affaires (c'est justement ce qui le distingue). Les articles <strong>en stock illimité</strong> (services, plats) sont exclus des alertes.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">13</span>Lots et péremption</h3>
+<p><span class="lbl">À quoi ça sert :</span> vendre d'abord ce qui périme d'abord, et ne jamais vendre un produit périmé.</p>
+<p><span class="lbl">Les gestes :</span> renseigner lot et date d'expiration sur la fiche article ; régler le <strong>délai d'alerte</strong> (1 à 365 jours, 30 par défaut) dans <strong>Paramètres → Alerte de péremption</strong> ; consulter l'écran <strong>Expirations</strong>, trié par urgence.</p>
+<p><span class="lbl">Les pièges :</span> le seuil est <strong>inclusif</strong> (à exactement 30 jours avec un délai de 30, l'alerte est déjà là). Le <strong>blocage de vente</strong> d'un produit périmé est un réglage distinct (plateforme).</p>
+</div>
+
+<div class="module">
+<h3><span class="num">14</span>Dépenses et finance</h3>
+<p><span class="lbl">À quoi ça sert :</span> voir le bénéfice réel, pas seulement les recettes.</p>
+<p><span class="lbl">Les gestes :</span> saisir une dépense (loyer, transport, salaire) avec sa catégorie ; consulter le tableau des bénéfices ; rattacher les dettes fournisseurs.</p>
+<p><span class="lbl">Les pièges :</span> une dépense payée depuis la caisse doit être saisie dans la caisse <em>et</em> en finance pour ne rien compter deux fois — se fier à la catégorie, choisie une fois pour toutes.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">15</span>Rapports et exports</h3>
+<p><span class="lbl">À quoi ça sert :</span> répondre à « combien j'ai vendu, et qu'est-ce qui marche ? ».</p>
+<p><span class="lbl">Les gestes :</span> choisir la période et le type (ventes, stock, caisse, dépenses, par activité) ; exporter pour le comptable ; croiser avec le rapport d'agent (partie 3).</p>
+<p><span class="lbl">Les pièges :</span> les rapports comptent les ventes <strong>validées</strong>. Un écart entre « ce que je vois » et « ce que je croyais » vient presque toujours d'une vente à crédit ou d'un ajustement de stock.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">16</span>Collaborateurs et statistiques par personne</h3>
+<p><span class="lbl">À quoi ça sert :</span> savoir qui a vendu quoi, et fermer l'accès d'un partant.</p>
+<p><span class="lbl">Les gestes :</span> inviter par e-mail avec un rôle ; l'écran <strong>Collaborateurs</strong> affiche les ventes et le chiffre d'affaires par personne ; retirer un accès immédiatement.</p>
+<p><span class="lbl">Les pièges :</span> un collaborateur qui part doit être retiré le jour même : son ancien téléphone garde sinon sa session.</p>
+</div>
+
+<h2 class="saut">3. La distribution terrain</h2>
+
+<div class="frise">
+<strong>Le problème résolu.</strong> Le patron remplit un carton de marchandises, le confie à un agent,
+et le soir il ne sait plus exactement ce qui a été vendu, ce qui revient et chez qui sont restés ses casiers.
+La distribution terrain répond à ces trois questions, avec des chiffres, par agent.
+</div>
+
+<div class="module">
+<h3><span class="num">17</span>Tournées de livraison</h3>
+<p><span class="lbl">À quoi ça sert :</span> confier une <strong>dotation</strong> précise à un agent et suivre son retour.</p>
+<p><span class="lbl">Qui l'utilise :</span> le propriétaire (préparation, clôture) et l'agent (exécution).</p>
+<p><span class="lbl">Les gestes :</span></p>
+<ol>
+  <li><strong>Tournées → Nouvelle tournée</strong> : choisir l'agent, la zone, la date, puis ajouter les produits et <strong>les quantités attribuées</strong>.</li>
+  <li><strong>Démarrer</strong> : l'agent voit sa tournée sur son téléphone (<strong>Ma tournée</strong>).</li>
+  <li>L'agent vend ; chaque vente est <strong>plafonnée par la dotation</strong> (impossible de vendre ce qui n'a pas été confié).</li>
+  <li><strong>Clôturer</strong> : saisir les quantités <strong>retournées</strong>. L'application calcule l'écart et le chiffre d'affaires de la tournée.</li>
+</ol>
+<p><span class="lbl">Le rapport par agent :</span> attribué · vendu · rendu · <strong>écart</strong> · chiffre d'affaires · consignes ouvertes · bonus accordés · zone, sur la période choisie.</p>
+<p><span class="lbl">Les pièges :</span> un agent n'a qu'<strong>une seule tournée active</strong> à la fois. Les prix ne sont jamais fixés par l'agent : ils sont relus en base au moment de la vente, comme partout ailleurs.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">18</span>Consignes (récipients laissés chez le client)</h3>
+<p><span class="lbl">À quoi ça sert :</span> savoir combien de casiers, bouteilles ou caisses de l'entreprise dorment chez les clients.</p>
+<p><span class="lbl">Les gestes :</span> depuis la tournée, enregistrer une consigne (client, libellé du récipient, quantité, zone) ; plus tard, enregistrer la <strong>récupération</strong>, totale ou partielle.</p>
+<p><span class="lbl">Les pièges :</span> une consigne reste « chez le client » tant qu'elle n'est pas rendue : c'est un actif de l'entreprise, pas une vente. Un client d'une autre entreprise est refusé. Chaque agent ne voit que ses propres consignes.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">19</span>Bonus clients</h3>
+<p><span class="lbl">À quoi ça sert :</span> garder la trace de ce qui a été offert — remise, cadeau, fidélité — pour ne pas le confondre avec une perte.</p>
+<p><span class="lbl">Les gestes :</span> enregistrer la nature, le montant et une description, rattachés au client et à la tournée du jour. L'écran « Ma tournée » rappelle les bonus <strong>du jour local</strong>.</p>
+<p><span class="lbl">Les pièges :</span> un bonus n'est pas une vente : il n'entre pas dans le chiffre d'affaires, il explique une partie du stock manquant.</p>
+</div>
+
+<h2 class="saut">4. Les modules métiers</h2>
+<p class="sous">Ces modules apparaissent selon le type d'activité choisi. Un hôtel ne voit pas « Pesée », une boutique ne voit pas « Chambres ».</p>
+
+<div class="module">
+<h3><span class="num">20</span>Hôtel</h3>
+<p><span class="lbl">À quoi ça sert :</span> louer des chambres et suivre les séjours.</p>
+<p><span class="lbl">Les gestes :</span> <strong>Chambres</strong> (numéro, type, tarif, état) → <strong>Réservations</strong> (client, arrivée, départ) → <strong>Réception</strong> (arrivée, départ, encaissement du séjour).</p>
+<p><span class="lbl">Les pièges :</span> une chambre occupée non libérée reste indisponible : le départ doit être enregistré, même sans encaissement.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">21</span>Restaurant</h3>
+<p><span class="lbl">À quoi ça sert :</span> prendre les commandes à table et les envoyer en cuisine.</p>
+<p><span class="lbl">Les gestes :</span> <strong>Tables</strong> (plan de salle) → <strong>Commandes</strong> (plats, quantités) → <strong>Cuisine</strong> (écran de préparation) → encaissement.</p>
+<p><span class="lbl">Les pièges :</span> une table encaissée doit être libérée ; les plats peuvent être vendus en <strong>stock illimité</strong> (aucune alerte de stock).</p>
+</div>
+
+<div class="module">
+<h3><span class="num">22</span>Salle des fêtes</h3>
+<p><span class="lbl">À quoi ça sert :</span> louer une salle par événement, avec acompte et solde.</p>
+<p><span class="lbl">Les gestes :</span> <strong>Salles</strong> (capacité, tarif) → <strong>Événements</strong> (date, client, montant, acompte) ; le solde restant suit l'encaissement.</p>
+<p><span class="lbl">Les pièges :</span> deux événements ne peuvent pas occuper la même salle le même jour : le conflit est signalé.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">23</span>Boulangerie et production</h3>
+<p><span class="lbl">À quoi ça sert :</span> transformer des matières premières en produits finis et connaître le coût de revient.</p>
+<p><span class="lbl">Les gestes :</span> <strong>Matières</strong> (farine, sucre…) → <strong>Production</strong> (recette, quantité produite) ; le stock de matières diminue, celui des produits finis augmente.</p>
+<p><span class="lbl">Les pièges :</span> une production sans recette ne coûte rien dans les rapports — donc fausse le bénéfice.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">24</span>Pharmacie</h3>
+<p><span class="lbl">À quoi ça sert :</span> vendre en respectant les lots et les dates de péremption.</p>
+<p><span class="lbl">Les gestes :</span> renseigner lot et expiration à la réception ; consulter <strong>Expirations</strong> ; vendre en priorité les lots les plus proches de la péremption.</p>
+<p><span class="lbl">Les pièges :</span> un produit périmé peut être bloqué à la vente par le réglage de la plateforme — un message clair l'explique au comptoir.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">25</span>Boucherie et pesée</h3>
+<p><span class="lbl">À quoi ça sert :</span> vendre à la découpe, au kilo.</p>
+<p><span class="lbl">Les gestes :</span> articles vendus au poids (prix au kilo) → écran <strong>Pesée</strong> (voir module 9) ou code balance scanné.</p>
+<p><span class="lbl">Les pièges :</span> un article vendu au poids se déclare comme tel : sinon le stock se décrémente en unités et devient faux.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">26</span>Variantes (taille, couleur, marque)</h3>
+<p><span class="lbl">À quoi ça sert :</span> vendre un même article en plusieurs déclinaisons, avec un stock propre à chacune.</p>
+<p><span class="lbl">Les gestes :</span> déclarer les variantes sur la fiche article, choisir la variante au moment de la vente.</p>
+<p><span class="lbl">Les pièges :</span> le stock se suit <strong>par variante</strong> : une taille épuisée ne bloque pas les autres.</p>
+</div>
+
+<h2 class="saut">5. La visibilité : le marketplace</h2>
+
+<div class="module">
+<h3><span class="num">27</span>Vitrine publique et catalogue</h3>
+<p><span class="lbl">À quoi ça sert :</span> être trouvé par des clients qui ne connaissent pas encore la boutique.</p>
+<p><span class="lbl">Les gestes :</span> la vitrine est <strong>visible par défaut</strong> ; le propriétaire règle le nom public, la catégorie, la zone, les coordonnées ; chaque article publié apparaît automatiquement dans le catalogue public, avec son prix.</p>
+<p><span class="lbl">Côté client :</span> recherche sans compte, comparaison des prix, carte des boutiques proches, fiche boutique et fiche produit.</p>
+<p><span class="lbl">Les pièges :</span> le catalogue public n'expose <strong>jamais</strong> les données privées (stock exact, clients, chiffres). Dépublier la vitrine la retire immédiatement de la recherche.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">28</span>Codes d'attribution et publicités</h3>
+<p><span class="lbl">À quoi ça sert :</span> savoir d'où viennent les clients, et mettre en avant une boutique.</p>
+<p><span class="lbl">Les gestes :</span> générer un code d'attribution (agent, quartier, campagne) et le diffuser ; acheter une publicité depuis l'écran dédié ; suivre la mesure de visibilité (vues, contacts).</p>
+<p><span class="lbl">Les pièges :</span> un code mal saisi ne crédite personne : mieux vaut un QR code imprimé qu'un code dicté au téléphone.</p>
+</div>
+
+<h2 class="saut">6. L'assistant intelligent</h2>
+
+<div class="module">
+<h3><span class="num">29</span>Assistant IA</h3>
+<p><span class="lbl">À quoi ça sert :</span> poser une question en langage courant sur <em>ses propres</em> chiffres : « qu'est-ce qui s'est le mieux vendu cette semaine ? », « qui me doit le plus ? ».</p>
+<p><span class="lbl">Les gestes :</span> ouvrir l'assistant, écrire la question, lire la réponse chiffrée. Un quota de tokens est consommé à chaque appel ; l'écran <strong>Quotas</strong> montre le solde et permet d'acheter un pack.</p>
+<p><span class="lbl">Les pièges :</span> l'assistant a besoin d'internet (contrairement à la caisse). Il lit les données de l'entreprise pour laquelle on est connecté : ne jamais lui demander les chiffres d'un autre commerce.</p>
+</div>
+
+<h2>7. Le paiement en ligne</h2>
+
+<div class="module">
+<h3><span class="num">30</span>SerdiPay — Orange Money, Airtel, M-Pesa, carte</h3>
+<p><span class="lbl">À quoi ça sert :</span> régler un abonnement ou un pack depuis l'application, sans déplacement.</p>
+<p><span class="lbl">Les gestes :</span> choisir le montant, choisir l'opérateur, confirmer ; l'application attend la confirmation de l'opérateur puis met l'abonnement à jour. Un reçu est conservé dans <strong>Factures d'abonnement</strong>.</p>
+<p><span class="lbl">Les pièges :</span> un paiement « en attente » n'est pas un paiement : ne pas relancer avant que le statut change, sous peine de payer deux fois. Si le module n'est pas installé côté serveur, l'écran affiche un message explicite — le reste de l'application continue de fonctionner.</p>
+</div>
+
+<h2 class="saut">8. Le côté plateforme</h2>
+
+<div class="module">
+<h3><span class="num">31</span>Super administrateur</h3>
+<p><span class="lbl">À quoi ça sert :</span> piloter la plateforme entière.</p>
+<p><span class="lbl">Les écrans :</span> entreprises (créer avec son propriétaire, consulter la fiche unique), activités et types d'activités, groupes tarifaires (packs et modules inclus), devises et taux, vérification des comptes, activations finance, boutiques, modération, permissions, codes QR, publicités, abonnements.</p>
+<p><span class="lbl">Les pièges :</span> agir « sur » une entreprise ne donne pas accès à ses données commerciales détaillées : la fiche admin reste une fiche de dossier.</p>
+</div>
+
+<div class="module">
+<h3><span class="num">32</span>Agents terrain</h3>
+<p><span class="lbl">À quoi ça sert :</span> faire créer et activer des comptes sur le terrain.</p>
+<p><span class="lbl">Les gestes :</span> l'agent accompagne le commerçant, saisit un <strong>code de validation</strong> ; l'entreprise créée lui reste rattachée. Il suit « ses » boutiques.</p>
+<p><span class="lbl">Les pièges :</span> le code est lié à une entreprise précise ; un code partagé sur les réseaux sociaux est un risque (il ouvre un compte sans contrôle).</p>
+</div>
+
+<div class="module">
+<h3><span class="num">33</span>Modération et sécurité</h3>
+<p><span class="lbl">À quoi ça sert :</span> retirer une vitrine trompeuse, suspendre un compte, garder une trace.</p>
+<p><span class="lbl">Les gestes :</span> signaler ou modérer une boutique depuis l'écran de modération ; le journal d'audit conserve qui a fait quoi et quand.</p>
+<p><span class="lbl">Les pièges :</span> une suspension coupe les actions sensibles immédiatement, mais ne supprime aucune donnée : la réactivation remet tout en l'état.</p>
+</div>
+
+<h2>9. Le mode rapide</h2>
+
+<div class="module">
+<h3><span class="num">34</span>Interface simplifiée</h3>
+<p><span class="lbl">À quoi ça sert :</span> vendre tout de suite, sans configurer un logiciel de gestion.</p>
+<p><span class="lbl">Les gestes :</span> à la création, choisir <strong>Rapide</strong> — l'essai de 7 jours est actif immédiatement. L'accueil ne montre que l'essentiel : vendre vite, mes produits, ajouter un article, pesée, tournées. Les onglets <strong>Rapports</strong> et <strong>Stock</strong> sont masqués, les statistiques réduites.</p>
+<p><span class="lbl">Les pièges :</span> masqué ne veut pas dire perdu : repasser en mode complet (<strong>Paramètres</strong>) réaffiche tout, avec les mêmes données.</p>
+</div>
+
+<h2 class="saut">10. Tableau récapitulatif</h2>
+<table>
+  <tr><th style="width:34%">Module</th><th style="width:33%">Écran principal</th><th>Qui l'utilise</th></tr>
+  <tr><td>Compte et entreprise</td><td>Création d'entreprise</td><td>Commerçant, agent terrain</td></tr>
+  <tr><td>Abonnement, activation</td><td>Abonnement · Factures · Vérification des comptes</td><td>Propriétaire, gestionnaire, finance</td></tr>
+  <tr><td>Rôles et permissions</td><td>Collaborateurs · Permissions</td><td>Propriétaire, Super Admin</td></tr>
+  <tr><td>Espaces multiples</td><td>Sélecteur d'espace</td><td>Propriétaire</td></tr>
+  <tr><td>Devises</td><td>Devise &amp; conversion</td><td>Propriétaire, Super Admin</td></tr>
+  <tr><td>Produits</td><td>Produits · Catégories · Import</td><td>Propriétaire, magasinier</td></tr>
+  <tr><td>Ventes</td><td>Nouvelle vente · Confirmation</td><td>Caissier, propriétaire</td></tr>
+  <tr><td>Scanner</td><td>Scanner</td><td>Caissier</td></tr>
+  <tr><td>Pesée</td><td>Pesée rapide</td><td>Caissier (boucherie, épicerie)</td></tr>
+  <tr><td>Caisse</td><td>Caisse · Clôtures</td><td>Caissier, propriétaire</td></tr>
+  <tr><td>Clients</td><td>Clients · Dettes</td><td>Caissier, propriétaire</td></tr>
+  <tr><td>Stock</td><td>Stock · Approvisionnement · Inventaire</td><td>Magasinier</td></tr>
+  <tr><td>Péremption</td><td>Expirations · Paramètres → Alerte</td><td>Magasinier, propriétaire</td></tr>
+  <tr><td>Finance</td><td>Dépenses · Finance</td><td>Comptable, propriétaire</td></tr>
+  <tr><td>Rapports</td><td>Rapports</td><td>Propriétaire, comptable</td></tr>
+  <tr><td>Collaborateurs</td><td>Collaborateurs</td><td>Propriétaire</td></tr>
+  <tr><td>Distribution terrain</td><td>Tournées · Ma tournée</td><td>Propriétaire, agent</td></tr>
+  <tr><td>Métiers (hôtel, restaurant…)</td><td>Chambres · Tables · Salles · Production</td><td>Personnel de l'activité</td></tr>
+  <tr><td>Marketplace</td><td>Biashara (vitrine, recherche, carte)</td><td>Grand public, propriétaire</td></tr>
+  <tr><td>Assistant IA</td><td>Assistant · Quotas</td><td>Propriétaire</td></tr>
+  <tr><td>Paiement en ligne</td><td>Paiement SerdiPay</td><td>Propriétaire</td></tr>
+  <tr><td>Plateforme</td><td>Administration</td><td>Super Admin, gestionnaire, finance</td></tr>
+</table>
+
+<h2>11. Ce que l'application ne fait pas</h2>
+<div class="bloc">
+<p><span class="lbl">Pour éviter les malentendus :</span></p>
+<ul>
+  <li>Elle ne <strong>facture pas automatiquement</strong> les récipients consignés : elle en garde la trace, la facturation reste une décision commerciale.</li>
+  <li>Elle ne verse <strong>pas de commission</strong> aux agents : elle calcule et affiche leur performance, le paiement reste manuel.</li>
+  <li>Elle ne remplace pas un <strong>comptable</strong> : elle fournit des chiffres cohérents et exportables.</li>
+  <li>Elle ne fonctionne <strong>pas sans internet</strong> pour le marketplace, l'assistant et le paiement en ligne.</li>
+  <li>Elle ne garantit pas un <strong>taux de change officiel</strong> : le taux est celui que le propriétaire (ou la plateforme) a saisi.</li>
+</ul>
+</div>
+
+<h2>Dépannage express</h2>
+<table>
+  <tr><th style="width:38%">Symptôme</th><th>Cause la plus fréquente · solution</th></tr>
+  <tr><td>« Module non installé » sur un écran</td><td>La migration SQL correspondante n'a pas été exécutée côté serveur.</td></tr>
+  <tr><td>Vendre refusé avec un cadenas</td><td>Compte non activé ou abonnement échu : voir <strong>Abonnement</strong>.</td></tr>
+  <tr><td>Un produit est introuvable au scan</td><td>Le code-barres n'est pas enregistré sur la fiche article : l'écran propose de la créer.</td></tr>
+  <tr><td>Les chiffres d'un téléphone diffèrent d'un autre</td><td>Connexion coupée : l'indicateur de synchronisation indique ce qui reste à envoyer.</td></tr>
+  <tr><td>Le total d'une pesée semble faux</td><td>Prix au kilo absent ou ancien sur la fiche : le corriger, puis revendre.</td></tr>
+  <tr><td>Une consigne n'apparaît pas chez l'agent</td><td>Elle est rattachée à un autre agent : seul le propriétaire les voit toutes.</td></tr>
+</table>
+
+<div class="pied">
+Biashara Yangu · v3.3.1 (build 38) · Document généré depuis <code>docs/manuel_modules_et_utilisations.html</code> ·
+Couvre les modules 1 à 23 bis (distribution terrain, consignes, bonus, mode rapide) et la passerelle de paiement SerdiPay.
+</div>
+
+</body>
+</html>

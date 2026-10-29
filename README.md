@@ -56,6 +56,8 @@ lib/
 supabase/migrations/   → 82 migrations SQL idempotentes (0000 → 0081)
 test/                  → 977 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration, péremption, fiche entreprise, distribution terrain, version)
 docs/                  → documentation interne (roadmap, publication, modules)
+                          · `manuel_modules_et_utilisations.html` pourra être
+                            régénéré en PDF : tous les modules, mode d'emploi
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
 ```
