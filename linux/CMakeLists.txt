@@ -2,6 +2,28 @@
 cmake_minimum_required(VERSION 3.13)
 project(runner LANGUAGES CXX)
 
+# ============================================================================
+#  COMPATIBILITÉ PROCESSEUR — NE PAS SUPPRIMER
+#
+#  Constat (release v3.3.0) : le lanceur compilé par GitHub exigeait le jeu
+#  d'instructions x86-64-v3 (AVX2). Sur un ordinateur modeste (Celeron N4020,
+#  VM, machine ancienne), l'application refusait de démarrer :
+#
+#      ./biashara_yangu: CPU ISA level is lower than required
+#
+#  Vérification : `readelf -n biashara_yangu` annonçait
+#  « x86 ISA needed: x86-64-baseline, x86-64-v2, x86-64-v3 » alors que la
+#  version publiée précédemment n'annonçait que « x86-64-baseline ».
+#
+#  On force donc la BASE x86-64 pour le code natif du lanceur : le binaire
+#  démarre partout, comme la bibliothèque Flutter (elle-même compilée en
+#  base x86-64). Le coût est nul pour une application de gestion.
+# ============================================================================
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+  add_compile_options(-march=x86-64 -mtune=generic)
+  message(STATUS "biashara: base x86-64 imposee (compatibilite processeur)")
+endif()
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "biashara_yangu")

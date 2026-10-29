@@ -221,7 +221,11 @@ jobs:
   linux:
     name: Linux
     needs: qualite
-    runs-on: ubuntu-latest
+    # ⚠️ Image ÉPINGLÉE : `ubuntu-latest` peut changer de version sans prévenir.
+    # La release v3.3.0 a été compilée sur une image dont la chaîne d'outils
+    # produisait un binaire exigeant x86-64-v3 (AVX2) → refus de démarrer sur
+    # un Celeron (« CPU ISA level is lower than required »).
+    runs-on: ubuntu-24.04
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v4
@@ -246,6 +250,20 @@ jobs:
 
       - name: Compiler le binaire Linux
         run: flutter build linux --release
+
+      # 🛡️ GARDE-FOU PROCESSUS : un binaire compilé sur une machine récente peut
+      # exiger x86-64-v2/v3 (AVX2) et refuser de démarrer sur un ordinateur
+      # modeste. On échoue AVANT de publier plutôt que de livrer un paquet
+      # inutilisable.
+      - name: Vérifier la compatibilité processeur du binaire
+        run: |
+          BIN=build/linux/x64/release/bundle/biashara_yangu
+          readelf -n "$BIN" | grep -A1 'ISA needed' || true
+          if readelf -n "$BIN" | grep -q 'x86-64-v'; then
+            echo "::error::Le binaire exige x86-64-v2/v3 : il ne démarrera pas sur un vieux processeur."
+            exit 1
+          fi
+          echo "OK : binaire en base x86-64 (compatible partout)."
 
       # 🐧 SQLite est EMBARQUÉE dans le paquet : la bibliothèque système
       # s'appelle `libsqlite3.so.0` (le lien `.so` n'existe pas sans le
