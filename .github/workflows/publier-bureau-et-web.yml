@@ -139,7 +139,9 @@ jobs:
       - name: Compiler (release)
         run: |
           flutter pub get
-          flutter build web --release --base-href "/biasharayanguApp/"
+          # Le site est publié à la racine de son domaine (Netlify) :
+          # la base doit rester "/" (plus de sous-chemin GitHub Pages).
+          flutter build web --release --base-href "/"
 
       - name: Empaqueter
         run: |

@@ -1,10 +1,14 @@
 // lib/utils/sqlite_local.dart
 //
-// 🌐 PHASE F (web) — SQLITE LOCAL (bureau / mobile).
+// 🌐 SQLITE LOCAL — sélection de l'implémentation selon la plateforme.
 //
-// Délègue la préparation de SQLite natif (sqflite_common_ffi + bibliothèque
-// embarquée) aux plateformes natives ; sur le web, SQLite n'existe PAS :
-// `sqliteLocalDisponible` vaut `false` et la base locale est désactivée
-// (l'application web fonctionne entièrement sur Supabase).
+//   • Android / iOS / Windows / Linux / macOS → `sqlite_local_native.dart`
+//     (sqflite + bibliothèque SQLite embarquée) ;
+//   • navigateur → `sqlite_local_web.dart` (SQLite compilé en WebAssembly,
+//     persisté dans IndexedDB) : la version web a donc ELLE AUSSI sa propre
+//     base locale, exactement comme les applications installées.
+//
+// La bascule est faite par le compilateur : `dart.library.io` n'existe pas
+// dans un navigateur.
 
-export 'sqlite_local_stub.dart' if (dart.library.io) 'sqlite_local_native.dart';
+export 'sqlite_local_web.dart' if (dart.library.io) 'sqlite_local_native.dart';

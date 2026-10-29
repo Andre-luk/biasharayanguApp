@@ -2,7 +2,7 @@ name: biashara_yangu
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 3.3.3+40
+version: 3.3.4+41
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
@@ -69,6 +69,7 @@ dependencies:
   flutter_map: ^8.3.2
   latlong2: ^0.10.1
   http: ^1.6.0
+  sqflite_common_ffi_web: ^1.0.2
 
 dev_dependencies:
   flutter_test:

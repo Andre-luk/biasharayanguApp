@@ -107,6 +107,12 @@ class CarteProduitPublic extends StatelessWidget {
                   left: 8,
                   right: 8,
                   child: Row(
+                    // ⚠️ Un `Spacer()` volait la moitié de la largeur et
+                    // rognait le libellé : « Disponible » s'affichait
+                    // « Dispon… » sur téléphone. `spaceBetween` pousse la
+                    // seconde pastille à droite SANS priver la première de
+                    // sa place.
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: <Widget>[
                       Flexible(
                         child: _Etiquette(
@@ -121,7 +127,6 @@ class CarteProduitPublic extends StatelessWidget {
                               : Icons.cancel_rounded,
                         ),
                       ),
-                      const Spacer(),
                       if (produit.vendableAuPoids && produit.disponible)
                         const Flexible(
                           child: _Etiquette(

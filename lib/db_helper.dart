@@ -2,7 +2,9 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+// `kIsWeb` : dans un navigateur il n'y a ni dossier ni fichier — la base
+// SQLite vit dans IndexedDB sous un simple nom (voir `sqlite_local_web.dart`).
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 
 import 'utils/sqlite_local.dart';
 import 'utils/fichiers_locaux.dart';
@@ -42,12 +44,23 @@ class DBHelper {
   }
 
   Future<Database> _initDB() async {
-    // 🌐 PHASE F (web) — SQLite local indisponible dans un navigateur :
-    // l'application web travaille uniquement avec Supabase.
+    // 🌐 NAVIGATEUR — SQLite y est désormais disponible (WebAssembly +
+    // IndexedDB), mais sans notion de dossier : la base est désignée par un
+    // simple nom, et c'est le worker sqflite qui gère le stockage.
+    if (kIsWeb) {
+      preparerSqliteLocal();
+      return await openDatabase(
+        'biashara_yangu.db',
+        version: _dbVersion,
+        onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
+      );
+    }
+
+    // 🖥️📱 Plateformes installées : SQLite obligatoire.
     if (!sqliteLocalDisponible) {
       throw UnsupportedError(
-        'La base locale (SQLite) est indisponible sur le web. '
-        "Utilisez l'application Android, Windows ou Linux.",
+        'La base locale (SQLite) est indisponible sur cette plateforme.',
       );
     }
 
@@ -309,6 +322,8 @@ CREATE TABLE approvisionnements (
   // ========================= MAINTENANCE & SAUVEGARDE (inchangé) =========================
 
   Future<String> getDatabasePathFile() async {
+    // 🌐 Navigateur : pas de chemin de fichier — la base est dans IndexedDB.
+    if (kIsWeb) return 'biashara_yangu.db';
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'biashara_yangu.db');
     return path;

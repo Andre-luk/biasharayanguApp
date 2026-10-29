@@ -145,7 +145,19 @@ class _LoginPageState extends State<LoginPage> {
           }
 
           if (!mounted) return;
-          await _navigateAfterLogin(userId);
+          // 🌐 La préparation de l'espace (profil local, abonnement, devise…)
+          // ne doit JAMAIS faire croire à un échec de connexion : si elle
+          // casse, on le dit clairement au lieu de laisser l'écran figé.
+          try {
+            await _navigateAfterLogin(userId);
+          } catch (e) {
+            debugPrint('⚠️ Ouverture de l\'espace après connexion : $e');
+            _showSnackBar(
+              'Connexion réussie, mais l\'ouverture de votre espace a échoué. '
+              'Rechargez la page et réessayez.',
+              isError: true,
+            );
+          }
           return;
         }
       } on supabase_auth.AuthException catch (e) {
@@ -173,13 +185,23 @@ class _LoginPageState extends State<LoginPage> {
 
       // 2. CONNEXION LOCALE (Hors ligne)
       final hash = _hashPassword(password);
-      Utilisateur? localUser =
-          await _dbHelper.getUtilisateurByEmailAndPassword(email, password);
-      if (localUser == null) {
-        try {
-          localUser =
-              await _dbHelper.getUtilisateurByEmailAndPasswordHash(email, hash);
-        } catch (_) {}
+      Utilisateur? localUser;
+      try {
+        localUser =
+            await _dbHelper.getUtilisateurByEmailAndPassword(email, password);
+        if (localUser == null) {
+          try {
+            localUser =
+                await _dbHelper.getUtilisateurByEmailAndPasswordHash(email, hash);
+          } catch (_) {}
+        }
+      } catch (e) {
+        // Base locale indisponible (premier lancement, stockage refusé par
+        // le navigateur…) : sans elle il n'y a pas de repli hors ligne, mais
+        // l'utilisateur doit savoir POURQUOI plutôt que de voir un écran
+        // immobile.
+        debugPrint('Connexion locale impossible : $e');
+        erreurReseau ??= e.toString();
       }
 
       if (localUser != null) {
@@ -227,7 +249,14 @@ class _LoginPageState extends State<LoginPage> {
       await SessionManager.getUserRole(),
     );
 
-    final Utilisateur? profilLocal = await _dbHelper.getUtilisateurById(userId);
+    Utilisateur? profilLocal;
+    try {
+      profilLocal = await _dbHelper.getUtilisateurById(userId);
+    } catch (e) {
+      // Base locale indisponible : le rôle reste celui de la session et sera
+      // confirmé juste après auprès de Supabase.
+      debugPrint('Profil local indisponible (rôle) : $e');
+    }
     final RoleUtilisateur roleProfil =
         PermissionService.roleDepuisUtilisateur(profilLocal);
     if (roleProfil != RoleUtilisateur.inconnu) role = roleProfil;
@@ -363,11 +392,15 @@ class _LoginPageState extends State<LoginPage> {
     final bool sombre = theme.brightness == Brightness.dark;
     final Size size = MediaQuery.of(context).size;
     final bool isWide = size.width > 760;
-    // ⚠️ ÉCRANS BAS (ordinateur portable 1366×768 avec les barres du
-    // navigateur, fenêtre réduite, téléphone en paysage) : sans mode
-    // compact, la carte dépassait la hauteur disponible et le bouton
-    // « Se connecter » sortait de l'écran — la page semblait cassée.
-    final bool compact = size.height < 620;
+    // ⚠️ HAUTEUR DISPONIBLE (téléphone en portrait avec les barres de Chrome,
+    // fenêtre réduite, écran de 5 pouces) : la carte doit tenir ENTIÈREMENT,
+    // sans défilement. Trois paliers, mesurés sur 360×640, 390×664 et
+    // 390×844 — la version précédente ne se resserrait qu'en dessous de
+    // 620 px, donc les téléphones courants (640-800 px utiles) affichaient une
+    // page coupée en bas, bouton « Mot de passe oublié » et version inclus.
+    final double hauteur = size.height;
+    final bool compact = hauteur < 800;
+    final bool tresCompact = hauteur < 645;
 
     return Scaffold(
       body: DecoratedBox(
@@ -377,15 +410,15 @@ class _LoginPageState extends State<LoginPage> {
         child: Center(
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
-              horizontal: compact ? 14 : 20,
-              vertical: compact ? 12 : 28,
+              horizontal: tresCompact ? 12 : (compact ? 14 : 20),
+              vertical: tresCompact ? 8 : (compact ? 12 : 28),
             ),
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: isWide ? 920 : 440),
               child: Container(
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(tresCompact ? 20 : 28),
                   border: Border.all(color: colorScheme.outlineVariant),
                   boxShadow: <BoxShadow>[
                     BoxShadow(
@@ -396,7 +429,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(tresCompact ? 20 : 28),
                   child: IntrinsicHeight(
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -407,7 +440,9 @@ class _LoginPageState extends State<LoginPage> {
                             padding: EdgeInsets.all(
                               isWide
                                   ? (compact ? 26 : 40)
-                                  : (compact ? 16 : 26),
+                                  : (tresCompact
+                                      ? 14
+                                      : (compact ? 18 : 26)),
                             ),
                             child: Form(
                               key: _formKey,
@@ -418,7 +453,8 @@ class _LoginPageState extends State<LoginPage> {
                                   if (!isWide) ...[
                                     Center(
                                       child: Container(
-                                        padding: EdgeInsets.all(compact ? 6 : 10),
+                                        padding: EdgeInsets.all(
+                                            tresCompact ? 5 : (compact ? 6 : 10)),
                                         decoration: BoxDecoration(
                                           color: colorScheme.surface,
                                           borderRadius:
@@ -429,11 +465,16 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                         child: Image.asset(
                                           'assets/Biashara_app_off-.png',
-                                          height: compact ? 40 : 64,
+                                          height: tresCompact
+                                              ? 34
+                                              : (compact ? 44 : 64),
                                         ),
                                       ),
                                     ),
-                                    SizedBox(height: compact ? 12 : 22),
+                                    SizedBox(
+                                        height: tresCompact
+                                            ? 10
+                                            : (compact ? 14 : 22)),
                                   ],
                                   Text(
                                     'Connexion',
@@ -441,6 +482,7 @@ class _LoginPageState extends State<LoginPage> {
                                     style: theme.textTheme.headlineSmall
                                         ?.copyWith(
                                       fontWeight: FontWeight.w800,
+                                      fontSize: tresCompact ? 21 : null,
                                     ),
                                   ),
                                   const SizedBox(height: 6),
@@ -456,10 +498,13 @@ class _LoginPageState extends State<LoginPage> {
                                         color: colorScheme.onSurfaceVariant,
                                       ),
                                     ),
-                                  SizedBox(height: compact ? 14 : 30),
+                                  SizedBox(
+                                      height: tresCompact
+                                          ? 10
+                                          : (compact ? 14 : 30)),
                                   _buildTextField(_emailController, 'Email',
                                       Icons.alternate_email_rounded),
-                                  const SizedBox(height: 16),
+                                  SizedBox(height: tresCompact ? 10 : 16),
                                   _buildTextField(
                                     _passwordController,
                                     'Mot de passe',
@@ -467,10 +512,16 @@ class _LoginPageState extends State<LoginPage> {
                                     isPassword: true,
                                   ),
                                   _buildForgotButton(colorScheme),
-                                  const SizedBox(height: 18),
+                                  SizedBox(height: tresCompact ? 10 : 18),
                                   _buildLoginButton(colorScheme),
-                                  SizedBox(height: compact ? 12 : 22),
-                                  _buildFooter(),
+                                  SizedBox(
+                                      height: tresCompact
+                                          ? 8
+                                          : (compact ? 12 : 22)),
+                                  _buildFooter(
+                                    compact: compact,
+                                    tresCompact: tresCompact,
+                                  ),
                                 ],
                               ),
                             ),
@@ -597,6 +648,14 @@ class _LoginPageState extends State<LoginPage> {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
+        // Lien secondaire : marges resserrées pour laisser toute la place au
+        // formulaire sur un écran de téléphone (48 px de haut par défaut).
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          minimumSize: const Size(0, 38),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        ),
         onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(
@@ -629,7 +688,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter({bool compact = false, bool tresCompact = false}) {
     return Column(
       children: <Widget>[
         Wrap(
@@ -638,6 +697,13 @@ class _LoginPageState extends State<LoginPage> {
           children: <Widget>[
             const Text("Pas encore de compte ?"),
             TextButton(
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  minimumSize: Size(0, compact ? 34 : 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                ),
                 onPressed: () => context.go('/setup'),
                 child: const Text('S\'inscrire',
                     style: TextStyle(fontWeight: FontWeight.bold))),
@@ -646,24 +712,29 @@ class _LoginPageState extends State<LoginPage> {
         // 🛒 MODULE 19 — la marketplace publique est ouverte à TOUS : un
         // visiteur qui n'a pas de compte doit pouvoir chercher un produit et
         // découvrir les boutiques autour de lui, sans aucune inscription.
-        const SizedBox(height: 4),
+        SizedBox(height: compact ? 2 : 4),
         OutlinedButton.icon(
           onPressed: () => context.go('/biashara'),
           icon: const Icon(Icons.explore_rounded, size: 18),
           label: const Text('Explorer les boutiques sans compte'),
           style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(46),
+            minimumSize: Size.fromHeight(tresCompact ? 42 : 46),
+            padding: EdgeInsets.symmetric(
+                horizontal: 12, vertical: tresCompact ? 4 : 10),
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Recherchez un produit et découvrez où l\'acheter autour de vous.',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 10),
+        SizedBox(height: compact ? 4 : 6),
+        // La phrase explicative est la première chose sacrifiée sur un écran
+        // court : elle n'apprend rien que le bouton ne dise déjà.
+        if (!tresCompact)
+          Text(
+            'Recherchez un produit et découvrez où l\'acheter autour de vous.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        SizedBox(height: compact ? 6 : 10),
         // 📌 Affiche la VRAIE version (source unique : AppVersion).
         Text(
           AppVersion.libelle,

@@ -30,14 +30,18 @@ const HOTE_SUPABASE   = 'pqzcliibocndiyqbyddr.supabase.co';
 const HOTE_SERDIPAY   = 'api.serdipay.com';
 
 // --- Jeton des appels SORTANTS ----------------------------------------------
-// FACULTATIF. Laisser la valeur d'exemple = le chemin /api reste DÉSACTIVÉ
-// (503), et seul le webhook entrant fonctionne : c'est le cas le plus courant,
-// et il ne demande aucune configuration.
-// Pour active les appels sortants à IP fixe : mettre ici une longue chaîne
-// aléatoire (`openssl rand -hex 32`) ET la déclarer dans les secrets Supabase
-// sous le nom SERDIPAY_RELAIS_TOKEN.
+// Ce jeton n'est PAS un identifiant bancaire : il sert uniquement à empêcher
+// que ce relais soit utilisé comme proxy ouvert vers l'API SerdiPay. Il doit
+// être identique au secret Supabase `SERDIPAY_RELAIS_TOKEN`.
+//
+// ✅ ACTIF : la valeur ci-dessous a été générée le 29/10/2026
+//    (`openssl rand -hex 32`) et déclarée dans Supabase.
+//    Pour la désactiver (et revenir au 503), remettre JETON_RELAIS_EXEMPLE
+//    ci-dessous. En cas de fuite : régénérer la valeur, la remplacer ici,
+//    la remplacer dans Supabase, redéployer — aucune autre modification.
 const JETON_RELAIS_EXEMPLE = 'CHANGEZ-CE-JETON-PAR-UNE-VALEUR-ALEATOIRE';
-const JETON_RELAIS         = JETON_RELAIS_EXEMPLE;
+const JETON_RELAIS =
+    '7ab3fb3dc4781754e5ec8a49a92de09dab1bd9d275ec5f9feb0f7483829cf57e';
 
 const DELAI_SECONDES  = 30;
 

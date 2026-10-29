@@ -84,8 +84,10 @@ const SERDIPAY_PATH_INITIER = Deno.env.get('SERDIPAY_PATH_INITIER') ??
 const SERDIPAY_PATH_STATUT = Deno.env.get('SERDIPAY_PATH_STATUT') ??
   '/api/v1/payments/{reference}';
 const SERDIPAY_TOKEN_URL = Deno.env.get('SERDIPAY_TOKEN_URL') ?? '';
+// Page de retour après paiement : la version web publique (surchargée par le
+// secret SERDIPAY_RETURN_URL si besoin).
 const SERDIPAY_RETURN_URL = Deno.env.get('SERDIPAY_RETURN_URL') ??
-  'https://andre-luk.github.io/biasharayanguApp/';
+  'https://biashara-yangu-app.netlify.app/';
 const SERDIPAY_DEVISE = Deno.env.get('SERDIPAY_DEVISE') ?? 'CDF';
 
 const DELAI_FOURNISSEUR_MS = 20_000;
