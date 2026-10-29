@@ -7,17 +7,43 @@ suffit d'y déposer deux fichiers.
 ## 1. Le sous-domaine ne consomme pas d'emplacement
 
 Votre offre compte **3 sites, déjà utilisés** : un **sous-domaine** d'un site
-existant (par exemple `serdipay.mondomaine.cd`) ne compte **pas** comme un
+existant (par exemple `serdipay.biasharagroup.com`) ne compte **pas** comme un
 nouveau site. C'est la voie à suivre.
 
 Hostinger → **Sites web** → votre domaine → **Sous-domaines** →
 créer `serdipay`. Hostinger crée un dossier, du type :
 
 ```
-/home/u123456789/domains/mondomaine.cd/public_html/serdipay/
+/home/u123456789/domains/biasharagroup.com/public_html/serdipay/
 ```
 
-Activez le **SSL gratuit** sur ce sous-domaine (bouton « SSL » → Installer).
+## 1 bis. ⚠️ Le DNS du domaine est chez Cloudflare
+
+`biasharagroup.com` utilise les serveurs **Cloudflare**
+(`ken.ns.cloudflare.com`, `etta.ns.cloudflare.com`) : créer le sous-domaine
+dans Hostinger **ne suffit pas**, l'enregistrement doit être ajouté dans
+**Cloudflare**.
+
+1. hPanel → **Hébergement → Détails** → noter l'**Adresse IP du serveur**
+   (c'est l'IP fixe que SerdiPay whitelistera).
+2. Cloudflare → **DNS → Records → Add record** :
+
+   | Champ | Valeur |
+   |---|---|
+   | Type | `A` |
+   | Name | `serdipay` |
+   | IPv4 address | l'IP Hostinger relevée à l'étape 1 |
+   | Proxy status | **DNS only** (nuage **gris**) |
+   | TTL | Auto |
+
+   Le nuage **doit rester gris**. En orange, les requêtes passent par
+   Cloudflare : l'IP vue par SerdiPay serait une IP Cloudflare (partagée), et
+   la protection anti-robots pourrait rejeter les POST de SerdiPay.
+
+3. Attendre 1 à 5 minutes, puis vérifier que le nom résout bien vers
+   l'IP Hostinger : `dig +short serdipay.biasharagroup.com`.
+
+Activez ensuite le **SSL gratuit** sur ce sous-domaine (hPanel → SSL).
 
 ## 2. Les deux fichiers
 

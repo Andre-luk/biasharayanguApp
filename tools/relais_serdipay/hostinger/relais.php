@@ -30,9 +30,14 @@ const HOTE_SUPABASE   = 'pqzcliibocndiyqbyddr.supabase.co';
 const HOTE_SERDIPAY   = 'api.serdipay.com';
 
 // --- Jeton des appels SORTANTS ----------------------------------------------
-// À remplacer par une longue chaîne aléatoire, et à déclarer à l'identique
-// dans les secrets Supabase : SERDIPAY_RELAIS_TOKEN.
-const JETON_RELAIS    = 'CHANGEZ-CE-JETON-PAR-UNE-VALEUR-ALEATOIRE';
+// FACULTATIF. Laisser la valeur d'exemple = le chemin /api reste DÉSACTIVÉ
+// (503), et seul le webhook entrant fonctionne : c'est le cas le plus courant,
+// et il ne demande aucune configuration.
+// Pour active les appels sortants à IP fixe : mettre ici une longue chaîne
+// aléatoire (`openssl rand -hex 32`) ET la déclarer dans les secrets Supabase
+// sous le nom SERDIPAY_RELAIS_TOKEN.
+const JETON_RELAIS_EXEMPLE = 'CHANGEZ-CE-JETON-PAR-UNE-VALEUR-ALEATOIRE';
+const JETON_RELAIS         = JETON_RELAIS_EXEMPLE;
 
 const DELAI_SECONDES  = 30;
 
@@ -61,7 +66,10 @@ if (strpos($chemin, '/functions/v1/serdipay/') === 0) {
     // nécessaire — le refus viendra de Supabase (401/503) si le secret manque.
     $cible = 'https://' . HOTE_SUPABASE . $chemin;
 } elseif (strpos($chemin, '/api/') === 0) {
-    // Appels sortants : réservés à notre passerelle.
+    // Appels sortants : réservés à notre passerelle, et désactivés par défaut.
+    if (JETON_RELAIS === JETON_RELAIS_EXEMPLE || JETON_RELAIS === '') {
+        repondre(503, '{"ok":false,"erreur":"relais sortant non configure"}');
+    }
     $jeton = $_SERVER['HTTP_X_RELAIS_TOKEN'] ?? '';
     if (!hash_equals(JETON_RELAIS, (string) $jeton)) {
         repondre(401, '{"ok":false,"erreur":"jeton de relais absent ou invalide"}');

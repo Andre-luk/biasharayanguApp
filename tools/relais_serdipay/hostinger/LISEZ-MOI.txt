@@ -1,0 +1,49 @@
+RELAIS SERDIPAY — HOSTINGER (serdipay.biasharagroup.com)
+========================================================
+
+Deux fichiers à déposer dans :
+  /home/u599596171/domains/biasharagroup.com/public_html/serdipay/
+
+  relais.php    → transmet les requêtes à Supabase (webhook) et, si activé,
+                  à l'API SerdiPay (appels sortants)
+  .htaccess     → réécrit /functions/v1/serdipay/… et /api/… vers relais.php
+
+FICHIERS CACHÉS
+---------------
+Le fichier « .htaccess » commence par un point : dans le gestionnaire de
+fichiers Hostinger, activez « Afficher les fichiers cachés » (icône engrenage)
+pour le voir.
+
+AUCUNE CONFIGURATION OBLIGATOIRE
+--------------------------------
+Tel quel, le relais fait fonctionner le WEBHOOK (entrant). Le chemin /api
+(appels sortants) répond 503 « non configuré » : c'est volontaire.
+
+Pour activer aussi les appels sortants à IP fixe :
+  1. openssl rand -hex 32     → copier la valeur
+  2. Dans relais.php, remplacer la ligne
+        const JETON_RELAIS         = JETON_RELAIS_EXEMPLE;
+     par
+        const JETON_RELAIS         = 'la-valeur-copiee';
+  3. Déclarer la même valeur dans Supabase :
+     Project Settings → Edge Functions → Secrets → SERDIPAY_RELAIS_TOKEN
+     et régler SERDIPAY_BASE_URL = https://serdipay.biasharagroup.com/api
+
+VÉRIFICATION
+------------
+  https://serdipay.biasharagroup.com/functions/v1/serdipay/webhook
+
+Réponse attendue :
+  {"ok":true,"service":"serdipay","webhook":"actif"}
+
+Si vous obtenez une page 404 Hostinger : le .htaccess n'est pas dans le même
+dossier que relais.php, ou les fichiers cachés n'ont pas été copiés.
+
+SSL
+---
+hPanel → Sites web → biasharagroup.com → SSL → installer le certificat gratuit
+pour serdipay.biasharagroup.com. Sans HTTPS, SerdiPay refusera l'URL.
+
+IP À DÉCLARER À SERDIPAY
+------------------------
+hPanel → Hébergement → Détails → « Adresse IP du serveur ».
