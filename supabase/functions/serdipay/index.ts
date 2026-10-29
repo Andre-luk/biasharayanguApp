@@ -61,7 +61,11 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 
 const FONCTION = 'serdipay';
 
-const SERDIPAY_BASE_URL = (Deno.env.get('SERDIPAY_BASE_URL') ?? '')
+// Adresse de l'API SerdiPay. Par défaut : notre relais à IP fixe
+// (213.130.145.53), indispensable car SerdiPay n'accepte que des IP déclarées.
+// Le secret SERDIPAY_BASE_URL permet de revenir à un appel direct si besoin.
+const SERDIPAY_BASE_URL = (Deno.env.get('SERDIPAY_BASE_URL') ??
+  'https://serdipay.biasharagroup.com/api')
   .trim()
   .replace(/\/+$/, '');
 const SERDIPAY_API_KEY = (Deno.env.get('SERDIPAY_API_KEY') ?? '').trim();
@@ -76,7 +80,11 @@ const SERDIPAY_WEBHOOK_SECRET = (Deno.env.get('SERDIPAY_WEBHOOK_SECRET') ?? '')
 // ce jeton prouve au relais que l'appel vient bien de NOUS : sans lui, le
 // relais refuserait de transmettre et ne pourrait pas servir de proxy ouvert
 // vers l'API SerdiPay. Vide = aucun en-tête envoyé (appel direct à SerdiPay).
-const SERDIPAY_RELAIS_TOKEN = (Deno.env.get('SERDIPAY_RELAIS_TOKEN') ?? '')
+// Valeur par défaut = celle inscrite dans relais.php (JETON_RELAIS). Elle est
+// surchargeable par le secret SERDIPAY_RELAIS_TOKEN, mais ce repli évite d'avoir
+// à saisir un secret supplémentaire dans le tableau de bord Supabase.
+const SERDIPAY_RELAIS_TOKEN = (Deno.env.get('SERDIPAY_RELAIS_TOKEN') ??
+  '7ab3fb3dc4781754e5ec8a49a92de09dab1bd9d275ec5f9feb0f7483829cf57e')
   .trim();
 
 const SERDIPAY_PATH_INITIER = Deno.env.get('SERDIPAY_PATH_INITIER') ??
