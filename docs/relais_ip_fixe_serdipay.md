@@ -72,6 +72,96 @@ SerdiPay partent eux aussi d'une infrastructure partagée, non garantie.
 >
 > Nous pouvons fournir une IP fixe sous 24 h via un relais dédié si nécessaire.
 
+### Option A refusée par SerdiPay (29/10/2026) — on passe à l'option B
+
+Réponse reçue : « c'est OK pour l'URL du domaine, OK pour l'URL de callback,
+mais il faut donner une IP fixe, sans cela rien ne va passer. »
+⇒ Le relais à IP fixe devient **obligatoire**. Voici la mise en place, prête à
+exécuter.
+
+## 2 bis. Mise en place du relais à IP fixe (15 minutes)
+
+### Ce qu'il faut
+
+Un petit serveur Linux public, **une seule fois**. Trois choix possibles :
+
+| Fournisseur | Prix | Remarque |
+|---|---|---|
+| **Oracle Cloud — Always Free** | **0 €** (carte bancaire pour vérification) | Instance « VM.Standard.E2.1.Micro », IP publique réservée : parfait pour ce rôle |
+| Hetzner / Contabo / Vultr | 4 à 6 € / mois | Mise en route plus simple, IP fixe incluse |
+| Serveur existant | déjà payé | N'importe quel Ubuntu 22.04/24.04 avec accès root |
+
+> Le relais ne stocke **aucune** donnée de paiement : il termine le TLS et
+> transmet les requêtes. 1 Go de RAM et 1 vCPU suffisent.
+
+### Le nom d'hôte : pas besoin d'acheter un domaine
+
+Le script utilise par défaut **`<ip>.nip.io`** : un nom public qui résout
+automatiquement vers l'IP du serveur. Caddy obtient un **vrai certificat
+Let's Encrypt** dessus, donc SerdiPay reçoit une URL **HTTPS valide** *et*
+une **IP fixe** — exactement ce qu'il demande.
+
+Si vous préférez votre propre domaine (`paiements.biasharayangu.cd`), créez
+l'enregistrement `A` vers l'IP du serveur et passez-le en paramètre.
+
+### La commande (sur le serveur, en root)
+
+```bash
+# copier le script depuis le dépôt, puis :
+sudo bash installer_relais.sh                # entrant seul
+sudo bash installer_relais.sh --sortant      # entrant + sortant (recommandé)
+sudo bash installer_relais.sh paiements.biasharayangu.cd --sortant
+```
+
+Le script : installe Caddy, écrit un `Caddyfile` qui **n'expose que**
+`/functions/v1/serdipay/*` (tout le reste renvoie 404), ouvre 22/80/443,
+attend le certificat, puis **affiche le bloc à envoyer à SerdiPay**.
+
+⚠️ Ouvrez aussi les ports 80 et 443 dans le **pare-feu du fournisseur**
+(security group / réseau cloud) : sans cela Let's Encrypt échoue et SerdiPay
+reçoit une erreur TLS.
+
+### Ce qu'il faut alors envoyer à SerdiPay
+
+> Bonjour,
+>
+> Merci pour votre retour. Voici l'**IP serveur fixe** demandée :
+>
+> - **IP fixe** : `<IP_DU_RELAIS>`
+> - **URL de callback** : `https://<HOTE>/functions/v1/serdipay/webhook`
+>   (POST, JSON, signature HMAC-SHA256 du corps brut)
+> - **URL de notre site** : `https://biashara-yangu-app.netlify.app`
+>
+> Nos **appels vers votre API** partent également de cette IP fixe ; ils sont
+> dirigés vers `https://<HOTE>/api`, qui relaie vers votre API officielle.
+>
+> Cette adresse est déjà en production et répond correctement en GET
+> (`{"ok":true,"service":"serdipay","webhook":"actif"}`).
+>
+> Merci de nous confirmer la mise en liste blanche de cette IP, puis de nous
+> communiquer vos identifiants (clé d'API ou OAuth 2.0 `client_id` /
+> `client_secret`), le secret de signature des webhooks avec le nom exact de
+> l'en-tête, ainsi que le format du corps de création de paiement et les codes
+> opérateurs attendus.
+
+### Après réception des clés (2 minutes, dans Supabase)
+
+Dashboard → **Project Settings → Edge Functions → Secrets** :
+
+| Secret | Valeur |
+|---|---|
+| `SERDIPAY_WEBHOOK_SECRET` | le secret fourni par SerdiPay |
+| `SERDIPAY_API_KEY` *(ou)* `SERDIPAY_CLIENT_ID` + `SERDIPAY_CLIENT_SECRET` | leurs identifiants |
+| `SERDIPAY_BASE_URL` | `https://<HOTE>/api` (relais) ou `https://api.serdipay.com` si SerdiPay accepte l'IP directement |
+
+Puis vérifier :
+
+```bash
+curl -s https://pqzcliibocndiyqbyddr.supabase.co/functions/v1/serdipay/ping
+# → "fournisseurConfigure": true
+bash tools/relais_serdipay/verifier_webhook.sh https://<HOTE>/functions/v1/serdipay/webhook
+```
+
 ### Message prêt à envoyer (version 29/10/2026 — site en ligne)
 
 > Bonjour,
