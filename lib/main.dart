@@ -31,6 +31,8 @@ import 'services/activation_service.dart';
 import 'services/notification_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités, phase A).
 import 'services/modules_service.dart';
+// ⚡ MODULE 23 — mode rapide / complet.
+import 'services/mode_application_service.dart';
 // 🪙 MODULE 18 — devises de travail (CDF/USD) et taux de conversion.
 import 'services/devise_service.dart';
 import 'services/permission_service.dart';
@@ -126,6 +128,14 @@ void main() async {
   // Chaque bascule d'espace recharge les modules de la nouvelle activité
   // (best-effort — un échec laisse l'application en mode standard).
   ModulesService.instance.demarrerSurveillance();
+
+  // ⚡ MODULE 23 — MODE RAPIDE / COMPLET : lu avant le premier rendu pour que
+  // l'accueil s'affiche directement dans le bon mode.
+  try {
+    await ModeApplicationService.instance.charger();
+  } catch (e) {
+    debugPrint('Mode d\'application (ignoré) : $e');
+  }
 
   // 🪙 MODULE 18 — DEVISE : la devise appartient à l'entreprise ; chaque
   // bascule d'espace la recharge (et met à jour l'affichage global des

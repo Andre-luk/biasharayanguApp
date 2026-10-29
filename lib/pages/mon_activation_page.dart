@@ -13,6 +13,7 @@
 // reste consultable.
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/activation.dart';
 // 🪙 MODULE 18 — devise de travail et taux de change (équivalences).
@@ -139,6 +140,10 @@ class _MonActivationPageState extends State<MonActivationPage> {
         _carteEtape(etat, colorScheme),
         const SizedBox(height: 12),
         _carteMontants(etat, colorScheme),
+        if (etat.soldeRestant > 0) ...<Widget>[
+          const SizedBox(height: 12),
+          _boutonPaiement(),
+        ],
         const SizedBox(height: 12),
         _carteDates(etat),
         const SizedBox(height: 12),
@@ -149,9 +154,31 @@ class _MonActivationPageState extends State<MonActivationPage> {
   }
 
   // ---------------------------------------------------------------------------
-  // CARTE 1 — ÉTAPE (stepper simplifié + message)
+  // PAIEMENT EN LIGNE (passerelle SerdiPay)
   // ---------------------------------------------------------------------------
 
+  /// Ouvre l'écran de paiement Mobile Money puis rafraîchit le dossier :
+  /// la confirmation réelle vient du webhook SerdiPay, pas de l'écran.
+  Future<void> _ouvrirPaiement() async {
+    await context.push<Object?>('/main/paiement-serdipay');
+    if (!mounted) return;
+    await _charger();
+  }
+
+  Widget _boutonPaiement() {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: _ouvrirPaiement,
+        icon: const Icon(Icons.credit_card_rounded),
+        label: const Text('Payer maintenant (Mobile Money / carte)'),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CARTE 1 — ÉTAPE (stepper simplifié + message)
+  // ---------------------------------------------------------------------------
   Widget _carteEtape(EtatActivation etat, ColorScheme colorScheme) {
     final bool restreint = etat.etape == EtapeActivation.restreint;
     final bool rejete = etat.etape == EtapeActivation.rejete;

@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:biashara_yangu/config/app_version.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 
 class AboutPage extends StatelessWidget {
@@ -22,8 +23,8 @@ class AboutPage extends StatelessWidget {
 
   // ── Identité officielle ────────────────────────────────────────────────────
   static const String appName = 'Biashara Yangu';
-  static const String appVersion = '3.2.0';
-  static const String appBuild = '36';
+  static const String appVersion = AppVersion.numero;
+  static const String appBuild = AppVersion.build;
   static const String editeur = 'Biashara Tech — Lubumbashi, RDC';
   static const String developpeur = 'Biashara Tech';
   static const String developpeurPrincipal = 'Andre Lukengu';
@@ -79,6 +80,12 @@ class AboutPage extends StatelessWidget {
             'Fonctionnalités principales',
             '• Ventes & caisse : panier, scanner, encaissement (espèces, '
             'mobile money, carte, dette), reçus et annulations tracées.\n'
+            '• Scanner : encaisser directement ou continuer le panier.\n'
+            '• Pesée rapide : prix au kilo, poids de la balance, encaissement '
+            'immédiat (boucherie, primeur, poissonnerie).\n'
+            '• Distribution terrain : tournées, dotation par agent, consignes '
+            'de récipients, bonus clients et rapport par agent.\n'
+            '• Mode rapide : nom + prix → vendre, essai de 7 jours immédiat.\n'
             '• Articles, stock et inventaires, avec seuils d\'alerte.\n'
             '• Clients, crédits et relances WhatsApp / SMS.\n'
             '• Dépenses, dettes, clôtures de caisse et suivi financier.\n'

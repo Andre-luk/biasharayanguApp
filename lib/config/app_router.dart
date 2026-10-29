@@ -85,6 +85,7 @@ import 'package:biashara_yangu/pages/niveau_abonnement_form_page.dart';
 import 'package:biashara_yangu/pages/niveau_entreprise_page.dart';
 import 'package:biashara_yangu/pages/niveaux_abonnement_page.dart';
 import 'package:biashara_yangu/pages/paiement_abonnement_page.dart';
+import 'package:biashara_yangu/pages/paiement_serdipay_page.dart';
 
 // ============= MODULE 4 : PERMISSIONS (RÔLES & ACCÈS) =============
 import 'package:biashara_yangu/pages/permissions_role_page.dart';
@@ -132,6 +133,13 @@ import 'package:biashara_yangu/pages/matieres_premieres_page.dart';
 import 'package:biashara_yangu/pages/production_detail_page.dart';
 import 'package:biashara_yangu/pages/production_form_page.dart';
 import 'package:biashara_yangu/pages/productions_page.dart';
+// 🚚 MODULE 23 — distribution terrain : tournées (patron) et ma tournée (agent).
+import 'package:biashara_yangu/models/distribution_terrain.dart';
+import 'package:biashara_yangu/pages/ma_tournee_page.dart';
+import 'package:biashara_yangu/pages/pesee_rapide_page.dart';
+import 'package:biashara_yangu/pages/tournee_detail_page.dart';
+import 'package:biashara_yangu/pages/tournee_form_page.dart';
+import 'package:biashara_yangu/pages/tournees_page.dart';
 
 // ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
 import 'package:biashara_yangu/pages/qr_apercu_page.dart';
@@ -940,6 +948,24 @@ final GoRouter appRouter = GoRouter(
                   builder: (context, state) => const MonActivationPage(),
                 ),
 
+                // 💳 PASSERELLE SERDIPAY — règlement en ligne de
+                // l'abonnement par Mobile Money / carte. Le montant est
+                // calculé par le serveur (jamais transmis par l'app).
+                GoRoute(
+                  path: 'paiement-serdipay',
+                  name: 'paiement-serdipay',
+                  builder: (context, state) {
+                    final Map<String, dynamic>? extra = state.extra is Map
+                        ? Map<String, dynamic>.from(state.extra! as Map)
+                        : null;
+
+                    return PaiementSerdipayPage(
+                      objet: (extra?['objet'] as String?) ?? 'abonnement',
+                      objetId: extra?['objetId'] as String?,
+                    );
+                  },
+                ),
+
                 // 🏢 MODULE 15 — mes entreprises (pack multi-entreprises) :
                 // liste, création et bascule d'entreprise active.
                 GoRoute(
@@ -1148,6 +1174,51 @@ final GoRouter appRouter = GoRouter(
                       ),
                     ),
                   ],
+                ),
+
+                // 🚚 MODULE 23 — DISTRIBUTION TERRAIN.
+                //   • `tournees` : le patron prépare et suit les dotations ;
+                //   • `ma-tournee` : l'agent vend sa dotation, enregistre les
+                //     consignes et les bonus.
+                //   ⚠️ `new` doit être déclaré AVANT `:id` (go_router).
+                GoRoute(
+                  path: 'tournees',
+                  name: 'tournees',
+                  builder: (context, state) => const TourneesPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'tournee-new',
+                      builder: (context, state) => const TourneeFormPage(),
+                    ),
+                    GoRoute(
+                      path: ':id',
+                      name: 'tournee-detail',
+                      builder: (context, state) {
+                        final Object? extra = state.extra;
+                        if (extra is! TourneeDistribution) {
+                          return const Scaffold(
+                            body: Center(
+                              child: Text('Tournée introuvable : revenez à la liste.'),
+                            ),
+                          );
+                        }
+                        return TourneeDetailPage(tournee: extra);
+                      },
+                    ),
+                  ],
+                ),
+                // ⚖️ MODULE 23 — PESÉE RAPIDE : le vendeur saisit le poids
+                // affiché par la balance et encaisse immédiatement.
+                GoRoute(
+                  path: 'pesee',
+                  name: 'pesee-rapide',
+                  builder: (context, state) => const PeseeRapidePage(),
+                ),
+                GoRoute(
+                  path: 'ma-tournee',
+                  name: 'ma-tournee',
+                  builder: (context, state) => const MaTourneePage(),
                 ),
 
                 // � MODULE 19 — MARKETPLACE : la vitrine publique de la

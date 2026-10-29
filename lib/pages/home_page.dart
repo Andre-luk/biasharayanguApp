@@ -24,6 +24,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/config/app_version.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
@@ -52,6 +53,14 @@ import 'package:biashara_yangu/services/devise_service.dart';
 // 🔔 CORRECTIF 78 — chaque écriture (vente, article, stock) prévient ici :
 // le tableau de bord se rafraîchit tout seul, sans quitter l'écran.
 import 'package:biashara_yangu/services/donnees_service.dart';
+// 🚚 MODULE 23 — distribution terrain (compteurs de la carte d'accueil).
+import 'package:biashara_yangu/models/distribution_terrain.dart';
+import 'package:biashara_yangu/services/distribution_service.dart';
+// ⚡ MODULE 23 — mode rapide et vente express.
+import 'package:biashara_yangu/services/mode_application_service.dart';
+// 📊 MODULE 23 — chiffres d'accueil lus sur Supabase (vérité partagée).
+import 'package:biashara_yangu/services/tableau_bord_stats_service.dart';
+import 'package:biashara_yangu/widgets/vente_rapide_sheet.dart';
 import 'package:biashara_yangu/widgets/selecteur_espace.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -87,6 +96,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int dailyVentesCount = 0;
   int produitsCount = 0;
   int _lowStockCount = 0;
+  // 🚚 MODULE 23 — distribution : tournées actives et consignes ouvertes.
+  int _tourneesActives = 0;
+  int _consignesOuvertes = 0;
   // 🧩 MODULE 16 C1 — produits expirés / bientôt périmés (pharmacie).
   int _expirationsCount = 0;
 
@@ -129,6 +141,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Timer? _minuteurRealtime;
   DateTime? _dernierChargementStats;
 
+  /// 🛰️ Filet de sécurité : même si le temps réel est indisponible (réseau,
+  /// publication non activée), les chiffres se rafraîchissent seuls.
+  Timer? _veilleStats;
+
   @override
   void initState() {
     super.initState();
@@ -152,9 +168,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // les totaux se recalculent IMMÉDIATEMENT (sans quitter l'accueil, sans
     // tirer l'écran vers le bas).
     DonneesService.instance.revision.addListener(_onDonneesChange);
+    // ⚡ MODULE 23 — changer de mode (rapide / complet) reconstruit l'accueil.
+    ModeApplicationService.instance.mode.addListener(_onModeChange);
     WidgetsBinding.instance.addObserver(this);
     // L'état a pu évoluer pendant que l'application était fermée.
     AbonnementService.instance.rafraichirSilencieux();
+
+    // 🛰️ Rafraîchissement de secours (60 s) : la vérité ne dépend pas d'un
+    // seul mécanisme. Le temps réel reste la voie rapide.
+    _veilleStats = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (mounted) _loadStats();
+    });
   }
 
   @override
@@ -164,8 +188,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     AbonnementService.instance.acces.removeListener(_onAccesChange);
     DeviseService.instance.etat.removeListener(_onDeviseChange);
     DonneesService.instance.revision.removeListener(_onDonneesChange);
+    ModeApplicationService.instance.mode.removeListener(_onModeChange);
     WidgetsBinding.instance.removeObserver(this);
     _minuteurRealtime?.cancel();
+    _veilleStats?.cancel();
     if (_dashboardChannel != null) {
       Supabase.instance.client.removeChannel(_dashboardChannel!);
     }
@@ -220,6 +246,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _loadStats(force: true);
   }
 
+  /// ⚡ MODULE 23 — le mode d'application a changé : on reconstruit.
+  void _onModeChange() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _initialLoad() async {
     if (mounted) setState(() => _loading = true);
     await _loadUserContext();
@@ -243,18 +274,43 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _startRealtimeDashboard() {
     if (_effectiveOwnerId == null || _dashboardChannel != null) return;
 
+    final String ownerId = _effectiveOwnerId!;
+    final PostgresChangeFilter filtre = PostgresChangeFilter(
+      type: PostgresChangeFilterType.eq,
+      column: 'owner_id',
+      value: ownerId,
+    );
+
     _dashboardChannel = Supabase.instance.client
         .channel('dashboard-updates')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'ventes',
+          filter: filtre,
           callback: (payload) => _planifierRechargementStats(),
         )
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'produits',
+          filter: filtre,
+          callback: (payload) => _planifierRechargementStats(),
+        )
+        // 🚚 MODULE 23 — une tournée préparée / clôturée, une consigne ou un
+        // bonus change les cartes de distribution de TOUS les téléphones.
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'tournees',
+          filter: filtre,
+          callback: (payload) => _planifierRechargementStats(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'consignes',
+          filter: filtre,
           callback: (payload) => _planifierRechargementStats(),
         )
         .subscribe();
@@ -487,13 +543,43 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       if (!mounted) return;
 
+      // 🚚 MODULE 23 — compteurs de distribution (tournées actives et
+      // consignes ouvertes). Best-effort : un échec laisse les zéros.
+      CompteursDistribution distribution = CompteursDistribution.vide;
+      if (PermissionService.instance.peutVoir(PageAccess.distribution)) {
+        try {
+          distribution = await DistributionService.instance.compteurs();
+        } catch (e) {
+          debugPrint('HomePage distribution (ignoré) : $e');
+        }
+      }
+
+      // 📊 MODULE 23 — les chiffres de vente viennent du SERVEUR : ce que voit
+      // le patron est exactement ce que voient ses collaborateurs, même si la
+      // vente a été faite sur un autre téléphone. Repli local si le réseau
+      // manque (jamais un écran vide).
+      StatsAccueil? serveur;
+      try {
+        serveur = await TableauBordStatsService.instance.charger();
+      } catch (e) {
+        debugPrint('HomePage stats serveur (ignoré) : $e');
+      }
+
+      if (!mounted) return;
+
       setState(() {
-        overallTotalVentesAmount = (results[0] as num?)?.toDouble() ?? 0.0;
-        dailyTotalVentesAmount = (results[1] as num?)?.toDouble() ?? 0.0;
-        overallVentesCount = results[2] as int;
-        dailyVentesCount = results[3] as int;
-        produitsCount = results[4] as int;
-        _lowStockCount = results[5] as int;
+        overallTotalVentesAmount =
+            serveur?.caTotal ?? (results[0] as num?)?.toDouble() ?? 0.0;
+        dailyTotalVentesAmount =
+            serveur?.caJour ?? (results[1] as num?)?.toDouble() ?? 0.0;
+        overallVentesCount =
+            serveur?.ventesTotal ?? results[2] as int;
+        dailyVentesCount =
+            serveur != null ? serveur.ventesJour : results[3] as int;
+        produitsCount = serveur?.produits ?? results[4] as int;
+        _lowStockCount = serveur?.stockAlertes ?? results[5] as int;
+        _tourneesActives = distribution.tourneesActives;
+        _consignesOuvertes = distribution.consignesOuvertes;
         _expirationsCount = expirations;
         _chambresTotal = chambresTotal;
         _chambresOccupees = chambresOccupees;
@@ -709,7 +795,40 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     final List<Widget> actions = <Widget>[];
 
-    if (ventesActives) {
+    // ⚡ MODULE 23 — MODE RAPIDE : deux gestes seulement.
+    if (ModeApplicationService.instance.rapide &&
+        permissions.peut(PageAccess.caisse, ActionAccess.creer)) {
+      actions.add(
+        _ActionRapide(
+          libelle: 'Vendre vite',
+          icone: Icons.bolt_rounded,
+          degrade: AppDegrades.accent,
+          couleurTexte: Colors.white,
+          verrouille: verrouille,
+          onTap: () {
+            if (verrouille) {
+              _navTo('/main/new-sale');
+              return;
+            }
+            ouvrirVenteRapide(context);
+          },
+        ),
+      );
+
+      if (permissions.peutVoir(PageAccess.maTournee)) {
+        actions.add(
+          _ActionRapide(
+            libelle: 'Ma tournée',
+            icone: Icons.delivery_dining_rounded,
+            couleur: theme.colorScheme.surface,
+            couleurTexte: theme.colorScheme.primary,
+            bordure: theme.colorScheme.outlineVariant,
+            verrouille: verrouille,
+            onTap: () => _navTo('/main/ma-tournee'),
+          ),
+        );
+      }
+    } else if (ventesActives) {
       // ⚠️ L'écran de vente est protégé par `caisse` + `créer` (module 10).
       if (permissions.peut(PageAccess.caisse, ActionAccess.creer)) {
         actions.add(
@@ -759,30 +878,176 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
     }
 
+    // ⚖️ Pesée rapide (boucherie, primeur…) : un raccourci direct pour les
+    // boutiques qui vendent au poids.
+    if (ModulesService.instance.moduleActif(ModuleCode.pesee) &&
+        permissions.peut(PageAccess.caisse, ActionAccess.creer)) {
+      actions.add(
+        _ActionRapide(
+          libelle: 'Pesée',
+          icone: Icons.scale_rounded,
+          couleur: theme.colorScheme.surface,
+          couleurTexte: theme.colorScheme.primary,
+          bordure: theme.colorScheme.outlineVariant,
+          verrouille: verrouille,
+          onTap: () => _navTo('/main/pesee'),
+        ),
+      );
+    }
+
     if (actions.isEmpty) return const SizedBox.shrink();
 
-    return Row(
-      children: <Widget>[
-        for (int i = 0; i < actions.length; i++) ...<Widget>[
-          if (i > 0) const SizedBox(width: 12),
-          Expanded(child: actions[i]),
+    // 1 ou 2 actions : une ligne. 3 actions (vente + scanner + pesée) : deux
+    // colonnes, sinon les libellés deviennent illisibles sur un téléphone.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints contraintes) {
+        if (actions.length <= 2) {
+          return Row(
+            children: <Widget>[
+              for (int i = 0; i < actions.length; i++) ...<Widget>[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(child: actions[i]),
+              ],
+            ],
+          );
+        }
+
+        const double gouttiere = 12;
+        final double largeur = (contraintes.maxWidth - gouttiere) / 2;
+        return Wrap(
+          spacing: gouttiere,
+          runSpacing: gouttiere,
+          children: actions
+              .map((Widget action) => SizedBox(width: largeur, child: action))
+              .toList(growable: false),
+        );
+      },
+    );
+  }
+
+  /// ⚡ MODULE 23 — ACCUEIL SIMPLE (mode rapide).
+  ///
+  /// Trois éléments, pas un de plus : vendre, voir ses produits, ajouter un
+  /// produit. Les statistiques, la finance et les réglages avancés restent
+  /// accessibles par la barre de navigation et les Paramètres.
+  Widget _buildBandeauModeRapide() {
+    final ThemeData theme = Theme.of(context);
+    final PermissionService permissions = PermissionService.instance;
+    final bool verrouille = AbonnementService.instance.operationsVerrouillees;
+    final bool peutAjouter = permissions.peut(
+      PageAccess.articles,
+      ActionAccess.creer,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              const Icon(Icons.bolt_rounded, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Mode rapide',
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => ModeApplicationService.instance.basculer(),
+                child: const Text('Mode complet'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Vendez en un geste. Ajoutez un produit avec son nom et son prix, '
+            'c\'est tout.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _navTo('/main/articles'),
+                  icon: const Icon(Icons.inventory_2_rounded, size: 18),
+                  label: const Text('Mes produits'),
+                ),
+              ),
+              if (peutAjouter) ...<Widget>[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: verrouille
+                        ? null
+                        : () => _navTo('/main/articles/new'),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Ajouter'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          // 🚚 La distribution reste joignable même en mode rapide : un
+          // livreur d'eau minérale vit de ses tournées.
+          if (permissions.peutVoir(PageAccess.distribution)) ...<Widget>[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: verrouille ? null : () => _navTo('/main/tournees'),
+              icon: const Icon(Icons.local_shipping_rounded, size: 18),
+              label: const Text('Tournées & distribution'),
+            ),
+          ],
+          // ⚖️ Une boucherie en mode rapide pèse et encaisse ici.
+          if (ModulesService.instance.moduleActif(ModuleCode.pesee) &&
+              permissions.peut(PageAccess.caisse, ActionAccess.creer)) ...<Widget>[
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: verrouille ? null : () => _navTo('/main/pesee'),
+              icon: const Icon(Icons.scale_rounded, size: 18),
+              label: const Text('Pesée à la balance'),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
   Widget _buildSectionStatistiques(AppLocalizations T) {
     // 🧩 MODULE 16 (phase B) — GRILLE CONSTRUITE DEPUIS LES MODULES :
     //   cartes visibles = registre des cartes ∩ modules de l'activité ∩
-    //   permissions du rôle. Un hôtel ne verra pas les cartes d'une
-    //   boutique ; le vendeur ne verra que ses écrans.
-    //   Fail-open : profil non chargé/vide → toutes les cartes du rôle
-    //   (comportement historique — zéro régression).
+    //   permissions du rôle. Fail-open : profil non chargé/vide → toutes
+    //   les cartes du rôle (comportement historique).
     final List<CarteAccueil> cartes = CarteAccueil.visibles(
       modules: ModulesService.instance.modules.value,
       profilCharge: ModulesService.instance.charge,
       autorise: PermissionService.instance.peut,
     );
+
+    // ⚡ MODULE 23 — MODE RAPIDE : on ne garde que l'essentiel (produits,
+    // ventes, tournée). Les écrans avancés restent accessibles par les menus
+    // et les permissions ; ils ne sont pas bloqués.
+    final List<CarteAccueil> cartesAffichees =
+        ModeApplicationService.instance.rapide
+            ? cartes
+                .where((CarteAccueil c) => const <String>{
+                      'produits',
+                      'ventes',
+                      'tournees',
+                      'consignes',
+                      'ma-tournee',
+                    }.contains(c.id))
+                .toList(growable: false)
+            : cartes;
     final DonneesAccueil donnees = DonneesAccueil(
       produitsCount: produitsCount,
       stockAlertes: _lowStockCount,
@@ -804,12 +1069,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       matieresTotal: _matieresTotal,
       matieresAlerte: _matieresAlerte,
       productionsJour: _productionsJour,
+      tourneesActives: _tourneesActives,
+      consignesOuvertes: _consignesOuvertes,
     );
     final ThemeData theme = Theme.of(context);
     final double largeurEcran = MediaQuery.sizeOf(context).width;
 
     // Aucune carte pour ce rôle/activité : la section disparaît.
-    if (cartes.isEmpty) return const SizedBox.shrink();
+    if (cartesAffichees.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -850,7 +1117,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           childAspectRatio:
               MiseEnPageAdaptative.proportionCarte(context, 1.28),
           children: [
-            for (final CarteAccueil carte in cartes)
+            for (final CarteAccueil carte in cartesAffichees)
               _CarteStat(
                 titre: carte.titre(T),
                 valeur: carte.valeur(donnees, T),
@@ -1021,7 +1288,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     delai: 1,
                     child: _buildActionsRapides(T),
                   ),
-                  if (!_isCollaborator) ...[
+                  if (ModeApplicationService.instance.rapide) ...[
+                    const SizedBox(height: 16),
+                    _Apparition(
+                      delai: 2,
+                      child: _buildBandeauModeRapide(),
+                    ),
+                  ] else if (!_isCollaborator) ...[
                     const SizedBox(height: 28),
                     _Apparition(
                       delai: 2,
@@ -1033,6 +1306,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       child: _buildActionsSecondaires(T),
                     ),
                   ],
+                  const SizedBox(height: 24),
+                  Center(
+                    child: Text(
+                      AppVersion.libelle,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant
+                                .withValues(alpha: 0.6),
+                          ),
+                    ),
+                  ),
                 ],
               ),
       ),

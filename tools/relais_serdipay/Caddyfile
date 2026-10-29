@@ -1,0 +1,48 @@
+# Relais à IP fixe pour les webhooks SerdiPay (entrant)
+#
+# Rôle : SerdiPay n'appelle QUE l'IP publique de ce VPS. Caddy termine le TLS
+# et transmet la requête telle quelle (corps BRUT préservé : indispensable au
+# HMAC) vers l'Edge Function Supabase.
+#
+# ⚠️ Le relais ne laisse passer QUE /functions/v1/serdipay/* : tout le reste
+# renvoie 404. Un relais ouvert reviendrait à exposer toute l'API Supabase.
+#
+# Installation :
+#   sudo apt install -y caddy
+#   sudo cp Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# DNS à créer avant : paiements.biasharayangu.cd.  A  <IP_DU_VPS>
+
+paiements.biasharayangu.cd {
+	# Pas de compression : elle réécrirait le corps et casserait la signature.
+	encode text/plain
+
+	@serdipay path /functions/v1/serdipay/*
+	handle @serdipay {
+		reverse_proxy https://pqzcliibocndiyqbyddr.supabase.co {
+			# Supabase route sur le Host : il DOIT rester celui du projet.
+			header_up Host pqzcliibocndiyqbyddr.supabase.co
+			# On transmet l'IP réelle de SerdiPay (utile dans les logs Supabase).
+			header_up X-Forwarded-For {remote_host}
+			# Délai court : un webhook ne doit jamais bloquer 1 minute.
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 15s
+			}
+		}
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+
+	# Journaux SANS corps de requête (aucune donnée de paiement sur disque).
+	log {
+		output file /var/log/caddy/serdipay-access.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+		format console
+	}
+}

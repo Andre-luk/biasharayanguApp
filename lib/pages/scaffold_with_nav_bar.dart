@@ -6,6 +6,7 @@ import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -84,11 +85,14 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     // (réseau) : dès qu'il est chargé, la barre se reconstruit et les onglets
     // hors activité disparaissent.
     ModulesService.instance.modules.addListener(_onModulesChange);
+    // ⚡ MODULE 23 — le mode rapide réduit la barre à l'essentiel.
+    ModeApplicationService.instance.mode.addListener(_onModulesChange);
   }
 
   @override
   void dispose() {
     ModulesService.instance.modules.removeListener(_onModulesChange);
+    ModeApplicationService.instance.mode.removeListener(_onModulesChange);
     super.dispose();
   }
 
@@ -138,6 +142,11 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
             branche.pages.any((PageAccess page) => permissions.peutVoir(page)) &&
             (branche.activite == null ||
                 branche.activite!(modules, profilCharge)))
+        // ⚡ MODE RAPIDE : pas d'onglets Rapports ni Stock. Le vendeur garde
+        // Accueil + Paramètres, et « Mes produits » depuis l'accueil.
+        .where((_BrancheNav branche) =>
+            !ModeApplicationService.instance.rapide ||
+            (branche.index != 1 && branche.index != 2))
         .toList(growable: false);
 
     return visibles.isEmpty
@@ -171,8 +180,19 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
 
     // ⚠️ L'index affiché est la POSITION dans la liste filtrée, pas l'index de
     // la branche : les deux se confondent uniquement quand rien n'est masqué.
-    final int positionCourante =
-        visibles.indexWhere((_BrancheNav b) => b.index == widget.navigationShell.currentIndex);
+    int positionCourante = visibles.indexWhere(
+        (_BrancheNav b) => b.index == widget.navigationShell.currentIndex);
+
+    // ⚡ MODE RAPIDE — si l'onglet courant vient d'être masqué (Rapports,
+    // Stock), on revient à l'accueil. Sinon `selectedIndex` vaudrait -1 et la
+    // NavigationBar planterait.
+    if (positionCourante < 0) {
+      positionCourante = 0;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        widget.navigationShell.goBranch(visibles.first.index);
+      });
+    }
 
     // Icônes sélectionné / non sélectionné : la barre est plus vivante.
     final List<NavigationDestination> destinations = visibles

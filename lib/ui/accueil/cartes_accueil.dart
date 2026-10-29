@@ -45,6 +45,8 @@ class DonneesAccueil {
     this.matieresTotal = 0,
     this.matieresAlerte = 0,
     this.productionsJour = 0,
+    this.tourneesActives = 0,
+    this.consignesOuvertes = 0,
   });
 
   /// Nombre d'articles au catalogue.
@@ -107,6 +109,12 @@ class DonneesAccueil {
 
   /// 🥖 productions terminées aujourd'hui.
   final int productionsJour;
+
+  /// 🚚 MODULE 23 — tournées préparées ou en cours.
+  final int tourneesActives;
+
+  /// 🚚 récipients de l'entreprise encore chez des clients.
+  final int consignesOuvertes;
 }
 
 /// Une carte du tableau de bord d'accueil.
@@ -154,7 +162,45 @@ class CarteAccueil {
   // ---------------------------------------------------------------------------
 
   static final List<CarteAccueil> registre = <CarteAccueil>[
-    // 🗂️ MODULE 5 — produits (catalogue + conditionnements).
+    // � MODULE 23 — distribution terrain (cartes transverses, sans module :
+    // elles restent utiles à toute activité qui livre).
+    CarteAccueil(
+      id: 'tournees',
+      module: ModuleCode.ventes,
+      page: PageAccess.distribution,
+      priorite: 22,
+      titre: (AppLocalizations T) => 'Tournées',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          '${d.tourneesActives}',
+      icone: Icons.local_shipping_rounded,
+      couleur: const Color(0xFF0F766E),
+      route: '/main/tournees',
+    ),
+    CarteAccueil(
+      id: 'consignes',
+      module: ModuleCode.ventes,
+      page: PageAccess.distribution,
+      priorite: 24,
+      titre: (AppLocalizations T) => 'Consignes clients',
+      valeur: (DonneesAccueil d, AppLocalizations T) =>
+          d.consignesOuvertes == 0 ? 'À jour' : '${d.consignesOuvertes}',
+      icone: Icons.inventory_2_rounded,
+      couleur: const Color(0xFFB45309),
+      route: '/main/tournees',
+      alerte: (DonneesAccueil d) => d.consignesOuvertes > 0,
+    ),
+    CarteAccueil(
+      id: 'ma-tournee',
+      module: ModuleCode.ventes,
+      page: PageAccess.maTournee,
+      priorite: 23,
+      titre: (AppLocalizations T) => 'Ma tournée',
+      valeur: (DonneesAccueil d, AppLocalizations T) => 'Ouvrir',
+      icone: Icons.delivery_dining_rounded,
+      couleur: const Color(0xFF9333EA),
+      route: '/main/ma-tournee',
+    ),
+    // �🗂️ MODULE 5 — produits (catalogue + conditionnements).
     CarteAccueil(
       id: 'produits',
       module: ModuleCode.produits,

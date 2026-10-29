@@ -47,6 +47,12 @@ class Article {
   /// caisse propose la saisie du poids (0,75 kg, pas de 0,5 kg).
   final bool vendableAuPoids;
 
+  /// ⚡ MODULE 23 — MODE RAPIDE : le stock n'est pas suivi.
+  ///
+  /// L'article se vend sans contrôle de quantité ; les écrans de stock
+  /// l'affichent « ∞ » et ne le comptent pas dans les alertes de rupture.
+  final bool stockIllimite;
+
   /// 👕 MODULE 16 C8 (mode) — variantes simples : {taille, couleur,
   /// marque…} (objet JSON libre, vide si aucune).
   final Map<String, String> attributs;
@@ -74,6 +80,7 @@ class Article {
     this.lotNumero,
     this.dateExpiration,
     this.vendableAuPoids = false,
+    this.stockIllimite = false,
     this.attributs = const <String, String>{},
     this.ownerId,
     this.createdAt,
@@ -100,6 +107,7 @@ class Article {
       lotNumero: parseStringOrNull(map['lot_numero']),
       dateExpiration: parseDateTimeOrNull(map['date_expiration']),
       vendableAuPoids: map['vendable_au_poids'] == true,
+      stockIllimite: map['stock_illimite'] == true,
       attributs: _attributsDepuisJson(map['attributs']),
       ownerId: parseStringOrNull(map['owner_id']),
       createdAt: parseDateTimeOrNull(map['created_at']),
@@ -127,6 +135,9 @@ class Article {
           dateExpiration == null ? null : _isoJour(dateExpiration!),
       // 🥩 MODULE 16 C6 — vente au poids (boucherie).
       'vendable_au_poids': vendableAuPoids,
+      // ⚡ MODULE 23 — stock non suivi (mode rapide). La clé n'est envoyée
+      //  que si elle est vraie : une base non migrée continue de fonctionner.
+      if (stockIllimite) 'stock_illimite': true,
       // 👕 MODULE 16 C8 — variantes (mode).
       'attributs': attributs,
     };
@@ -154,6 +165,7 @@ class Article {
     String? lotNumero,
     DateTime? dateExpiration,
     bool? vendableAuPoids,
+    bool? stockIllimite,
     Map<String, String>? attributs,
     String? ownerId,
     DateTime? createdAt,
@@ -175,6 +187,7 @@ class Article {
       lotNumero: lotNumero ?? this.lotNumero,
       dateExpiration: dateExpiration ?? this.dateExpiration,
       vendableAuPoids: vendableAuPoids ?? this.vendableAuPoids,
+      stockIllimite: stockIllimite ?? this.stockIllimite,
       attributs: attributs ?? this.attributs,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
@@ -187,10 +200,17 @@ class Article {
   int get nombreConditionnements => conditionnements.length;
 
   /// Statut d'alerte du stock (Module 9) : OK / Faible / Rupture.
-  StatutStock get statutStock => StatutStock.depuisStock(
-        quantite: quantite,
-        seuilAlerte: seuilAlerte,
-      );
+  ///
+  /// ⚡ MODE RAPIDE — un article à stock non suivi n'est JAMAIS en alerte.
+  StatutStock get statutStock => stockIllimite
+      ? StatutStock.ok
+      : StatutStock.depuisStock(
+          quantite: quantite,
+          seuilAlerte: seuilAlerte,
+        );
+
+  /// Quantité affichable : « ∞ » pour un article du mode rapide.
+  String get stockAffiche => stockIllimite ? '∞' : '${quantite.round()}';
 
   /// 🧩 MODULE 16 C1 (pharmacie) — statut d'expiration (`null` si l'article
   /// n'a pas de date de péremption).

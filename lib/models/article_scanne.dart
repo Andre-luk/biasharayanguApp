@@ -27,6 +27,7 @@ class ArticleScanne {
     this.conditionnement,
     this.idServeurEnAttente = false,
     this.produitIdLocal,
+    this.poidsImpose,
   });
 
   /// Article de base, relu dans `public.produits`.
@@ -48,6 +49,22 @@ class ArticleScanne {
   /// Les deux doivent donc voyager ensemble : sans [produitIdLocal],
   /// l'enregistrement local répond « Produit ID 503 introuvable ».
   final int? produitIdLocal;
+
+  /// ⚖️ MODULE 23 — POIDS LU SUR L'ÉTIQUETTE DE LA BALANCE (`BAL:id:grammes`).
+  ///
+  /// `null` = pas de pesée dans le code : le vendeur saisit le poids.
+  final double? poidsImpose;
+
+  /// Copie avec un poids imposé par l'étiquette de la balance.
+  ArticleScanne avecPoids(double poids) {
+    return ArticleScanne(
+      article: article,
+      conditionnement: conditionnement,
+      idServeurEnAttente: idServeurEnAttente,
+      produitIdLocal: produitIdLocal,
+      poidsImpose: poids,
+    );
+  }
 
   /// Construit l'article scanné depuis la copie locale (SQLite) d'un produit.
   ///

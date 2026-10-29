@@ -14,7 +14,9 @@ import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
+import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/invoice_service.dart';
 import 'package:biashara_yangu/services/vente_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -33,10 +35,34 @@ class VenteConfirmationPage extends StatefulWidget {
 class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
   String _nomBoutique = 'Biashara Yangu';
 
+  /// 🚚 MODULE 23 — stock restant APRÈS la vente, relu dans la base.
+  /// Clé = produit, valeur = quantité restante (`null` = inconnu).
+  final Map<int, double> _stockRestant = <int, double>{};
+  final Set<int> _stockIllimite = <int>{};
+
   @override
   void initState() {
     super.initState();
     _chargerNomBoutique();
+    _chargerStockRestant();
+  }
+
+  /// 🔎 TRADABILITÉ (exigence du module 23) : après chaque vente, le vendeur
+  /// voit le nombre d'unités RESTANTES de chaque produit vendu.
+  Future<void> _chargerStockRestant() async {
+    for (final LigneVenteEnregistree ligne in widget.vente.lignes) {
+      try {
+        final Article? article =
+            await ArticleService.instance.getArticleById(ligne.produitId);
+        if (!mounted || article == null) continue;
+        setState(() {
+          _stockRestant[ligne.produitId] = article.quantite;
+          if (article.stockIllimite) _stockIllimite.add(ligne.produitId);
+        });
+      } catch (e) {
+        debugPrint('VenteConfirmationPage stock restant (ignoré) : $e');
+      }
+    }
   }
 
   /// Nom affiché sur le ticket : celui du patron de la boutique.
@@ -298,6 +324,20 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                // 🚚 MODULE 23 — traçabilité : stock restant après la vente.
+                if (_stockRestant.containsKey(ligne.produitId))
+                  Text(
+                    _stockIllimite.contains(ligne.produitId)
+                        ? 'Stock restant : ∞ (non suivi)'
+                        : 'Stock restant : '
+                            '${_nombreTexte(_stockRestant[ligne.produitId]!)} '
+                            '${ligne.unite}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
               ],
             ),
           ),

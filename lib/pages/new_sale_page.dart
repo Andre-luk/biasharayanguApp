@@ -46,6 +46,10 @@ class _NewSalePageState extends State<NewSalePage> {
 
   RealtimeChannel? _productsChannel;
 
+  /// 🔔 MODULE 23 — regroupe les salves d'évènements (temps réel + écritures
+  /// locales) pour ne recharger qu'une fois.
+  Timer? _antiRebond;
+
   List<Produit> produits = [];
   List<Client> clients = [];
   Client? selectedClient;
@@ -79,12 +83,17 @@ class _NewSalePageState extends State<NewSalePage> {
     // Le scanner vendeur remplit le même panier : on se rafraîchit à chaque
     // modification (badge, total, quantités…).
     _panier.revision.addListener(_onPanierModifie);
+    // 🔔 MODULE 23 — un article créé/modifié ailleurs (autre téléphone, web)
+    // doit apparaître ICI sans quitter l'écran.
+    DonneesService.instance.revision.addListener(_planifierRechargement);
     _initializeData();
   }
 
   @override
   void dispose() {
     _panier.revision.removeListener(_onPanierModifie);
+    DonneesService.instance.revision.removeListener(_planifierRechargement);
+    _antiRebond?.cancel();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _quantityController.dispose();
@@ -110,25 +119,91 @@ class _NewSalePageState extends State<NewSalePage> {
   }
 
   void _startRealtimeListener() {
+    final String ownerId = _effectiveOwnerId ?? '';
+    if (ownerId.isEmpty || _productsChannel != null) return;
+
     final supabase = Supabase.instance.client;
 
     _productsChannel = supabase
-        .channel('new-sale-products')
+        .channel('new-sale-products-$ownerId')
         .onPostgresChanges(
       event: PostgresChangeEvent.all,
       schema: 'public',
       table: 'produits',
+      filter: PostgresChangeFilter(
+        type: PostgresChangeFilterType.eq,
+        column: 'owner_id',
+        value: ownerId,
+      ),
       callback: (payload) {
-        if (!mounted) return;
-        _reloadData(showLoading: false, syncBeforeLoad: false);
+        // 🔔 MODULE 23 — l'évènement vient du serveur : on resynchronise la
+        // copie locale avant de relire (c'était le chaînon manquant :
+        // l'écoute existait mais relisait un cache SQLite jamais mis à jour).
+        _planifierRechargement();
       },
     )
         .subscribe();
   }
 
+  /// Recharge la caisse après une salve d'évènements (600 ms).
+  void _planifierRechargement() {
+    _antiRebond?.cancel();
+    _antiRebond = Timer(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      _reloadData(showLoading: false, syncBeforeLoad: true);
+    });
+  }
+
+  bool _syncProduitsEnCours = false;
+
+  /// ⚡ MODULE 23 — SYNCHRONISATION CIBLÉE DES PRODUITS.
+  ///
+  /// Avant : `syncAll()` téléchargeait TOUTES les tables à chaque produit
+  /// modifié. C'était la cause principale de la lenteur de la caisse.
+  /// Ici, une seule requête (produits + conditionnements) est envoyée, puis
+  /// la copie locale est mise à jour. La vente reste utilisable hors ligne.
+  Future<void> _synchroniserProduits() async {
+    if (_syncProduitsEnCours) return;
+    _syncProduitsEnCours = true;
+    try {
+      final List<Article> articles =
+          await ArticleService.instance.getArticles();
+      // Écriture par lots : un seul aller-retour SQLite par paquet de 40.
+      for (int debut = 0; debut < articles.length; debut += 40) {
+        final int fin = (debut + 40 < articles.length)
+            ? debut + 40
+            : articles.length;
+        await Future.wait(
+          articles.sublist(debut, fin).map(
+                (Article a) => DBHelper.instance.upsertProduitFromSupabase(
+                  Produit(
+                    nom: a.nom,
+                    categorie: a.categorie,
+                    prixAchat: a.prixAchat,
+                    prixVente: a.prixVente,
+                    quantite: a.quantite,
+                    uniteMesure: a.uniteMesure,
+                    photo: a.photo,
+                    createdAt: a.createdAt?.toIso8601String(),
+                    updatedAt: a.updatedAt?.toIso8601String(),
+                    ownerId: a.ownerId,
+                    supabaseId: '${a.id}',
+                    isSynced: 1,
+                  ),
+                ),
+              ),
+        );
+      }
+    } catch (e) {
+      debugPrint('NewSalePage : synchronisation produits ignorée ($e)');
+    } finally {
+      _syncProduitsEnCours = false;
+    }
+  }
+
   Future<void> _initializeData() async {
-    _startRealtimeListener();
     await _reloadData(showLoading: true, syncBeforeLoad: true);
+    _startRealtimeListener();
   }
 
   Future<void> _reloadData({
@@ -153,17 +228,16 @@ class _NewSalePageState extends State<NewSalePage> {
         return;
       }
 
-      _effectiveOwnerId =
-      await DBHelper.instance.resolveEffectiveOwnerId(_currentUserId!);
+      // Le propriétaire ne change pas pendant la vie de l'écran : on le
+      // résout UNE fois (chaque résolution interroge SQLite et parfois le
+      // réseau — inutile de la refaire à chaque évènement temps réel).
+      _effectiveOwnerId ??=
+          await DBHelper.instance.resolveEffectiveOwnerId(_currentUserId!);
 
       final ownerId = _effectiveOwnerId ?? _currentUserId!;
 
       if (syncBeforeLoad) {
-        try {
-          await SyncService.instance.syncAll();
-        } catch (e) {
-          debugPrint('⚠️ Sync initiale ignorée: $e');
-        }
+        await _synchroniserProduits();
       }
 
       final data = await Future.wait([
@@ -185,6 +259,10 @@ class _NewSalePageState extends State<NewSalePage> {
       if (!_productsController.isClosed) {
         _productsController.add(loadedProducts);
       }
+
+      // L'écoute temps réel ne démarre qu'une fois le propriétaire connu :
+      // elle est filtrée sur SA boutique (pas les évènements de tout le pays).
+      if (mounted) _startRealtimeListener();
     } catch (e) {
       debugPrint('Erreur chargement new sale: $e');
       if (!mounted) return;

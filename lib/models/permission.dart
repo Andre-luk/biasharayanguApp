@@ -295,6 +295,13 @@ enum PageAccess {
   // 🥖 MODULE 16 C5 — BOULANGERIE : matières premières et productions.
   production('production', 'Production', [EspaceApplication.entreprise],
       alias: ['boulangerie', 'atelier', 'fabrication']),
+  // 🚚 MODULE 23 — DISTRIBUTION TERRAIN : le patron prépare les tournées et
+  // consulte le rapport par agent ; l'agent voit SA dotation.
+  distribution('distribution', 'Tournées & distribution',
+      [EspaceApplication.entreprise],
+      alias: ['tournees', 'tournee', 'livraisons', 'agents_terrain']),
+  maTournee('ma_tournee', 'Ma tournée', [EspaceApplication.entreprise],
+      alias: ['ma_tournee_agent', 'tournee_agent', 'livreur']),
   // 🛒 MODULE 19 — MARKETPLACE LOCAL GÉOLOCALISÉ.
   //  • `publications` : quels articles de la boutique apparaissent dans le
   //    catalogue public (et la vitrine : position, horaires, contacts) ;

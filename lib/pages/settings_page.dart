@@ -10,6 +10,7 @@ import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/audit_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
@@ -84,6 +85,9 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _notifRapport = true;
   int _notifHeureMinutes = NotificationService.heureRapportParDefaut;
 
+  // ⚡ MODULE 23 — MODE RAPIDE (nom + prix → vendre).
+  bool _modeRapide = false;
+
   /// 🧮 CORRECTIF 72 — délai d'alerte de péremption de la boutique.
   ///
   /// `null` tant qu'il n'a pas été lu : la tuile affiche alors un libellé
@@ -101,6 +105,14 @@ class _SettingsPageState extends State<SettingsPage> {
     _notifVentes = NotificationService.instance.ventesActives;
     _notifRapport = NotificationService.instance.rapportActif;
     _notifHeureMinutes = NotificationService.instance.heureRapportMinutes;
+    // ⚡ MODULE 23 — le mode enregistré sur cet appareil.
+    ModeApplicationService.instance.charger().then((_) {
+      if (mounted) {
+        setState(() {
+          _modeRapide = ModeApplicationService.instance.rapide;
+        });
+      }
+    });
   }
 
   Future<void> _chargerDelaiPeremption() async {
@@ -639,6 +651,28 @@ class _SettingsPageState extends State<SettingsPage> {
                 titre: T.settingsAboutTitle,
                 sousTitre: T.aboutAppDescription,
                 onTap: () => context.pushNamed('about'),
+              ),
+            ],
+          ),
+
+          // ⚡ MODULE 23 — MODE RAPIDE : nom + prix → vendre. Les écrans
+          // avancés sont masqués (jamais bloqués) tant que le mode est actif.
+          _SectionParametres(
+            titre: 'Mode d\'utilisation',
+            tuiles: <Widget>[
+              SwitchListTile(
+                secondary: const Icon(Icons.bolt_rounded),
+                title: const Text('Mode rapide'),
+                subtitle: const Text(
+                    'Ajouter un produit avec un nom et un prix, puis vendre. '
+                    'Les écrans avancés sont masqués.'),
+                value: _modeRapide,
+                onChanged: (bool actif) async {
+                  await ModeApplicationService.instance.definir(
+                    actif ? ModeApplication.rapide : ModeApplication.complet,
+                  );
+                  if (mounted) setState(() => _modeRapide = actif);
+                },
               ),
             ],
           ),

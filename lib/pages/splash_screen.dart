@@ -13,6 +13,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'package:biashara_yangu/config/app_version.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 
@@ -144,7 +145,7 @@ class _SplashScreenState extends State<SplashScreen>
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 28),
                 child: Text(
-                  'Biashara Yangu Mobile • v1.0.0',
+                  AppVersion.mention,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant
                         .withValues(alpha: 0.8),

@@ -283,6 +283,93 @@ class VenteService {
     return vente;
   }
 
+  /// ⚡ MODULE 23 — VENTE EXPRESS (mode rapide).
+  ///
+  /// Une seule ligne, un seul appel : le produit est vendu à l'unité de base.
+  /// Le panier partagé n'est PAS utilisé (le vendeur de rue ne compose pas de
+  /// panier). Toutes les garanties du serveur restent en place : prix relu en
+  /// base, stock, caisse, numéro de vente et journal.
+  Future<VenteEnregistree> venteRapide({
+    required int produitId,
+    double quantite = 1,
+    String modePaiement = 'especes',
+    double? montantRecu,
+  }) async {
+    if (produitId <= 0 || quantite <= 0) {
+      throw const VenteServiceException(
+        'Quantité invalide : indiquez au moins une unité.',
+        type: TypeErreurVente.validation,
+      );
+    }
+    if (AbonnementService.instance.lectureSeule) {
+      throw const VenteServiceException(
+        'L\'abonnement de votre entreprise est échu : les ventes sont '
+        'bloquées jusqu\'au renouvellement.',
+        type: TypeErreurVente.abonnement,
+      );
+    }
+    if (!PermissionService.instance
+        .peut(PageAccess.caisse, ActionAccess.creer)) {
+      throw const VenteServiceException(
+        'Votre rôle ne permet pas d\'encaisser une vente.',
+        type: TypeErreurVente.droits,
+      );
+    }
+
+    final List<Map<String, dynamic>> payload = <Map<String, dynamic>>[
+      <String, dynamic>{
+        'produit_id': produitId,
+        'quantite': quantite,
+        'quantite_vendue': quantite,
+      },
+    ];
+
+    dynamic reponse;
+    try {
+      reponse = await _client.rpc(
+        'rpc_vente_valider',
+        params: <String, dynamic>{
+          'p_lignes': payload,
+          'p_mode_paiement': modePaiement,
+          'p_montant_recu': montantRecu,
+          'p_numero_transaction': null,
+          'p_client_id': null,
+        },
+      );
+    } on PostgrestException catch (e) {
+      throw VenteServiceException(
+        messageErreur(e.message),
+        type: _typeDepuisMessage(e.message),
+      );
+    } catch (e) {
+      debugPrint('VenteService.venteRapide : $e');
+      throw const VenteServiceException(
+        'Connexion impossible : vérifiez votre réseau puis réessayez.',
+        type: TypeErreurVente.reseau,
+      );
+    }
+
+    final Map<String, dynamic>? map = reponseRpcEnMap(reponse);
+    if (map == null) {
+      throw const VenteServiceException(
+        'Réponse inattendue du serveur : la vente n\'est pas confirmée.',
+      );
+    }
+
+    final VenteEnregistree vente = VenteEnregistree.fromRpc(map);
+
+    DonneesService.instance.signale('vente-rapide');
+    unawaited(_resynchroniser());
+    unawaited(NotificationService.instance.notifierVente(
+      numero: vente.numeroVente,
+      total: vente.total,
+      nbArticles: 1,
+      modePaiement: vente.modePaiement,
+    ));
+
+    return vente;
+  }
+
   /// 🔔 CORRECTIF 59 — alerte « stock faible » après une vente.
   ///
   /// Le stock est RELU dans la base (la sortie serveur vient d'être

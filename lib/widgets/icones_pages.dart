@@ -110,6 +110,11 @@ IconData iconePourPage(PageAccess page) {
     // 🥖 MODULE 16 C5 — boulangerie.
     case PageAccess.production:
       return Icons.bakery_dining_rounded;
+    // 🚚 MODULE 23 — distribution terrain.
+    case PageAccess.distribution:
+      return Icons.local_shipping_rounded;
+    case PageAccess.maTournee:
+      return Icons.delivery_dining_rounded;
   }
 }
 

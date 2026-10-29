@@ -17,12 +17,13 @@ du Congo. Collaborateur marketing : **La Perle Corp**. Développeur principal :
 
 | Domaine | Fonctions |
 |---|---|
-| **Ventes** | Panier, scanner, encaissement (espèces, mobile money, carte, dette), reçus, historique, annulation motivée |
+| **Ventes** | Panier, scanner (**encaisser directement ou continuer le panier**), pesée à la balance, encaissement (espèces, mobile money, carte, dette), reçus, historique, annulation motivée |
 | **Articles & stock** | Catalogue, catégories, conditionnements (farde, carton…), approvisionnements, ajustements, inventaires, seuils d'alerte |
 | **Clients & dettes** | Fiches clients, crédits, remboursements, relances WhatsApp/SMS |
 | **Caisse & finance** | Encaissements, clôtures de caisse, dépenses, tableau de bord CA/bénéfice |
 | **Rapports** | 11+ types (ventes, articles, catégories, vendeurs, top produits, finance, stock, caisse, dépenses, dettes, expirations), exports PDF/Excel signés |
 | **Modules métier** | 🏨 Hôtel (chambres, réservations, check-in/out, facture séjour) · 💊 Pharmacie (lots, péremption, blocage de vente expirée) · 🍽️ Restaurant (tables, commandes, écran cuisine, encaissement caisse) · 🎉 Salle des fêtes (salles, calendrier, prestations, avances & soldes) · 🥖 Boulangerie (matières premières, productions, pertes, coût de revient) · 🥩 Boucherie (vente au poids, pas de 0,5 kg, ticket au kg) · 👕 Mode (variantes taille/couleur/marque, recherche par variante) |
+| **Distribution terrain** | 🚚 Tournées de livraison : dotation par agent, vente plafonnée à la dotation, clôture avec retours et écarts, rapport par agent (CA, quantités, zone), consignes de récipients chez les clients, bonus tracés · ⚖️ **Pesée rapide** : prix au kilo défini sur l'article, poids lu sur la balance, encaissement immédiat (ou code balance `BAL:<produit>:<grammes>`) · ⚡ **Mode rapide** : nom + prix → vendre |
 | **Équipe** | Collaborateurs, 8 rôles, permissions fines personnalisables par le Super Admin |
 | **Assistant IA** | Chat intégré (quotas par packs), actions contrôlées par les droits |
 | **Abonnement** | Workflow d'activation vérifié (comptes → finance), essai 7 j / total 30 j, restrictions sans suppression de données |
@@ -52,8 +53,8 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 79 migrations SQL idempotentes (0000 → 0078)
-test/                  → 929 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration, péremption, fiche entreprise)
+supabase/migrations/   → 82 migrations SQL idempotentes (0000 → 0081)
+test/                  → 977 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration, péremption, fiche entreprise, distribution terrain, version)
 docs/                  → documentation interne (roadmap, publication, modules)
 tools/                 → utilitaires (signature Android `setup_signature.sh`,
                           déploiement de l'assistant IA `deploy_agent_ia.sh`)
@@ -120,6 +121,21 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               publication automatique de chaque article (déclencheur)
               étendue, devises, quotas IA, codes de validation agent,
               droits des agents, abonnements, péremption réglable)
+0079          passerelle de paiement SerdiPay (Orange Money, Airtel, M-Pesa,
+              carte) — tables + RPC, Edge Function `serdipay`
+0080          Module 23 — DISTRIBUTION TERRAIN, CONSIGNES & BONUS :
+              tournées de livraison (dotation par agent), ventes plafonnées
+              par la dotation, clôture avec retours et écarts, récipients
+              laissés chez les clients (consignes), bonus tracés, zones
+              clients, mode rapide (`produits.stock_illimite`) et
+              statistiques d'accueil calculées par le serveur
+              (`rpc_accueil_stats`) + tables publiées au temps réel
+0081          Module 23 bis — MODE SIMPLE & CORRECTIFS :
+              `rpc_entreprise_creer_simple` (entreprise + essai de 7 jours
+              ACTIF immédiatement, sans double validation), consignes
+              limitées à l'agent, contrôle du client (autre entreprise
+              refusée), statistiques d'accueil en une seule lecture par
+              table + nombre total de ventes, index de performance
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
@@ -233,7 +249,7 @@ si oublié, envoi des secrets, re-tag). Détails : `docs/publication_app.md`.
 ```bash
 flutter pub get          # dépendances
 dart analyze lib test    # analyse statique (doit rester à 0 ERREUR)
-flutter test             # 929 tests — doit rester 100 % vert
+flutter test             # 977 tests — doit rester 100 % vert
 ```
 
 > ⛔ **NE JAMAIS lancer `flutter build` localement sur la machine de
@@ -254,7 +270,7 @@ git tag v1.7.0 && git push origin v1.7.0   # déclenche la release complète
 
 ### Versions actuelles
 
-- Flutter **3.47.4** / Dart **3.13.3**, app **3.2.0+36**
+- Flutter **3.47.4** / Dart **3.13.3**, app **3.3.0+37**
 - Dépendances clés : `supabase_flutter`, `go_router`, `flutter_local_notifications ^22.3.1`,
   `flutter_map` + `latlong2` (carte OpenStreetMap, **aucune clé d'API**),
   `geolocator` (position du visiteur, avec consentement), `http` (recherche

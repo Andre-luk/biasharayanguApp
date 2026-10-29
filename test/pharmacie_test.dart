@@ -230,8 +230,9 @@ void main() {
 
       final List<String> presentes = idsAvec(avecModule);
       expect(presentes, contains('expirations'));
-      // Position : juste après « stock » (priorité 25).
-      expect(presentes.indexOf('expirations'), presentes.indexOf('stock') + 1);
+      // Position : après « stock » et les trois cartes de distribution
+      // (tournées 22, ma tournée 23, consignes 24), avant « ventes » (30).
+      expect(presentes.indexOf('expirations'), presentes.indexOf('stock') + 4);
       expect(presentes, isNot(equals(idsAvec(ModulesService.modulesBase))));
 
       final List<String> absentes = idsAvec(ModulesService.modulesBase);

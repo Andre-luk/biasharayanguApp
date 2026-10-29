@@ -252,6 +252,7 @@ class ArticleService {
     String? lotNumero,
     DateTime? dateExpiration,
     bool vendableAuPoids = false,
+    bool stockIllimite = false,
     Map<String, String> attributs = const <String, String>{},
     String? codeBarre,
   }) {
@@ -283,6 +284,8 @@ class ArticleService {
               'date_expiration': _isoJour(dateExpiration),
               // 🥩 MODULE 16 C6 — boucherie : vente au poids.
               'vendable_au_poids': vendableAuPoids,
+              // ⚡ MODULE 23 — mode rapide : stock non suivi.
+              if (stockIllimite) 'stock_illimite': true,
               // 👕 MODULE 16 C8 — mode : variantes (taille, couleur…).
               'attributs': attributs,
               // 🏷️ CORRECTIF 59 — code-barres fabricant du produit.
@@ -301,6 +304,31 @@ class ArticleService {
       actionLibelle: "la création de l'article",
       messageEchec:
           "Impossible de créer l'article. Vérifiez votre connexion internet puis réessayez.",
+    );
+  }
+
+  /// ⚡ MODULE 23 — CRÉATION EXPRESS (mode rapide).
+  ///
+  /// Le commerçant ne saisit qu'un NOM et un PRIX. Le reste est posé par
+  /// défaut : catégorie « Divers », unité « pièce », prix d'achat 0 et
+  /// **stock non suivi** (l'article se vend sans compter les unités).
+  ///
+  /// Un stock technique très élevé est tout de même écrit : le serveur du
+  /// Module 8 refuse de vendre un article à stock nul, et le trigger de
+  /// `ventes` retire les unités vendues. Le drapeau `stock_illimite` indique
+  /// aux écrans de ne pas tenir compte de ce compteur.
+  Future<Article> creerArticleRapide({
+    required String nom,
+    required double prixVente,
+  }) {
+    return creerArticle(
+      nom: nom,
+      categorie: 'Divers',
+      prixAchat: 0,
+      prixVente: prixVente,
+      quantite: 1000000,
+      uniteMesure: 'pièce',
+      stockIllimite: true,
     );
   }
 

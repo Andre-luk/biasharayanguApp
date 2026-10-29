@@ -84,6 +84,10 @@ void main() {
       expect(idsDe(cartes), <String>[
         'produits',
         'stock',
+        // 🚚 MODULE 23 — distribution terrain (module « ventes »).
+        'tournees',
+        'ma-tournee',
+        'consignes',
         'ventes',
         'clients',
         // 🛒 MODULE 19 — marketplace (transverse : aucun module d'activité).
@@ -105,7 +109,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 22);
+      expect(cartes.length, 25);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
@@ -125,6 +129,10 @@ void main() {
       expect(idsDe(cartes), contains('publications'));
       expect(idsDe(cartes), contains('visibilite'));
       expect(idsDe(cartes), contains('publicites'));
+      // 🚚 MODULE 23 — les cartes de distribution sont codées.
+      expect(idsDe(cartes), contains('tournees'));
+      expect(idsDe(cartes), contains('consignes'));
+      expect(idsDe(cartes), contains('ma-tournee'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -134,7 +142,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 22);
+      expect(cartes.length, 25);
     });
   });
 

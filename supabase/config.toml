@@ -21,3 +21,24 @@ project_id = "pqzcliibocndiyqbyddr"
 #  de la session en cours).
 [functions.agent-ia]
 verify_jwt = true
+
+# ---------------------------------------------------------------------------
+#  Passerelle de paiement SerdiPay (migration 79)
+# ---------------------------------------------------------------------------
+#  ⚠️ `verify_jwt = false` est OBLIGATOIRE : le webhook SerdiPay arrive SANS
+#  jeton Supabase (c'est un serveur tiers). La fonction vérifie elle-même :
+#    • les routes /initier et /statut → JWT utilisateur (auth.getUser) ;
+#    • la route /webhook → signature HMAC (secret SERDIPAY_WEBHOOK_SECRET).
+#  Ne JAMAIS laisser cette fonction en verification JWT : SerdiPay recevrait
+#  401 et aucun paiement ne serait jamais confirmé.
+[functions.serdipay]
+verify_jwt = false
+
+# ---------------------------------------------------------------------------
+#  API de service Biashara Group (module 21 quinquies)
+# ---------------------------------------------------------------------------
+#  Authentification par en-tête `x-bg-token` (secret BG_ADMIN_TOKEN), pas par
+#  JWT : la vérification JWT de la passerelle doit donc être désactivée.
+[functions.admin-agents]
+verify_jwt = false
+

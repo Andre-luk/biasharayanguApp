@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
+import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/vente_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -33,6 +34,15 @@ class _MesVentesPageState extends State<MesVentesPage> {
   void initState() {
     super.initState();
     _futur = _charger();
+    // 🔔 MODULE 23 — une vente encaissée (caisse, vente rapide, tournée)
+    // apparaît immédiatement dans l'historique, sans changer d'écran.
+    DonneesService.instance.revision.addListener(_recharger);
+  }
+
+  @override
+  void dispose() {
+    DonneesService.instance.revision.removeListener(_recharger);
+    super.dispose();
   }
 
   Future<List<VenteHistorique>> _charger() {
@@ -43,6 +53,7 @@ class _MesVentesPageState extends State<MesVentesPage> {
   }
 
   void _recharger() {
+    if (!mounted) return;
     setState(() => _futur = _charger());
   }
 

@@ -302,6 +302,9 @@ class PermissionService {
         PageAccess.evenements,
         // 🥖 MODULE 16 C5 — boulangerie : matières, productions (tout).
         PageAccess.production,
+        // 🚚 MODULE 23 — distribution terrain : tournées et rapport par agent.
+        PageAccess.distribution,
+        PageAccess.maTournee,
         // 🛒 MODULE 19 — marketplace : vitrine, publications, visibilité,
         // publicités (le patron seul gère sa présence publique).
         PageAccess.publications,
@@ -367,6 +370,13 @@ class PermissionService {
         // 🥖 C5 — boulanger-vendeur : productions et matières (voir + créer),
         // sans configuration (seuils, prix, suppression = patron/magasinier).
         PageAccess.production: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
+        // 🚚 MODULE 23 — l'agent/livreur ne voit QUE sa tournée : il vend sa
+        // dotation, enregistre consignes et bonus. Le rapport du patron
+        // (`distribution`) ne lui est pas ouvert.
+        PageAccess.maTournee: const <ActionAccess>{
           ActionAccess.voir,
           ActionAccess.creer,
         },
@@ -524,6 +534,10 @@ class PermissionService {
     // 🧾 MODULE 14 — tableau de bord du dossier d'activation (consultable par
     // les rôles qui accèdent au tableau de bord de la boutique).
     _RegleRoute('/main/mon-activation', PageAccess.dashboard),
+    // 💳 PASSERELLE SERDIPAY — même périmètre que le dossier d'activation :
+    // celui qui consulte son abonnement peut le régler. Le serveur vérifie
+    // l'entreprise et calcule le montant ; aucune donnée sensible exposée.
+    _RegleRoute('/main/paiement-serdipay', PageAccess.dashboard),
     // 🏢 MODULE 15 — mes entreprises (pack multi-entreprises) : accessible
     // aux rôles qui pilotent la boutique (le serveur limite la CRÉATION au
     // propriétaire et au pack).
@@ -543,6 +557,11 @@ class PermissionService {
     // 🥖 MODULE 16 C5 — BOULANGERIE : matières et productions.
     _RegleRoute('/main/production/matieres', PageAccess.production),
     _RegleRoute('/main/production', PageAccess.production),
+    // 🚚 MODULE 23 — distribution terrain.
+    _RegleRoute('/main/ma-tournee', PageAccess.maTournee),
+    _RegleRoute('/main/tournees', PageAccess.distribution),
+    // ⚖️ Pesée rapide : c'est un encaissement (même droit que la caisse).
+    _RegleRoute('/main/pesee', PageAccess.caisse, ActionAccess.creer),
 
     // 🛒 MODULE 19 — MARKETPLACE LOCAL : vitrine publique du commerçant,
     // ses publications, son tableau de bord de visibilité et ses campagnes.
@@ -965,6 +984,9 @@ class PermissionService {
     PageAccess.evenements: '/main/evenements',
     // 🥖 MODULE 16 C5 — boulangerie.
     PageAccess.production: '/main/production',
+    // 🚚 MODULE 23 — distribution terrain.
+    PageAccess.distribution: '/main/tournees',
+    PageAccess.maTournee: '/main/ma-tournee',
     // 🛒 MODULE 19 — marketplace.
     PageAccess.publications: '/main/publications',
     PageAccess.visibilite: '/main/visibilite',

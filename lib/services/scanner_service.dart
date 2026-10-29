@@ -33,6 +33,7 @@ import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/article_scanne.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/etiquette_qr.dart';
+import 'package:biashara_yangu/models/pesee.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -87,6 +88,16 @@ class ScannerService {
   /// Lève une [ScannerException] si le code est inconnu, si l'objet n'existe
   /// plus ou si la base est injoignable.
   Future<ArticleScanne> resoudre(String? codeBrut) async {
+    // ⚖️ MODULE 23 — ÉTIQUETTE DE BALANCE : « BAL:<produit>:<grammes> ».
+    // Le code porte le produit ET le poids affiché : aucune saisie.
+    final ({int produitId, double poids})? balance =
+        PeseeCalculs.decoderCodeBalance(codeBrut ?? '');
+    if (balance != null) {
+      final ArticleScanne scanne =
+          await _resoudreArticleParId(balance.produitId);
+      return scanne.avecPoids(balance.poids);
+    }
+
     final EtiquetteQr? etiquette = EtiquetteQr.decoder(codeBrut);
 
     //  🏷️ CORRECTIF 59 — ce n'est pas une étiquette de l'application : on le
@@ -161,7 +172,11 @@ class ScannerService {
         type: TypeErreurScan.formatInconnu,
       );
     }
+    return _resoudreArticleParId(id);
+  }
 
+  /// Relit un article par son numéro de base (QR, code-barres ou balance).
+  Future<ArticleScanne> _resoudreArticleParId(int id) async {
     final dynamic reponse = await _client
         .from('produits')
         .select()

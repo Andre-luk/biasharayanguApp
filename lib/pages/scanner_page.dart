@@ -8,9 +8,11 @@
 //   1. caméra plein écran + détection automatique des CODES-BARRES (EAN-13,
 //      UPC, Code 128…) ET des QR codes de l'application (scan continu,
 //      sans jamais fermer l'écran) ;
-//   2. feedback visuel (flash + bannière) et sonore (caisse + vibration) ;
+//   2. feedback visuel discret (flash + bannière) — AUCUN son, AUCUNE
+//      vibration : le scan doit être silencieux (consigne utilisateur) ;
 //   3. fiche d'ajout au panier : nom, conditionnement, PRIX RELU DANS LA BASE,
-//      stock, quantité (défaut 1), sous-total, bouton « Ajouter au panier » ;
+//      stock, quantité (défaut 1 ou poids de l'étiquette de balance),
+//      sous-total, « Encaisser maintenant » et « Ajouter au panier » ;
 //   4. historique des 5 derniers scans avec re-scan rapide ;
 //   5. cas particuliers : QR inconnu (message d'erreur), rupture de stock
 //      (avertissement + ajout bloqué), abonnement échu/suspendu (écran
@@ -22,13 +24,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:vibration/vibration.dart';
 
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/article_scanne.dart';
@@ -56,6 +56,16 @@ const Color _rougeAlerte = Color(0xFFEF5350);
 const double _tailleCadre = 264;
 const double _hauteurCadre = 0.38; // fraction de la hauteur de l'écran
 
+/// Ce que le vendeur a choisi après un scan.
+enum _ActionScan {
+  /// La ligne rejoint le panier : il continuera ses scans.
+  ajouterAuPanier,
+
+  /// La ligne rejoint le panier PUIS l'écran d'encaissement s'ouvre :
+  /// un seul article = deux gestes au lieu de quatre.
+  encaisserMaintenant,
+}
+
 /// Écran « Scanner un article » du vendeur.
 class ScannerPage extends StatefulWidget {
   const ScannerPage({super.key});
@@ -68,7 +78,6 @@ class _ScannerPageState extends State<ScannerPage>
     with SingleTickerProviderStateMixin {
   late final MobileScannerController _controleur;
   late final AnimationController _animationLigne;
-  final AudioPlayer _audio = AudioPlayer();
 
   // --- contrôles d'accès (effectués avant de démarrer la caméra) ---
   bool _pret = false;
@@ -110,7 +119,6 @@ class _ScannerPageState extends State<ScannerPage>
     _timerRetour?.cancel();
     _timerFlash?.cancel();
     _animationLigne.dispose();
-    _audio.dispose();
     _controleur.dispose();
     super.dispose();
   }
@@ -195,12 +203,13 @@ class _ScannerPageState extends State<ScannerPage>
       ScannerService.instance.enregistrerScan(scanne);
 
       if (!mounted) return;
-      final bool ajoute = await _ouvrirFicheAjout(scanne) ?? false;
-      if (!mounted) return;
-      if (ajoute) {
-        _afficherRetour('Article ajouté au panier', succes: true);
-        unawaited(_vibrationLegere());
+      final _ActionScan? action = await _ouvrirFicheAjout(scanne);
+      if (!mounted || action == null) return;
+      if (action == _ActionScan.encaisserMaintenant) {
+        await _encaisserMaintenant();
+        return;
       }
+      _afficherRetour('Article ajouté au panier', succes: true);
     } on ScannerException catch (e) {
       await _feedbackErreur();
       if (!mounted) return;
@@ -226,12 +235,13 @@ class _ScannerPageState extends State<ScannerPage>
       ScannerService.instance.enregistrerScan(frais);
 
       if (!mounted) return;
-      final bool ajoute = await _ouvrirFicheAjout(frais) ?? false;
-      if (!mounted) return;
-      if (ajoute) {
-        _afficherRetour('Article ajouté au panier', succes: true);
-        unawaited(_vibrationLegere());
+      final _ActionScan? action = await _ouvrirFicheAjout(frais);
+      if (!mounted || action == null) return;
+      if (action == _ActionScan.encaisserMaintenant) {
+        await _encaisserMaintenant();
+        return;
       }
+      _afficherRetour('Article ajouté au panier', succes: true);
     } on ScannerException catch (e) {
       if (!mounted) return;
       _afficherRetour(e.message, succes: false);
@@ -240,10 +250,16 @@ class _ScannerPageState extends State<ScannerPage>
     }
   }
 
-  /// Ouvre la fiche d'ajout au panier ; renvoie `true` si l'article a été
-  /// ajouté.
-  Future<bool?> _ouvrirFicheAjout(ArticleScanne scanne) {
-    return showModalBottomSheet<bool>(
+  /// 🧾 « ENCAISSER MAINTENANT » — le panier est déjà rempli par la fiche ;
+  /// on ouvre directement l'écran de paiement (mode, rendu, reçu).
+  Future<void> _encaisserMaintenant() async {
+    if (PanierService.instance.estVide) return;
+    await context.push('/main/panier/encaissement');
+  }
+
+  /// Ouvre la fiche d'ajout au panier ; renvoie l'action choisie.
+  Future<_ActionScan?> _ouvrirFicheAjout(ArticleScanne scanne) {
+    return showModalBottomSheet<_ActionScan>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -252,21 +268,11 @@ class _ScannerPageState extends State<ScannerPage>
   }
 
   // ---------------------------------------------------------------------------
-  // FEEDBACKS (VISUEL + SONORE)
+  // FEEDBACK VISUEL (SILENCIEUX)
   // ---------------------------------------------------------------------------
 
   Future<void> _feedbackScanReussi() async {
     _flash(_vertAccent);
-    try {
-      await Vibration.vibrate(duration: 70);
-    } catch (e) {
-      debugPrint('ScannerPage : vibration ignorée ($e)');
-    }
-    try {
-      await _audio.play(AssetSource('sounds/cash_register.mp3'));
-    } catch (e) {
-      debugPrint('ScannerPage : son ignoré ($e)');
-    }
   }
 
   Future<void> _feedbackErreur() async {
@@ -278,13 +284,7 @@ class _ScannerPageState extends State<ScannerPage>
     }
   }
 
-  Future<void> _vibrationLegere() async {
-    try {
-      await Vibration.vibrate(duration: 40);
-    } catch (_) {
-      // Appareil sans vibreur : sans conséquence.
-    }
-  }
+  /// (Ancienne vibration légère — supprimée : le scan reste silencieux.)
 
   /// Flash coloré très bref au centre de l'écran.
   void _flash(Color couleur) {
@@ -794,9 +794,11 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
   void initState() {
     super.initState();
     final double maximum = _article.quantiteMaxVendable;
-    // Stock plus petit que 1 (ex. « 0,5 kg ») : la quantité par défaut est le
-    // maximum vendable.
-    _quantite = maximum > 0 && maximum < 1 ? maximum : 1;
+    // ⚖️ Étiquette de balance : le poids est déjà dans le code.
+    // Sinon, la quantité par défaut reste 1 (ou le stock si plus petit).
+    final double? impose = widget.article.poidsImpose;
+    _quantite = impose ?? (maximum > 0 && maximum < 1 ? maximum : 1);
+    if (_quantite > maximum && maximum > 0) _quantite = maximum;
     _quantiteControleur = TextEditingController(
       text: _texteQuantite(_quantite),
     );
@@ -874,12 +876,18 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
     });
   }
 
+  /// 🥩 Pas de saisie : 0,1 kg sur une balance, 1 unité sinon.
+  double get _pasSaisie =>
+      _article.vendableAuPoids ? 0.1 : _article.pasQuantite;
+
+  /// 🥩 Minimum : 1 g sur une balance (le poids affiché est libre).
+  double get _minimum =>
+      _article.vendableAuPoids ? 0.001 : _article.pasQuantite;
+
   void _ajuster(double delta) {
     final double maximum = _article.quantiteMaxVendable;
     double valeur = _quantite + delta;
-    // 🥩 MODULE 16 C6 — article pesé : minimum 0,5 kg ; sinon 1 unité.
-    final double minimum = _article.pasQuantite;
-    if (valeur < minimum) valeur = minimum;
+    if (valeur < _minimum) valeur = _minimum;
     if (maximum > 0 && valeur > maximum) valeur = maximum;
     setState(() {
       _quantite = valeur;
@@ -888,7 +896,7 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
     });
   }
 
-  void _ajouter() {
+  void _ajouter(_ActionScan action) {
     final double? valeur = _analyser(_quantiteControleur.text);
     if (valeur == null || valeur <= 0) {
       setState(() => _erreur = 'Quantité invalide.');
@@ -904,7 +912,7 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
     }
 
     PanierService.instance.ajouterArticle(_article, quantite: valeur);
-    Navigator.of(context).pop(true);
+    Navigator.of(context).pop(action);
   }
 
   // --- interface -------------------------------------------------------------
@@ -1151,9 +1159,14 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
               borderRadius: BorderRadius.circular(9),
               border: Border.all(color: _vertAccent.withValues(alpha: 0.4)),
             ),
-            child: const Text(
-              '🥩 Vendu au poids — indiquez le poids en kg (ex. 0,75)',
-              style: TextStyle(
+            child: Text(
+              widget.article.poidsImpose != null
+                  ? '⚖️ Poids lu sur l\'étiquette de la balance : '
+                      '${_texteQuantite(widget.article.poidsImpose!)} kg — '
+                      'vous pouvez encaisser directement.'
+                  : '🥩 Vendu au poids — saisissez le poids affiché par la balance '
+                      '(kg, ex. 1,250), puis encaissez directement.',
+              style: const TextStyle(
                 color: _vertAccent,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
@@ -1228,8 +1241,8 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
             const Spacer(),
             _boutonPas(
               icone: Icons.remove_rounded,
-              actif: !rupture && _quantite > _article.pasQuantite,
-              onTap: () => _ajuster(-_article.pasQuantite),
+              actif: !rupture && _quantite > _minimum,
+              onTap: () => _ajuster(-_pasSaisie),
             ),
             SizedBox(
               width: 92,
@@ -1262,7 +1275,7 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
             _boutonPas(
               icone: Icons.add_rounded,
               actif: !rupture && _quantite < maximum,
-              onTap: () => _ajuster(_article.pasQuantite),
+              onTap: () => _ajuster(_pasSaisie),
             ),
           ],
         ),
@@ -1329,23 +1342,56 @@ class _FicheAjoutPanierState extends State<_FicheAjoutPanier> {
     required bool ajoutPossible,
     required bool rupture,
   }) {
-    return SizedBox(
-      height: 54,
-      child: FilledButton.icon(
-        onPressed: ajoutPossible ? _ajouter : null,
-        style: FilledButton.styleFrom(
-          backgroundColor: _vertBouton,
-          disabledBackgroundColor: Colors.white12,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        // 🧾 Deux sorties possibles : payer tout de suite (le plus rapide)
+        // ou continuer à scanner pour composer un panier.
+        SizedBox(
+          height: 54,
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: ajoutPossible
+                ? () => _ajouter(_ActionScan.encaisserMaintenant)
+                : null,
+            style: FilledButton.styleFrom(
+              backgroundColor: _vertBouton,
+              disabledBackgroundColor: Colors.white12,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.point_of_sale_rounded),
+            label: Text(
+              rupture ? 'Rupture de stock' : 'Encaisser maintenant',
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 15),
+            ),
           ),
         ),
-        icon: const Icon(Icons.add_shopping_cart_rounded),
-        label: Text(
-          rupture ? 'Rupture de stock' : 'Ajouter au panier',
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 48,
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: ajoutPossible
+                ? () => _ajouter(_ActionScan.ajouterAuPanier)
+                : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white24),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            icon: const Icon(Icons.add_shopping_cart_rounded),
+            label: const Text(
+              'Ajouter au panier',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }

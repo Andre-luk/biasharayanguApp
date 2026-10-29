@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase_auth;
 
 import 'package:biashara_yangu/services/supabase_service.dart';
+import 'package:biashara_yangu/config/app_version.dart';
 import 'package:biashara_yangu/services/audit_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
@@ -644,6 +645,19 @@ class _LoginPageState extends State<LoginPage> {
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 10),
+        // 📌 Affiche la VRAIE version (source unique : AppVersion).
+        Text(
+          AppVersion.libelle,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurfaceVariant
+                    .withValues(alpha: 0.7),
+                letterSpacing: 0.3,
               ),
         ),
       ],

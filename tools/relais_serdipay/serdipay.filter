@@ -1,0 +1,7 @@
+# Filtre tinyproxy — destinations autorisées (une expression régulière par
+# ligne, appliquée à l'URL complète).
+#
+# Objectif : le proxy ne peut servir QUE l'API SerdiPay. S'il était détourné,
+# il ne pourrait pas atteindre d'autres services.
+^https://([a-z0-9-]+\.)*serdipay\.com
+^https://([a-z0-9-]+\.)*serdipay\.cloud
