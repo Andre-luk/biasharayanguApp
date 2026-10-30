@@ -88,6 +88,8 @@ void main() {
         'tournees',
         'ma-tournee',
         'consignes',
+        // 🫙 REFONTE DISTRIBUTION — récipients, échanges et bonus (priorité 26).
+        'recipients',
         'ventes',
         'clients',
         // 🛒 MODULE 19 — marketplace (transverse : aucun module d'activité).
@@ -109,7 +111,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 25);
+      expect(cartes.length, 26);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
@@ -142,7 +144,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 25);
+      expect(cartes.length, 26);
     });
   });
 

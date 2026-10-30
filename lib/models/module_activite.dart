@@ -399,6 +399,15 @@ class ModuleActivite {
       icone: Icons.palette,
       categorie: ModuleCategorie.commerceSpecialise,
     ),
+    // 📦 REFONTE DISTRIBUTION — environnement professionnel de distribution.
+    ModuleActivite(
+      code: ModuleCode.distribution,
+      libelle: 'Distribution (tournées)',
+      description: 'Agents, tournées, consignes de récipients, bonus et '
+          'rapports de distribution. Réservé aux entreprises de distribution.',
+      icone: Icons.local_shipping,
+      categorie: ModuleCategorie.commerceSpecialise,
+    ),
   ];
 
   /// Le module du catalogue portant ce code, ou `null` si inconnu

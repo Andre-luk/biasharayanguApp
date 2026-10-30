@@ -175,7 +175,7 @@ class CarteAccueil {
     // elles restent utiles à toute activité qui livre).
     CarteAccueil(
       id: 'tournees',
-      module: ModuleCode.distribution,
+      module: ModuleCode.ventes,
       typeRequis: TypeActivite.distribution,
       page: PageAccess.distribution,
       priorite: 22,
@@ -188,7 +188,7 @@ class CarteAccueil {
     ),
     CarteAccueil(
       id: 'consignes',
-      module: ModuleCode.distribution,
+      module: ModuleCode.ventes,
       typeRequis: TypeActivite.distribution,
       page: PageAccess.distribution,
       priorite: 24,
@@ -202,7 +202,7 @@ class CarteAccueil {
     ),
     CarteAccueil(
       id: 'ma-tournee',
-      module: ModuleCode.distribution,
+      module: ModuleCode.ventes,
       typeRequis: TypeActivite.distribution,
       page: PageAccess.maTournee,
       priorite: 23,
@@ -211,6 +211,19 @@ class CarteAccueil {
       icone: Icons.delivery_dining_rounded,
       couleur: const Color(0xFF9333EA),
       route: '/main/ma-tournee',
+    ),
+    // 🫙 REFONTE DISTRIBUTION — récipients, échanges et règles de bonus.
+    CarteAccueil(
+      id: 'recipients',
+      module: ModuleCode.ventes,
+      typeRequis: TypeActivite.distribution,
+      page: PageAccess.distribution,
+      priorite: 26,
+      titre: (AppLocalizations T) => 'Récipients & bonus',
+      valeur: (DonneesAccueil d, AppLocalizations T) => 'Ouvrir',
+      icone: Icons.water_drop_rounded,
+      couleur: const Color(0xFF0891B2),
+      route: '/main/recipients',
     ),
     // �🗂️ MODULE 5 — produits (catalogue + conditionnements).
     CarteAccueil(

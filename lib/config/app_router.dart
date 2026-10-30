@@ -139,6 +139,7 @@ import 'package:biashara_yangu/pages/ma_tournee_page.dart';
 import 'package:biashara_yangu/pages/pesee_rapide_page.dart';
 import 'package:biashara_yangu/pages/tournee_detail_page.dart';
 import 'package:biashara_yangu/pages/tournee_form_page.dart';
+import 'package:biashara_yangu/pages/recipients_page.dart';
 import 'package:biashara_yangu/pages/tournees_page.dart';
 
 // ============== MODULE 6 : GÉNÉRATION DES QR CODES ==============
@@ -1181,6 +1182,11 @@ final GoRouter appRouter = GoRouter(
                 //   • `ma-tournee` : l'agent vend sa dotation, enregistre les
                 //     consignes et les bonus.
                 //   ⚠️ `new` doit être déclaré AVANT `:id` (go_router).
+                GoRoute(
+                  path: 'recipients',
+                  name: 'recipients',
+                  builder: (context, state) => const RecipientsPage(),
+                ),
                 GoRoute(
                   path: 'tournees',
                   name: 'tournees',

@@ -84,6 +84,7 @@ void main() {
       final List<String> liste = ids(TypeActivite.distribution);
       expect(liste, contains('tournees'));
       expect(liste, contains('ma-tournee'));
+      expect(liste, contains('recipients'));
     });
 
     test('boutique → aucune carte de distribution', () {
@@ -91,6 +92,7 @@ void main() {
       expect(liste, isNot(contains('tournees')));
       expect(liste, isNot(contains('consignes')));
       expect(liste, isNot(contains('ma-tournee')));
+      expect(liste, isNot(contains('recipients')));
     });
 
     test('boutique → les cartes communes restent présentes', () {

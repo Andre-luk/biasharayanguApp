@@ -94,8 +94,9 @@
 
 ## 4. Phase 3 — Récipients, échanges et fardes
 
-> **État au 30/10/2026 : MOTEUR LIVRÉ** (migration 0084 + service Dart + 14 tests).
-> Détail ci-dessous ; les écrans restent à faire (phase 3 bis).
+> **État au 30/10/2026 : LIVRÉE** — migration 0084, service Dart, écran
+> `/main/recipients` (types, règles de bonus, solde par client, déclaration de
+> perte), carte d'accueil « Récipients & bonus », 25 tests dédiés.
 
 ### Livré — `20260916000084_recipients_echanges_bonus.sql` (55/55 instructions)
 Tables : `recipients_types`, `recipients_mouvements`, `regles_bonus`,
