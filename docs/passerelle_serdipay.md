@@ -106,18 +106,31 @@ sequenceDiagram
 > **relais à IP fixe** `https://serdipay.biasharagroup.com/api` (serveur
 > **213.130.145.53**, Hostinger). C'est cette IP qu'il faut faire déclarer.
 
-### 2.2 Ce qu'il reste à demander à SerdiPay
+### 2.2 Contrat de `get-token` — ✅ CONFIRMÉ le 30/10/2026
 
-1. **Mettre en liste blanche l'IP `213.130.145.53`** (celle du relais) — sans
-   cela toute requête répond « not whitelisted » ;
-2. **Le corps exact attendu par `get-token`** (noms des champs) — la route
-   `/diag-token` de la fonction permet de le découvrir empiriquement ;
-3. **Le secret de signature des webhooks** (`SERDIPAY_WEBHOOK_SECRET`) et le nom
+Tests réels effectués **depuis le relais** (IP `213.130.145.53`, déjà déclarée
+chez SerdiPay) :
+
+| Corps envoyé | Réponse de SerdiPay |
+|---|---|
+| `{}` | `400` `{"message":"Validation Error","errors":{"email":["validation.required"],"password":["validation.required"]}}` |
+| `{"email":"essai@example.com","password":"motdepassebidon"}` | `401` `{"message":"Invalid Credentials"}` |
+
+**Conclusion** : `POST /api/public-api/v1/merchant/get-token` attend **deux
+champs seulement** : `email` et `password` (identifiants du back-office
+`app.serdipay.com`). Ni `apiId`, ni `merchantCode` ne sont requis.
+
+> ⚠️ Le préfixe `/api` fait partie du chemin chez SerdiPay
+> (`…/api/public-api/v1/…`) : le relais le transmet **tel quel**.
+
+### 2.3 Ce qu'il reste à demander à SerdiPay
+
+1. **Le corps attendu par `payment-merchant`** — il sera découvert
+   automatiquement par la route `/diag-paiement` (corps vide → champs requis) ;
+2. **Le secret de signature des webhooks** (`SERDIPAY_WEBHOOK_SECRET`) et le nom
    de l'en-tête utilisé ;
-4. **Le corps attendu par `payment-merchant`** (champs obligatoires) et un
-   exemple de réponse (URL de paiement ? instruction USSD ?) ;
-5. **Une route d'interrogation d'un paiement** (statut), s'il en existe une ;
-6. **La liste des codes opérateurs** (`orange`, `airtel`, `mpesa`, `afrimoney`,
+3. **Une route d'interrogation d'un paiement** (statut), s'il en existe une ;
+4. **La liste des codes opérateurs** (`orange`, `airtel`, `mpesa`, `afrimoney`,
    `card`…) et les formats de numéro (ex. `243970000000`).
 
 > Le code isole tout le vocabulaire fournisseur dans l'Edge Function (§7) et

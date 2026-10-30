@@ -97,6 +97,14 @@ const SERDIPAY_MERCHANT_CODE = (Deno.env.get('SERDIPAY_MERCHANT_CODE') ??
   '066036').trim();
 const SERDIPAY_USERNAME = (Deno.env.get('SERDIPAY_USERNAME') ?? '').trim();
 const SERDIPAY_PASSWORD = (Deno.env.get('SERDIPAY_PASSWORD') ?? '').trim();
+// ✅ FORMAT CONFIRMÉ LE 30/10/2026 (test réel via le relais) :
+//   POST /api/public-api/v1/merchant/get-token  { email, password }
+//   - corps vide      → 400 « Validation Error » { email, password requis }
+//   - identifiants faux → 401 « Invalid Credentials »
+// L'identifiant du back-office est donc un ADRESSE E-MAIL. Le secret
+// SERDIPAY_EMAIL (ou à défaut SERDIPAY_USERNAME) porte cette adresse.
+const SERDIPAY_EMAIL = (Deno.env.get('SERDIPAY_EMAIL') ??
+  Deno.env.get('SERDIPAY_USERNAME') ?? '').trim();
 // Le PIN sert au back-office et aux décaissements B2C. Il n'est PAS nécessaire
 // pour encaisser : ne le déclarer que si SerdiPay l'exige explicitement.
 const SERDIPAY_PIN = (Deno.env.get('SERDIPAY_PIN') ?? '').trim();
@@ -111,7 +119,8 @@ function remplirModele(modele: string): string {
     apiId: SERDIPAY_API_ID,
     apiKey: SERDIPAY_API_KEY,
     merchantCode: SERDIPAY_MERCHANT_CODE,
-    username: SERDIPAY_USERNAME,
+    email: SERDIPAY_EMAIL,
+    username: SERDIPAY_USERNAME || SERDIPAY_EMAIL,
     password: SERDIPAY_PASSWORD,
     pin: SERDIPAY_PIN,
   };
@@ -122,17 +131,15 @@ function remplirModele(modele: string): string {
   return sortie;
 }
 
-// Corps envoyé à `/merchant/get-token`. Modèle surchargeable par le secret
-// SERDIPAY_AUTH_CORPS si SerdiPay attend d'autres noms de champs.
-// Valeur par défaut = identifiants marchand (le plus probable), `apiId` étant
-// proposé en second choix par la route de diagnostic /diag-token.
+// Corps envoyé à `/merchant/get-token` — format VÉRIFIÉ chez SerdiPay.
+// Modèle surchargeable par le secret SERDIPAY_AUTH_CORPS au cas où.
 const SERDIPAY_AUTH_CORPS = Deno.env.get('SERDIPAY_AUTH_CORPS') ??
-  '{"merchantCode":"{merchantCode}","username":"{username}","password":"{password}"}';
+  '{"email":"{email}","password":"{password}"}';
 
 /** Y a-t-il de quoi demander un jeton ? */
 function identifiantsFournisseur(): boolean {
-  return SERDIPAY_API_KEY.length > 0 ||
-    (SERDIPAY_USERNAME.length > 0 && SERDIPAY_PASSWORD.length > 0) ||
+  return (SERDIPAY_EMAIL.length > 0 && SERDIPAY_PASSWORD.length > 0) ||
+    SERDIPAY_API_KEY.length > 0 ||
     (SERDIPAY_CLIENT_ID.length > 0 && SERDIPAY_CLIENT_SECRET.length > 0);
 }
 // 🔒 RELAIS À IP FIXE (tools/relais_serdipay).
@@ -882,22 +889,20 @@ async function routeDiagToken(req: Request): Promise<Response> {
 
   const essais: { nom: string; type: string; corps: string }[] = [
     {
-      nom: 'merchantCode+username+password (JSON)',
+      nom: 'email+password (JSON) — format confirmé',
       type: 'application/json',
       corps: JSON.stringify({
-        merchantCode: SERDIPAY_MERCHANT_CODE,
-        username: SERDIPAY_USERNAME,
+        email: SERDIPAY_EMAIL,
         password: SERDIPAY_PASSWORD,
       }),
     },
     {
-      nom: 'apiId+merchantCode+username+password (JSON)',
+      nom: 'email+password+merchantCode (JSON)',
       type: 'application/json',
       corps: JSON.stringify({
-        apiId: SERDIPAY_API_ID,
-        merchantCode: SERDIPAY_MERCHANT_CODE,
-        username: SERDIPAY_USERNAME,
+        email: SERDIPAY_EMAIL,
         password: SERDIPAY_PASSWORD,
+        merchantCode: SERDIPAY_MERCHANT_CODE,
       }),
     },
     {
@@ -909,20 +914,11 @@ async function routeDiagToken(req: Request): Promise<Response> {
       }),
     },
     {
-      nom: 'username+password (JSON)',
-      type: 'application/json',
-      corps: JSON.stringify({
-        username: SERDIPAY_USERNAME,
-        password: SERDIPAY_PASSWORD,
-      }),
-    },
-    {
-      nom: 'form-urlencoded username/password',
+      nom: 'form-urlencoded email/password',
       type: 'application/x-www-form-urlencoded',
       corps: new URLSearchParams({
-        username: SERDIPAY_USERNAME,
+        email: SERDIPAY_EMAIL,
         password: SERDIPAY_PASSWORD,
-        merchantCode: SERDIPAY_MERCHANT_CODE,
       }).toString(),
     },
   ];
@@ -964,9 +960,72 @@ async function routeDiagToken(req: Request): Promise<Response> {
     url,
     merchantCode: SERDIPAY_MERCHANT_CODE,
     apiId: SERDIPAY_API_ID,
-    identifiantDefini: SERDIPAY_USERNAME.length > 0,
+    emailDefini: SERDIPAY_EMAIL.length > 0,
     motDePasseDefini: SERDIPAY_PASSWORD.length > 0,
     essais: resultats,
+  });
+}
+
+/**
+ * POST /diag-paiement — vérifie le jeton PUIS interroge
+ * `/merchant/payment-merchant` avec un corps VIDE : SerdiPay répond alors la
+ * liste des champs obligatoires, sans créer de transaction.
+ * Protégé par `x-relais-token`.
+ */
+async function routeDiagPaiement(req: Request): Promise<Response> {
+  const jeton = req.headers.get('x-relais-token') ?? '';
+  if (SERDIPAY_RELAIS_TOKEN.length === 0 || jeton !== SERDIPAY_RELAIS_TOKEN) {
+    return erreur('ACCES_REFUSE', 'En-tête x-relais-token attendu.', 403);
+  }
+  if (!serdipayConfigure()) {
+    return erreur(
+      'SERDIPAY_NON_CONFIGURE',
+      'Aucun identifiant : renseignez SERDIPAY_EMAIL + SERDIPAY_PASSWORD ' +
+        'dans les secrets Supabase.',
+      503,
+    );
+  }
+
+  let valeurJeton = '';
+  try {
+    valeurJeton = (await jetonSerdipay()).valeur;
+  } catch (e) {
+    return json({
+      etape: 'jeton',
+      ok: false,
+      erreur: String(e).slice(0, 400),
+    });
+  }
+
+  const url = `${SERDIPAY_BASE_URL}${SERDIPAY_PATH_INITIER}`;
+  let statutHttp = 0;
+  let texte = '';
+  try {
+    const reponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${valeurJeton}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...(SERDIPAY_RELAIS_TOKEN
+          ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
+          : {}),
+      },
+      body: '{}',
+      signal: AbortSignal.timeout(20_000),
+    });
+    statutHttp = reponse.status;
+    texte = (await reponse.text()).slice(0, 600);
+  } catch (e) {
+    texte = 'ERREUR_RESEAU : ' + String(e).slice(0, 200);
+  }
+
+  return json({
+    etape: 'paiement',
+    jetonObtenu: true,
+    url,
+    statutHttp,
+    reponse: texte,
   });
 }
 
@@ -1315,6 +1374,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
         return erreur('METHODE_REFUSEE', 'Utilisez POST.', 405);
       }
       return await routeDiagToken(req);
+    }
+
+    if (chemin === '/diag-paiement') {
+      if (req.method !== 'POST') {
+        return erreur('METHODE_REFUSEE', 'Utilisez POST.', 405);
+      }
+      return await routeDiagPaiement(req);
     }
 
     if (chemin === '/statut') {
