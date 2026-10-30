@@ -26,7 +26,9 @@ enum ModeApplication {
 
   static ModeApplication fromCode(String? code) {
     final String valeur = (code ?? '').trim().toLowerCase();
-    return valeur == 'rapide' ? ModeApplication.rapide : ModeApplication.complet;
+    return valeur == 'rapide'
+        ? ModeApplication.rapide
+        : ModeApplication.complet;
   }
 }
 
@@ -46,6 +48,12 @@ class ModeApplicationService {
   bool get charge => _charge;
 
   bool get rapide => mode.value == ModeApplication.rapide;
+
+  /// Les réglages AVANCÉS (photo, catégorie, unité de base, prix d'achat,
+  /// seuils, lots…) ne sont proposés qu'en mode complet. En mode rapide on ne
+  /// montre que l'essentiel : nom + prix de vente. Les deux modes écrivent
+  /// exactement les mêmes données — le mode ne change que ce qui est DEMANDÉ.
+  bool get afficherReglagesAvances => mode.value == ModeApplication.complet;
 
   /// Lit le mode enregistré (best-effort : une erreur laisse le mode complet).
   Future<void> charger() async {

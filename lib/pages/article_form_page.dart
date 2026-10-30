@@ -23,6 +23,7 @@ import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/image_service.dart';
 // 🧩 MODULE 16 C1 — les champs lot/date n'apparaissent que si l'activité
 // a le module « lots_expiration » (pharmacie, alimentation, dépôt…).
+import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -457,8 +458,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   /// Section « Lot & péremption » (module lots_expiration actif uniquement).
   Widget _sectionLotsEtExpiration() {
     final ThemeData theme = Theme.of(context);
-    final StatutExpiration? statut =
-        StatutExpiration.depuis(_dateExpiration, joursProches: _delaiPeremption);
+    final StatutExpiration? statut = StatutExpiration.depuis(_dateExpiration,
+        joursProches: _delaiPeremption);
     final int? jours = StatutExpiration.joursRestants(_dateExpiration);
 
     return Column(
@@ -756,7 +757,10 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
       }
 
       final String nom = _nomController.text.trim();
-      final String unite = _uniteController.text.trim();
+      // ⚡ MODE RAPIDE : le champ « unité » est masqué. On retombe sur
+      // « pièce » (le cas courant) au lieu d'enregistrer une unité vide.
+      String unite = _uniteController.text.trim();
+      if (unite.isEmpty) unite = 'pièce';
       final double prixAchat = _lireNombre(_prixAchatController.text);
       final double prixVente = _lireNombre(_prixVenteController.text);
       final double quantite = _lireNombre(_quantiteController.text);
@@ -770,8 +774,8 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
 
       // 👕 MODULE 16 C8 — variantes : on part des attributs existants pour
       // ne jamais effacer une clé non gérée par ce formulaire.
-      final Map<String, String> attributs =
-          Map<String, String>.from(_article?.attributs ?? const <String, String>{});
+      final Map<String, String> attributs = Map<String, String>.from(
+          _article?.attributs ?? const <String, String>{});
       void poserAttribut(String cle, String valeur) {
         if (valeur.isEmpty) {
           attributs.remove(cle);
@@ -874,6 +878,13 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     final String titre =
         _estModification ? "Modifier l'article" : 'Nouvel article';
 
+    // ⚡ MODE RAPIDE — même règle que pour l'ajout de produit : en mode
+    // simple on ne demande que l'essentiel (nom + prix de vente). Photo,
+    // catégorie, unité de base et prix d'achat sont des réglages avancés.
+    // L'unité retombe sur « pièce » à l'enregistrement ; les deux modes
+    // écrivent exactement les mêmes données.
+    final bool avance = ModeApplicationService.instance.afficherReglagesAvances;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -932,45 +943,48 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                         ),
                       ),
                       // ------------------------------------------------ photo
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _apercuPhoto(),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Photo (optionnelle)',
-                                  style: Theme.of(context).textTheme.titleSmall,
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    OutlinedButton.icon(
-                                      onPressed: _choisirPhoto,
-                                      icon: const Icon(
-                                          Icons.photo_camera_outlined,
-                                          size: 18),
-                                      label: const Text('Choisir'),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    if (_photoLocale != null ||
-                                        (!_photoSupprimee &&
-                                            (_photoUrl ?? '').isNotEmpty))
-                                      TextButton(
-                                        onPressed: _retirerPhoto,
-                                        child: const Text('Retirer'),
+                      if (avance) ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            _apercuPhoto(),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Photo (optionnelle)',
+                                    style:
+                                        Theme.of(context).textTheme.titleSmall,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: _choisirPhoto,
+                                        icon: const Icon(
+                                            Icons.photo_camera_outlined,
+                                            size: 18),
+                                        label: const Text('Choisir'),
                                       ),
-                                  ],
-                                ),
-                              ],
+                                      const SizedBox(width: 8),
+                                      if (_photoLocale != null ||
+                                          (!_photoSupprimee &&
+                                              (_photoUrl ?? '').isNotEmpty))
+                                        TextButton(
+                                          onPressed: _retirerPhoto,
+                                          child: const Text('Retirer'),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                      ],
 
                       // ------------------------------------------------- nom
                       TextFormField(
@@ -984,53 +998,59 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       const SizedBox(height: 16),
 
                       // ------------------------------------------- catégorie
-                      AppDropdownField<String>(
-                        label: 'Catégorie',
-                        value: _categorieSelectionnee,
-                        prefixIcon: Icons.category_outlined,
-                        items: _itemsCategories,
-                        onChanged: (String? valeur) {
-                          if (valeur == _valeurNouvelleCategorie) {
-                            _creerCategorie();
-                            return;
-                          }
-                          setState(() => _categorieSelectionnee = valeur ?? '');
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                      if (avance) ...[
+                        AppDropdownField<String>(
+                          label: 'Catégorie',
+                          value: _categorieSelectionnee,
+                          prefixIcon: Icons.category_outlined,
+                          items: _itemsCategories,
+                          onChanged: (String? valeur) {
+                            if (valeur == _valeurNouvelleCategorie) {
+                              _creerCategorie();
+                              return;
+                            }
+                            setState(
+                                () => _categorieSelectionnee = valeur ?? '');
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // -------------------------------------- unité de base
-                      TextFormField(
-                        controller: _uniteController,
-                        decoration: _decoration(
-                          'Unité de mesure de base *',
-                          hint: 'bouteille, pièce, kg…',
-                          icone: Icons.straighten,
+                      if (avance) ...[
+                        TextFormField(
+                          controller: _uniteController,
+                          decoration: _decoration(
+                            'Unité de mesure de base *',
+                            hint: 'bouteille, pièce, kg…',
+                            icone: Icons.straighten,
+                          ),
+                          validator: (String? v) => _validerObligatoire(v,
+                              "L'unité de base est obligatoire (ex. bouteille)."),
                         ),
-                        validator: (String? v) => _validerObligatoire(v,
-                            "L'unité de base est obligatoire (ex. bouteille)."),
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
+                      ],
 
                       // ---------------------------------------------- prix
                       Row(
                         children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _prixAchatController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true),
-                              inputFormatters: [
-                                FilteringTextInputFormatter.allow(
-                                    RegExp(r'[0-9.,]')),
-                              ],
-                              decoration: _decoration("Prix d'achat (unité)"),
-                              validator: (String? v) => _validerNombre(
-                                  v, "Le prix d'achat est invalide."),
+                          if (avance)
+                            Expanded(
+                              child: TextFormField(
+                                controller: _prixAchatController,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                        decimal: true),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(
+                                      RegExp(r'[0-9.,]')),
+                                ],
+                                decoration: _decoration("Prix d'achat (unité)"),
+                                validator: (String? v) => _validerNombre(
+                                    v, "Le prix d'achat est invalide."),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
+                          if (avance) const SizedBox(width: 12),
                           Expanded(
                             child: TextFormField(
                               controller: _prixVenteController,
