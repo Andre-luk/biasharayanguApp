@@ -470,9 +470,24 @@ function numeroInternational(brut: string): string {
   return d;
 }
 
-/** Code opérateur attendu par SerdiPay (`telecom`). */
+/**
+ * Code opérateur attendu par SerdiPay (`telecom`).
+ * ⚠️ SerdiPay n'a pas communiqué les valeurs admises (l'API répond
+ * « Unhandled match case 'orange' »). Le secret `SERDIPAY_TELECOM_MAP`
+ * (JSON, ex. `{"orange":"OrangeMoney"}`) permet de les corriger SANS
+ * redéployer la fonction.
+ */
 function codeTelecom(operateur: string | null): string {
   const o = (operateur ?? '').trim().toLowerCase().replace(/[\s-]/g, '');
+  let surcharges: Record<string, string> = {};
+  try {
+    const brut = Deno.env.get('SERDIPAY_TELECOM_MAP');
+    if (brut && brut.trim().length > 0) {
+      surcharges = JSON.parse(brut) as Record<string, string>;
+    }
+  } catch {
+    console.error('[serdipay] SERDIPAY_TELECOM_MAP n’est pas un JSON valide');
+  }
   const table: Record<string, string> = {
     orange: 'orange',
     orangemoney: 'orange',
@@ -482,8 +497,28 @@ function codeTelecom(operateur: string | null): string {
     vodacom: 'mpesa',
     afrimoney: 'afrimoney',
     africell: 'afrimoney',
+    ...surcharges,
   };
   return table[o] ?? o;
+}
+
+/** Message lisible renvoyé par SerdiPay (champ `error`, `message` ou `errors`). */
+function resumeErreurFournisseur(data: unknown, texte: string): string {
+  const d = (data ?? {}) as Record<string, unknown>;
+  const err = d.error ?? d.errors ?? d.message;
+  if (typeof err === 'string' && err.trim().length > 0) {
+    return err.trim().slice(0, 200);
+  }
+  if (err && typeof err === 'object') {
+    const paires = Object.entries(err as Record<string, unknown>);
+    if (paires.length > 0) {
+      return paires
+        .slice(0, 3)
+        .map(([champ, valeur]) => `${champ}: ${String(valeur).slice(0, 120)}`)
+        .join(' · ');
+    }
+  }
+  return texte.slice(0, 200);
 }
 
 function construireCorpsInitier(
@@ -1209,6 +1244,8 @@ async function routeInitier(req: Request): Promise<Response> {
   }
 
   if (!reponse.ok) {
+    const detail = resumeErreurFournisseur(reponse.data, reponse.texte);
+
     await clientService().rpc('rpc_serdipay_echec', {
       p_reference: paiement.reference,
       p_motif: `HTTP_${reponse.statutHttp} : ${reponse.texte.slice(0, 400)}`,
@@ -1216,8 +1253,7 @@ async function routeInitier(req: Request): Promise<Response> {
 
     return erreur(
       'PAIEMENT_REFUSE_FOURNISSEUR',
-      `SerdiPay a refusé la demande (HTTP ${reponse.statutHttp}). ` +
-        'Vérifiez le numéro et le moyen de paiement, puis réessayez.',
+      `SerdiPay a refusé la demande : ${detail}`,
       502,
     );
   }
