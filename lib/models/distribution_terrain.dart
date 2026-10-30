@@ -50,11 +50,17 @@ class TourneeDistribution {
     this.quantiteAttribuee = 0,
     this.quantiteVendue = 0,
     this.quantiteRetournee = 0,
+    this.quantiteCasse = 0,
+    this.quantiteBonus = 0,
     this.ecart = 0,
     this.chiffreAffaires = 0,
+    this.coutAchat = 0,
     this.consignesOuvertes = 0,
     this.consignesTotal = 0,
     this.bonusTotal = 0,
+    this.objectifMontant,
+    this.commissionTaux,
+    this.commissionMontant = 0,
   });
 
   final String id;
@@ -70,16 +76,59 @@ class TourneeDistribution {
   final double quantiteVendue;
   final double quantiteRetournee;
 
-  /// Quantité ni vendue ni rendue : la responsabilité de l'agent.
+  /// Cassée ou perdue : tracée séparément, ne produit aucun chiffre d'affaires.
+  final double quantiteCasse;
+
+  /// Offerte en bonus : sort de la dotation sans créer de chiffre d'affaires.
+  final double quantiteBonus;
+
+  /// Quantité ni vendue, ni rendue, ni cassée, ni offerte : la responsabilité
+  /// de l'agent. Toujours calculée par le serveur, jamais saisie.
   final double ecart;
   final double chiffreAffaires;
+
+  /// Coût d'achat des unités réellement vendues (prix figé à la dotation).
+  final double coutAchat;
   final int consignesOuvertes;
   final int consignesTotal;
   final double bonusTotal;
 
+  /// Objectif de chiffre d'affaires fixé par le patron (null = pas d'objectif).
+  final double? objectifMontant;
+
+  /// Taux de commission en pourcentage (null = pas de commission).
+  final double? commissionTaux;
+
+  /// Commission calculée à la clôture (0 tant que la tournée tourne).
+  final double commissionMontant;
+
   /// Part du stock attribué réellement vendue (0 → 1).
-  double get tauxVente =>
-      quantiteAttribuee <= 0 ? 0 : (quantiteVendue / quantiteAttribuee).clamp(0, 1);
+  double get tauxVente => quantiteAttribuee <= 0
+      ? 0
+      : (quantiteVendue / quantiteAttribuee).clamp(0, 1);
+
+  /// Avancement vers l'objectif (0 → 1, plafonné pour l'affichage).
+  double get tauxObjectif {
+    final double? cible = objectifMontant;
+    if (cible == null || cible <= 0) return 0;
+    return (chiffreAffaires / cible).clamp(0, 1);
+  }
+
+  bool get objectifAtteint {
+    final double? cible = objectifMontant;
+    return cible != null && cible > 0 && chiffreAffaires >= cible;
+  }
+
+  /// Marge estimée : ce qui reste après le coût d'achat des unités vendues.
+  double get marge => chiffreAffaires - coutAchat;
+
+  /// Ce que l'agent a en moins par rapport à ce qui lui a été confié.
+  double get manquant =>
+      quantiteAttribuee -
+      quantiteVendue -
+      quantiteRetournee -
+      quantiteCasse -
+      quantiteBonus;
 
   factory TourneeDistribution.depuisJson(Map<String, dynamic> json) {
     return TourneeDistribution(
@@ -94,11 +143,17 @@ class TourneeDistribution {
       quantiteAttribuee: _nombre(json['quantite_attribuee']),
       quantiteVendue: _nombre(json['quantite_vendue']),
       quantiteRetournee: _nombre(json['quantite_retournee']),
+      quantiteCasse: _nombre(json['quantite_casse']),
+      quantiteBonus: _nombre(json['quantite_bonus']),
       ecart: _nombre(json['ecart']),
       chiffreAffaires: _nombre(json['chiffre_affaires']),
+      coutAchat: _nombre(json['cout_achat']),
       consignesOuvertes: _entier(json['consignes_ouvertes']),
       consignesTotal: _entier(json['consignes_total']),
       bonusTotal: _nombre(json['bonus_total']),
+      objectifMontant: _nombreOuNull(json['objectif_montant']),
+      commissionTaux: _nombreOuNull(json['commission_taux']),
+      commissionMontant: _nombre(json['commission_montant']),
     );
   }
 
@@ -119,11 +174,18 @@ class TourneeDistribution {
       quantiteAttribuee: modele?.quantiteAttribuee ?? 0,
       quantiteVendue: modele?.quantiteVendue ?? 0,
       quantiteRetournee: modele?.quantiteRetournee ?? 0,
+      quantiteCasse: modele?.quantiteCasse ?? 0,
+      quantiteBonus: modele?.quantiteBonus ?? 0,
       ecart: _nombre(json['ecart_total']),
       chiffreAffaires: _nombre(json['chiffre_affaires']),
+      coutAchat: modele?.coutAchat ?? 0,
       consignesOuvertes: modele?.consignesOuvertes ?? 0,
       consignesTotal: modele?.consignesTotal ?? 0,
       bonusTotal: modele?.bonusTotal ?? 0,
+      objectifMontant: modele?.objectifMontant,
+      commissionTaux:
+          _nombreOuNull(json['commission_taux']) ?? modele?.commissionTaux,
+      commissionMontant: _nombre(json['commission_montant']),
     );
   }
 }
@@ -137,6 +199,8 @@ class LigneTournee {
     this.attribuee = 0,
     this.vendue = 0,
     this.retournee = 0,
+    this.bonus = 0,
+    this.casse = 0,
     this.restante = 0,
     this.prixVente = 0,
   });
@@ -147,6 +211,12 @@ class LigneTournee {
   final double attribuee;
   final double vendue;
   final double retournee;
+
+  /// Offerte en bonus (ne produit pas de chiffre d'affaires).
+  final double bonus;
+
+  /// Cassée ou perdue.
+  final double casse;
 
   /// Ce qu'il reste à vendre (ou à rendre).
   final double restante;
@@ -162,6 +232,8 @@ class LigneTournee {
       attribuee: _nombre(json['attribuee']),
       vendue: _nombre(json['vendue']),
       retournee: _nombre(json['retournee']),
+      bonus: _nombre(json['bonus']),
+      casse: _nombre(json['casse']),
       restante: _nombre(json['restante']),
       prixVente: _nombre(json['prix_vente']),
     );
@@ -176,6 +248,8 @@ class LigneTournee {
       attribuee: _nombre(json['attribuee']),
       vendue: _nombre(json['vendue']),
       retournee: _nombre(json['retournee']),
+      bonus: _nombre(json['bonus']),
+      casse: _nombre(json['casse']),
       restante: _nombre(json['ecart']),
     );
   }
@@ -226,7 +300,9 @@ class ConsigneRecipient {
       libelle: _texte(json['libelle']),
       quantite: _entier(json['quantite']),
       recuperee: _entier(json['recuperee']),
-      statut: _texte(json['statut']).isEmpty ? 'chez_client' : _texte(json['statut']),
+      statut: _texte(json['statut']).isEmpty
+          ? 'chez_client'
+          : _texte(json['statut']),
       date: _date(json['date']),
     );
   }
@@ -261,7 +337,8 @@ class BonusClient {
     return BonusClient(
       id: _texte(json['id']),
       clientNom: _texte(json['client_nom']),
-      nature: _texte(json['nature']).isEmpty ? 'remise' : _texte(json['nature']),
+      nature:
+          _texte(json['nature']).isEmpty ? 'remise' : _texte(json['nature']),
       montant: _nombre(json['montant']),
       description: _texte(json['description']),
       date: _date(json['date']),
@@ -281,6 +358,10 @@ class MaTournee {
     this.lignes = const <LigneTournee>[],
     this.consignes = const <ConsigneRecipient>[],
     this.bonus = const <BonusClient>[],
+    this.objectifMontant,
+    this.commissionTaux,
+    this.commissionEstimee = 0,
+    this.chiffreAffaires = 0,
   });
 
   final String id;
@@ -293,9 +374,43 @@ class MaTournee {
   final List<ConsigneRecipient> consignes;
   final List<BonusClient> bonus;
 
+  /// Objectif de chiffre d'affaires fixé par le patron (null = aucun).
+  final double? objectifMontant;
+
+  /// Taux de commission en pourcentage (null = aucune).
+  final double? commissionTaux;
+
+  /// Ce que l'agent gagne si la tournée s'arrête maintenant. Estimé par le
+  /// serveur, figé à la clôture.
+  final double commissionEstimee;
+
+  /// Chiffre d'affaires réellement encaissé sur cette tournée.
+  final double chiffreAffaires;
+
   bool get demarree => statut == TourneeStatut.enCours;
 
-  int get produitsRestants => lignes.where((LigneTournee l) => !l.epuisee).length;
+  /// Avancement vers l'objectif (0 → 1).
+  double get tauxObjectif {
+    final double? cible = objectifMontant;
+    if (cible == null || cible <= 0) return 0;
+    return (chiffreAffaires / cible).clamp(0, 1);
+  }
+
+  bool get objectifAtteint {
+    final double? cible = objectifMontant;
+    return cible != null && cible > 0 && chiffreAffaires >= cible;
+  }
+
+  /// Montant qui reste à faire pour atteindre l'objectif (0 si atteint).
+  double get restePourObjectif {
+    final double? cible = objectifMontant;
+    if (cible == null || cible <= 0) return 0;
+    final double reste = cible - chiffreAffaires;
+    return reste > 0 ? reste : 0;
+  }
+
+  int get produitsRestants =>
+      lignes.where((LigneTournee l) => !l.epuisee).length;
 
   double get quantiteRestante => lignes.fold<double>(
       0, (double total, LigneTournee l) => total + l.restante);
@@ -305,7 +420,9 @@ class MaTournee {
 
   static MaTournee? depuisJson(Map<String, dynamic> json) {
     if (json['ok'] != true) return null;
-    final Map<String, dynamic> t = (json['tournee'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+    final Map<String, dynamic> t =
+        (json['tournee'] as Map?)?.cast<String, dynamic>() ??
+            <String, dynamic>{};
     if (t.isEmpty) return null;
 
     return MaTournee(
@@ -319,6 +436,10 @@ class MaTournee {
       consignes:
           _liste(json['consignes']).map(ConsigneRecipient.depuisJson).toList(),
       bonus: _liste(json['bonus']).map(BonusClient.depuisJson).toList(),
+      objectifMontant: _nombreOuNull(t['objectif_montant']),
+      commissionTaux: _nombreOuNull(t['commission_taux']),
+      commissionEstimee: _nombre(t['commission_estimee']),
+      chiffreAffaires: _nombre(t['chiffre_affaires']),
     );
   }
 }
@@ -330,6 +451,10 @@ class TotauxDistribution {
     this.chiffreAffaires = 0,
     this.quantiteVendue = 0,
     this.ecart = 0,
+    this.casse = 0,
+    this.quantiteBonus = 0,
+    this.commission = 0,
+    this.coutAchat = 0,
     this.consignesOuvertes = 0,
     this.bonus = 0,
   });
@@ -338,8 +463,23 @@ class TotauxDistribution {
   final double chiffreAffaires;
   final double quantiteVendue;
   final double ecart;
+
+  /// Quantité cassée ou perdue sur la période.
+  final double casse;
+
+  /// Quantité offerte en bonus sur la période.
+  final double quantiteBonus;
+
+  /// Commissions dues aux agents sur la période.
+  final double commission;
+
+  /// Coût d'achat des unités vendues (prix figés à la dotation).
+  final double coutAchat;
   final double consignesOuvertes;
   final double bonus;
+
+  /// Marge estimée : chiffre d'affaires − coût d'achat des unités vendues.
+  double get marge => chiffreAffaires - coutAchat;
 
   factory TotauxDistribution.depuisJson(Map<String, dynamic>? json) {
     final Map<String, dynamic> j = json ?? <String, dynamic>{};
@@ -348,6 +488,10 @@ class TotauxDistribution {
       chiffreAffaires: _nombre(j['chiffre_affaires']),
       quantiteVendue: _nombre(j['quantite_vendue']),
       ecart: _nombre(j['ecart']),
+      casse: _nombre(j['casse']),
+      quantiteBonus: _nombre(j['quantite_bonus']),
+      commission: _nombre(j['commission']),
+      coutAchat: _nombre(j['cout_achat']),
       consignesOuvertes: _nombre(j['consignes_ouvertes']),
       bonus: _nombre(j['bonus']),
     );
@@ -422,10 +566,17 @@ class ResultatCloture {
   const ResultatCloture({
     required this.tournee,
     this.lignes = const <LigneTournee>[],
+    this.ecarts = const <LigneTournee>[],
   });
 
   final TourneeDistribution tournee;
   final List<LigneTournee> lignes;
+
+  /// Uniquement les lignes dont l'écart n'est pas nul : nommées, jamais noyées.
+  final List<LigneTournee> ecarts;
+
+  /// Commission calculée par le serveur à la clôture.
+  double get commission => tournee.commissionMontant;
 }
 
 // ---------------------------------------------------------------------------
@@ -442,6 +593,15 @@ String? _texteOuNull(dynamic valeur) {
 double _nombre(dynamic valeur) {
   if (valeur is num) return valeur.toDouble();
   return double.tryParse(_texte(valeur)) ?? 0;
+}
+
+/// Nombre facultatif : `null` reste `null` (pas d'objectif ≠ objectif à 0).
+double? _nombreOuNull(dynamic valeur) {
+  if (valeur == null) return null;
+  if (valeur is num) return valeur.toDouble();
+  final String t = _texte(valeur).trim();
+  if (t.isEmpty) return null;
+  return double.tryParse(t);
 }
 
 int _entier(dynamic valeur) => _nombre(valeur).round();

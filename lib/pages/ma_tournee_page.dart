@@ -189,8 +189,7 @@ class _MaTourneePageState extends State<MaTourneePage> {
       ),
     );
 
-    final double quantite =
-        double.tryParse(q.text.replaceAll(',', '.')) ?? 0;
+    final double quantite = double.tryParse(q.text.replaceAll(',', '.')) ?? 0;
     q.dispose();
     if (valide != true || quantite <= 0) return;
 
@@ -198,7 +197,10 @@ class _MaTourneePageState extends State<MaTourneePage> {
     try {
       final Map<String, dynamic> vente = await _service.vendre(
         lignes: <Map<String, dynamic>>[
-          <String, dynamic>{'produit_id': ligne.produitId, 'quantite': quantite},
+          <String, dynamic>{
+            'produit_id': ligne.produitId,
+            'quantite': quantite
+          },
         ],
         modePaiement: mode,
       );
@@ -262,8 +264,7 @@ class _MaTourneePageState extends State<MaTourneePage> {
     if (clientId == null || !mounted) return;
 
     final TextEditingController q = TextEditingController(text: '1');
-    final TextEditingController libelle =
-        TextEditingController(text: 'Casier');
+    final TextEditingController libelle = TextEditingController(text: 'Casier');
 
     final bool? valide = await showDialog<bool>(
       context: context,
@@ -448,6 +449,105 @@ class _MaTourneePageState extends State<MaTourneePage> {
     }
   }
 
+  /// Déclare une casse ou un bonus sur UNE ligne de la dotation.
+  ///
+  /// C'est l'agent qui sait qu'une bouteille est tombée ou qu'il a offert un
+  /// paquet : on le lui demande au moment où ça arrive, pas à la clôture,
+  /// quand plus personne ne se souvient. La quantité sort de la dotation
+  /// sans créer de chiffre d'affaires — le serveur le garantit.
+  Future<void> _declarerEcart(LigneTournee ligne) async {
+    final MaTournee? t = _tournee;
+    if (t == null) return;
+
+    final TextEditingController q = TextEditingController(text: '1');
+    String type = 'casse';
+
+    final bool? valide = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter maj) => AlertDialog(
+          title: Text(ligne.nom, overflow: TextOverflow.ellipsis),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              SegmentedButton<String>(
+                segments: const <ButtonSegment<String>>[
+                  ButtonSegment<String>(
+                    value: 'casse',
+                    label: Text('Casse'),
+                    icon: Icon(Icons.broken_image_outlined),
+                  ),
+                  ButtonSegment<String>(
+                    value: 'bonus',
+                    label: Text('Offert'),
+                    icon: Icon(Icons.card_giftcard_rounded),
+                  ),
+                ],
+                selected: <String>{type},
+                onSelectionChanged: (Set<String> choix) =>
+                    maj(() => type = choix.first),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: q,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Quantité',
+                  helperText: 'Disponible : ${formatQuantite(ligne.restante)} '
+                      '${ligne.unite}',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Un article cassé ou offert n\'est pas une vente : il ne '
+                'gonfle pas votre chiffre d\'affaires.',
+                style: Theme.of(ctx).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Déclarer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final double quantite =
+        double.tryParse(q.text.replaceAll(',', '.').trim()) ?? 0;
+    q.dispose();
+    if (valide != true || quantite <= 0) return;
+
+    setState(() => _action = true);
+    try {
+      await _service.declarerEcart(
+        tourneeId: t.id,
+        produitId: ligne.produitId,
+        type: type,
+        quantite: quantite,
+      );
+      await _charger(silencieux: true);
+      _message(type == 'casse'
+          ? 'Casse enregistrée.'
+          : 'Article offert enregistré.');
+    } on DistributionException catch (e) {
+      _message(e.message, erreur: true);
+    } finally {
+      if (mounted) setState(() => _action = false);
+    }
+  }
+
   void _message(String texte, {bool erreur = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -571,6 +671,60 @@ class _MaTourneePageState extends State<MaTourneePage> {
                     ),
                   ],
                 ),
+                // 🎯 L'objectif du jour et MA commission : l'agent voit où il
+                // en est sans avoir à demander. La commission est calculée par
+                // le serveur sur les ventes réelles, jamais saisie à la main.
+                if (t.objectifMontant != null || t.commissionTaux != null) ...[
+                  const SizedBox(height: 14),
+                  if (t.objectifMontant != null) ...<Widget>[
+                    Row(
+                      children: <Widget>[
+                        const Icon(Icons.flag_rounded,
+                            color: Colors.white70, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            t.objectifAtteint
+                                ? 'Objectif atteint 🎉'
+                                : 'Objectif ${formatMontant(t.objectifMontant!)}'
+                                    ' — reste ${formatMontant(t.restePourObjectif)}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: LinearProgressIndicator(
+                        value: t.tauxObjectif,
+                        minHeight: 6,
+                        backgroundColor: Colors.white24,
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  ],
+                  if (t.commissionTaux != null) ...<Widget>[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: <Widget>[
+                        const Icon(Icons.percent_rounded,
+                            color: Colors.white70, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Ma commission (${formatQuantite(t.commissionTaux!)}) : '
+                            '${formatMontant(t.commissionEstimee)}',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ],
             ),
           ),
@@ -626,6 +780,7 @@ class _MaTourneePageState extends State<MaTourneePage> {
                     ligne: l,
                     desactive: _action || !t.demarree,
                     onVendre: () => _vendre(l),
+                    onEcart: () => _declarerEcart(l),
                   )),
           if (t.consignes.isNotEmpty) ...<Widget>[
             const SizedBox(height: 20),
@@ -635,9 +790,8 @@ class _MaTourneePageState extends State<MaTourneePage> {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: const Icon(Icons.inventory_2_outlined),
-                    title: Text(c.clientNom.isEmpty
-                        ? 'Client non nommé'
-                        : c.clientNom),
+                    title: Text(
+                        c.clientNom.isEmpty ? 'Client non nommé' : c.clientNom),
                     subtitle: Text(<String>[
                       c.libelle,
                       '${c.restante} restant(s)',
@@ -657,9 +811,8 @@ class _MaTourneePageState extends State<MaTourneePage> {
             ...t.bonus.map((BonusClient b) => ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.card_giftcard_rounded),
-                  title: Text(b.clientNom.isEmpty
-                      ? 'Client non nommé'
-                      : b.clientNom),
+                  title: Text(
+                      b.clientNom.isEmpty ? 'Client non nommé' : b.clientNom),
                   subtitle: Text(b.libelleNature),
                   trailing: Text(
                     formatMontant(b.montant),
@@ -707,11 +860,15 @@ class _CarteVente extends StatelessWidget {
     required this.ligne,
     required this.desactive,
     required this.onVendre,
+    this.onEcart,
   });
 
   final LigneTournee ligne;
   final bool desactive;
   final VoidCallback onVendre;
+
+  /// Déclarer une casse ou un article offert sur CETTE ligne.
+  final VoidCallback? onEcart;
 
   @override
   Widget build(BuildContext context) {
@@ -756,12 +913,24 @@ class _CarteVente extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    '${formatQuantite(ligne.vendue)} / '
-                    '${formatQuantite(ligne.attribuee)} ${ligne.unite} • '
-                    'restant ${formatQuantite(ligne.restante)}',
+                    <String>[
+                      '${formatQuantite(ligne.vendue)} / '
+                          '${formatQuantite(ligne.attribuee)} ${ligne.unite}',
+                      'restant ${formatQuantite(ligne.restante)}',
+                      if (ligne.casse > 0)
+                        'cassé ${formatQuantite(ligne.casse)}',
+                      if (ligne.bonus > 0)
+                        'offert ${formatQuantite(ligne.bonus)}',
+                    ].join(' • '),
                     style: theme.textTheme.bodySmall,
                   ),
                 ),
+                if (onEcart != null)
+                  IconButton(
+                    tooltip: 'Casse ou article offert',
+                    onPressed: desactive ? null : onEcart,
+                    icon: const Icon(Icons.more_horiz_rounded),
+                  ),
                 FilledButton.tonal(
                   onPressed: desactive || ligne.epuisee ? null : onVendre,
                   child: Text(ligne.epuisee ? 'Épuisé' : 'Vendre'),

@@ -29,6 +29,11 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
   final DistributionService _service = DistributionService.instance;
   final TextEditingController _zoneController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+  // Objectif de CA et commission de l'agent : fixés AVANT le départ, et
+  // calculés ensuite par le serveur sur les ventes réelles. Un pourcentage
+  // promis oralement ne laisse aucune trace ; celui-ci oui.
+  final TextEditingController _objectifController = TextEditingController();
+  final TextEditingController _commissionController = TextEditingController();
   final TextEditingController _rechercheController = TextEditingController();
 
   List<AgentDistribution> _agents = const <AgentDistribution>[];
@@ -52,6 +57,8 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
   void dispose() {
     _zoneController.dispose();
     _noteController.dispose();
+    _objectifController.dispose();
+    _commissionController.dispose();
     _rechercheController.dispose();
     super.dispose();
   }
@@ -149,7 +156,7 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
     });
 
     try {
-      await _service.creerTournee(
+      final Map<String, dynamic> creation = await _service.creerTournee(
         agentId: _agentId!,
         date: _date,
         zone: _zoneController.text,
@@ -162,9 +169,37 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
             .toList(growable: false),
       );
 
+      // L'objectif et la commission se règlent APRÈS la création (la RPC de
+      // création garde sa signature). Un échec ici ne doit pas annuler la
+      // dotation : la tournée existe, on prévient simplement le patron.
+      final String? tourneeId =
+          (creation['id'] ?? creation['tournee_id'])?.toString();
+      final double? objectif = _nombreSaisi(_objectifController.text);
+      final double? commission = _nombreSaisi(_commissionController.text);
+      if (tourneeId != null && (objectif != null || commission != null)) {
+        try {
+          await _service.parametrerTournee(
+            tourneeId,
+            objectifMontant: objectif,
+            commissionTaux: commission,
+          );
+        } on DistributionException catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Tournée créée, mais objectif/commission non enregistrés : '
+                '${e.message}',
+              ),
+            ),
+          );
+        }
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tournée créée. L\'agent peut la démarrer.')),
+        const SnackBar(
+            content: Text('Tournée créée. L\'agent peut la démarrer.')),
       );
       context.pop(true);
     } on DistributionException catch (e) {
@@ -268,6 +303,48 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
             prefixIcon: Icon(Icons.notes_rounded),
           ),
         ),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: TextField(
+                controller: _objectifController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'Objectif de vente',
+                  hintText: 'facultatif',
+                  prefixIcon: Icon(Icons.flag_rounded),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _commissionController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'Commission (%)',
+                  hintText: 'ex. 5',
+                  prefixIcon: Icon(Icons.percent_rounded),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'La commission est calculée sur les ventes réellement encaissées, '
+          'pas sur la dotation. Elle est figée à la clôture de la tournée.',
+          style: theme.textTheme.bodySmall,
+        ),
         const SizedBox(height: 20),
         Row(
           children: <Widget>[
@@ -298,7 +375,9 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
             subtitle: Text(
               <String>[
                 formatMontant(a.prixVente),
-                a.stockIllimite ? 'stock ∞' : 'stock ${formatQuantite(a.quantite)}',
+                a.stockIllimite
+                    ? 'stock ∞'
+                    : 'stock ${formatQuantite(a.quantite)}',
                 if (a.uniteMesure.isNotEmpty) a.uniteMesure,
               ].join(' • '),
             ),
@@ -356,6 +435,15 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
     );
   }
 
+  /// Lit un montant saisi (« 1 500,5 » → 1500.5). Vide ou invalide → null.
+  static double? _nombreSaisi(String brut) {
+    final String propre = brut.replaceAll(' ', '').replaceAll(',', '.').trim();
+    if (propre.isEmpty) return null;
+    final double? valeur = double.tryParse(propre);
+    if (valeur == null || valeur < 0) return null;
+    return valeur;
+  }
+
   Future<void> _choisirDate() async {
     final DateTime? choisie = await showDatePicker(
       context: context,
@@ -376,8 +464,9 @@ class _Avertissement extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final Color fond =
-        erreur ? theme.colorScheme.errorContainer : theme.colorScheme.tertiaryContainer;
+    final Color fond = erreur
+        ? theme.colorScheme.errorContainer
+        : theme.colorScheme.tertiaryContainer;
     final Color texte = erreur
         ? theme.colorScheme.onErrorContainer
         : theme.colorScheme.onTertiaryContainer;

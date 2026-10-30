@@ -362,8 +362,7 @@ void main() {
 
     test('toMap n\'envoie la clé que si elle est vraie', () {
       const Article normal = Article(id: 1, nom: 'Savon');
-      const Article rapide =
-          Article(id: 2, nom: 'Eau', stockIllimite: true);
+      const Article rapide = Article(id: 2, nom: 'Eau', stockIllimite: true);
 
       expect(normal.toMap().containsKey('stock_illimite'), isFalse);
       expect(rapide.toMap()['stock_illimite'], isTrue);
@@ -399,6 +398,282 @@ void main() {
 
       expect(r.tournee.statut, TourneeStatut.cloturee);
       expect(r.lignes.single.restante, 2);
+    });
+  });
+
+  // =========================================================================
+  // PHASE 4 — OBJECTIF, COMMISSION, CASSE ET BONUS
+  // =========================================================================
+
+  group('Objectif et commission — tournée', () {
+    test('lit l\'objectif, le taux et la commission calculée', () {
+      final TourneeDistribution t = TourneeDistribution.depuisJson(
+        <String, dynamic>{
+          'id': 't1',
+          'reference': 'TOU-20260101-0001',
+          'statut': 'cloturee',
+          'chiffre_affaires': 250000,
+          'objectif_montant': 200000,
+          'commission_taux': 5,
+          'commission_montant': 12500,
+          'cout_achat': 150000,
+        },
+      );
+
+      expect(t.objectifMontant, 200000);
+      expect(t.commissionTaux, 5);
+      expect(t.commissionMontant, 12500);
+      expect(t.coutAchat, 150000);
+      expect(t.marge, 100000);
+    });
+
+    test('sans objectif, aucune progression n\'est inventée', () {
+      final TourneeDistribution t = TourneeDistribution.depuisJson(
+        <String, dynamic>{
+          'id': 't2',
+          'reference': 'TOU-2',
+          'statut': 'en_cours',
+          'chiffre_affaires': 90000,
+        },
+      );
+
+      expect(t.objectifMontant, isNull);
+      expect(t.commissionTaux, isNull);
+      expect(t.tauxObjectif, 0);
+      expect(t.objectifAtteint, isFalse);
+    });
+
+    test('un objectif à zéro ne provoque pas de division par zéro', () {
+      final TourneeDistribution t = TourneeDistribution.depuisJson(
+        <String, dynamic>{
+          'id': 't3',
+          'reference': 'TOU-3',
+          'statut': 'en_cours',
+          'chiffre_affaires': 5000,
+          'objectif_montant': 0,
+        },
+      );
+
+      expect(t.tauxObjectif, 0);
+      expect(t.objectifAtteint, isFalse);
+    });
+
+    test('progression plafonnée à 100 % et objectif détecté atteint', () {
+      final TourneeDistribution t = TourneeDistribution.depuisJson(
+        <String, dynamic>{
+          'id': 't4',
+          'reference': 'TOU-4',
+          'statut': 'en_cours',
+          'chiffre_affaires': 250000,
+          'objectif_montant': 200000,
+        },
+      );
+
+      expect(t.tauxObjectif, 1);
+      expect(t.objectifAtteint, isTrue);
+    });
+
+    test('un objectif atteint exactement compte comme atteint', () {
+      final TourneeDistribution t = TourneeDistribution.depuisJson(
+        <String, dynamic>{
+          'id': 't5',
+          'reference': 'TOU-5',
+          'statut': 'en_cours',
+          'chiffre_affaires': 100000,
+          'objectif_montant': 100000,
+        },
+      );
+
+      expect(t.objectifAtteint, isTrue);
+      expect(t.tauxObjectif, 1);
+    });
+  });
+
+  group('Casse et bonus — jamais confondus avec des ventes', () {
+    test('les quantités cassées et offertes sont lues séparément', () {
+      final TourneeDistribution t = TourneeDistribution.depuisJson(
+        <String, dynamic>{
+          'id': 't6',
+          'reference': 'TOU-6',
+          'statut': 'cloturee',
+          'quantite_attribuee': 100,
+          'quantite_vendue': 80,
+          'quantite_retournee': 12,
+          'quantite_casse': 3,
+          'quantite_bonus': 5,
+        },
+      );
+
+      expect(t.quantiteCasse, 3);
+      expect(t.quantiteBonus, 5);
+      // 100 − 80 − 12 − 3 − 5 = 0 : la dotation est entièrement expliquée.
+      expect(t.manquant, 0);
+    });
+
+    test('un manquant apparaît quand la dotation n\'est pas expliquée', () {
+      final TourneeDistribution t = TourneeDistribution.depuisJson(
+        <String, dynamic>{
+          'id': 't7',
+          'reference': 'TOU-7',
+          'statut': 'cloturee',
+          'quantite_attribuee': 100,
+          'quantite_vendue': 80,
+          'quantite_retournee': 10,
+          'quantite_casse': 2,
+          'quantite_bonus': 3,
+        },
+      );
+
+      expect(t.manquant, 5);
+    });
+
+    test('une ligne expose bonus et casse sans toucher au reste', () {
+      final LigneTournee l = LigneTournee.depuisJson(<String, dynamic>{
+        'produit_id': 7,
+        'nom': 'Eau 1,5 L',
+        'unite': 'bouteille',
+        'attribuee': 50,
+        'vendue': 40,
+        'retournee': 4,
+        'bonus': 3,
+        'casse': 3,
+        'restante': 0,
+        'prix_vente': 1200,
+      });
+
+      expect(l.bonus, 3);
+      expect(l.casse, 3);
+      expect(l.epuisee, isTrue);
+      expect(l.prixVente, 1200);
+    });
+  });
+
+  group('Tournée de l\'agent — objectif et commission estimée', () {
+    test('lit l\'objectif, le CA et la commission estimée', () {
+      final MaTournee? t = MaTournee.depuisJson(<String, dynamic>{
+        'ok': true,
+        'tournee': <String, dynamic>{
+          'id': 'm1',
+          'reference': 'TOU-9',
+          'statut': 'en_cours',
+          'objectif_montant': 300000,
+          'commission_taux': 10,
+          'commission_estimee': 12000,
+          'chiffre_affaires': 120000,
+        },
+      });
+
+      expect(t, isNotNull);
+      expect(t!.objectifMontant, 300000);
+      expect(t.commissionTaux, 10);
+      expect(t.commissionEstimee, 12000);
+      expect(t.chiffreAffaires, 120000);
+      expect(t.restePourObjectif, 180000);
+      expect(t.objectifAtteint, isFalse);
+      expect(t.tauxObjectif, closeTo(0.4, 0.0001));
+    });
+
+    test('sans objectif, « reste à faire » vaut zéro (et non l\'infini)', () {
+      final MaTournee? t = MaTournee.depuisJson(<String, dynamic>{
+        'ok': true,
+        'tournee': <String, dynamic>{
+          'id': 'm2',
+          'reference': 'TOU-10',
+          'statut': 'preparee',
+          'chiffre_affaires': 0,
+        },
+      });
+
+      expect(t!.objectifMontant, isNull);
+      expect(t.restePourObjectif, 0);
+      expect(t.tauxObjectif, 0);
+    });
+
+    test('objectif dépassé : plus rien ne reste à faire', () {
+      final MaTournee? t = MaTournee.depuisJson(<String, dynamic>{
+        'ok': true,
+        'tournee': <String, dynamic>{
+          'id': 'm3',
+          'reference': 'TOU-11',
+          'statut': 'en_cours',
+          'objectif_montant': 100000,
+          'chiffre_affaires': 150000,
+        },
+      });
+
+      expect(t!.objectifAtteint, isTrue);
+      expect(t.restePourObjectif, 0);
+    });
+  });
+
+  group('Totaux du rapport — commission et marge', () {
+    test('lit casse, bonus offert, commission et coût d\'achat', () {
+      final TotauxDistribution t = TotauxDistribution.depuisJson(
+        <String, dynamic>{
+          'tournees': 4,
+          'chiffre_affaires': 1000000,
+          'quantite_vendue': 400,
+          'ecart': 6,
+          'casse': 4,
+          'quantite_bonus': 9,
+          'commission': 50000,
+          'cout_achat': 600000,
+          'consignes_ouvertes': 12,
+          'bonus': 3000,
+        },
+      );
+
+      expect(t.tournees, 4);
+      expect(t.casse, 4);
+      expect(t.quantiteBonus, 9);
+      expect(t.commission, 50000);
+      expect(t.coutAchat, 600000);
+      expect(t.marge, 400000);
+    });
+
+    test('un rapport vide ne fabrique pas de fausses valeurs', () {
+      final TotauxDistribution t =
+          TotauxDistribution.depuisJson(const <String, dynamic>{});
+
+      expect(t.tournees, 0);
+      expect(t.commission, 0);
+      expect(t.marge, 0);
+    });
+  });
+
+  group('Clôture — commission et écarts nommés', () {
+    test('la commission vient de la tournée clôturée', () {
+      const TourneeDistribution t = TourneeDistribution(
+        id: 'c1',
+        reference: 'TOU-12',
+        dateTournee: null,
+        statut: TourneeStatut.cloturee,
+        commissionMontant: 7500,
+      );
+      const ResultatCloture r = ResultatCloture(
+        tournee: t,
+        ecarts: <LigneTournee>[
+          LigneTournee(produitId: 3, nom: 'Eau 0,5 L', restante: 2),
+        ],
+      );
+
+      expect(r.commission, 7500);
+      expect(r.ecarts.single.nom, 'Eau 0,5 L');
+      expect(r.ecarts.single.restante, 2);
+    });
+
+    test('une clôture sans écart renvoie une liste vide (pas null)', () {
+      const ResultatCloture r = ResultatCloture(
+        tournee: TourneeDistribution(
+          id: 'c2',
+          reference: 'TOU-13',
+          dateTournee: null,
+          statut: TourneeStatut.cloturee,
+        ),
+      );
+
+      expect(r.ecarts, isEmpty);
+      expect(r.commission, 0);
     });
   });
 }

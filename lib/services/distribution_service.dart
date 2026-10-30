@@ -54,8 +54,7 @@ class DistributionService {
       'TOURNEE_ACTIVE':
           'Cet agent a déjà une tournée en cours : clôturez-la avant d\'en préparer une nouvelle.',
       'TOURNEE_INTROUVABLE': 'Cette tournée n\'existe plus.',
-      'AGENT_INVALIDE':
-          'Cet agent n\'appartient pas à votre entreprise.',
+      'AGENT_INVALIDE': 'Cet agent n\'appartient pas à votre entreprise.',
       'AGENT_REQUIS': 'Choisissez l\'agent qui part en tournée.',
       'LIGNES_VIDES': 'Ajoutez au moins un produit à la dotation.',
       'PRODUIT_NON_ATTRIBUE':
@@ -68,6 +67,11 @@ class DistributionService {
       'CLIENT_INTROUVABLE': 'Ce client n\'existe plus.',
       'DROIT_REFUSE': 'Votre rôle ne permet pas cette opération.',
       'STATUT_INVALIDE': 'Cette tournée n\'est plus dans un état modifiable.',
+      'TAUX_INVALIDE': 'La commission doit être comprise entre 0 et 100 %.',
+      'OBJECTIF_INVALIDE': 'L\'objectif ne peut pas être négatif.',
+      'TYPE_INVALIDE': 'Type d\'écart inconnu (casse ou bonus).',
+      'ECART_SUPERIEUR':
+          'La quantité déclarée dépasse ce qui reste dans la dotation.',
       'SESSION_ABSENTE': 'Session expirée : reconnectez-vous.',
       'PGRST202':
           'Le module Distribution n\'est pas encore installé sur le serveur. '
@@ -91,9 +95,7 @@ class DistributionService {
           codeBrut == 'PGRST202' ||
           e.message.contains('Could not find the function');
       throw DistributionException(
-        nonDeploye
-            ? messageErreur('PGRST202|')
-            : messageErreur(e.message),
+        nonDeploye ? messageErreur('PGRST202|') : messageErreur(e.message),
         code: nonDeploye ? 'NON_DEPLOYE' : codeBrut,
       );
     } catch (e) {
@@ -125,7 +127,8 @@ class DistributionService {
           .order('nom', ascending: true);
 
       final List<AgentDistribution> agents = parseMapList(reponse)
-          .where((Map<String, dynamic> u) => parseInt(u['valide'], fallback: 1) != 0)
+          .where((Map<String, dynamic> u) =>
+              parseInt(u['valide'], fallback: 1) != 0)
           .map((Map<String, dynamic> u) {
             final String nom = parseString(u['nom']);
             final String prenom = parseString(u['prenom']);
@@ -135,7 +138,8 @@ class DistributionService {
             return AgentDistribution(
               id: parseString(u['id']),
               nom: complet,
-              role: parseString(u['new_role'], fallback: parseString(u['role'])),
+              role:
+                  parseString(u['new_role'], fallback: parseString(u['role'])),
             );
           })
           .where((AgentDistribution a) => a.id.isNotEmpty)
@@ -209,6 +213,45 @@ class DistributionService {
     });
   }
 
+  /// Fixe l'objectif de chiffre d'affaires et la commission d'une tournée.
+  ///
+  /// Réservé au propriétaire (contrôle serveur) et refusé après clôture :
+  /// la commission ne se renégocie pas une fois les comptes arrêtés.
+  Future<void> parametrerTournee(
+    String tourneeId, {
+    double? objectifMontant,
+    double? commissionTaux,
+    String? zoneCouverte,
+  }) async {
+    await _rpcAppel('rpc_tournee_parametrer', <String, dynamic>{
+      'p_tournee': tourneeId,
+      'p_objectif': objectifMontant,
+      'p_commission': commissionTaux,
+      'p_zone_couverte': _videOuNull(zoneCouverte),
+    });
+  }
+
+  /// Déclare une casse ou un bonus sur une ligne de dotation.
+  ///
+  /// Ces quantités sortent de la dotation **sans** créer de chiffre d'affaires :
+  /// un article offert n'est pas une vente, et une bouteille cassée n'en est
+  /// pas une non plus. L'écart final reste donc lisible et nommé.
+  Future<void> declarerEcart({
+    required String tourneeId,
+    required int produitId,
+    required String type,
+    required double quantite,
+    String? note,
+  }) async {
+    await _rpcAppel('rpc_tournee_declarer_ecart', <String, dynamic>{
+      'p_tournee': tourneeId,
+      'p_produit_id': produitId,
+      'p_type': type,
+      'p_quantite': quantite,
+      'p_note': _videOuNull(note),
+    });
+  }
+
   /// Clôture avec les retours déclarés (`[{produit_id, quantite}]`).
   Future<ResultatCloture> cloturerTournee(
     String tourneeId, {
@@ -233,9 +276,15 @@ class DistributionService {
         .map(LigneTournee.depuisCloture)
         .toList(growable: false);
 
+    // Les écarts sont renvoyés NOMMÉS : on les garde pour l'écran de clôture.
+    final List<LigneTournee> ecarts = parseMapList(json['ecarts'])
+        .map(LigneTournee.depuisCloture)
+        .toList(growable: false);
+
     return ResultatCloture(
       tournee: TourneeDistribution.depuisCloture(json, modele: modele),
       lignes: lignes,
+      ecarts: ecarts,
     );
   }
 
@@ -249,7 +298,8 @@ class DistributionService {
     final Map<String, dynamic>? json = parseMap(await _rpcAppel(
       'rpc_tournee_rapport',
       <String, dynamic>{
-        'p_debut': _isoJour(debut ?? aujourdhui.subtract(const Duration(days: 30))),
+        'p_debut':
+            _isoJour(debut ?? aujourdhui.subtract(const Duration(days: 30))),
         'p_fin': _isoJour(fin ?? aujourdhui),
         'p_agent': _videOuNull(agentId),
       },

@@ -225,11 +225,20 @@ class _TourneesPageState extends State<TourneesPage> {
                 valeur: formatQuantite(t.quantiteVendue),
               ),
               _MiniStat(label: 'Écarts', valeur: formatQuantite(t.ecart)),
+              if (t.casse > 0)
+                _MiniStat(label: 'Cassé', valeur: formatQuantite(t.casse)),
               _MiniStat(
                 label: 'Consignes',
                 valeur: formatQuantite(t.consignesOuvertes),
               ),
               _MiniStat(label: 'Bonus', valeur: formatMontant(t.bonus)),
+              if (t.commission > 0)
+                _MiniStat(
+                    label: 'Commissions', valeur: formatMontant(t.commission)),
+              // Marge = ce qui reste quand on a payé la marchandise et l'agent.
+              if (t.coutAchat > 0)
+                _MiniStat(
+                    label: 'Marge estimée', valeur: formatMontant(t.marge)),
             ],
           ),
         ],
@@ -360,12 +369,43 @@ class _CarteTournee extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (tournee.objectifMontant != null &&
+                  tournee.objectifMontant! > 0) ...<Widget>[
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: tournee.tauxObjectif,
+                    minHeight: 5,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  tournee.objectifAtteint
+                      ? 'Objectif atteint '
+                          '(${formatMontant(tournee.objectifMontant!)})'
+                      : 'Objectif ${formatMontant(tournee.objectifMontant!)} — '
+                          'reste ${formatMontant(tournee.objectifMontant! - tournee.chiffreAffaires)}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: tournee.objectifAtteint
+                        ? const Color(0xFF0F766E)
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               Row(
                 children: <Widget>[
-                  _Valeur(label: 'Attribué', valeur: formatQuantite(tournee.quantiteAttribuee)),
-                  _Valeur(label: 'Vendu', valeur: formatQuantite(tournee.quantiteVendue)),
-                  _Valeur(label: 'Rendu', valeur: formatQuantite(tournee.quantiteRetournee)),
+                  _Valeur(
+                      label: 'Attribué',
+                      valeur: formatQuantite(tournee.quantiteAttribuee)),
+                  _Valeur(
+                      label: 'Vendu',
+                      valeur: formatQuantite(tournee.quantiteVendue)),
+                  _Valeur(
+                      label: 'Rendu',
+                      valeur: formatQuantite(tournee.quantiteRetournee)),
                   _Valeur(
                     label: 'Écart',
                     valeur: formatQuantite(tournee.ecart),
@@ -373,6 +413,28 @@ class _CarteTournee extends StatelessWidget {
                   ),
                 ],
               ),
+              // Casse et articles offerts sont des sorties RÉELLES de stock :
+              // les cacher derrière un « écart » global serait une perte
+              // d'information. On les nomme.
+              if (tournee.quantiteCasse > 0 ||
+                  tournee.quantiteBonus > 0) ...<Widget>[
+                const SizedBox(height: 6),
+                Row(
+                  children: <Widget>[
+                    if (tournee.quantiteCasse > 0)
+                      _Valeur(
+                        label: 'Cassé',
+                        valeur: formatQuantite(tournee.quantiteCasse),
+                        alerte: true,
+                      ),
+                    if (tournee.quantiteBonus > 0)
+                      _Valeur(
+                        label: 'Offert',
+                        valeur: formatQuantite(tournee.quantiteBonus),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 10),
               Row(
                 children: <Widget>[
@@ -394,6 +456,14 @@ class _CarteTournee extends StatelessWidget {
                   ],
                   if (tournee.bonusTotal > 0)
                     Text('Bonus ${formatMontant(tournee.bonusTotal)}'),
+                  if (tournee.commissionMontant > 0) ...<Widget>[
+                    const SizedBox(width: 12),
+                    Icon(Icons.percent_rounded,
+                        size: 16, color: theme.colorScheme.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                        'Commission ${formatMontant(tournee.commissionMontant)}'),
+                  ],
                 ],
               ),
             ],
@@ -507,6 +577,5 @@ class _CarteErreur extends StatelessWidget {
   }
 }
 
-String _dateFr(DateTime date) =>
-    '${date.day.toString().padLeft(2, '0')}/'
+String _dateFr(DateTime date) => '${date.day.toString().padLeft(2, '0')}/'
     '${date.month.toString().padLeft(2, '0')}/${date.year}';

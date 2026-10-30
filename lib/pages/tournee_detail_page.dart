@@ -197,8 +197,18 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
       });
       await _charger();
       if (!mounted) return;
+
+      // Après la clôture, le patron doit voir TROIS choses : l'écart (nommé),
+      // la commission calculée sur le CA réel, et ce qu'il reste en poche.
+      final String ecartsNommes = resultat.ecarts.isEmpty
+          ? 'aucun écart'
+          : resultat.ecarts
+              .map((LigneTournee e) => '${e.nom} ${formatQuantite(e.restante)}')
+              .join(', ');
       _message(
-        'Tournée clôturée : écart ${formatQuantite(resultat.tournee.ecart)}.',
+        'Tournée clôturée • écart ${formatQuantite(resultat.tournee.ecart)} '
+        '($ecartsNommes) • commission '
+        '${formatMontant(resultat.commission)}',
       );
     } on DistributionException catch (e) {
       if (!mounted) return;
@@ -230,11 +240,19 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
       quantiteAttribuee: _tournee.quantiteAttribuee,
       quantiteVendue: _tournee.quantiteVendue,
       quantiteRetournee: _tournee.quantiteRetournee,
+      // Objectif, commission, casse et bonus font partie de l'identité de la
+      // tournée : une copie qui les oublierait afficherait des zéros trompeurs.
+      quantiteCasse: _tournee.quantiteCasse,
+      quantiteBonus: _tournee.quantiteBonus,
       ecart: _tournee.ecart,
       chiffreAffaires: _tournee.chiffreAffaires,
+      coutAchat: _tournee.coutAchat,
       consignesOuvertes: _tournee.consignesOuvertes,
       consignesTotal: _tournee.consignesTotal,
       bonusTotal: _tournee.bonusTotal,
+      objectifMontant: _tournee.objectifMontant,
+      commissionTaux: _tournee.commissionTaux,
+      commissionMontant: _tournee.commissionMontant,
     );
   }
 
@@ -343,7 +361,8 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -366,13 +385,20 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
           const SizedBox(height: 14),
           Row(
             children: <Widget>[
-              _Stat(label: 'Attribué', valeur: formatQuantite(_tournee.quantiteAttribuee)),
-              _Stat(label: 'Vendu', valeur: formatQuantite(_tournee.quantiteVendue)),
-              _Stat(label: 'Rendu', valeur: formatQuantite(_tournee.quantiteRetournee)),
+              _Stat(
+                  label: 'Attribué',
+                  valeur: formatQuantite(_tournee.quantiteAttribuee)),
+              _Stat(
+                  label: 'Vendu',
+                  valeur: formatQuantite(_tournee.quantiteVendue)),
+              _Stat(
+                  label: 'Rendu',
+                  valeur: formatQuantite(_tournee.quantiteRetournee)),
               _Stat(
                 label: 'Écart',
                 valeur: formatQuantite(_tournee.ecart),
-                couleur: _tournee.ecart > 0.0001 ? const Color(0xFFDC2626) : null,
+                couleur:
+                    _tournee.ecart > 0.0001 ? const Color(0xFFDC2626) : null,
               ),
             ],
           ),
@@ -472,6 +498,5 @@ class _Stat extends StatelessWidget {
   }
 }
 
-String _dateFr(DateTime date) =>
-    '${date.day.toString().padLeft(2, '0')}/'
+String _dateFr(DateTime date) => '${date.day.toString().padLeft(2, '0')}/'
     '${date.month.toString().padLeft(2, '0')}/${date.year}';

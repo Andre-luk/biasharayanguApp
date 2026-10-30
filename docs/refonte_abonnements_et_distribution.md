@@ -142,7 +142,44 @@ bonus_attribues(id, owner_id, client_id, regle_id, tournee_id, quantite,
 
 ---
 
-## 5. Phase 4 — Espace agent et tournées
+## 5. Phase 4 — Espace agent et tournées (LIVRÉE le 30/10/2026)
+
+> **État au 30/10/2026 : LIVRÉE** — migration
+> `20260916000085_tournees_commissions_controle.sql` (34/34 instructions),
+> modèles et service Dart étendus, écrans « Préparer une tournée »,
+> « Ma tournée », « Tournées » et « Détail » enrichis, 26 tests dédiés
+> (`test/distribution_test.dart`, 40 au total dans le fichier).
+
+### Ce qui a été décidé (et pourquoi)
+
+- **La commission est CALCULÉE, jamais saisie.** `commission_montant` est
+  produite à la clôture par `round(CA × taux / 100, 2)`, sur le chiffre
+  d'affaires réellement encaissé (table `ventes`), et non sur la dotation.
+  Un pourcentage promis oralement ne laisse aucune trace ; celui-ci oui.
+- **L'objectif et le taux sont fixés par le propriétaire uniquement** :
+  `rpc_tournee_parametrer` refuse tout autre appelant, et refuse aussi une
+  tournée clôturée (la commission ne se renégocie pas après coup).
+- **Casse et bonus sont des sorties de dotation nommées** :
+  `tournee_lignes.quantite_casse` / `quantite_bonus`, déclarées par l'agent
+  pendant la tournée (`rpc_tournee_declarer_ecart`). Elles **ne créent aucune
+  vente** — un article offert n'est pas un chiffre d'affaires.
+- **Le prix d'achat est figé à la dotation** (`prix_achat_snapshot`, posé par
+  trigger) : la marge d'une tournée passée ne bouge plus si le tarif d'achat
+  change. La marge est donc `CA − Σ(unités vendues × prix d'achat figé)`.
+- **Contrôle serveur conservé** : `rpc_tournee_vente` sélectionne la tournée
+  par `agent_id = auth.uid()`. Un agent B ne peut pas vendre sur la tournée de
+  l'agent A, même en fabriquant l'appel RPC.
+
+### Invariant central
+
+```
+quantite_vendue + quantite_retournee + quantite_bonus + quantite_casse
+  <= quantite_attribuee + 0.0001
+```
+
+`ecart = attribuee − vendue − retournee − bonus − casse` est calculé par le
+serveur, ligne par ligne, et renvoyé **nommé** (`ecarts: [{nom, quantite}]`).
+
 
 - `tournees` : ajouter `zone_couverte`, `objectif_montant`, `commission_taux`, `cloturee_par`.
 - `tournee_lignes` : ajouter `quantite_bonus`, `quantite_casse`, `prix_achat_snapshot`.
@@ -153,7 +190,22 @@ bonus_attribues(id, owner_id, client_id, regle_id, tournee_id, quantite,
 
 ---
 
-## 6. Phase 5 — Mode rapide réellement simple
+## 6. Phase 5 — Mode rapide réellement simple (LIVRÉE le 30/10/2026)
+
+> **État au 30/10/2026 : LIVRÉE** — `add_product_page.dart`,
+> `article_form_page.dart`, getter `ModeApplicationService.afficherReglagesAvances`,
+> `test/mode_rapide_test.dart` (13 tests).
+
+En mode rapide, la création d'un article ne demande plus que **le nom et le
+prix de vente** (plus la quantité, pour pouvoir vendre tout de suite). Photo,
+catégorie, unité de base, prix d'achat, seuils et lots sont des réglages
+**avancés** : ils restent disponibles en mode complet.
+
+La règle n'est pas dupliquée dans chaque écran : elle vit dans
+`ModeApplicationService.afficherReglagesAvances`, donc testable sans interface.
+L'unité de base retombe sur « pièce » à l'enregistrement (jamais vide), et les
+deux modes écrivent **exactement les mêmes données**.
+
 
 - `add_product_page` **et** `article_form_page` : en mode `rapide`, n'afficher que
   **nom** + **prix de vente** ; tous les autres champs passent sous un
