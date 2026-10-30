@@ -83,9 +83,13 @@ if (strpos($chemin, '/functions/v1/serdipay/') === 0) {
         repondre(401, '{"ok":false,"erreur":"jeton de relais absent ou invalide"}');
     }
     if (strpos($chemin, '/api-test/') === 0) {
-        $cible = 'https://' . HOTE_SERDIPAY_TEST . substr($chemin, 9); // « /api-test »
+        // Mise en scène : /api-test/public-api/v1/… → /api/public-api/v1/…
+        $cible = 'https://' . HOTE_SERDIPAY_TEST . '/api' . substr($chemin, 9);
     } else {
-        $cible = 'https://' . HOTE_SERDIPAY . substr($chemin, 4); // retire « /api »
+        // Production : le chemin est transmis TEL QUEL. Chez SerdiPay
+        // l'API vit sous « /api/public-api/v1/... », donc /api/... doit
+        // rester /api/... (ne jamais retirer le préfixe).
+        $cible = 'https://' . HOTE_SERDIPAY . $chemin;
     }
 } else {
     repondre(404, '{"ok":false,"erreur":"chemin non autorise"}');
