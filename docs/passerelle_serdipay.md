@@ -8,20 +8,36 @@
 
 ## 0. Où en est-on ? (30/10/2026)
 
-SerdiPay a envoyé l'**ID API `APIWY4G2W9`** et ses **routes** (§2.1). Il manque
-encore la **clé/mot de passe** associée, le **secret de signature** et le
-**détail des champs** des deux appels métier.
+SerdiPay a envoyé : **ID API `APIWY4G2W9`**, les **routes** (§2.1) et les accès au
+**back-office** (`https://app.serdipay.com`, code marchand **`066036`**,
+identifiant + mot de passe + PIN).
 
-Trois actions sont nécessaires, dans cet ordre :
+> 🔐 L'identifiant, le mot de passe et le PIN **ne doivent jamais être écrits
+> dans le code ni envoyés par messagerie** : ils se saisissent uniquement dans
+> les secrets Supabase.
+
+Quatre actions, dans cet ordre :
 
 | # | Action | Où | État |
 |---|---|---|---|
 | 1 | Faire déclarer l'IP **`213.130.145.53`** | message à SerdiPay | ⏳ à faire |
 | 2 | Déposer `relais.php` + `.htaccess` à jour | Hostinger → `public_html/serdipay/` | ⏳ à faire |
-| 3 | Créer les secrets puis redéployer la fonction | Supabase → Edge Functions | ⏳ à faire |
+| 3 | Créer les secrets `SERDIPAY_USERNAME`, `SERDIPAY_PASSWORD`, `SERDIPAY_WEBHOOK_SECRET` | Supabase → Edge Functions → Secrets | ⏳ à faire |
+| 4 | Coller `index.ts` puis **Deploy** la fonction `serdipay` | Supabase → Edge Functions | ⏳ à faire |
 
-**Test immédiat à faire dès l'étape 1 + 2 faites** (le relais doit répondre
-`400` avec un message parlant de champs manquants, **plus** « not whitelisted ») :
+Puis, **sans rien saisir de plus**, on lance le diagnostic qui découvre tout seul
+la forme exacte attendue par `get-token` :
+
+```bash
+curl -s -X POST -H "x-relais-token: <JETON_RELAIS>" \
+  https://pqzcliibocndiyqbyddr.supabase.co/functions/v1/serdipay/diag-token
+```
+
+Il renvoie, pour chaque forme de corps essayée, le **statut HTTP** et la
+**réponse brute** de SerdiPay. Le premier `200` donne la forme à retenir
+(elle est déjà celle par défaut si c'est la n°1).
+
+**Contrôle du relais** (indépendant de Supabase) :
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" \
@@ -92,9 +108,10 @@ sequenceDiagram
 
 ### 2.2 Ce qu'il reste à demander à SerdiPay
 
-1. **La clé / le mot de passe associé à l'ID API** (`SERDIPAY_API_KEY`) —
-   l'ID seul ne suffit pas à obtenir un jeton ;
-2. **Le corps exact attendu par `get-token`** (noms des champs) ;
+1. **Mettre en liste blanche l'IP `213.130.145.53`** (celle du relais) — sans
+   cela toute requête répond « not whitelisted » ;
+2. **Le corps exact attendu par `get-token`** (noms des champs) — la route
+   `/diag-token` de la fonction permet de le découvrir empiriquement ;
 3. **Le secret de signature des webhooks** (`SERDIPAY_WEBHOOK_SECRET`) et le nom
    de l'en-tête utilisé ;
 4. **Le corps attendu par `payment-merchant`** (champs obligatoires) et un
@@ -132,13 +149,17 @@ Dashboard → **Project Settings → Edge Functions → Secrets** :
 | Secret | Obligatoire | Exemple / remarque |
 |---|---|---|
 | `SERDIPAY_API_ID` | ✅ | `APIWY4G2W9` — **déjà la valeur par défaut du code** |
-| `SERDIPAY_API_KEY` | ✅ | Clé / mot de passe fourni par SerdiPay |
+| `SERDIPAY_MERCHANT_CODE` | – | `066036` — **déjà la valeur par défaut du code** |
+| `SERDIPAY_USERNAME` | ✅ | Identifiant du back-office `app.serdipay.com` (secret) |
+| `SERDIPAY_PASSWORD` | ✅ | Mot de passe associé (secret) |
 | `SERDIPAY_WEBHOOK_SECRET` | ✅ | Chaîne ≥ 32 caractères, **partagée avec SerdiPay** |
+| `SERDIPAY_PIN` | – | Inutile pour encaisser (back-office / décaissement B2C) |
+| `SERDIPAY_API_KEY` | – | Seulement si SerdiPay fournit une clé d'API distincte |
 | `SERDIPAY_BASE_URL` | – | Défaut `https://serdipay.biasharagroup.com/api` (relais) |
 | `SERDIPAY_PATH_TOKEN` | – | Défaut `/public-api/v1/merchant/get-token` |
 | `SERDIPAY_PATH_INITIER` | – | Défaut `/public-api/v1/merchant/payment-merchant` |
 | `SERDIPAY_PATH_STATUT` | – | **vide** : SerdiPay n'a pas fourni de route de statut |
-| `SERDIPAY_AUTH_CORPS` | – | Défaut `{"apiId":"{apiId}","apiKey":"{apiKey}"}` |
+| `SERDIPAY_AUTH_CORPS` | – | Défaut `{"merchantCode":"{merchantCode}","username":"{username}","password":"{password}"}` |
 | `SERDIPAY_CORPS_INITIER` | – | Modèle JSON de la demande de paiement |
 | `SERDIPAY_SIGNATURE_HEADER` | – | Défaut `x-serdipay-signature` |
 | `SERDIPAY_RETURN_URL` | – | Retour après paiement (web) |

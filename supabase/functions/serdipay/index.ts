@@ -89,12 +89,52 @@ const SERDIPAY_CLIENT_SECRET = (Deno.env.get('SERDIPAY_CLIENT_SECRET') ?? '')
 const SERDIPAY_WEBHOOK_SECRET = (Deno.env.get('SERDIPAY_WEBHOOK_SECRET') ?? '')
   .trim();
 
-// Corps envoyé à `/merchant/get-token`. Modèle surchargeable par le secret
-// SERDIPAY_AUTH_CORPS si SerdiPay attend d'autres noms de champs ; les
-// jetons `{apiId}` et `{apiKey}` y sont remplacés avant envoi.
-const SERDIPAY_AUTH_CORPS = Deno.env.get('SERDIPAY_AUTH_CORPS') ??
-  '{"apiId":"{apiId}","apiKey":"{apiKey}"}';
+// Identifiants du compte MARCHAND remis le 30/10/2026 (espace
+// https://app.serdipay.com). Le code marchand n'est pas secret ; l'identifiant,
+// le mot de passe et le PIN le sont → ils ne vivent que dans les secrets
+// Supabase, jamais dans le code.
+const SERDIPAY_MERCHANT_CODE = (Deno.env.get('SERDIPAY_MERCHANT_CODE') ??
+  '066036').trim();
+const SERDIPAY_USERNAME = (Deno.env.get('SERDIPAY_USERNAME') ?? '').trim();
+const SERDIPAY_PASSWORD = (Deno.env.get('SERDIPAY_PASSWORD') ?? '').trim();
+// Le PIN sert au back-office et aux décaissements B2C. Il n'est PAS nécessaire
+// pour encaisser : ne le déclarer que si SerdiPay l'exige explicitement.
+const SERDIPAY_PIN = (Deno.env.get('SERDIPAY_PIN') ?? '').trim();
 
+/**
+ * Remplace les jetons `{…}` d'un modèle JSON par les valeurs connues.
+ * Jetons disponibles : {apiId} {apiKey} {merchantCode} {username} {password}
+ * {pin}.
+ */
+function remplirModele(modele: string): string {
+  const valeurs: Record<string, string> = {
+    apiId: SERDIPAY_API_ID,
+    apiKey: SERDIPAY_API_KEY,
+    merchantCode: SERDIPAY_MERCHANT_CODE,
+    username: SERDIPAY_USERNAME,
+    password: SERDIPAY_PASSWORD,
+    pin: SERDIPAY_PIN,
+  };
+  let sortie = modele;
+  for (const [cle, valeur] of Object.entries(valeurs)) {
+    sortie = sortie.replaceAll(`{${cle}}`, valeur.replaceAll('"', '\\"'));
+  }
+  return sortie;
+}
+
+// Corps envoyé à `/merchant/get-token`. Modèle surchargeable par le secret
+// SERDIPAY_AUTH_CORPS si SerdiPay attend d'autres noms de champs.
+// Valeur par défaut = identifiants marchand (le plus probable), `apiId` étant
+// proposé en second choix par la route de diagnostic /diag-token.
+const SERDIPAY_AUTH_CORPS = Deno.env.get('SERDIPAY_AUTH_CORPS') ??
+  '{"merchantCode":"{merchantCode}","username":"{username}","password":"{password}"}';
+
+/** Y a-t-il de quoi demander un jeton ? */
+function identifiantsFournisseur(): boolean {
+  return SERDIPAY_API_KEY.length > 0 ||
+    (SERDIPAY_USERNAME.length > 0 && SERDIPAY_PASSWORD.length > 0) ||
+    (SERDIPAY_CLIENT_ID.length > 0 && SERDIPAY_CLIENT_SECRET.length > 0);
+}
 // 🔒 RELAIS À IP FIXE (tools/relais_serdipay).
 // Si SERDIPAY_BASE_URL pointe vers notre relais (ex. https://serdipay.domaine.cd/api),
 // ce jeton prouve au relais que l'appel vient bien de NOUS : sans lui, le
@@ -229,12 +269,9 @@ type Jeton = { valeur: string; expireLe: number };
 let jetonEnCache: Jeton | null = null;
 
 function serdipayConfigure(): boolean {
-  return (
-    SERDIPAY_BASE_URL.length > 0 &&
+  return SERDIPAY_BASE_URL.length > 0 &&
     SERDIPAY_API_ID.length > 0 &&
-    (SERDIPAY_API_KEY.length > 0 ||
-      (SERDIPAY_CLIENT_ID.length > 0 && SERDIPAY_CLIENT_SECRET.length > 0))
-  );
+    identifiantsFournisseur();
 }
 
 /** « This domain or IP (…) is not whitelisted » → message actionnable. */
@@ -271,9 +308,7 @@ async function jetonSerdipay(): Promise<Jeton> {
     }).toString();
   } else {
     typeContenu = 'application/json';
-    corps = SERDIPAY_AUTH_CORPS
-      .replaceAll('{apiId}', SERDIPAY_API_ID)
-      .replaceAll('{apiKey}', SERDIPAY_API_KEY);
+    corps = remplirModele(SERDIPAY_AUTH_CORPS);
   }
 
   const reponse = await fetch(url, {
@@ -807,6 +842,9 @@ function routePing(): Response {
     signatureConfiguree: SERDIPAY_WEBHOOK_SECRET.length > 0,
     baseUrlDefinie: SERDIPAY_BASE_URL.length > 0,
     apiIdDefinie: SERDIPAY_API_ID.length > 0,
+    merchantCode: SERDIPAY_MERCHANT_CODE,
+    identifiantDefini: SERDIPAY_USERNAME.length > 0,
+    motDePasseDefini: SERDIPAY_PASSWORD.length > 0,
     cleApiDefinie: SERDIPAY_API_KEY.length > 0,
     routes: {
       base: SERDIPAY_BASE_URL,
@@ -816,6 +854,119 @@ function routePing(): Response {
     },
     devise: SERDIPAY_DEVISE,
     webhook: `${SUPABASE_URL}/functions/v1/${FONCTION}/webhook`,
+  });
+}
+
+/**
+ * POST /diag-token — essai à blanc de l'obtention du jeton.
+ * Protégé par l'en-tête `x-relais-token` (secret partagé avec le relais).
+ * Essaie plusieurs formes de corps, s'arrête au premier succès et renvoie la
+ * réponse BRUTE de SerdiPay (aucun secret n'apparaît dans la réponse).
+ */
+async function routeDiagToken(req: Request): Promise<Response> {
+  const jeton = req.headers.get('x-relais-token') ?? '';
+  if (SERDIPAY_RELAIS_TOKEN.length === 0 || jeton !== SERDIPAY_RELAIS_TOKEN) {
+    return erreur('ACCES_REFUSE', 'En-tête x-relais-token attendu.', 403);
+  }
+  if (!identifiantsFournisseur()) {
+    return erreur(
+      'SERDIPAY_NON_CONFIGURE',
+      'Aucun identifiant : renseignez SERDIPAY_USERNAME + SERDIPAY_PASSWORD ' +
+        '(ou SERDIPAY_API_KEY) dans les secrets Supabase.',
+      503,
+    );
+  }
+
+  const url = SERDIPAY_TOKEN_URL ||
+    `${SERDIPAY_BASE_URL}${SERDIPAY_PATH_TOKEN}`;
+
+  const essais: { nom: string; type: string; corps: string }[] = [
+    {
+      nom: 'merchantCode+username+password (JSON)',
+      type: 'application/json',
+      corps: JSON.stringify({
+        merchantCode: SERDIPAY_MERCHANT_CODE,
+        username: SERDIPAY_USERNAME,
+        password: SERDIPAY_PASSWORD,
+      }),
+    },
+    {
+      nom: 'apiId+merchantCode+username+password (JSON)',
+      type: 'application/json',
+      corps: JSON.stringify({
+        apiId: SERDIPAY_API_ID,
+        merchantCode: SERDIPAY_MERCHANT_CODE,
+        username: SERDIPAY_USERNAME,
+        password: SERDIPAY_PASSWORD,
+      }),
+    },
+    {
+      nom: 'apiId+apiKey(=mot de passe) (JSON)',
+      type: 'application/json',
+      corps: JSON.stringify({
+        apiId: SERDIPAY_API_ID,
+        apiKey: SERDIPAY_PASSWORD,
+      }),
+    },
+    {
+      nom: 'username+password (JSON)',
+      type: 'application/json',
+      corps: JSON.stringify({
+        username: SERDIPAY_USERNAME,
+        password: SERDIPAY_PASSWORD,
+      }),
+    },
+    {
+      nom: 'form-urlencoded username/password',
+      type: 'application/x-www-form-urlencoded',
+      corps: new URLSearchParams({
+        username: SERDIPAY_USERNAME,
+        password: SERDIPAY_PASSWORD,
+        merchantCode: SERDIPAY_MERCHANT_CODE,
+      }).toString(),
+    },
+  ];
+
+  const resultats: Record<string, unknown>[] = [];
+  for (const essai of essais) {
+    let statutHttp = 0;
+    let texte = '';
+    let ok = false;
+    try {
+      const reponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': essai.type,
+          Accept: 'application/json',
+          ...(SERDIPAY_RELAIS_TOKEN
+            ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
+            : {}),
+        },
+        body: essai.corps,
+        signal: AbortSignal.timeout(15_000),
+      });
+      statutHttp = reponse.status;
+      ok = reponse.ok;
+      texte = (await reponse.text()).slice(0, 300);
+    } catch (e) {
+      texte = 'ERREUR_RESEAU : ' + String(e).slice(0, 180);
+    }
+    resultats.push({
+      essai: essai.nom,
+      statutHttp,
+      ok,
+      reponse: texte,
+    });
+    if (ok) break;
+  }
+
+  return json({
+    url,
+    merchantCode: SERDIPAY_MERCHANT_CODE,
+    apiId: SERDIPAY_API_ID,
+    identifiantDefini: SERDIPAY_USERNAME.length > 0,
+    motDePasseDefini: SERDIPAY_PASSWORD.length > 0,
+    essais: resultats,
   });
 }
 
@@ -1159,6 +1310,13 @@ Deno.serve(async (req: Request): Promise<Response> => {
       return await routeInitier(req);
     }
 
+    if (chemin === '/diag-token') {
+      if (req.method !== 'POST') {
+        return erreur('METHODE_REFUSEE', 'Utilisez POST.', 405);
+      }
+      return await routeDiagToken(req);
+    }
+
     if (chemin === '/statut') {
       if (req.method !== 'POST') {
         return erreur('METHODE_REFUSEE', 'Utilisez POST.', 405);
@@ -1168,7 +1326,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     return erreur(
       'ROUTE_INCONNUE',
-      `Route inconnue « ${chemin} ». Attendu : /ping, /initier, /statut, /webhook.`,
+      `Route inconnue « ${chemin} ». Attendu : /ping, /initier, /statut, ` +
+        '/webhook, /diag-token.',
       404,
     );
   } catch (e) {
