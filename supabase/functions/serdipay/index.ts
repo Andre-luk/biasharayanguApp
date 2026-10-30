@@ -655,7 +655,15 @@ function extraireReferenceFournisseur(data: unknown): string | null {
     d.reference,
     sous.id,
     sous.transaction_id,
+    sous.transactionId,
+    sous.provider_reference,
     sous.reference,
+    // SerdiPay renvoie `transactionId` (ex. « SD261030ZQ3UJ ») et un `token`
+    // de session à l'intérieur de l'objet `payment`.
+    sous.token,
+    sous.sessionId,
+    d.token,
+    d.sessionId,
   ];
 
   for (const c of candidats) {
@@ -775,6 +783,57 @@ function extraireWebhook(payload: unknown): {
 // ---------------------------------------------------------------------------
 // 5. SIGNATURE DU WEBHOOK
 // ---------------------------------------------------------------------------
+
+/**
+ * Retrouve la référence interne d'un paiement.
+ *  - si la notification la contient, on la prend ;
+ *  - sinon on la déduit de la référence fournisseur (`transactionId` SerdiPay,
+ *    ex. « SD261030ZQ3UJ ») enregistrée lors de l'initialisation.
+ */
+async function referenceDepuisFournisseur(
+  referenceDirecte: string | null,
+  providerReference: string | null,
+): Promise<string | null> {
+  if (referenceDirecte) return referenceDirecte;
+  if (!providerReference) return null;
+  try {
+    const { data } = await clientService()
+      .from('paiements_serdipay')
+      .select('reference')
+      .eq('provider_reference', providerReference)
+      .maybeSingle();
+    const ref = (data as Record<string, unknown> | null)?.reference;
+    return ref ? String(ref) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * SerdiPay ajoute des FRAIS OPÉRATEUR au montant demandé (ex. 2 300 CDF
+ * demandés → 2 366 CDF débités au client). On ne transforme donc jamais un
+ * paiement réussi en échec quand le montant reçu est SUPÉRIEUR : on transmet le
+ * montant attendu (le contrôle de la base reste actif pour les montants
+ * INFÉRIEURS, qui sont bien des anomalies).
+ */
+async function montantARecorder(
+  reference: string,
+  montantRecu: number | null,
+): Promise<number | null> {
+  if (montantRecu === null) return null;
+  try {
+    const { data } = await clientService()
+      .from('paiements_serdipay')
+      .select('montant')
+      .eq('reference', reference)
+      .maybeSingle();
+    const attendu = Number((data as Record<string, unknown> | null)?.montant);
+    if (Number.isFinite(attendu) && montantRecu >= attendu) return attendu;
+  } catch {
+    // best-effort : on transmet le montant brut
+  }
+  return montantRecu;
+}
 
 /** HMAC-SHA256 du corps BRUT (jamais du JSON re-sérialisé). */
 async function hmac(secret: string, corps: string): Promise<{
@@ -1380,13 +1439,14 @@ async function routeStatut(req: Request): Promise<Response> {
         }
 
         if (infos.statut) {
+          const montantRecu = await montantARecorder(reference, infos.montant);
           const { data: confirme } = await clientService().rpc(
             'rpc_serdipay_confirmer',
             {
               p_reference: reference,
               p_statut: infos.statut,
               p_provider_reference: infos.providerReference,
-              p_montant_recu: infos.montant,
+              p_montant_recu: montantRecu,
               p_payload: reponse.data,
             },
           );
@@ -1437,7 +1497,14 @@ async function routeWebhook(req: Request): Promise<Response> {
 
   const infos = extraireWebhook(payload);
 
-  if (!infos.reference) {
+  // La notification ne contient pas forcément notre référence : on la retrouve
+  // grâce au `transactionId` renvoyé à l'initialisation.
+  const reference = await referenceDepuisFournisseur(
+    infos.reference,
+    infos.providerReference,
+  );
+
+  if (!reference) {
     // On répond 200 pour ne pas déclencher de tempête de réessais.
     return json({
       ok: true,
@@ -1454,11 +1521,13 @@ async function routeWebhook(req: Request): Promise<Response> {
     });
   }
 
+  const montantRecu = await montantARecorder(reference, infos.montant);
+
   const { data, error } = await clientService().rpc('rpc_serdipay_confirmer', {
-    p_reference: infos.reference,
+    p_reference: reference,
     p_statut: infos.statut,
     p_provider_reference: infos.providerReference,
-    p_montant_recu: infos.montant,
+    p_montant_recu: montantRecu,
     p_payload: payload,
   });
 
