@@ -6,6 +6,39 @@
 
 ---
 
+## 0. Où en est-on ? (30/10/2026)
+
+SerdiPay a envoyé l'**ID API `APIWY4G2W9`** et ses **routes** (§2.1). Il manque
+encore la **clé/mot de passe** associée, le **secret de signature** et le
+**détail des champs** des deux appels métier.
+
+Trois actions sont nécessaires, dans cet ordre :
+
+| # | Action | Où | État |
+|---|---|---|---|
+| 1 | Faire déclarer l'IP **`213.130.145.53`** | message à SerdiPay | ⏳ à faire |
+| 2 | Déposer `relais.php` + `.htaccess` à jour | Hostinger → `public_html/serdipay/` | ⏳ à faire |
+| 3 | Créer les secrets puis redéployer la fonction | Supabase → Edge Functions | ⏳ à faire |
+
+**Test immédiat à faire dès l'étape 1 + 2 faites** (le relais doit répondre
+`400` avec un message parlant de champs manquants, **plus** « not whitelisted ») :
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  -X POST -H "Content-Type: application/json" -d '{}' \
+  https://serdipay.biasharagroup.com/api/public-api/v1/merchant/get-token
+```
+
+| Réponse | Signification |
+|---|---|
+| `503` | `relais.php` sur le serveur est encore l'ancien (à redéposer) |
+| `401` | jeton de relais absent/invalide (appel direct sans `x-relais-token`) |
+| `400 … not whitelisted` | dépôt OK, **IP pas encore autorisée chez SerdiPay** |
+| `400` avec un autre message | ✅ IP autorisée — il reste à remplir la clé |
+| `200` | ✅ jeton obtenu |
+
+---
+
 ## 1. Ce que fait l'intégration
 
 ```mermaid
@@ -40,22 +73,40 @@ sequenceDiagram
 
 ## 2. Ce que SerdiPay doit vous fournir
 
-À demander au commercial / à l'équipe technique SerdiPay :
+### 2.1 Ce qui a été reçu le 30/10/2026
 
-1. **URL de base de l'API** (ex. `https://api.serdipay.com`) ;
-2. **Identifiants** : soit une clé d'API (`SERDIPAY_API_KEY`), soit un couple
-   OAuth 2.0 `client_id` / `client_secret` ;
+| | Production | Mise en scène |
+|---|---|---|
+| Base | `https://public-apis.services.serdipay.com` | `https://apis.serdipay.cloud` |
+| Obtenir un jeton | `POST /api/public-api/v1/merchant/get-token` | idem |
+| Paiement C2B (encaisser) | `POST /api/public-api/v1/merchant/payment-merchant` | idem |
+| Décaissement B2C (payer) | `POST /api/public-api/v1/merchant/payment-client` | idem |
+
+**ID API : `APIWY4G2W9`** (identifiant public, pas un secret).
+
+> ⚠️ **IP obligatoire** — l'API répond
+> `{"message":"This domain or IP (x.x.x.x) is not whitelisted"}` tant que
+> l'adresse appelante n'est pas déclarée. Nos appels passent donc par le
+> **relais à IP fixe** `https://serdipay.biasharagroup.com/api` (serveur
+> **213.130.145.53**, Hostinger). C'est cette IP qu'il faut faire déclarer.
+
+### 2.2 Ce qu'il reste à demander à SerdiPay
+
+1. **La clé / le mot de passe associé à l'ID API** (`SERDIPAY_API_KEY`) —
+   l'ID seul ne suffit pas à obtenir un jeton ;
+2. **Le corps exact attendu par `get-token`** (noms des champs) ;
 3. **Le secret de signature des webhooks** (`SERDIPAY_WEBHOOK_SECRET`) et le nom
    de l'en-tête utilisé ;
-4. **La documentation de l'endpoint de création de paiement** (chemin, corps,
-   réponse) ;
-5. **La liste des codes opérateurs** qu'ils attendent
-   (`orange`, `airtel`, `mpesa`, `afrimoney`, `card`…).
+4. **Le corps attendu par `payment-merchant`** (champs obligatoires) et un
+   exemple de réponse (URL de paiement ? instruction USSD ?) ;
+5. **Une route d'interrogation d'un paiement** (statut), s'il en existe une ;
+6. **La liste des codes opérateurs** (`orange`, `airtel`, `mpesa`, `afrimoney`,
+   `card`…) et les formats de numéro (ex. `243970000000`).
 
-> ⚠️ Le site public de SerdiPay annonce « API REST, OAuth 2.0, webhooks,
-> environnement de test » mais **la documentation en ligne n'est pas accessible
-> publiquement**. C'est pourquoi le code isole tout le vocabulaire fournisseur
-> dans **une seule section** de l'Edge Function (§7).
+> Le code isole tout le vocabulaire fournisseur dans l'Edge Function (§7) et
+> accepte des modèles JSON surchargeables (`SERDIPAY_AUTH_CORPS`,
+> `SERDIPAY_CORPS_INITIER`) : un ajustement de champ ne demande pas de
+> redéploiement, seulement la modification d'un secret.
 
 ---
 
@@ -80,13 +131,15 @@ Dashboard → **Project Settings → Edge Functions → Secrets** :
 
 | Secret | Obligatoire | Exemple / remarque |
 |---|---|---|
-| `SERDIPAY_BASE_URL` | ✅ | `https://api.serdipay.com` (sans `/` final) |
-| `SERDIPAY_API_KEY` | ⚠️ si pas d'OAuth | Clé fournie par SerdiPay |
-| `SERDIPAY_CLIENT_ID` | ⚠️ si OAuth | + `SERDIPAY_CLIENT_SECRET` |
+| `SERDIPAY_API_ID` | ✅ | `APIWY4G2W9` — **déjà la valeur par défaut du code** |
+| `SERDIPAY_API_KEY` | ✅ | Clé / mot de passe fourni par SerdiPay |
 | `SERDIPAY_WEBHOOK_SECRET` | ✅ | Chaîne ≥ 32 caractères, **partagée avec SerdiPay** |
-| `SERDIPAY_PATH_INITIER` | – | Défaut `/api/v1/payments` |
-| `SERDIPAY_PATH_STATUT` | – | Défaut `/api/v1/payments/{reference}` |
-| `SERDIPAY_TOKEN_URL` | – | Défaut `${BASE_URL}/oauth/token` |
+| `SERDIPAY_BASE_URL` | – | Défaut `https://serdipay.biasharagroup.com/api` (relais) |
+| `SERDIPAY_PATH_TOKEN` | – | Défaut `/public-api/v1/merchant/get-token` |
+| `SERDIPAY_PATH_INITIER` | – | Défaut `/public-api/v1/merchant/payment-merchant` |
+| `SERDIPAY_PATH_STATUT` | – | **vide** : SerdiPay n'a pas fourni de route de statut |
+| `SERDIPAY_AUTH_CORPS` | – | Défaut `{"apiId":"{apiId}","apiKey":"{apiKey}"}` |
+| `SERDIPAY_CORPS_INITIER` | – | Modèle JSON de la demande de paiement |
 | `SERDIPAY_SIGNATURE_HEADER` | – | Défaut `x-serdipay-signature` |
 | `SERDIPAY_RETURN_URL` | – | Retour après paiement (web) |
 | `SERDIPAY_DEVISE` | – | Défaut `CDF` |

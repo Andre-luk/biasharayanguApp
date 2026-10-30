@@ -108,8 +108,8 @@ $( [[ "$SORTANT" == "oui" ]] && cat <<'SORTANT'
 	# SERDIPAY_BASE_URL = https://<hote>/api
 	handle /api/* {
 		uri strip_prefix /api
-		reverse_proxy https://api.serdipay.com {
-			header_up Host api.serdipay.com
+		reverse_proxy https://public-apis.services.serdipay.com {
+			header_up Host public-apis.services.serdipay.com
 			transport http {
 				dial_timeout 10s
 				response_header_timeout 60s
@@ -166,7 +166,7 @@ echo " Méthode           : POST, JSON"
 echo " Signature         : HMAC-SHA256 du corps brut"
 if [[ "$SORTANT" == "oui" ]]; then
   echo " Nos appels sortants partent de la MÊME IP et utilisent :"
-  echo "   https://${HOTE}/api  (équivalent de https://api.serdipay.com)"
+  echo "   https://${HOTE}/api  (équivalent de https://public-apis.services.serdipay.com)"
 fi
 echo "════════════════════════════════════════════════════════════════"
 if [[ "$OK" == "oui" ]]; then

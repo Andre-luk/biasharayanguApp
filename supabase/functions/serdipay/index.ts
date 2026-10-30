@@ -37,12 +37,22 @@
 //      SANS JWT. Les routes privées vérifient elles-mêmes le jeton.
 //      (équivalent CLI : `--no-verify-jwt`)
 //   4. Secrets à créer (Project Settings → Edge Functions → Secrets) :
-//        SERDIPAY_BASE_URL        ex. https://api.serdipay.com   (OBLIGATOIRE)
-//        SERDIPAY_API_KEY         clé d'API, OU
-//        SERDIPAY_CLIENT_ID       + SERDIPAY_CLIENT_SECRET (OAuth 2.0)
+//        SERDIPAY_API_ID          identifiant remis par SerdiPay (APIxxx)
+//        SERDIPAY_API_KEY         clé / mot de passe associé à cet identifiant
 //        SERDIPAY_WEBHOOK_SECRET  secret partagé de signature (OBLIGATOIRE)
-//      Optionnels : SERDIPAY_PATH_INITIER, SERDIPAY_PATH_STATUT,
+//      Optionnels : SERDIPAY_BASE_URL, SERDIPAY_PATH_TOKEN,
+//      SERDIPAY_PATH_INITIER, SERDIPAY_PATH_STATUT, SERDIPAY_AUTH_CORPS,
 //      SERDIPAY_TOKEN_URL, SERDIPAY_RETURN_URL, SERDIPAY_DEVISE.
+//
+//  🔌 ROUTES RÉELLES DE SERDIPAY (communiquées le 30/10/2026)
+//  ------------------------------------------------------------
+//    PRODUCTION  https://public-apis.services.serdipay.com
+//      POST /api/public-api/v1/merchant/get-token
+//      POST /api/public-api/v1/merchant/payment-merchant     (C2B, encaissement)
+//      POST /api/public-api/v1/merchant/payment-client       (B2C, décaissement)
+//    MISE EN SCÈNE  https://apis.serdipay.cloud  (mêmes chemins)
+//  ⚠️ SerdiPay n'accepte que des IP déclarées : nos appels passent donc par le
+//     relais à IP fixe (213.130.145.53) — voir tools/relais_serdipay.
 //
 //  ⚠️ ADAPTATEUR — LE SEUL ENDROIT À MODIFIER quand SerdiPay vous remettra sa
 //     documentation : `construireCorpsInitier`, `extraireUrlPaiement`,
@@ -68,12 +78,22 @@ const SERDIPAY_BASE_URL = (Deno.env.get('SERDIPAY_BASE_URL') ??
   'https://serdipay.biasharagroup.com/api')
   .trim()
   .replace(/\/+$/, '');
+// Identifiant de compte API remis par SerdiPay (ce n'est PAS un secret, il est
+// lisible dans leur courriel : « ID API: APIWY4G2W9 »).
+const SERDIPAY_API_ID = (Deno.env.get('SERDIPAY_API_ID') ?? 'APIWY4G2W9')
+  .trim();
 const SERDIPAY_API_KEY = (Deno.env.get('SERDIPAY_API_KEY') ?? '').trim();
 const SERDIPAY_CLIENT_ID = (Deno.env.get('SERDIPAY_CLIENT_ID') ?? '').trim();
 const SERDIPAY_CLIENT_SECRET = (Deno.env.get('SERDIPAY_CLIENT_SECRET') ?? '')
   .trim();
 const SERDIPAY_WEBHOOK_SECRET = (Deno.env.get('SERDIPAY_WEBHOOK_SECRET') ?? '')
   .trim();
+
+// Corps envoyé à `/merchant/get-token`. Modèle surchargeable par le secret
+// SERDIPAY_AUTH_CORPS si SerdiPay attend d'autres noms de champs ; les
+// jetons `{apiId}` et `{apiKey}` y sont remplacés avant envoi.
+const SERDIPAY_AUTH_CORPS = Deno.env.get('SERDIPAY_AUTH_CORPS') ??
+  '{"apiId":"{apiId}","apiKey":"{apiKey}"}';
 
 // 🔒 RELAIS À IP FIXE (tools/relais_serdipay).
 // Si SERDIPAY_BASE_URL pointe vers notre relais (ex. https://serdipay.domaine.cd/api),
@@ -87,10 +107,16 @@ const SERDIPAY_RELAIS_TOKEN = (Deno.env.get('SERDIPAY_RELAIS_TOKEN') ??
   '7ab3fb3dc4781754e5ec8a49a92de09dab1bd9d275ec5f9feb0f7483829cf57e')
   .trim();
 
+// Routes annoncées par SerdiPay (préfixe `/api` du relais en moins).
+const SERDIPAY_PATH_TOKEN = Deno.env.get('SERDIPAY_PATH_TOKEN') ??
+  '/public-api/v1/merchant/get-token';
 const SERDIPAY_PATH_INITIER = Deno.env.get('SERDIPAY_PATH_INITIER') ??
-  '/api/v1/payments';
-const SERDIPAY_PATH_STATUT = Deno.env.get('SERDIPAY_PATH_STATUT') ??
-  '/api/v1/payments/{reference}';
+  '/public-api/v1/merchant/payment-merchant';
+// SerdiPay n'a communiqué AUCUNE route d'interrogation d'un paiement : tant
+// que ce chemin est vide, l'app se contente du webhook (aucun appel inutile).
+// Le jour où la route est fournie : secret SERDIPAY_PATH_STATUT
+// (ex. /public-api/v1/merchant/payment-merchant/{reference}).
+const SERDIPAY_PATH_STATUT = Deno.env.get('SERDIPAY_PATH_STATUT') ?? '';
 const SERDIPAY_TOKEN_URL = Deno.env.get('SERDIPAY_TOKEN_URL') ?? '';
 // Page de retour après paiement : la version web publique (surchargée par le
 // secret SERDIPAY_RETURN_URL si besoin).
@@ -205,46 +231,83 @@ let jetonEnCache: Jeton | null = null;
 function serdipayConfigure(): boolean {
   return (
     SERDIPAY_BASE_URL.length > 0 &&
+    SERDIPAY_API_ID.length > 0 &&
     (SERDIPAY_API_KEY.length > 0 ||
       (SERDIPAY_CLIENT_ID.length > 0 && SERDIPAY_CLIENT_SECRET.length > 0))
   );
 }
 
-/**
- * Jeton d'accès SerdiPay.
- *  - OAuth 2.0 « client_credentials » si un client id/secret est fourni
- *    (mode annoncé par SerdiPay) ;
- *  - sinon, la clé d'API est utilisée directement en Bearer.
- */
-async function jetonSerdipay(): Promise<string> {
-  if (SERDIPAY_API_KEY && !SERDIPAY_CLIENT_ID) return SERDIPAY_API_KEY;
+/** « This domain or IP (…) is not whitelisted » → message actionnable. */
+function estIpNonAutorisee(texte: string): boolean {
+  return /not\s*whitelist/i.test(texte) || /non\s*autoris/i.test(texte);
+}
 
+/**
+ * Jeton d'accès SerdiPay (`POST /merchant/get-token`).
+ *  - par défaut : corps JSON `{ apiId, apiKey }` (modèle SERDIPAY_AUTH_CORPS) ;
+ *  - si seuls CLIENT_ID / CLIENT_SECRET sont fournis : OAuth
+ *    « client_credentials » en formulaire ;
+ *  - si SerdiPay répond que la route n'existe pas, on retombe sur l'usage de la
+ *    clé d'API directement en Bearer (ancien mode).
+ * Le jeton est gardé en mémoire de l'instance (durée annoncée, 1 h par défaut).
+ */
+async function jetonSerdipay(): Promise<Jeton> {
   if (jetonEnCache && jetonEnCache.expireLe > Date.now() + 30_000) {
-    return jetonEnCache.valeur;
+    return jetonEnCache;
   }
 
   const url = SERDIPAY_TOKEN_URL ||
-    `${SERDIPAY_BASE_URL}/oauth/token`;
+    `${SERDIPAY_BASE_URL}${SERDIPAY_PATH_TOKEN}`;
+
+  let corps: string;
+  let typeContenu: string;
+
+  if (SERDIPAY_API_KEY.length === 0 && SERDIPAY_CLIENT_ID.length > 0) {
+    typeContenu = 'application/x-www-form-urlencoded';
+    corps = new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: SERDIPAY_CLIENT_ID,
+      client_secret: SERDIPAY_CLIENT_SECRET,
+    }).toString();
+  } else {
+    typeContenu = 'application/json';
+    corps = SERDIPAY_AUTH_CORPS
+      .replaceAll('{apiId}', SERDIPAY_API_ID)
+      .replaceAll('{apiKey}', SERDIPAY_API_KEY);
+  }
 
   const reponse = await fetch(url, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': typeContenu,
       Accept: 'application/json',
       ...(SERDIPAY_RELAIS_TOKEN
         ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
         : {}),
     },
-    body: new URLSearchParams({
-      grant_type: 'client_credentials',
-      client_id: SERDIPAY_CLIENT_ID,
-      client_secret: SERDIPAY_CLIENT_SECRET,
-    }),
+    body: corps,
     signal: AbortSignal.timeout(DELAI_FOURNISSEUR_MS),
   });
 
   const texte = await reponse.text();
+
   if (!reponse.ok) {
+    if (estIpNonAutorisee(texte)) {
+      throw new Error(
+        'SERDIPAY_IP_NON_AUTORISEE : ' + texte.slice(0, 200),
+      );
+    }
+    // Route de jeton absente : on tente la clé d'API en Bearer direct.
+    if (
+      (reponse.status === 404 || reponse.status === 405) &&
+      SERDIPAY_API_KEY.length > 0
+    ) {
+      jetonEnCache = {
+        valeur: SERDIPAY_API_KEY,
+        expireLe: Date.now() + 30 * 60_000,
+      };
+      return jetonEnCache;
+    }
     throw new Error(
       `SERDIPAY_AUTH_${reponse.status} : ${texte.slice(0, 300)}`,
     );
@@ -253,22 +316,41 @@ async function jetonSerdipay(): Promise<string> {
   let data: Record<string, unknown> = {};
   try {
     data = JSON.parse(texte) as Record<string, unknown>;
+    if (data && typeof data === 'object' && data.data &&
+      typeof data.data === 'object') {
+      data = {
+        ...(data.data as Record<string, unknown>),
+        ...data,
+      };
+    }
   } catch {
+    // Certaines API renvoient le jeton en texte brut.
+    const brut = texte.trim().replace(/^["']|["']$/g, '');
+    if (brut.length >= 16 && !brut.includes(' ')) {
+      jetonEnCache = {
+        valeur: brut,
+        expireLe: Date.now() + 30 * 60_000,
+      };
+      return jetonEnCache;
+    }
     throw new Error('SERDIPAY_AUTH_REPONSE_INVALIDE');
   }
 
   const jeton = String(
-    data.access_token ?? data.token ?? data.accessToken ?? '',
-  );
+    data.token ?? data.access_token ?? data.accessToken ?? data.jwt ?? '',
+  ).trim();
   if (!jeton) throw new Error('SERDIPAY_AUTH_SANS_JETON');
 
-  const duree = Number(data.expires_in ?? data.expiresIn ?? 3600);
+  const duree = Number(data.expires_in ?? data.expiresIn ?? data.expiration ??
+    3600);
   jetonEnCache = {
     valeur: jeton,
-    expireLe: Date.now() + (Number.isFinite(duree) ? duree : 3600) * 1000,
+    expireLe: Date.now() + (Number.isFinite(duree) && duree > 60
+      ? duree
+      : 3600) * 1000,
   };
 
-  return jeton;
+  return jetonEnCache;
 }
 
 async function appelFournisseur(
@@ -276,7 +358,7 @@ async function appelFournisseur(
   methode: 'GET' | 'POST',
   corps?: unknown,
 ): Promise<{ ok: boolean; statutHttp: number; texte: string; data: unknown }> {
-  const jeton = await jetonSerdipay();
+  const { valeur: jeton } = await jetonSerdipay();
 
   const reponse = await fetch(`${SERDIPAY_BASE_URL}${chemin}`, {
     method: methode,
@@ -329,22 +411,52 @@ function construireCorpsInitier(
   const callback = `${SUPABASE_URL}/functions/v1/${FONCTION}/webhook`;
   const description = `Abonnement Biashara Yangu - ${p.reference}`;
 
+  // Modèle surchargeable sans redéploiement : secret SERDIPAY_CORPS_INITIER.
+  // Placeholders : {apiId} {reference} {montant} {devise} {telephone}
+  //                {operateur} {callback} {retour} {description} {nomClient}
+  const modele = Deno.env.get('SERDIPAY_CORPS_INITIER');
+  if (modele && modele.trim().length > 0) {
+    const rempli = modele
+      .replaceAll('{apiId}', SERDIPAY_API_ID)
+      .replaceAll('{reference}', p.reference)
+      .replaceAll('{montant}', String(Number(p.montant)))
+      .replaceAll('{devise}', p.devise || SERDIPAY_DEVISE)
+      .replaceAll('{telephone}', p.telephone ?? '')
+      .replaceAll('{operateur}', p.operateur ?? '')
+      .replaceAll('{callback}', callback)
+      .replaceAll('{retour}', SERDIPAY_RETURN_URL)
+      .replaceAll('{description}', description)
+      .replaceAll('{nomClient}', nomClient || 'Client Biashara Yangu');
+    try {
+      const lu = JSON.parse(rempli) as Record<string, unknown>;
+      lu.apiId ??= SERDIPAY_API_ID;
+      return lu;
+    } catch {
+      // Modèle invalide : on utilise le corps par défaut ci-dessous.
+      console.error('[serdipay] SERDIPAY_CORPS_INITIER n’est pas un JSON valide');
+    }
+  }
+
+  // Corps par défaut — champs « plats », ceux qu'utilisent la plupart des
+  // agrégateurs (SerdiPay n'a pas encore publié le détail pour
+  // /merchant/payment-merchant). À ajuster sur le premier refus (400).
   return {
+    apiId: SERDIPAY_API_ID,
     reference: p.reference,
+    externalId: p.reference,
     amount: Number(p.montant),
     currency: p.devise || SERDIPAY_DEVISE,
     description,
+    phoneNumber: p.telephone ?? undefined,
+    operator: p.operateur ?? undefined,
+    paymentMethod: p.operateur ?? undefined,
+    callbackUrl: callback,
+    returnUrl: SERDIPAY_RETURN_URL,
     customer: {
       name: nomClient || 'Client Biashara Yangu',
-      phone: p.telephone,
+      phone: p.telephone ?? undefined,
       email: emailClient || undefined,
     },
-    // Certains agrégateurs attendent `payment_method`, d'autres `operator`.
-    payment_method: p.operateur ?? undefined,
-    operator: p.operateur ?? undefined,
-    callback_url: callback,
-    return_url: SERDIPAY_RETURN_URL,
-    metadata: { reference_interne: p.reference },
   };
 }
 
@@ -694,6 +806,14 @@ function routePing(): Response {
     fournisseurConfigure: serdipayConfigure(),
     signatureConfiguree: SERDIPAY_WEBHOOK_SECRET.length > 0,
     baseUrlDefinie: SERDIPAY_BASE_URL.length > 0,
+    apiIdDefinie: SERDIPAY_API_ID.length > 0,
+    cleApiDefinie: SERDIPAY_API_KEY.length > 0,
+    routes: {
+      base: SERDIPAY_BASE_URL,
+      jeton: SERDIPAY_PATH_TOKEN,
+      paiement: SERDIPAY_PATH_INITIER,
+      statut: SERDIPAY_PATH_STATUT || '(non fournie par SerdiPay)',
+    },
     devise: SERDIPAY_DEVISE,
     webhook: `${SUPABASE_URL}/functions/v1/${FONCTION}/webhook`,
   });
@@ -779,10 +899,30 @@ async function routeInitier(req: Request): Promise<Response> {
       construireCorpsInitier(paiement, nom, email),
     );
   } catch (e) {
+    const motif = String(e);
     await clientService().rpc('rpc_serdipay_echec', {
       p_reference: paiement.reference,
-      p_motif: `RESEAU_FOURNISSEUR : ${String(e).slice(0, 300)}`,
+      p_motif: `FOURNISSEUR : ${motif.slice(0, 300)}`,
     });
+
+    if (motif.includes('SERDIPAY_IP_NON_AUTORISEE')) {
+      return erreur(
+        'SERDIPAY_IP_NON_AUTORISEE',
+        "SerdiPay refuse l'appel : l'adresse IP du relais " +
+          '(213.130.145.53) n’est pas encore déclarée chez eux. ' +
+          'Demandez à SerdiPay de la mettre en liste blanche.',
+        503,
+      );
+    }
+
+    if (motif.includes('SERDIPAY_AUTH_')) {
+      return erreur(
+        'SERDIPAY_AUTH',
+        'SerdiPay a refusé nos identifiants : vérifiez les secrets ' +
+          'SERDIPAY_API_ID et SERDIPAY_API_KEY, puis réessayez.',
+        502,
+      );
+    }
 
     return erreur(
       'FOURNISSEUR_INJOIGNABLE',
@@ -864,7 +1004,11 @@ async function routeStatut(req: Request): Promise<Response> {
 
   // Filet de sécurité : si toujours en attente et fournisseur configuré,
   // on demande directement l'état à SerdiPay (webhook perdu, réseau…).
-  if (paiement.statut === 'en_attente' && serdipayConfigure()) {
+  // Ignoré tant que SerdiPay n'a pas communiqué de route d'interrogation.
+  if (
+    paiement.statut === 'en_attente' && serdipayConfigure() &&
+    SERDIPAY_PATH_STATUT.trim().length > 0
+  ) {
     try {
       const chemin = SERDIPAY_PATH_STATUT.replace(
         '{reference}',

@@ -16,8 +16,11 @@
  *
  *  Deux chemins, et RIEN d'autre :
  *    /functions/v1/serdipay/*  → Supabase   (webhook entrant, signé)
- *    /api/*                    → api.serdipay.com (appels sortants, jeton requis)
+ *    /api/*                    → PUBLIC-APIS.SERVICES.SERDIPAY.COM (production)
+ *    /api-test/*               → APIS.SERDIPAY.CLOUD (mise en scène)
  *  Tout le reste répond 404 : ce n'est PAS un proxy ouvert.
+ *
+ *  Les deux sorties exigent le jeton `x-relais-token`.
  *
  *  ⚠️ Ne jamais élargir ces chemins, ni retirer la vérification du jeton.
  * ============================================================================
@@ -27,7 +30,8 @@ declare(strict_types=1);
 
 // --- Cibles autorisées (jamais variables) -----------------------------------
 const HOTE_SUPABASE   = 'pqzcliibocndiyqbyddr.supabase.co';
-const HOTE_SERDIPAY   = 'api.serdipay.com';
+const HOTE_SERDIPAY   = 'public-apis.services.serdipay.com'; // production
+const HOTE_SERDIPAY_TEST = 'apis.serdipay.cloud';             // mise en scène
 
 // --- Jeton des appels SORTANTS ----------------------------------------------
 // Ce jeton n'est PAS un identifiant bancaire : il sert uniquement à empêcher
@@ -69,7 +73,7 @@ if (strpos($chemin, '/functions/v1/serdipay/') === 0) {
     // Webhook entrant : SerdiPay signe chaque appel, aucun jeton local n'est
     // nécessaire — le refus viendra de Supabase (401/503) si le secret manque.
     $cible = 'https://' . HOTE_SUPABASE . $chemin;
-} elseif (strpos($chemin, '/api/') === 0) {
+} elseif (strpos($chemin, '/api/') === 0 || strpos($chemin, '/api-test/') === 0) {
     // Appels sortants : réservés à notre passerelle, et désactivés par défaut.
     if (JETON_RELAIS === JETON_RELAIS_EXEMPLE || JETON_RELAIS === '') {
         repondre(503, '{"ok":false,"erreur":"relais sortant non configure"}');
@@ -78,7 +82,11 @@ if (strpos($chemin, '/functions/v1/serdipay/') === 0) {
     if (!hash_equals(JETON_RELAIS, (string) $jeton)) {
         repondre(401, '{"ok":false,"erreur":"jeton de relais absent ou invalide"}');
     }
-    $cible = 'https://' . HOTE_SERDIPAY . substr($chemin, 4); // retire « /api »
+    if (strpos($chemin, '/api-test/') === 0) {
+        $cible = 'https://' . HOTE_SERDIPAY_TEST . substr($chemin, 9); // « /api-test »
+    } else {
+        $cible = 'https://' . HOTE_SERDIPAY . substr($chemin, 4); // retire « /api »
+    }
 } else {
     repondre(404, '{"ok":false,"erreur":"chemin non autorise"}');
 }
