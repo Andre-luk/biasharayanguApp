@@ -308,7 +308,10 @@ function estIpNonAutorisee(texte: string): boolean {
  * Le jeton est gardé en mémoire de l'instance (durée annoncée, 1 h par défaut).
  */
 async function jetonSerdipay(): Promise<Jeton> {
-  if (jetonEnCache && jetonEnCache.expireLe > Date.now() + 30_000) {
+  // ⚠️ Le jeton SerdiPay semble à USAGE UNIQUE (ou très court) : un 401
+  // « Unauthenticated. » apparaît si on le réutilise. On ne le garde donc que
+  // quelques secondes, et `appelFournisseur` en redemande un sur 401.
+  if (jetonEnCache && jetonEnCache.expireLe > Date.now() + 2_000) {
     return jetonEnCache;
   }
 
@@ -407,36 +410,63 @@ async function jetonSerdipay(): Promise<Jeton> {
   return jetonEnCache;
 }
 
+/**
+ * Appel authentifié à l'API SerdiPay, avec UNE reprise automatique :
+ * si l'API répond 401 (« Unauthenticated. »), on jette le jeton en cache,
+ * on en demande un neuf et on rejoue la requête une seule fois.
+ */
 async function appelFournisseur(
   chemin: string,
   methode: 'GET' | 'POST',
   corps?: unknown,
 ): Promise<{ ok: boolean; statutHttp: number; texte: string; data: unknown }> {
-  const { valeur: jeton } = await jetonSerdipay();
+  let derniere: {
+    ok: boolean;
+    statutHttp: number;
+    texte: string;
+    data: unknown;
+  } = { ok: false, statutHttp: 0, texte: '', data: null };
 
-  const reponse = await fetch(`${SERDIPAY_BASE_URL}${chemin}`, {
-    method: methode,
-    headers: {
-      Authorization: `Bearer ${jeton}`,
-      Accept: 'application/json',
-      ...(SERDIPAY_RELAIS_TOKEN
-        ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
-        : {}),
-      ...(corps ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: corps ? JSON.stringify(corps) : undefined,
-    signal: AbortSignal.timeout(DELAI_FOURNISSEUR_MS),
-  });
+  for (let essai = 0; essai < 2; essai++) {
+    const { valeur: jeton } = await jetonSerdipay();
 
-  const texte = await reponse.text();
-  let data: unknown = null;
-  try {
-    data = texte ? JSON.parse(texte) : null;
-  } catch {
-    data = null;
+    const reponse = await fetch(`${SERDIPAY_BASE_URL}${chemin}`, {
+      method: methode,
+      headers: {
+        Authorization: `Bearer ${jeton}`,
+        Accept: 'application/json',
+        ...(SERDIPAY_RELAIS_TOKEN
+          ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
+          : {}),
+        ...(corps ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: corps ? JSON.stringify(corps) : undefined,
+      signal: AbortSignal.timeout(DELAI_FOURNISSEUR_MS),
+    });
+
+    const texte = await reponse.text();
+    let data: unknown = null;
+    try {
+      data = texte ? JSON.parse(texte) : null;
+    } catch {
+      data = null;
+    }
+
+    derniere = {
+      ok: reponse.ok,
+      statutHttp: reponse.status,
+      texte,
+      data,
+    };
+
+    if (reponse.status === 401 && essai === 0) {
+      jetonEnCache = null; // jeton périmé ou déjà consommé
+      continue;
+    }
+    break;
   }
 
-  return { ok: reponse.ok, statutHttp: reponse.status, texte, data };
+  return derniere;
 }
 
 // ---------------------------------------------------------------------------
@@ -1067,17 +1097,6 @@ async function routeDiagPaiement(req: Request): Promise<Response> {
     );
   }
 
-  let valeurJeton = '';
-  try {
-    valeurJeton = (await jetonSerdipay()).valeur;
-  } catch (e) {
-    return json({
-      etape: 'jeton',
-      ok: false,
-      erreur: String(e).slice(0, 400),
-    });
-  }
-
   // Corps transmis tel quel s'il est fourni (permet d'explorer l'API sans
   // redéployer), sinon un corps vide pour faire lister les champs requis.
   let corpsEnvoye = '{}';
@@ -1093,24 +1112,46 @@ async function routeDiagPaiement(req: Request): Promise<Response> {
   const url = `${SERDIPAY_BASE_URL}${SERDIPAY_PATH_INITIER}`;
   let statutHttp = 0;
   let texte = '';
-  try {
-    const reponse = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${valeurJeton}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        ...(SERDIPAY_RELAIS_TOKEN
-          ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
-          : {}),
-      },
-      body: corpsEnvoye,
-      signal: AbortSignal.timeout(20_000),
-    });
-    statutHttp = reponse.status;
-    texte = (await reponse.text()).slice(0, 800);
-  } catch (e) {
-    texte = 'ERREUR_RESEAU : ' + String(e).slice(0, 200);
+
+  // Deux tentatives : le jeton SerdiPay peut être refusé (401) s'il a déjà
+  // servi ; on en redemande un neuf avant de rejouer.
+  for (let essai = 0; essai < 2; essai++) {
+    let valeurJeton = '';
+    try {
+      valeurJeton = (await jetonSerdipay()).valeur;
+    } catch (e) {
+      return json({
+        etape: 'jeton',
+        ok: false,
+        erreur: String(e).slice(0, 400),
+      });
+    }
+
+    try {
+      const reponse = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${valeurJeton}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(SERDIPAY_RELAIS_TOKEN
+            ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
+            : {}),
+        },
+        body: corpsEnvoye,
+        signal: AbortSignal.timeout(20_000),
+      });
+      statutHttp = reponse.status;
+      texte = (await reponse.text()).slice(0, 800);
+    } catch (e) {
+      texte = 'ERREUR_RESEAU : ' + String(e).slice(0, 200);
+    }
+
+    if (statutHttp === 401 && essai === 0) {
+      jetonEnCache = null;
+      continue;
+    }
+    break;
   }
 
   return json({
