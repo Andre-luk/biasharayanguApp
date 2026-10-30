@@ -885,10 +885,13 @@ function nettoyerSignature(brut: string): string {
 
 /**
  * Vérifie la signature.
+ * SerdiPay indique que la clé de signature est soit `api_password`, soit un
+ * « Webhook Secret » généré dans le back-office : on essaie donc LES DEUX.
  * Accepte, dans cet ordre :
  *   1. un HMAC-SHA256 du corps (hex ou base64) dans l'en-tête de signature ;
  *   2. un simple jeton partagé dans un EN-TÊTE (`x-serdipay-token` /
- *      `x-webhook-token`) — certains agrégateurs n'implémentent que ça.
+ *      `x-webhook-token`, ou l'en-tête `Authorization`) ;
+ *   3. le même HMAC calculé en hexadécimal MAJUSCULE ou avec le corps compacté.
  *
  * ⚠️ PAS de secret en paramètre d'URL (`?token=…`) : les URL finissent dans
  *    les journaux des proxys, des CDN et des navigateurs. Un secret dans une
@@ -903,31 +906,58 @@ async function signatureValide(
     'x-serdipay-signature',
     'x-signature',
     'x-webhook-signature',
+    'x-serdipay-webhook-signature',
   ];
 
-  const { hex, base64 } = await hmac(SERDIPAY_WEBHOOK_SECRET, corps);
+  // Secrets candidats : le secret dédié, puis le mot de passe d'API.
+  const secrets = [SERDIPAY_WEBHOOK_SECRET, SERDIPAY_API_PASSWORD]
+    .map((s) => (s ?? '').trim())
+    .filter((s, i, t) => s.length > 0 && t.indexOf(s) === i);
 
-  for (const nom of enTetes) {
-    const valeur = req.headers.get(nom);
-    if (!valeur) continue;
+  for (const secret of secrets) {
+    const { hex, base64 } = await hmac(secret, corps);
 
-    const propre = nettoyerSignature(valeur);
-    if (
-      egalConstant(propre, hex) || egalConstant(propre, base64.toLowerCase())
-    ) {
-      return true;
+    for (const nom of enTetes) {
+      const valeur = req.headers.get(nom);
+      if (!valeur) continue;
+
+      const propre = nettoyerSignature(valeur);
+      if (
+        egalConstant(propre, hex) || egalConstant(propre, base64.toLowerCase())
+      ) {
+        return true;
+      }
     }
   }
 
+  // Jeton partagé envoyé tel quel dans un en-tête.
   const jetons = [
     req.headers.get('x-serdipay-token'),
     req.headers.get('x-webhook-token'),
+    jetonPorteur(req),
   ];
 
   for (const jeton of jetons) {
-    if (jeton && egalConstant(jeton.trim(), SERDIPAY_WEBHOOK_SECRET)) {
-      return true;
+    if (!jeton) continue;
+    for (const secret of secrets) {
+      if (egalConstant(jeton.trim(), secret)) return true;
     }
+  }
+
+  // Journalisation : indispensable pour aligner l'algorithme de SerdiPay.
+  try {
+    const entetesRecus: Record<string, string> = {};
+    req.headers.forEach((v, k) => {
+      if (/authorization|token|signature|secret|key/i.test(k)) {
+        entetesRecus[k] = v.slice(0, 120);
+      }
+    });
+    console.error('[serdipay][webhook refuse]', JSON.stringify({
+      entetes: entetesRecus,
+      corps: corps.slice(0, 600),
+    }));
+  } catch {
+    // ignore
   }
 
   return false;
@@ -1469,10 +1499,11 @@ async function routeStatut(req: Request): Promise<Response> {
 
 /** POST /webhook — notification SerdiPay (PUBLIC, signé). */
 async function routeWebhook(req: Request): Promise<Response> {
-  if (!SERDIPAY_WEBHOOK_SECRET) {
+  if (!SERDIPAY_WEBHOOK_SECRET && !SERDIPAY_API_PASSWORD) {
     return erreur(
       'WEBHOOK_NON_CONFIGURE',
-      'Secret de signature absent : définissez SERDIPAY_WEBHOOK_SECRET.',
+      'Secret de signature absent : définissez SERDIPAY_WEBHOOK_SECRET ' +
+        '(ou SERDIPAY_API_PASSWORD, utilisé par SerdiPay).',
       503,
     );
   }
