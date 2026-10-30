@@ -37,12 +37,18 @@
 //      SANS JWT. Les routes privées vérifient elles-mêmes le jeton.
 //      (équivalent CLI : `--no-verify-jwt`)
 //   4. Secrets à créer (Project Settings → Edge Functions → Secrets) :
-//        SERDIPAY_API_ID          identifiant remis par SerdiPay (APIxxx)
-//        SERDIPAY_API_KEY         clé / mot de passe associé à cet identifiant
-//        SERDIPAY_WEBHOOK_SECRET  secret partagé de signature (OBLIGATOIRE)
+//        SERDIPAY_EMAIL           e-mail du compte app.serdipay.com  (OBLIGATOIRE)
+//        SERDIPAY_PASSWORD        mot de passe de ce compte          (OBLIGATOIRE)
+//        SERDIPAY_WEBHOOK_SECRET  secret partagé de signature       (OBLIGATOIRE)
 //      Optionnels : SERDIPAY_BASE_URL, SERDIPAY_PATH_TOKEN,
 //      SERDIPAY_PATH_INITIER, SERDIPAY_PATH_STATUT, SERDIPAY_AUTH_CORPS,
-//      SERDIPAY_TOKEN_URL, SERDIPAY_RETURN_URL, SERDIPAY_DEVISE.
+//      SERDIPAY_CORPS_INITIER, SERDIPAY_TOKEN_URL, SERDIPAY_RETURN_URL,
+//      SERDIPAY_DEVISE.
+//
+//  🧪 DIAGNOSTIC (protégé par l’en-tête `x-relais-token`)
+//        POST /diag-token     → essaie plusieurs corps pour obtenir un jeton
+//        POST /diag-paiement  → appelle payment-merchant avec {} pour faire
+//                               lister par SerdiPay les champs obligatoires
 //
 //  🔌 ROUTES RÉELLES DE SERDIPAY (communiquées le 30/10/2026)
 //  ------------------------------------------------------------
@@ -288,7 +294,7 @@ function estIpNonAutorisee(texte: string): boolean {
 
 /**
  * Jeton d'accès SerdiPay (`POST /merchant/get-token`).
- *  - par défaut : corps JSON `{ apiId, apiKey }` (modèle SERDIPAY_AUTH_CORPS) ;
+ *  - par défaut : corps JSON `{ email, password }` (format VÉRIFIÉ) ;
  *  - si seuls CLIENT_ID / CLIENT_SECRET sont fournis : OAuth
  *    « client_credentials » en formulaire ;
  *  - si SerdiPay répond que la route n'existe pas, on retombe sur l'usage de la
@@ -850,7 +856,7 @@ function routePing(): Response {
     baseUrlDefinie: SERDIPAY_BASE_URL.length > 0,
     apiIdDefinie: SERDIPAY_API_ID.length > 0,
     merchantCode: SERDIPAY_MERCHANT_CODE,
-    identifiantDefini: SERDIPAY_USERNAME.length > 0,
+    emailDefini: SERDIPAY_EMAIL.length > 0,
     motDePasseDefini: SERDIPAY_PASSWORD.length > 0,
     cleApiDefinie: SERDIPAY_API_KEY.length > 0,
     routes: {
@@ -878,8 +884,8 @@ async function routeDiagToken(req: Request): Promise<Response> {
   if (!identifiantsFournisseur()) {
     return erreur(
       'SERDIPAY_NON_CONFIGURE',
-      'Aucun identifiant : renseignez SERDIPAY_USERNAME + SERDIPAY_PASSWORD ' +
-        '(ou SERDIPAY_API_KEY) dans les secrets Supabase.',
+      'Aucun identifiant : renseignez SERDIPAY_EMAIL + SERDIPAY_PASSWORD ' +
+        'dans les secrets Supabase.',
       503,
     );
   }
@@ -1038,8 +1044,7 @@ async function routeInitier(req: Request): Promise<Response> {
     return erreur(
       'SERDIPAY_NON_CONFIGURE',
       "Le paiement en ligne n'est pas encore configuré : " +
-        'renseignez SERDIPAY_BASE_URL et SERDIPAY_API_KEY (ou ' +
-        'SERDIPAY_CLIENT_ID / SERDIPAY_CLIENT_SECRET) dans les secrets ' +
+        'renseignez SERDIPAY_EMAIL et SERDIPAY_PASSWORD dans les secrets ' +
         'Supabase, puis redéployez la fonction « serdipay ».',
       503,
     );
@@ -1393,7 +1398,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return erreur(
       'ROUTE_INCONNUE',
       `Route inconnue « ${chemin} ». Attendu : /ping, /initier, /statut, ` +
-        '/webhook, /diag-token.',
+        '/webhook, /diag-token, /diag-paiement.',
       404,
     );
   } catch (e) {
