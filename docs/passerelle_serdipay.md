@@ -123,15 +123,42 @@ champs seulement** : `email` et `password` (identifiants du back-office
 > ⚠️ Le préfixe `/api` fait partie du chemin chez SerdiPay
 > (`…/api/public-api/v1/…`) : le relais le transmet **tel quel**.
 
-### 2.3 Ce qu'il reste à demander à SerdiPay
+### 2.3 Contrat de `payment-merchant` — ✅ DÉCOUVERT le 30/10/2026
 
-1. **Le corps attendu par `payment-merchant`** — il sera découvert
-   automatiquement par la route `/diag-paiement` (corps vide → champs requis) ;
+Champs **obligatoires** renvoyés par l'API (corps vide → `validation.required`) :
+
+```json
+{
+  "merchantCode": "066036",
+  "api_id": "APIWY4G2W9",
+  "api_password": "<mot de passe API>",
+  "merchant_pin": "<PIN du compte>",
+  "clientPhone": "243970000000",
+  "telecom": "orange",
+  "amount": 1000,
+  "currency": "CDF"
+}
+```
+
+- En-tête **`Authorization: Bearer <access_token>`** obligatoire (sans lui :
+  `500 Server Error`).
+- `merchantCode` est bien en **camelCase** (`merchant_code` renvoie
+  « Fraudulent request, Wrong Merchant code send »).
+- `api_password` a une **longueur minimale** ; `merchant_pin` a une contrainte
+  **numérique minimale**.
+- `clientPhone` au format **international sans « + »** (`243` + 9 chiffres).
+
+### 2.4 Ce qu'il reste à demander à SerdiPay
+
+1. **Le mot de passe d'API** (`api_password`) : est-il identique au mot de passe
+   du back-office ou affiché séparément ?
 2. **Le secret de signature des webhooks** (`SERDIPAY_WEBHOOK_SECRET`) et le nom
    de l'en-tête utilisé ;
-3. **Une route d'interrogation d'un paiement** (statut), s'il en existe une ;
-4. **La liste des codes opérateurs** (`orange`, `airtel`, `mpesa`, `afrimoney`,
-   `card`…) et les formats de numéro (ex. `243970000000`).
+3. **La forme de la réponse** d'un paiement réussi (URL de paiement ?
+   instruction USSD ? statut ?) ;
+4. **Une route d'interrogation d'un paiement** (statut), s'il en existe une ;
+5. **Les valeurs exactes de `telecom`** (`orange`, `airtel`, `mpesa`,
+   `afrimoney`…).
 
 > Le code isole tout le vocabulaire fournisseur dans l'Edge Function (§7) et
 > accepte des modèles JSON surchargeables (`SERDIPAY_AUTH_CORPS`,
@@ -163,16 +190,16 @@ Dashboard → **Project Settings → Edge Functions → Secrets** :
 |---|---|---|
 | `SERDIPAY_API_ID` | ✅ | `APIWY4G2W9` — **déjà la valeur par défaut du code** |
 | `SERDIPAY_MERCHANT_CODE` | – | `066036` — **déjà la valeur par défaut du code** |
-| `SERDIPAY_USERNAME` | ✅ | Identifiant du back-office `app.serdipay.com` (secret) |
-| `SERDIPAY_PASSWORD` | ✅ | Mot de passe associé (secret) |
+| `SERDIPAY_USERNAME` | – | Remplacé par `SERDIPAY_EMAIL` (repli conservé) |
+| `SERDIPAY_PASSWORD` | ✅ | Mot de passe du back-office (obtention du jeton) |
+| `SERDIPAY_API_PASSWORD` | ✅ | Champ `api_password` du paiement (repli = `SERDIPAY_PASSWORD`) |
+| `SERDIPAY_PIN` | ✅ | Champ `merchant_pin` du paiement |
 | `SERDIPAY_WEBHOOK_SECRET` | ✅ | Chaîne ≥ 32 caractères, **partagée avec SerdiPay** |
-| `SERDIPAY_PIN` | – | Inutile pour encaisser (back-office / décaissement B2C) |
-| `SERDIPAY_API_KEY` | – | Seulement si SerdiPay fournit une clé d'API distincte |
 | `SERDIPAY_BASE_URL` | – | Défaut `https://serdipay.biasharagroup.com/api` (relais) |
 | `SERDIPAY_PATH_TOKEN` | – | Défaut `/public-api/v1/merchant/get-token` |
 | `SERDIPAY_PATH_INITIER` | – | Défaut `/public-api/v1/merchant/payment-merchant` |
 | `SERDIPAY_PATH_STATUT` | – | **vide** : SerdiPay n'a pas fourni de route de statut |
-| `SERDIPAY_AUTH_CORPS` | – | Défaut `{"merchantCode":"{merchantCode}","username":"{username}","password":"{password}"}` |
+| `SERDIPAY_AUTH_CORPS` | – | Défaut `{"email":"{email}","password":"{password}"}` |
 | `SERDIPAY_CORPS_INITIER` | – | Modèle JSON de la demande de paiement |
 | `SERDIPAY_SIGNATURE_HEADER` | – | Défaut `x-serdipay-signature` |
 | `SERDIPAY_RETURN_URL` | – | Retour après paiement (web) |
