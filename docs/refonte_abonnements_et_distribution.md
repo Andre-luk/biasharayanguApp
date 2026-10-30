@@ -68,6 +68,13 @@
 
 ## 3. Phase 2 — Forfaits propres à la distribution
 
+> **État au 30/10/2026** : le socle est livré (colonne `type_activite` sur
+> `groupes_tarifaires` + `rpc_forfaits_lister(type)`, migration 0083).
+> Reste à faire : le patch du moteur pour la règle « installation jamais
+> refacturée » — il touche `rpc_abonnement_enregistrer_paiement`, donc il doit
+> être appliqué avec la technique `regexp_replace` sur `pg_get_functiondef`
+> (voir `abonnement_paiement.md`) et **jamais** par redéfinition complète.
+
 **Base** : renseigner `groupes_tarifaires.type_activite = 'distribution'` pour les grilles de distribution et créer les grilles manquantes (installation + mensuel, max agents, max tournées).
 
 **Règles à faire respecter par le moteur** (à ajouter dans `rpc_abonnement_enregistrer_paiement` / `rpc_abonnement_ouvrir`) :
@@ -87,7 +94,25 @@
 
 ## 4. Phase 3 — Récipients, échanges et fardes
 
-### Modèle (nouvelle migration)
+> **État au 30/10/2026 : MOTEUR LIVRÉ** (migration 0084 + service Dart + 14 tests).
+> Détail ci-dessous ; les écrans restent à faire (phase 3 bis).
+
+### Livré — `20260916000084_recipients_echanges_bonus.sql` (55/55 instructions)
+Tables : `recipients_types`, `recipients_mouvements`, `regles_bonus`,
+`bonus_attribues` (RLS lecture seule, écritures par RPC uniquement).
+RPC : `rpc_recipients_types_lister`, `rpc_recipient_type_enregistrer`,
+`rpc_vente_recipient` (les trois cas), `rpc_recipient_perte`,
+`rpc_recipients_solde_client`, `rpc_recipients_tableau_bord`,
+`rpc_regles_bonus_lister`, `rpc_bonus_regle_enregistrer`, `rpc_bonus_appliquer`
+(idempotent par `(client, règle, tournée)`).
+Dart : `lib/models/recipients.dart`, `lib/services/recipients_service.dart`,
+`test/recipients_test.dart`.
+
+> ⚠️ **Aucune vente n'est écrite par ces RPC** : elles tracent les récipients et
+> les bonus, l'encaissement reste celui de la caisse / des tournées. Le chiffre
+> d'affaires ne peut donc pas être compté deux fois.
+
+### Modèle de référence
 ```
 recipients_types(id, owner_id, libelle, contenance_litres, prix_consigne, actif)
 recipients_mouvements(id, owner_id, agent_id, client_id, tournee_id,
