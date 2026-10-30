@@ -48,6 +48,9 @@ import 'package:biashara_yangu/services/production_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
 import 'package:biashara_yangu/services/modules_service.dart';
+// ⚙️ REFONTE ABONNEMENTS & DISTRIBUTION — type d'activité (boutique /
+// distribution) : filtre les cartes réservées à un métier.
+import 'package:biashara_yangu/services/type_activite_service.dart';
 // 🪙 MODULE 18 — devise de travail (CDF/USD) affichée dans l'entête.
 import 'package:biashara_yangu/services/devise_service.dart';
 // 🔔 CORRECTIF 78 — chaque écriture (vente, article, stock) prévient ici :
@@ -170,6 +173,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     DonneesService.instance.revision.addListener(_onDonneesChange);
     // ⚡ MODULE 23 — changer de mode (rapide / complet) reconstruit l'accueil.
     ModeApplicationService.instance.mode.addListener(_onModeChange);
+    // ⚙️ REFONTE ABONNEMENTS & DISTRIBUTION — le type d'activité
+    // (boutique / distribution) décide des cartes visibles.
+    TypeActiviteService.instance.type.addListener(_onTypeActiviteChange);
     WidgetsBinding.instance.addObserver(this);
     // L'état a pu évoluer pendant que l'application était fermée.
     AbonnementService.instance.rafraichirSilencieux();
@@ -189,6 +195,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     DeviseService.instance.etat.removeListener(_onDeviseChange);
     DonneesService.instance.revision.removeListener(_onDonneesChange);
     ModeApplicationService.instance.mode.removeListener(_onModeChange);
+    TypeActiviteService.instance.type.removeListener(_onTypeActiviteChange);
     WidgetsBinding.instance.removeObserver(this);
     _minuteurRealtime?.cancel();
     _veilleStats?.cancel();
@@ -231,6 +238,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// 🧩 MODULE 16 — le profil de modules de l'activité a été (re)chargé :
   /// la grille se reconstruit pour refléter les modules actifs.
   void _onModulesChange() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// ⚙️ REFONTE ABONNEMENTS & DISTRIBUTION — le type d'activité vient d'être
+  /// connu (ou a changé avec l'entreprise) : la grille se reconstruit pour
+  /// n'afficher que les cartes du métier.
+  void _onTypeActiviteChange() {
     if (!mounted) return;
     setState(() {});
   }
@@ -1031,6 +1046,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       modules: ModulesService.instance.modules.value,
       profilCharge: ModulesService.instance.charge,
       autorise: PermissionService.instance.peut,
+      // ⚙️ Séparation boutique / distribution : un type non renseigné
+      // (null) ne masque aucune carte.
+      typeActivite: TypeActiviteService.instance.type.value,
     );
 
     // ⚡ MODULE 23 — MODE RAPIDE : on ne garde que l'essentiel (produits,

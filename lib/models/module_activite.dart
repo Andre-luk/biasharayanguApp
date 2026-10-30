@@ -47,6 +47,16 @@ abstract final class ModuleCode {
   static const String pesee = 'pesee';
   static const String variantes = 'variantes';
 
+  // ------------------------------- REFONTE ABONNEMENTS & DISTRIBUTION
+  /// 📦 Distribution professionnelle : agents, tournées, consignes,
+  /// récipients (échanges), bonus, retours, rapports de distribution.
+  ///
+  /// ⚠️ Ce module n'est PAS dans [ModulesService.modulesBase] : seuls les
+  /// profils d'activité qui l'incluent explicitement voient ces écrans.
+  /// Le TYPE D'ACTIVITÉ (`entreprises.type_activite`) reste l'autorité
+  /// principale — voir [ReglesActivite.distribution] et `TypeActiviteService`.
+  static const String distribution = 'distribution';
+
   /// Module « par défaut » de repli (profil boutique).
   static const String profilDefaut = 'boutique';
 }
@@ -154,6 +164,22 @@ abstract final class ReglesActivite {
         modules,
         profilCharge,
         const <String>{ModuleCode.caisse},
+      );
+
+  /// 📦 DISTRIBUTION PROFESSIONNELLE (agents, tournées, consignes,
+  /// récipients) — REFONTE ABONNEMENTS & DISTRIBUTION.
+  ///
+  /// Une boutique ne distribue pas : elle ne doit pas voir ces écrans.
+  /// Un profil de DISTRIBUTION se reconnaît au module `distribution` OU au
+  /// module `pesee` (livraison au kilo / en récipients), déjà porté par les
+  /// activités de distribution existantes.
+  ///
+  /// ⚠️ Fail-open : profil non chargé ou vide → `true`. Aucune entreprise ne
+  /// perd l'accès à ses tournées à cause d'une panne réseau.
+  static bool distribution(Set<String> modules, bool profilCharge) => actif(
+        modules,
+        profilCharge,
+        const <String>{ModuleCode.distribution, ModuleCode.pesee},
       );
 
   /// 🔎 Testeur d'un module précis, à passer aux entrées qui n'ont qu'une

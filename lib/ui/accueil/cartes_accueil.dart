@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/models/type_activite.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 
 /// Valeurs dynamiques affichées par les cartes (calculées par l'accueil).
@@ -127,6 +128,7 @@ class CarteAccueil {
     required this.couleur,
     required this.route,
     this.module,
+    this.typeRequis,
     this.page,
     this.action = ActionAccess.voir,
     this.priorite = 50,
@@ -138,6 +140,13 @@ class CarteAccueil {
 
   /// Module requis (Module 16). `null` = carte de base (toujours éligible).
   final String? module;
+
+  /// ⚙️ REFONTE ABONNEMENTS & DISTRIBUTION — type d'activité requis.
+  /// `null` = carte commune aux boutiques ET aux distributions.
+  /// Renseigné = la carte n'apparaît que pour ce type d'entreprise ;
+  /// si le type n'est pas renseigné en base, la carte reste visible
+  /// (fail-open, aucune régression).
+  final TypeActivite? typeRequis;
 
   /// Permission requise sur [page] / [action] (`null` = aucune).
   final PageAccess? page;
@@ -166,7 +175,8 @@ class CarteAccueil {
     // elles restent utiles à toute activité qui livre).
     CarteAccueil(
       id: 'tournees',
-      module: ModuleCode.ventes,
+      module: ModuleCode.distribution,
+      typeRequis: TypeActivite.distribution,
       page: PageAccess.distribution,
       priorite: 22,
       titre: (AppLocalizations T) => 'Tournées',
@@ -178,7 +188,8 @@ class CarteAccueil {
     ),
     CarteAccueil(
       id: 'consignes',
-      module: ModuleCode.ventes,
+      module: ModuleCode.distribution,
+      typeRequis: TypeActivite.distribution,
       page: PageAccess.distribution,
       priorite: 24,
       titre: (AppLocalizations T) => 'Consignes clients',
@@ -191,7 +202,8 @@ class CarteAccueil {
     ),
     CarteAccueil(
       id: 'ma-tournee',
-      module: ModuleCode.ventes,
+      module: ModuleCode.distribution,
+      typeRequis: TypeActivite.distribution,
       page: PageAccess.maTournee,
       priorite: 23,
       titre: (AppLocalizations T) => 'Ma tournée',
@@ -495,12 +507,19 @@ class CarteAccueil {
     required Set<String> modules,
     required bool profilCharge,
     required bool Function(PageAccess page, ActionAccess action) autorise,
+    TypeActivite? typeActivite,
   }) {
     final List<CarteAccueil> selection = registre.where((CarteAccueil carte) {
       // 1. Module de l'activité (fail-open si profil non chargé/vide).
       final String? module = carte.module;
       if (module != null &&
           !ModulesService.estActif(modules, profilCharge, module)) {
+        return false;
+      }
+
+      // 1 bis. Type d'activité (boutique / distribution). Fail-open : un type
+      // non renseigné ne masque rien.
+      if (ReglesTypeActivite.masque(typeActivite, carte.typeRequis)) {
         return false;
       }
 

@@ -31,6 +31,7 @@ import 'services/activation_service.dart';
 import 'services/notification_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités, phase A).
 import 'services/modules_service.dart';
+import 'services/type_activite_service.dart';
 // ⚡ MODULE 23 — mode rapide / complet.
 import 'services/mode_application_service.dart';
 // 🪙 MODULE 18 — devises de travail (CDF/USD) et taux de conversion.
@@ -198,6 +199,10 @@ void main() async {
   // Chaque bascule d'espace recharge les modules de la nouvelle activité
   // (best-effort — un échec laisse l'application en mode standard).
   ModulesService.instance.demarrerSurveillance();
+  // ⚙️ REFONTE ABONNEMENTS & DISTRIBUTION — type d'activité de l'entreprise
+  // (boutique / distribution). Fail-open : tant qu'il n'est pas connu, tous
+  // les écrans restent visibles.
+  TypeActiviteService.instance.demarrerSurveillance();
 
   // ⚡ MODULE 23 — MODE RAPIDE / COMPLET : lu avant le premier rendu pour que
   // l'accueil s'affiche directement dans le bon mode.
@@ -365,6 +370,9 @@ class _BiasharaAppState extends State<BiasharaApp> {
           // l'entreprise). En arrière-plan : l'écran s'ouvre sans attendre le
           // réseau (le mode standard reste actif tant que rien n'est chargé).
           unawaited(ModulesService.instance.chargerSilencieux());
+          // ⚙️ REFONTE ABONNEMENTS & DISTRIBUTION — type d'activité de
+          // l'entreprise : détermine les écrans de distribution.
+          unawaited(TypeActiviteService.instance.charger());
 
           // 🪙 MODULE 18 — devise de travail de l'entreprise (CDF/USD) :
           // appliquée à l'affichage de TOUS les montants de l'application.
