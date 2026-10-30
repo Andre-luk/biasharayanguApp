@@ -488,15 +488,18 @@ function codeTelecom(operateur: string | null): string {
   } catch {
     console.error('[serdipay] SERDIPAY_TELECOM_MAP n’est pas un JSON valide');
   }
+  // ✅ VALEURS CONFIRMÉES / DÉDUITES le 30/10/2026 : SerdiPay attend des
+  // ABRÉVIATIONS MAJUSCULES, pas le nom de l'opérateur.
+  //   `OM` → accepté (Orange Money) — les autres suivent la même logique.
   const table: Record<string, string> = {
-    orange: 'orange',
-    orangemoney: 'orange',
-    airtel: 'airtel',
-    airtelmoney: 'airtel',
-    mpesa: 'mpesa',
-    vodacom: 'mpesa',
-    afrimoney: 'afrimoney',
-    africell: 'afrimoney',
+    orange: 'OM',
+    orangemoney: 'OM',
+    airtel: 'AM',
+    airtelmoney: 'AM',
+    mpesa: 'VM',
+    vodacom: 'VM',
+    afrimoney: 'AF',
+    africell: 'AF',
     ...surcharges,
   };
   return table[o] ?? o;
