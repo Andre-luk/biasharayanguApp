@@ -111,8 +111,13 @@ const SERDIPAY_PASSWORD = (Deno.env.get('SERDIPAY_PASSWORD') ?? '').trim();
 // SERDIPAY_EMAIL (ou à défaut SERDIPAY_USERNAME) porte cette adresse.
 const SERDIPAY_EMAIL = (Deno.env.get('SERDIPAY_EMAIL') ??
   Deno.env.get('SERDIPAY_USERNAME') ?? '').trim();
-// Le PIN sert au back-office et aux décaissements B2C. Il n'est PAS nécessaire
-// pour encaisser : ne le déclarer que si SerdiPay l'exige explicitement.
+// Mot de passe d'API exigé par `/merchant/payment-merchant` (champ
+// `api_password`, longueur minimale imposée par SerdiPay). À défaut du secret
+// dédié, on réutilise le mot de passe du compte.
+const SERDIPAY_API_PASSWORD = (Deno.env.get('SERDIPAY_API_PASSWORD') ??
+  Deno.env.get('SERDIPAY_PASSWORD') ?? '').trim();
+// ✅ Le PIN est OBLIGATOIRE pour payer : `merchant_pin` figure parmi les champs
+// requis de `/merchant/payment-merchant` (validation.min.numeric).
 const SERDIPAY_PIN = (Deno.env.get('SERDIPAY_PIN') ?? '').trim();
 
 /**
@@ -124,6 +129,7 @@ function remplirModele(modele: string): string {
   const valeurs: Record<string, string> = {
     apiId: SERDIPAY_API_ID,
     apiKey: SERDIPAY_API_KEY,
+    apiPassword: SERDIPAY_API_PASSWORD,
     merchantCode: SERDIPAY_MERCHANT_CODE,
     email: SERDIPAY_EMAIL,
     username: SERDIPAY_USERNAME || SERDIPAY_EMAIL,
@@ -451,33 +457,64 @@ type PaiementOuvert = {
   operateur: string | null;
 };
 
+/**
+ * Normalise un numéro Mobile Money au format international sans « + ».
+ * Ex. « 0970000000 » → « 243970000000 », « 970000000 » → « 243970000000 ».
+ */
+function numeroInternational(brut: string): string {
+  let d = (brut ?? '').replace(/[^0-9]/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('243')) return d;
+  if (d.startsWith('0')) return '243' + d.slice(1);
+  if (d.length === 9) return '243' + d;
+  return d;
+}
+
+/** Code opérateur attendu par SerdiPay (`telecom`). */
+function codeTelecom(operateur: string | null): string {
+  const o = (operateur ?? '').trim().toLowerCase().replace(/[\s-]/g, '');
+  const table: Record<string, string> = {
+    orange: 'orange',
+    orangemoney: 'orange',
+    airtel: 'airtel',
+    airtelmoney: 'airtel',
+    mpesa: 'mpesa',
+    vodacom: 'mpesa',
+    afrimoney: 'afrimoney',
+    africell: 'afrimoney',
+  };
+  return table[o] ?? o;
+}
+
 function construireCorpsInitier(
   p: PaiementOuvert,
   nomClient: string,
-  emailClient: string,
 ): Record<string, unknown> {
   const callback = `${SUPABASE_URL}/functions/v1/${FONCTION}/webhook`;
   const description = `Abonnement Biashara Yangu - ${p.reference}`;
+  const clientPhone = numeroInternational(p.telephone ?? '');
+  const telecom = codeTelecom(p.operateur);
 
   // Modèle surchargeable sans redéploiement : secret SERDIPAY_CORPS_INITIER.
-  // Placeholders : {apiId} {reference} {montant} {devise} {telephone}
-  //                {operateur} {callback} {retour} {description} {nomClient}
   const modele = Deno.env.get('SERDIPAY_CORPS_INITIER');
   if (modele && modele.trim().length > 0) {
     const rempli = modele
       .replaceAll('{apiId}', SERDIPAY_API_ID)
+      .replaceAll('{apiPassword}', SERDIPAY_API_PASSWORD)
+      .replaceAll('{pin}', SERDIPAY_PIN)
+      .replaceAll('{merchantCode}', SERDIPAY_MERCHANT_CODE)
       .replaceAll('{reference}', p.reference)
       .replaceAll('{montant}', String(Number(p.montant)))
       .replaceAll('{devise}', p.devise || SERDIPAY_DEVISE)
-      .replaceAll('{telephone}', p.telephone ?? '')
-      .replaceAll('{operateur}', p.operateur ?? '')
+      .replaceAll('{telephone}', clientPhone)
+      .replaceAll('{operateur}', telecom)
       .replaceAll('{callback}', callback)
       .replaceAll('{retour}', SERDIPAY_RETURN_URL)
       .replaceAll('{description}', description)
       .replaceAll('{nomClient}', nomClient || 'Client Biashara Yangu');
     try {
       const lu = JSON.parse(rempli) as Record<string, unknown>;
-      lu.apiId ??= SERDIPAY_API_ID;
+      lu.merchantCode ??= SERDIPAY_MERCHANT_CODE;
       return lu;
     } catch {
       // Modèle invalide : on utilise le corps par défaut ci-dessous.
@@ -485,26 +522,24 @@ function construireCorpsInitier(
     }
   }
 
-  // Corps par défaut — champs « plats », ceux qu'utilisent la plupart des
-  // agrégateurs (SerdiPay n'a pas encore publié le détail pour
-  // /merchant/payment-merchant). À ajuster sur le premier refus (400).
+  // ✅ Corps EXACT exigé par `POST /merchant/payment-merchant`.
+  // Champs obligatoires découverts le 30/10/2026 en interrogeant l'API :
+  //   merchantCode, api_id, api_password, merchant_pin, clientPhone,
+  //   telecom, amount, currency
   return {
-    apiId: SERDIPAY_API_ID,
-    reference: p.reference,
-    externalId: p.reference,
+    merchantCode: SERDIPAY_MERCHANT_CODE,
+    api_id: SERDIPAY_API_ID,
+    api_password: SERDIPAY_API_PASSWORD,
+    merchant_pin: SERDIPAY_PIN,
+    clientPhone,
+    telecom,
     amount: Number(p.montant),
     currency: p.devise || SERDIPAY_DEVISE,
+    // Facultatifs, utiles au reçu et au rapprochement :
+    reference: p.reference,
     description,
-    phoneNumber: p.telephone ?? undefined,
-    operator: p.operateur ?? undefined,
-    paymentMethod: p.operateur ?? undefined,
     callbackUrl: callback,
     returnUrl: SERDIPAY_RETURN_URL,
-    customer: {
-      name: nomClient || 'Client Biashara Yangu',
-      phone: p.telephone ?? undefined,
-      email: emailClient || undefined,
-    },
   };
 }
 
@@ -858,6 +893,8 @@ function routePing(): Response {
     merchantCode: SERDIPAY_MERCHANT_CODE,
     emailDefini: SERDIPAY_EMAIL.length > 0,
     motDePasseDefini: SERDIPAY_PASSWORD.length > 0,
+    motDePasseApiDefini: SERDIPAY_API_PASSWORD.length > 0,
+    pinDefini: SERDIPAY_PIN.length > 0,
     cleApiDefinie: SERDIPAY_API_KEY.length > 0,
     routes: {
       base: SERDIPAY_BASE_URL,
@@ -1003,6 +1040,18 @@ async function routeDiagPaiement(req: Request): Promise<Response> {
     });
   }
 
+  // Corps transmis tel quel s'il est fourni (permet d'explorer l'API sans
+  // redéployer), sinon un corps vide pour faire lister les champs requis.
+  let corpsEnvoye = '{}';
+  try {
+    const brut = (await req.text()).trim();
+    if (brut.length > 0) {
+      corpsEnvoye = remplirModele(brut);
+    }
+  } catch {
+    // corps illisible : on garde '{}'
+  }
+
   const url = `${SERDIPAY_BASE_URL}${SERDIPAY_PATH_INITIER}`;
   let statutHttp = 0;
   let texte = '';
@@ -1017,11 +1066,11 @@ async function routeDiagPaiement(req: Request): Promise<Response> {
           ? { 'x-relais-token': SERDIPAY_RELAIS_TOKEN }
           : {}),
       },
-      body: '{}',
+      body: corpsEnvoye,
       signal: AbortSignal.timeout(20_000),
     });
     statutHttp = reponse.status;
-    texte = (await reponse.text()).slice(0, 600);
+    texte = (await reponse.text()).slice(0, 800);
   } catch (e) {
     texte = 'ERREUR_RESEAU : ' + String(e).slice(0, 200);
   }
@@ -1030,6 +1079,10 @@ async function routeDiagPaiement(req: Request): Promise<Response> {
     etape: 'paiement',
     jetonObtenu: true,
     url,
+    corpsEnvoye: corpsEnvoye.replace(
+      /"(api_password|merchant_pin)":"[^"]*"/g,
+      '"$1":"***"',
+    ),
     statutHttp,
     reponse: texte,
   });
@@ -1046,6 +1099,16 @@ async function routeInitier(req: Request): Promise<Response> {
       "Le paiement en ligne n'est pas encore configuré : " +
         'renseignez SERDIPAY_EMAIL et SERDIPAY_PASSWORD dans les secrets ' +
         'Supabase, puis redéployez la fonction « serdipay ».',
+      503,
+    );
+  }
+
+  // SerdiPay exige `api_password` ET `merchant_pin` dans le corps du paiement.
+  if (SERDIPAY_API_PASSWORD.length === 0 || SERDIPAY_PIN.length === 0) {
+    return erreur(
+      'SERDIPAY_PIN_MANQUANT',
+      'Il manque le mot de passe API ou le PIN SerdiPay : renseignez ' +
+        'SERDIPAY_API_PASSWORD et SERDIPAY_PIN dans les secrets Supabase.',
       503,
     );
   }
@@ -1096,11 +1159,9 @@ async function routeInitier(req: Request): Promise<Response> {
   const paiement = ouvert as PaiementOuvert;
 
   let nom = '';
-  let email = '';
   try {
     const id = await identiteClient(ctx.client, ctx.userId);
     nom = id.nom;
-    email = id.email;
   } catch {
     // best-effort
   }
@@ -1111,7 +1172,7 @@ async function routeInitier(req: Request): Promise<Response> {
     reponse = await appelFournisseur(
       SERDIPAY_PATH_INITIER,
       'POST',
-      construireCorpsInitier(paiement, nom, email),
+      construireCorpsInitier(paiement, nom),
     );
   } catch (e) {
     const motif = String(e);
