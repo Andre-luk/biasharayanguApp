@@ -10,15 +10,19 @@
 //   • ce qui a été encaissé et ce qu'il reste à payer ;
 //   • à qui appartient la boutique (nom, e-mail, téléphone).
 //
-// ⚠️ LECTURE SEULE, et c'est voulu : encaisser et activer restent l'affaire de
-// la Finance. L'agent SUIT, il n'engage pas d'argent. La liste vient de
-// `rpc_agent_mes_boutiques()` — le serveur décide de ce qu'il a le droit de
-// voir, l'écran ne fait aucun filtrage de sécurité.
+// PHASE 11 — l'agent peut désormais ENCAISSER pour une boutique qu'il a prise
+// en charge (« Encaisser »), sans passer par l'administration. Le montant dû
+// est calculé et vérifié par le serveur (`rpc_serdipay_ouvrir`, qui accepte
+// `entreprises.agent_id = auth.uid()`), jamais par l'écran.
+//
+// La liste vient de `rpc_agent_mes_boutiques()` — le serveur décide de ce que
+// l'agent a le droit de voir, l'écran ne fait aucun filtrage de sécurité.
 
 import 'package:flutter/material.dart';
 
 import 'package:biashara_yangu/models/boutique_agent.dart';
 import 'package:biashara_yangu/pages/entreprise_fiche_page.dart';
+import 'package:biashara_yangu/pages/paiement_serdipay_page.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
@@ -62,6 +66,25 @@ class _AgentAbonnementsPageState extends State<AgentAbonnementsPage> {
         _erreur = e.message;
         _chargement = false;
       });
+    }
+  }
+
+  /// L'agent encaisse l'abonnement **pour** la boutique (demande du patron :
+  /// « si c'est un agent qui crée le compte, il peut effectuer le paiement
+  /// directement pour l'entreprise »). Le serveur vérifie `entreprises.agent_id`
+  /// puis calcule lui-même le montant dû.
+  Future<void> _payerPour(BoutiqueAgent b) async {
+    final bool? paye = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => PaiementSerdipayPage(
+          objet: 'abonnement',
+          entrepriseId: b.entrepriseId,
+          libelleEntreprise: b.nom,
+        ),
+      ),
+    );
+    if (paye == true && mounted) {
+      await _charger();
     }
   }
 
@@ -148,7 +171,11 @@ class _AgentAbonnementsPageState extends State<AgentAbonnementsPage> {
         _BandeauSynthese(donnees: donnees),
         const SizedBox(height: 12),
         for (final BoutiqueAgent b in donnees.boutiques) ...<Widget>[
-          _CarteBoutique(boutique: b, onOuvrir: () => _ouvrirFiche(b)),
+          _CarteBoutique(
+            boutique: b,
+            onOuvrir: () => _ouvrirFiche(b),
+            onPayer: () => _payerPour(b),
+          ),
           const SizedBox(height: 10),
         ],
       ],
@@ -276,10 +303,17 @@ class _Tuile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _CarteBoutique extends StatelessWidget {
-  const _CarteBoutique({required this.boutique, required this.onOuvrir});
+  const _CarteBoutique({
+    required this.boutique,
+    required this.onOuvrir,
+    required this.onPayer,
+  });
 
   final BoutiqueAgent boutique;
   final VoidCallback onOuvrir;
+
+  /// Encaisser l'abonnement POUR cette boutique (l'agent paie pour elle).
+  final VoidCallback onPayer;
 
   Color get _couleurStatut {
     if (boutique.echu) return AppCouleurs.danger;
@@ -476,6 +510,11 @@ class _CarteBoutique extends StatelessWidget {
                           ),
                       ],
                     ),
+                  ),
+                  TextButton.icon(
+                    onPressed: onPayer,
+                    icon: const Icon(Icons.payments_rounded, size: 18),
+                    label: const Text('Encaisser'),
                   ),
                   TextButton.icon(
                     onPressed: onOuvrir,

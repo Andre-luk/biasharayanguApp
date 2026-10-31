@@ -28,14 +28,29 @@ import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 class PaiementSerdipayPage extends StatefulWidget {
-  const PaiementSerdipayPage(
-      {super.key, this.objet = 'abonnement', this.objetId});
+  const PaiementSerdipayPage({
+    super.key,
+    this.objet = 'abonnement',
+    this.objetId,
+    this.entrepriseId,
+    this.libelleEntreprise,
+  });
 
   /// `abonnement` (cycle en cours) ou `facture`.
   final String objet;
 
   /// Identifiant de la facture quand [objet] vaut `facture`.
   final String? objetId;
+
+  /// Payer POUR une autre entreprise (agent rattaché au dossier, plateforme).
+  ///
+  /// `null` = l'entreprise de l'utilisateur connecté. Le serveur vérifie le
+  /// droit (`rpc_serdipay_ouvrir` → propriétaire, plateforme ou agent du
+  /// dossier) : cette valeur ne donne aucun droit à elle seule.
+  final String? entrepriseId;
+
+  /// Nom affiché quand on paie pour une autre entreprise.
+  final String? libelleEntreprise;
 
   @override
   State<PaiementSerdipayPage> createState() => _PaiementSerdipayPageState();
@@ -88,15 +103,35 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
     });
 
     try {
-      EtatActivation etat = await ActivationService.instance.chargerEtat();
-
-      // 🔁 ABONNEMENT ÉCHU ET DÉJÀ SOLDÉ : il n'y a « rien à payer » parce
-      // qu'aucun cycle n'est ouvert. On l'ouvre au prix mensuel négocié —
-      // c'est ce qui permet au client de se renouveler SEUL.
+      EtatActivation etat;
       PreparationRenouvellement preparation = PreparationRenouvellement.aucune;
-      if (widget.objet == 'abonnement' && etat.doitRenouveler) {
-        preparation = await AbonnementService.instance.preparerRenouvellement();
+
+      if (widget.entrepriseId != null && widget.entrepriseId!.isNotEmpty) {
+        // 🧑‍💼 L'AGENT ENCAISSE POUR L'ENTREPRISE : l'état à afficher est celui
+        // de la BOUTIQUE, pas celui de l'agent (qui n'a pas de solde à lui).
+        // Le montant vient du serveur (cycle préparé au prix négocié).
+        preparation = await AbonnementService.instance
+            .preparerRenouvellement(entrepriseId: widget.entrepriseId);
+        etat = EtatActivation(
+          entrepriseId: widget.entrepriseId,
+          nom: widget.libelleEntreprise,
+          etape: EtapeActivation.actif,
+          typePaiement: preparation.cycleOuvert
+              ? TypePaiementActivation.aucun
+              : TypePaiementActivation.partiel,
+          soldeRestant: preparation.soldeRestant,
+        );
+      } else {
         etat = await ActivationService.instance.chargerEtat();
+
+        // 🔁 ABONNEMENT ÉCHU ET DÉJÀ SOLDÉ : il n'y a « rien à payer » parce
+        // qu'aucun cycle n'est ouvert. On l'ouvre au prix mensuel négocié —
+        // c'est ce qui permet au client de se renouveler SEUL.
+        if (widget.objet == 'abonnement' && etat.doitRenouveler) {
+          preparation = await AbonnementService.instance
+              .preparerRenouvellement(entrepriseId: widget.entrepriseId);
+          etat = await ActivationService.instance.chargerEtat();
+        }
       }
 
       final String? numero = await _telephoneConnu();
@@ -163,6 +198,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
         operateur: _operateur,
         objet: widget.objet,
         objetId: widget.objetId,
+        entrepriseId: widget.entrepriseId,
         montant: _montantPartiel(),
       );
 

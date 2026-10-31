@@ -640,6 +640,29 @@ Un versement partiel a maintenant une **durée lisible** :
 - Payer la totalité → `cycle_complet = true`, 30 jours.
 - Un montant sous le prix d'une journée → message explicite, jamais un blocage.
 
+### L'agent encaisse pour l'entreprise (migration 0092)
+
+Demande du patron : « si c'est un agent qui crée le compte, il peut effectuer
+le paiement directement pour l'entreprise ».
+
+`rpc_serdipay_ouvrir` n'acceptait que le **propriétaire** et les quatre rôles
+plateforme (`est_plateforme()`) ; un agent de terrain recevait
+`ENTREPRISE_REFUSEE`. La migration `0092` ajoute **une seule** possibilité :
+
+```sql
+elsif public.agent_de_entreprise(p_entreprise_id) then ...
+```
+
+`agent_de_entreprise(p)` = `entreprises.agent_id = auth.uid()` — l'agent ne
+peut donc payer que pour les dossiers **qu'il a pris en charge**. Aucun autre
+droit n'est élargi : le montant reste calculé et borné en base, l'agent ne
+peut ni l'augmenter ni le réduire.
+
+Côté application : bouton **« Encaisser »** sur chaque carte de
+`agent_abonnements_page` → `PaiementSerdipayPage(entrepriseId: …)`. L'écran
+affiche alors le solde **de la boutique** (et non celui de l'agent) et
+l'avance intelligente fonctionne de la même façon.
+
 ### Reprise des ventes hors ligne (correctif)
 
 `SyncService._syncVentes` n'écrit plus dans la table `ventes` :
