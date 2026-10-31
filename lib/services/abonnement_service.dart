@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/etat_installation.dart';
 import 'package:biashara_yangu/models/paiement_laperle.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
@@ -120,8 +121,7 @@ class EtatAccesAbonnement {
   /// Statut de l'entreprise à l'origine de la décision, si connue.
   final StatutAbonnement? statut;
 
-  bool get accesComplet =>
-      !bloque && !lectureSeule && !enAttenteActivation;
+  bool get accesComplet => !bloque && !lectureSeule && !enAttenteActivation;
 }
 
 class AbonnementService {
@@ -411,6 +411,28 @@ class AbonnementService {
       messageEchec:
           'Impossible de charger cette entreprise. Vérifiez votre connexion internet.',
     );
+  }
+
+  /// État de l'INSTALLATION : déjà réglée ou non, et ce que le prochain
+  /// encaissement doit demander.
+  ///
+  /// La réponse vient du serveur, qui la lit dans l'historique réel des
+  /// versements. Côté application, un échec ne lève pas d'exception : on
+  /// renvoie [EtatInstallation.inconnu] et l'écran n'affiche simplement pas
+  /// l'encart (on ne bloque jamais une consultation pour un bandeau).
+  Future<EtatInstallation> etatInstallation({String? entrepriseId}) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_abonnement_installation_etat',
+        params: <String, dynamic>{'p_entreprise': entrepriseId},
+      );
+      final Map<String, dynamic>? json = parseMap(reponse);
+      if (json == null) return EtatInstallation.inconnu;
+      return EtatInstallation.depuisJson(json);
+    } catch (e) {
+      debugPrint('AbonnementService.etatInstallation : $e');
+      return EtatInstallation.inconnu;
+    }
   }
 
   /// Calcule l'état complet de l'abonnement d'une entreprise :

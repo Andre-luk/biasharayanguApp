@@ -561,6 +561,344 @@ class AgentDistribution {
   String get libelle => nom.isEmpty ? 'Agent sans nom' : nom;
 }
 
+// ---------------------------------------------------------------------------
+// RADAR DE TOURNÉE (phase 6)
+// ---------------------------------------------------------------------------
+
+/// Niveau d'anomalie d'un agent, du plus serein au plus préoccupant.
+enum NiveauAnomalie {
+  normal('normal', 'Normal'),
+  surveiller('surveiller', 'À surveiller'),
+  alerte('alerte', 'Alerte');
+
+  const NiveauAnomalie(this.code, this.libelle);
+
+  final String code;
+  final String libelle;
+
+  static NiveauAnomalie fromCode(String? code) {
+    final String valeur = (code ?? '').trim().toLowerCase();
+    for (final NiveauAnomalie n in values) {
+      if (n.code == valeur) return n;
+    }
+    // Un code inconnu ne doit jamais transformer un agent en suspect.
+    return NiveauAnomalie.normal;
+  }
+}
+
+/// Un écart constaté sur UN produit : jamais noyé dans un total.
+class EcartProduit {
+  const EcartProduit({
+    required this.produitId,
+    this.nom = '',
+    this.unite = '',
+    this.attribuee = 0,
+    this.vendue = 0,
+    this.retournee = 0,
+    this.bonus = 0,
+    this.casse = 0,
+    this.ecart = 0,
+    this.valeur = 0,
+  });
+
+  final int produitId;
+  final String nom;
+  final String unite;
+  final double attribuee;
+  final double vendue;
+  final double retournee;
+  final double bonus;
+  final double casse;
+
+  /// Ce qui manque : confié − vendu − rendu − offert − cassé.
+  final double ecart;
+
+  /// Ce que cet écart représente en argent (au prix de vente).
+  final double valeur;
+
+  bool get manquant => ecart > 0.0001;
+  bool get excedent => ecart < -0.0001;
+
+  factory EcartProduit.depuisJson(Map<String, dynamic> json) {
+    return EcartProduit(
+      produitId: _entier(json['produit_id']),
+      nom: _texte(json['nom']),
+      unite: _texte(json['unite']),
+      attribuee: _nombre(json['attribuee']),
+      vendue: _nombre(json['vendue']),
+      retournee: _nombre(json['retournee']),
+      bonus: _nombre(json['bonus']),
+      casse: _nombre(json['casse']),
+      ecart: _nombre(json['ecart']),
+      valeur: _nombre(json['valeur']),
+    );
+  }
+}
+
+/// Quantité conseillée pour la prochaine tournée, calée sur l'historique réel.
+class RecommandationChargement {
+  const RecommandationChargement({
+    required this.produitId,
+    this.nom = '',
+    this.unite = '',
+    this.medianeVendue = 0,
+    this.tauxRetour = 0,
+    this.nbTournees = 0,
+    this.quantiteSuggeree = 0,
+    this.stockDisponible = 0,
+    this.quantiteRetenue = 0,
+  });
+
+  final int produitId;
+  final String nom;
+  final String unite;
+
+  /// Médiane des quantités vendues sur les dernières tournées de la zone.
+  final double medianeVendue;
+
+  /// Part de la dotation revenue en retour (0 → 1).
+  final double tauxRetour;
+  final int nbTournees;
+
+  /// Médiane corrigée du taux de retour.
+  final double quantiteSuggeree;
+  final double stockDisponible;
+
+  /// Ce qu'on peut réellement charger : jamais plus que le stock.
+  final double quantiteRetenue;
+
+  /// Taux de retour en pourcentage, pour l'affichage.
+  double get tauxRetourPourcent => (tauxRetour * 100).clamp(0, 100);
+
+  factory RecommandationChargement.depuisJson(Map<String, dynamic> json) {
+    return RecommandationChargement(
+      produitId: _entier(json['produit_id']),
+      nom: _texte(json['nom']),
+      unite: _texte(json['unite']),
+      medianeVendue: _nombre(json['mediane_vendue']),
+      tauxRetour: _nombre(json['taux_retour']),
+      nbTournees: _entier(json['nb_tournees']),
+      quantiteSuggeree: _nombre(json['quantite_suggeree']),
+      stockDisponible: _nombre(json['stock_disponible']),
+      quantiteRetenue: _nombre(json['quantite_retenue']),
+    );
+  }
+}
+
+/// Client qui garde des récipients depuis trop longtemps.
+class ConsigneARisque {
+  const ConsigneARisque({
+    required this.id,
+    this.clientId,
+    this.clientNom = '',
+    this.libelle = '',
+    this.restant = 0,
+    this.jours = 0,
+    this.valeur = 0,
+  });
+
+  final String id;
+  final int? clientId;
+  final String clientNom;
+  final String libelle;
+  final double restant;
+  final int jours;
+  final double valeur;
+
+  factory ConsigneARisque.depuisJson(Map<String, dynamic> json) {
+    return ConsigneARisque(
+      id: _texte(json['id']),
+      clientId: _entierOuNull(json['client_id']),
+      clientNom: _texte(json['client_nom']),
+      libelle: _texte(json['libelle']),
+      restant: _nombre(json['restant']),
+      jours: _entier(json['jours']),
+      valeur: _nombre(json['valeur']),
+    );
+  }
+}
+
+/// Radar d'une tournée : ce qui manque, quoi charger, qui relancer.
+class RadarTournee {
+  const RadarTournee({
+    this.tourneeId,
+    this.reference = '',
+    this.zone = '',
+    this.produits = 0,
+    this.quantiteConfiee = 0,
+    this.quantiteVendue = 0,
+    this.quantiteRetournee = 0,
+    this.quantiteBonus = 0,
+    this.quantiteCasse = 0,
+    this.ecart = 0,
+    this.valeurEcart = 0,
+    this.ecarts = const <EcartProduit>[],
+    this.recommandations = const <RecommandationChargement>[],
+    this.historiqueSuffisant = false,
+    this.consignesRisque = const <ConsigneARisque>[],
+  });
+
+  final String? tourneeId;
+  final String reference;
+  final String zone;
+  final int produits;
+  final double quantiteConfiee;
+  final double quantiteVendue;
+  final double quantiteRetournee;
+  final double quantiteBonus;
+  final double quantiteCasse;
+  final double ecart;
+  final double valeurEcart;
+
+  /// Uniquement les produits dont l'écart n'est PAS nul.
+  final List<EcartProduit> ecarts;
+
+  final List<RecommandationChargement> recommandations;
+
+  /// `false` quand l'historique est trop mince : on ne recommande rien.
+  final bool historiqueSuffisant;
+  final List<ConsigneARisque> consignesRisque;
+
+  bool get aDesEcarts => ecarts.isNotEmpty;
+
+  /// Valeur des récipients restés chez les clients, quand elle est connue.
+  double get valeurConsignesRisque => consignesRisque.fold<double>(
+      0, (double total, ConsigneARisque c) => total + c.valeur);
+
+  static const RadarTournee vide = RadarTournee();
+
+  static RadarTournee depuisJson(Map<String, dynamic> json) {
+    final Map<String, dynamic> resume =
+        (json['resume'] as Map?)?.cast<String, dynamic>() ??
+            <String, dynamic>{};
+    final Map<String, dynamic> tournee =
+        (json['tournee'] as Map?)?.cast<String, dynamic>() ??
+            <String, dynamic>{};
+
+    return RadarTournee(
+      tourneeId: _texteOuNull(tournee['id']),
+      reference: _texte(tournee['reference']),
+      zone: _texte(json['zone']),
+      produits: _entier(resume['produits']),
+      quantiteConfiee: _nombre(resume['quantite_confiee']),
+      quantiteVendue: _nombre(resume['quantite_vendue']),
+      quantiteRetournee: _nombre(resume['quantite_retournee']),
+      quantiteBonus: _nombre(resume['quantite_bonus']),
+      quantiteCasse: _nombre(resume['quantite_casse']),
+      ecart: _nombre(resume['ecart']),
+      valeurEcart: _nombre(resume['valeur_ecart']),
+      ecarts: _liste(json['ecarts'])
+          .map(EcartProduit.depuisJson)
+          .toList(growable: false),
+      recommandations: _liste(json['recommandations'])
+          .map(RecommandationChargement.depuisJson)
+          .toList(growable: false),
+      historiqueSuffisant: json['historique_suffisant'] == true,
+      consignesRisque: _liste(json['consignes_risque'])
+          .map(ConsigneARisque.depuisJson)
+          .toList(growable: false),
+    );
+  }
+}
+
+/// Un motif de score : le radar explique toujours POURQUOI.
+class MotifRadar {
+  const MotifRadar({
+    this.code = '',
+    this.libelle = '',
+    this.detail = '',
+    this.valeur = 0,
+  });
+
+  final String code;
+  final String libelle;
+  final String detail;
+  final double valeur;
+
+  factory MotifRadar.depuisJson(Map<String, dynamic> json) {
+    return MotifRadar(
+      code: _texte(json['code']),
+      libelle: _texte(json['libelle']),
+      detail: _texte(json['detail']),
+      valeur: _nombre(json['valeur']),
+    );
+  }
+}
+
+/// Score d'anomalie d'un agent, toujours accompagné de ses motifs.
+class RadarAgent {
+  const RadarAgent({
+    this.agentId,
+    this.agentNom = '',
+    this.jours = 30,
+    this.score = 0,
+    this.niveau = NiveauAnomalie.normal,
+    this.tournees = 0,
+    this.quantiteConfiee = 0,
+    this.quantiteVendue = 0,
+    this.quantiteRetournee = 0,
+    this.quantiteBonus = 0,
+    this.quantiteCasse = 0,
+    this.ecart = 0,
+    this.tauxEcart = 0,
+    this.chiffreAffaires = 0,
+    this.creditOuvert = 0,
+    this.tauxCredit = 0,
+    this.motifs = const <MotifRadar>[],
+  });
+
+  final String? agentId;
+  final String agentNom;
+  final int jours;
+
+  /// 0 → 100. Ce n'est pas une note morale : c'est un écart mesuré.
+  final int score;
+  final NiveauAnomalie niveau;
+  final int tournees;
+
+  final double quantiteConfiee;
+  final double quantiteVendue;
+  final double quantiteRetournee;
+  final double quantiteBonus;
+  final double quantiteCasse;
+  final double ecart;
+  final double tauxEcart;
+  final double chiffreAffaires;
+  final double creditOuvert;
+  final double tauxCredit;
+  final List<MotifRadar> motifs;
+
+  static const RadarAgent vide = RadarAgent();
+
+  /// Part du score expliquée par la marchandise non justifiée.
+  bool get aQuelqueChoseASignaler =>
+      niveau != NiveauAnomalie.normal || ecart > 0.0001 || creditOuvert > 0;
+
+  factory RadarAgent.depuisJson(Map<String, dynamic> json) {
+    return RadarAgent(
+      agentId: _texteOuNull(json['agent_id']),
+      agentNom: _texte(json['agent_nom']),
+      jours: _entier(json['jours']),
+      score: _entier(json['score']),
+      niveau: NiveauAnomalie.fromCode(_texteOuNull(json['niveau'])),
+      tournees: _entier(json['tournees']),
+      quantiteConfiee: _nombre(json['quantite_confiee']),
+      quantiteVendue: _nombre(json['quantite_vendue']),
+      quantiteRetournee: _nombre(json['quantite_retournee']),
+      quantiteBonus: _nombre(json['quantite_bonus']),
+      quantiteCasse: _nombre(json['quantite_casse']),
+      ecart: _nombre(json['ecart']),
+      tauxEcart: _nombre(json['taux_ecart']),
+      chiffreAffaires: _nombre(json['chiffre_affaires']),
+      creditOuvert: _nombre(json['credit_ouvert']),
+      tauxCredit: _nombre(json['taux_credit']),
+      motifs: _liste(json['motifs'])
+          .map(MotifRadar.depuisJson)
+          .toList(growable: false),
+    );
+  }
+}
+
 /// Résultat de la clôture d'une tournée.
 class ResultatCloture {
   const ResultatCloture({

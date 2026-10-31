@@ -43,6 +43,7 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
   String? _agentId;
   DateTime _date = DateTime.now();
   bool _chargement = true;
+  bool _chargementSuggestion = false;
   bool _envoi = false;
   String? _erreur;
 
@@ -94,6 +95,63 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
             a.nom.toLowerCase().contains(q) ||
             a.categorie.toLowerCase().contains(q))
         .toList(growable: false);
+  }
+
+  /// 🎯 SUGGESTION DE CHARGEMENT — le radar propose, le patron décide.
+  ///
+  /// On demande au serveur ce que l'historique des tournées de la même zone
+  /// conseille, puis on remplit les quantités. Rien n'est imposé : le patron
+  /// peut tout modifier avant d'enregistrer. Si l'historique est trop mince,
+  /// le radar ne propose rien et on le dit franchement.
+  Future<void> _suggererQuantites() async {
+    setState(() => _chargementSuggestion = true);
+    try {
+      final RadarTournee radar =
+          await _service.radarTournee(zone: _zoneController.text);
+      if (!mounted) return;
+
+      if (radar.recommandations.isEmpty) {
+        _message(
+          'Pas encore assez d\'historique pour conseiller un chargement. '
+          'Clôturez au moins une tournée dans cette zone.',
+        );
+        return;
+      }
+
+      final Map<int, Article> parId = <int, Article>{
+        for (final Article a in _articles) a.id: a,
+      };
+
+      int retenus = 0;
+      setState(() {
+        for (final RecommandationChargement r in radar.recommandations) {
+          if (r.quantiteRetenue <= 0) continue;
+          if (!parId.containsKey(r.produitId)) continue;
+          _lignes[r.produitId] = r.quantiteRetenue;
+          retenus++;
+        }
+      });
+
+      _message(retenus == 0
+          ? 'Aucun produit du catalogue ne correspond aux recommandations.'
+          : 'Quantités proposées pour $retenus produit(s) — vérifiez avant '
+              'd\'enregistrer.');
+    } on DistributionException catch (e) {
+      if (!mounted) return;
+      _message(e.message, erreur: true);
+    } finally {
+      if (mounted) setState(() => _chargementSuggestion = false);
+    }
+  }
+
+  void _message(String texte, {bool erreur = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texte),
+        backgroundColor: erreur ? const Color(0xFFB91C1C) : null,
+      ),
+    );
   }
 
   double get _quantiteTotale =>
@@ -350,6 +408,17 @@ class _TourneeFormPageState extends State<TourneeFormPage> {
           children: <Widget>[
             Text('Produits attribués', style: theme.textTheme.titleMedium),
             const Spacer(),
+            IconButton(
+              tooltip: 'Suggérer les quantités (historique de la zone)',
+              onPressed: _chargementSuggestion ? null : _suggererQuantites,
+              icon: _chargementSuggestion
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome_rounded),
+            ),
             Text(
               '${_lignes.length} article(s) • ${formatQuantite(_quantiteTotale)}',
               style: theme.textTheme.bodySmall,

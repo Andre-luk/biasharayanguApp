@@ -8,6 +8,7 @@ import 'package:biashara_yangu/models/boutique_agent.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/fiche_entreprise.dart';
 import 'package:biashara_yangu/models/groupe_tarifaire.dart';
+import 'package:biashara_yangu/models/type_activite.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
@@ -78,7 +79,15 @@ class EntrepriseService {
   }
 
   /// Groupes tarifaires d'une activité (tous si [activiteId] est `null`).
-  Future<List<GroupeTarifaire>> getGroupesTarifaires({String? activiteId}) {
+  ///
+  /// [typeActivite] filtre ensuite sur le TYPE D'ACTIVITÉ du pack : une
+  /// boutique ne se voit pas proposer les grilles de distribution, et
+  /// inversement. Le filtrage se fait ici (et non en SQL) pour rester
+  /// **fail-open** : colonne absente ou valeur inconnue → rien n'est masqué.
+  Future<List<GroupeTarifaire>> getGroupesTarifaires({
+    String? activiteId,
+    TypeActivite? typeActivite,
+  }) {
     return _executer(
       () async {
         var requete = _client.from('groupes_tarifaires').select();
@@ -87,7 +96,12 @@ class EntrepriseService {
         }
 
         final List<dynamic> data = await requete.order('nom', ascending: true);
-        return parseMapList(data).map(GroupeTarifaire.fromMap).toList();
+        final List<GroupeTarifaire> tous =
+            parseMapList(data).map(GroupeTarifaire.fromMap).toList();
+        if (typeActivite == null) return tous;
+        return tous
+            .where((GroupeTarifaire g) => g.proposableA(typeActivite))
+            .toList(growable: false);
       },
       actionLibelle: 'le chargement des groupes tarifaires',
       messageEchec:
@@ -167,9 +181,10 @@ class EntrepriseService {
               (parseStringOrNull(utilisateur['prenom']) ?? '').trim();
           final String nom =
               (parseStringOrNull(utilisateur['nom']) ?? '').trim();
-          final String complet =
-              <String>[if (prenom.isNotEmpty) prenom, if (nom.isNotEmpty) nom]
-                  .join(' ');
+          final String complet = <String>[
+            if (prenom.isNotEmpty) prenom,
+            if (nom.isNotEmpty) nom
+          ].join(' ');
           if (complet.isNotEmpty) return complet;
           final String? email = parseStringOrNull(utilisateur['email']);
           return (email == null || email.isEmpty) ? null : email;
@@ -308,8 +323,7 @@ class EntrepriseService {
           // ⚠️ Le solde est recalculé par la BASE (colonne générée) : on ne
           // met à jour que le montant total dû — sinon erreur
           // « column "solde_restant" can only be updated to default ».
-          payload['montant_total_du'] =
-              calculerMontantTotalDu(groupeTarifaire);
+          payload['montant_total_du'] = calculerMontantTotalDu(groupeTarifaire);
         }
 
         await _client
@@ -393,10 +407,9 @@ class EntrepriseService {
             'p_groupe_tarifaire_id': groupeTarifaireId,
             'p_type_espace': typeEspace,
             'p_proprietaire_nom': proprietaireNom.trim(),
-            'p_proprietaire_prenom':
-                (proprietairePrenom ?? '').trim().isEmpty
-                    ? null
-                    : proprietairePrenom!.trim(),
+            'p_proprietaire_prenom': (proprietairePrenom ?? '').trim().isEmpty
+                ? null
+                : proprietairePrenom!.trim(),
             'p_proprietaire_email': proprietaireEmail.trim().toLowerCase(),
             'p_proprietaire_telephone':
                 (proprietaireTelephone ?? '').trim().isEmpty
@@ -462,10 +475,8 @@ class EntrepriseService {
   /// LECTURE SEULE : encaisser et activer restent l'affaire de la Finance.
   Future<MesBoutiquesAgent> mesBoutiquesAgent() async {
     try {
-      final dynamic reponse =
-          await _client.rpc('rpc_agent_mes_boutiques');
-      final MesBoutiquesAgent? resultat =
-          MesBoutiquesAgent.depuisJson(reponse);
+      final dynamic reponse = await _client.rpc('rpc_agent_mes_boutiques');
+      final MesBoutiquesAgent? resultat = MesBoutiquesAgent.depuisJson(reponse);
       if (resultat == null) {
         throw const EntrepriseServiceException(
             'Réponse du serveur illisible pour vos boutiques.');
@@ -650,7 +661,8 @@ class EntrepriseService {
       () async {
         final List<dynamic> data = await _client
             .from('utilisateurs')
-            .select('id, prenom, nom, email, role, new_role, parent_id, entreprise_id')
+            .select(
+                'id, prenom, nom, email, role, new_role, parent_id, entreprise_id')
             .order('nom', ascending: true);
 
         return parseMapList(data).map(UtilisateurEntreprise.fromMap).toList();

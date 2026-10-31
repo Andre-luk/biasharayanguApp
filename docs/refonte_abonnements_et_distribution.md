@@ -66,29 +66,77 @@
 
 ---
 
-## 3. Phase 2 — Forfaits propres à la distribution
+## 3. Phase 2 — Forfaits propres à la distribution (LIVRÉE le 31/10/2026)
 
-> **État au 30/10/2026** : le socle est livré (colonne `type_activite` sur
-> `groupes_tarifaires` + `rpc_forfaits_lister(type)`, migration 0083).
-> Reste à faire : le patch du moteur pour la règle « installation jamais
-> refacturée » — il touche `rpc_abonnement_enregistrer_paiement`, donc il doit
-> être appliqué avec la technique `regexp_replace` sur `pg_get_functiondef`
-> (voir `abonnement_paiement.md`) et **jamais** par redéfinition complète.
+> **État au 31/10/2026 : LIVRÉE** — migration
+> `20260916000087_forfaits_et_installation.sql` (10/10 instructions),
+> `EtatInstallation`, `GroupeTarifaire.typeActivite`, filtrage des forfaits,
+> encart « installation » dans le détail d'abonnement,
+> `test/installation_forfaits_test.dart` (12 tests).
 
-**Base** : renseigner `groupes_tarifaires.type_activite = 'distribution'` pour les grilles de distribution et créer les grilles manquantes (installation + mensuel, max agents, max tournées).
+### Ce qui a été ajouté (sans toucher au moteur)
 
-**Règles à faire respecter par le moteur** (à ajouter dans `rpc_abonnement_enregistrer_paiement` / `rpc_abonnement_ouvrir`) :
-- l'installation (`prix_installation`) n'est facturée **qu'une seule fois** par entreprise : elle ne revient jamais dans un renouvellement ;
-- une avance (paiement partiel) place le dossier en `EN_ATTENTE_COMPLEMENT` **sans** ouvrir un nouveau cycle (règle déjà corrigée par la migration 53 — ne pas la casser) ;
-- le délai de 7 jours pour compléter une avance est calculé depuis le **premier** versement partiel du cycle ;
-- aucune activation si `solde_restant > 0` **sauf** règle d'avance explicite.
+**`rpc_forfaits_entreprise(p_entreprise, p_type)`** — renvoie les forfaits
+proposables : ceux du type d'activité de l'entreprise **plus** les forfaits
+communs (`type_activite IS NULL`). Un type inconnu ne filtre rien.
 
-**Application** : écran de choix de forfait filtré par `rpc_forfaits_lister(typeActivité)` ; affichage « installation déjà réglée » quand `prix_installation` a déjà été payé au moins une fois.
+**`rpc_abonnement_installation_etat(p_entreprise)`** — répond à la question
+« l'installation est-elle déjà réglée ? » en lisant **les faits** :
+
+```
+installation_deja_reglee =
+      date_activation IS NOT NULL                    -- règle du moteur (correctif 60)
+   OR un versement de type installation/ouverture existe
+   OR au moins un cycle a été soldé
+```
+
+Elle renvoie aussi `prochain_cycle` (`installation` | `abonnement`) et
+`prochain_montant` : l'écran affiche donc ce que le prochain encaissement
+demandera, sans que personne ait à le calculer de tête.
+
+### ⚠️ Ce qui n'a PAS été fait, volontairement
+
+`rpc_abonnement_enregistrer_paiement` **n'est pas redéfini**. Le correctif 60
+y applique déjà la règle :
+
+```sql
+v_premier_cycle := (v_entreprise.date_activation is null);
+-- premier cycle  → prix_installation (premier mois inclus)
+-- cycles suivants → prix_abonnement_mensuel seul
+```
+
+Réécrire ce moteur pour « ajouter » une règle déjà présente ferait perdre les
+correctifs 43 et 53 (voir `abonnement_paiement.md`). On expose l'état, on ne
+duplique pas la règle.
+
+### Application
+
+- `GroupeTarifaire.typeActivite` + `proposableA(TypeActivite?)` — **fail-open** :
+  type du pack ou de l'entreprise inconnu → le pack reste proposé.
+- `EntrepriseService.getGroupesTarifaires({activiteId, typeActivite})`.
+- `AbonnementService.etatInstallation({entrepriseId})` — ne lève jamais
+  d'exception : en cas d'échec, `EtatInstallation.inconnu` et l'encart
+  disparaît (on ne bloque pas une consultation pour un bandeau).
+- `AbonnementDetailPage` : encart « Installation déjà réglée : elle ne sera pas
+  refacturée. » + prochain encaissement + nombre de cycles soldés.
+
+### Reste à faire par l'exploitant
+
+```sql
+-- Grilles de distribution
+update public.groupes_tarifaires set type_activite = 'distribution'
+ where nom ilike '%distribu%';
+update public.groupes_tarifaires set type_activite = 'boutique'
+ where nom ilike '%boutique%' or nom ilike '%standard%';
+```
 
 **Critères d'acceptation**
-- Un renouvellement ne réintègre jamais l'installation.
-- Deux paiements simultanés du même dossier ne produisent qu'un seul crédit (idempotence : `reference` unique + `for update`).
-- Un paiement dont la transaction Mobile Money n'est pas confirmée ne crédite rien.
+- [x] Un renouvellement ne réintègre jamais l'installation (correctif 60, exposé
+      par `prochain_cycle`).
+- [x] Un forfait de distribution n'est pas proposé à une boutique — et l'inverse.
+- [x] Une entreprise sans type connu voit tous les forfaits (aucune régression).
+- [ ] Idempotence des doubles paiements : portée par le moteur (migration 53),
+      non modifiée ici.
 
 ---
 
@@ -241,6 +289,60 @@ transactions réelles — aucune donnée inventée, aucun écran « décoratif �
 **Critère d'acceptation** : sur une tournée clôturée avec un écart réel, le radar
 identifie le bon produit et la bonne quantité ; les recommandations restent
 bornées par le stock disponible.
+
+### Livré — `20260916000086_radar_tournee.sql` (10/10 instructions)
+
+**`rpc_radar_tournee(p_tournee uuid default null, p_zone text default null)`**
+
+- `ecarts` : uniquement les lignes dont l'écart n'est **pas** nul, avec
+  `attribuee / vendue / retournee / bonus / casse / ecart / valeur`. Un écart
+  négatif est renvoyé tel quel (incohérence de saisie, pas un vol).
+- `recommandations` : médiane (`percentile_cont(0.5)`) des quantités vendues sur
+  les **4 dernières tournées clôturées de la même zone**, corrigée du taux de
+  retour observé, puis **bornée par `produits.quantite`**. Le champ
+  `quantite_retenue` est ce plafond ; `quantite_suggeree` reste la valeur brute
+  pour que le patron voie que le stock limite.
+- `historique_suffisant: false` quand il n'y a aucun historique : on ne
+  fabrique pas une recommandation à partir de rien.
+- `consignes_risque` : récipients `chez_client`/`partielle` depuis ≥ 30 jours,
+  valorisés via `recipients_types.prix_consigne` (jointure par libellé),
+  limités à 20, triés par valeur.
+- `p_tournee = null` → la RPC ne renvoie que recommandations + consignes : c'est
+  ce qu'utilise le bouton « Suggérer les quantités » **avant** de créer la
+  tournée.
+
+**`rpc_radar_agent(p_agent uuid default null, p_jours integer default 30)`**
+
+Score **expliqué**, jamais une note magique :
+
+```
+score = 100 × (0.6 × part_écart + 0.4 × part_impayé)
+part_écart  = min( (écart / confié) / 0.05 , 1 )     -- 5 % du confié = saturation
+part_impayé = min( (crédit / CA) / 0.20 , 1 )        -- 20 % du CA     = saturation
+niveau      : < 30 normal · 30-59 à surveiller · ≥ 60 alerte
+```
+
+`motifs` renvoie toujours au moins une entrée (`AUCUNE_ANOMALIE` si tout est
+justifié) avec `code`, `libelle`, `detail` chiffré et `valeur`. Un agent ne peut
+consulter que son propre radar ; le propriétaire consulte qui il veut.
+
+### Écrans
+
+- **Détail d'une tournée** : carte « Radar de tournée » — écarts nommés et
+  valorisés, chargement conseillé (avec l'icône de stock limité), récipients à
+  relancer. La carte est chargée en parallèle des lignes ; si elle échoue,
+  l'écran reste utilisable (`catchError` → radar vide).
+- **Ma tournée** (agent) : carte « Mon radar (30 jours) » avec le niveau, les
+  motifs et une phrase qui rappelle que le score montre « ce qui reste à
+  justifier », pas une accusation.
+- **Préparer une tournée** (patron) : bouton ✨ « Suggérer les quantités » qui
+  pré-remplit la dotation à partir de `radarTournee(zone: …)`. Les quantités
+  restent modifiables : le radar propose, le patron décide.
+
+Dart : `EcartProduit`, `RecommandationChargement`, `ConsigneARisque`,
+`RadarTournee`, `MotifRadar`, `RadarAgent`, `NiveauAnomalie` dans
+`lib/models/distribution_terrain.dart` ; `radarTournee()` / `radarAgent()` dans
+`DistributionService` ; `test/radar_tournee_test.dart` (13 tests).
 
 ---
 

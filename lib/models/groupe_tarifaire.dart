@@ -1,5 +1,6 @@
 // lib/models/groupe_tarifaire.dart
 import 'package:biashara_yangu/models/module_activite.dart';
+import 'package:biashara_yangu/models/type_activite.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// Grille tarifaire d'une activité — table `public.groupes_tarifaires`.
@@ -27,6 +28,14 @@ class GroupeTarifaire {
 
   final DateTime? createdAt;
 
+  /// 🏪 TYPE D'ACTIVITÉ du pack (migration 0083).
+  ///
+  /// `null` = pack COMMUN : proposé à toutes les entreprises. Un pack
+  /// réservé à la distribution ne doit pas apparaître pour une boutique, et
+  /// inversement — mais un type non renseigné ne masque jamais rien
+  /// (règle fail-open de `ReglesTypeActivite`).
+  final TypeActivite? typeActivite;
+
   const GroupeTarifaire({
     required this.id,
     this.activiteId,
@@ -39,6 +48,7 @@ class GroupeTarifaire {
     this.maxEspaces = 1,
     this.modules = const <String>{},
     this.createdAt,
+    this.typeActivite,
   });
 
   factory GroupeTarifaire.fromMap(Map<String, dynamic> map) {
@@ -57,8 +67,17 @@ class GroupeTarifaire {
       // 🧩 MODULE 16 E — modules du pack ([] = aucun filtre).
       modules: ProfilModules.modulesDepuisJson(map['modules']),
       createdAt: parseDateTimeOrNull(map['created_at']),
+      typeActivite:
+          TypeActivite.depuis(parseStringOrNull(map['type_activite'])),
     );
   }
+
+  /// Ce pack est-il proposable à une entreprise de type [connu] ?
+  ///
+  /// Vrai tant que le type de l'entreprise ou celui du pack n'est pas connu :
+  /// on préfère proposer un pack de trop que de bloquer une souscription.
+  bool proposableA(TypeActivite? connu) =>
+      !ReglesTypeActivite.masque(connu, typeActivite);
 
   Map<String, dynamic> toMap() {
     return {

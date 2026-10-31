@@ -36,6 +36,10 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
   bool _chargement = true;
   bool _action = false;
 
+  /// Radar : conseils calculés par le serveur (écarts, consignes à risque).
+  /// Il peut rester vide (module pas encore exécuté) : l'écran fonctionne.
+  RadarTournee _radar = RadarTournee.vide;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +51,10 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
       _service.lignesTournee(_tournee.id),
       _service.consignesDeTournee(_tournee.id),
       _service.bonusDeTournee(_tournee.id),
+      // Le radar est un CONSEIL : s'il échoue, la tournée reste consultable.
+      _service
+          .radarTournee(tourneeId: _tournee.id)
+          .catchError((Object _) => RadarTournee.vide),
     ]);
 
     if (!mounted) return;
@@ -54,6 +62,7 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
       _lignes = resultats[0] as List<LigneTournee>;
       _consignes = resultats[1] as List<ConsigneRecipient>;
       _bonus = resultats[2] as List<BonusClient>;
+      _radar = resultats[3] as RadarTournee;
       _chargement = false;
     });
   }
@@ -298,6 +307,8 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
                   else
                     ..._lignes.map((LigneTournee l) => _LigneCarte(ligne: l)),
                   const SizedBox(height: 20),
+                  _carteRadar(theme),
+                  const SizedBox(height: 20),
                   Text('Consignes (${_consignes.length})',
                       style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
@@ -353,6 +364,188 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
                 ],
               ),
             ),
+    );
+  }
+
+  /// 🎯 LE RADAR — ce que la tournée dit vraiment.
+  ///
+  /// Trois informations, dans cet ordre : ce qui MANQUE (produit par produit,
+  /// valorisé), ce que l'historique conseille de charger la prochaine fois,
+  /// et quels clients gardent des récipients depuis trop longtemps.
+  Widget _carteRadar(ThemeData theme) {
+    final RadarTournee radar = _radar;
+    final bool vide = radar.ecarts.isEmpty &&
+        radar.recommandations.isEmpty &&
+        radar.consignesRisque.isEmpty;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                const Icon(Icons.radar_rounded, size: 20),
+                const SizedBox(width: 8),
+                Text('Radar de tournée', style: theme.textTheme.titleMedium),
+                const Spacer(),
+                if (radar.ecart > 0.0001)
+                  Text(
+                    '${formatQuantite(radar.ecart)} manquant(s)',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: const Color(0xFFDC2626)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (vide)
+              Text(
+                'Rien à signaler pour le moment. Le radar s\'enrichit à chaque '
+                'tournée clôturée.',
+                style: theme.textTheme.bodySmall,
+              )
+            else ...<Widget>[
+              // 1. Les écarts, NOMMÉS et valorisés.
+              if (radar.ecarts.isNotEmpty) ...<Widget>[
+                Text('Marchandise non justifiée',
+                    style: theme.textTheme.labelLarge),
+                const SizedBox(height: 6),
+                ...radar.ecarts.map((EcartProduit e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: <Widget>[
+                          Icon(
+                            e.manquant
+                                ? Icons.trending_down_rounded
+                                : Icons.trending_up_rounded,
+                            size: 16,
+                            color: e.manquant
+                                ? const Color(0xFFDC2626)
+                                : const Color(0xFF0F766E),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              e.nom.isEmpty ? 'Article #${e.produitId}' : e.nom,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                          Text(
+                            '${formatQuantite(e.ecart)} ${e.unite}',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: e.manquant
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFF0F766E),
+                            ),
+                          ),
+                          if (e.valeur != 0) ...<Widget>[
+                            const SizedBox(width: 8),
+                            Text(
+                              formatMontant(e.valeur.abs()),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ],
+                      ),
+                    )),
+                if (radar.valeurEcart != 0)
+                  Text(
+                    'Valeur en jeu : ${formatMontant(radar.valeurEcart.abs())}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                const SizedBox(height: 12),
+              ],
+
+              // 2. Quoi charger la prochaine fois.
+              if (radar.recommandations.isNotEmpty) ...<Widget>[
+                Text('Chargement conseillé la prochaine fois',
+                    style: theme.textTheme.labelLarge),
+                const SizedBox(height: 2),
+                Text(
+                  'Médiane des ventes des dernières tournées, corrigée des '
+                  'retours, bornée par le stock disponible.',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 6),
+                ...radar.recommandations
+                    .where(
+                        (RecommandationChargement r) => r.quantiteRetenue > 0)
+                    .take(8)
+                    .map((RecommandationChargement r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: Text(
+                                  r.nom.isEmpty
+                                      ? 'Article #${r.produitId}'
+                                      : r.nom,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ),
+                              Text(
+                                '${formatQuantite(r.quantiteRetenue)} '
+                                '${r.unite}',
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              if (r.stockDisponible + 0.0001 <
+                                  r.quantiteSuggeree) ...<Widget>[
+                                const SizedBox(width: 6),
+                                Tooltip(
+                                  message: 'Stock limité : '
+                                      '${formatQuantite(r.stockDisponible)} '
+                                      'disponible(s).',
+                                  child:
+                                      const Icon(Icons.info_outline, size: 14),
+                                ),
+                              ],
+                            ],
+                          ),
+                        )),
+                const SizedBox(height: 12),
+              ],
+
+              // 3. Les récipients qui traînent.
+              if (radar.consignesRisque.isNotEmpty) ...<Widget>[
+                Text('Récipients chez les clients depuis 30 jours et plus',
+                    style: theme.textTheme.labelLarge),
+                const SizedBox(height: 6),
+                ...radar.consignesRisque
+                    .take(5)
+                    .map((ConsigneARisque c) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: Text(
+                                  '${c.clientNom} — ${c.libelle}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ),
+                              Text(
+                                  '${formatQuantite(c.restant)} · ${c.jours} j',
+                                  style: theme.textTheme.bodySmall),
+                              if (c.valeur > 0) ...<Widget>[
+                                const SizedBox(width: 8),
+                                Text(formatMontant(c.valeur),
+                                    style: theme.textTheme.bodySmall),
+                              ],
+                            ],
+                          ),
+                        )),
+              ],
+            ],
+          ],
+        ),
+      ),
     );
   }
 

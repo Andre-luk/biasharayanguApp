@@ -288,6 +288,39 @@ class DistributionService {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // RADAR (phase 6) — ce qui manque, quoi charger, qui relancer
+  // ---------------------------------------------------------------------------
+
+  /// Radar d'une tournée.
+  ///
+  /// [tourneeId] à `null` : on demande seulement les recommandations de
+  /// chargement pour [zone] (utile AVANT de préparer la tournée).
+  Future<RadarTournee> radarTournee({String? tourneeId, String? zone}) async {
+    final Map<String, dynamic>? json = parseMap(await _rpcAppel(
+      'rpc_radar_tournee',
+      <String, dynamic>{
+        'p_tournee': _videOuNull(tourneeId),
+        'p_zone': _videOuNull(zone),
+      },
+    ));
+    if (json == null || json['ok'] != true) return RadarTournee.vide;
+    return RadarTournee.depuisJson(json);
+  }
+
+  /// Score d'anomalie d'un agent, avec ses motifs chiffrés.
+  Future<RadarAgent> radarAgent({String? agentId, int jours = 30}) async {
+    final Map<String, dynamic>? json = parseMap(await _rpcAppel(
+      'rpc_radar_agent',
+      <String, dynamic>{
+        'p_agent': _videOuNull(agentId),
+        'p_jours': jours,
+      },
+    ));
+    if (json == null || json['ok'] != true) return RadarAgent.vide;
+    return RadarAgent.depuisJson(json);
+  }
+
   /// Rapport consolidé par agent.
   Future<RapportDistribution> rapport({
     DateTime? debut,

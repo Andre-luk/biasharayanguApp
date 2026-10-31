@@ -32,6 +32,11 @@ class _MaTourneePageState extends State<MaTourneePage> {
   final TextEditingController _recherche = TextEditingController();
 
   MaTournee? _tournee;
+
+  /// Mon radar : mon écart sur 30 jours et POURQUOI. Un agent qui comprend
+  /// son score le corrige ; un agent qui reçoit une note sans explication se
+  /// braque. Le serveur renvoie donc toujours les motifs.
+  RadarAgent _radar = RadarAgent.vide;
   List<Map<String, dynamic>> _clients = const <Map<String, dynamic>>[];
 
   bool _chargement = true;
@@ -69,11 +74,15 @@ class _MaTourneePageState extends State<MaTourneePage> {
       final List<dynamic> resultats = await Future.wait(<Future<dynamic>>[
         _service.maTournee(),
         _service.listerClients(),
+        // Le radar ne doit JAMAIS empêcher de vendre : en cas d'échec il
+        // reste vide et l'écran fonctionne normalement.
+        _service.radarAgent().catchError((Object _) => RadarAgent.vide),
       ]);
       if (!mounted) return;
       setState(() {
         _tournee = resultats[0] as MaTournee?;
         _clients = resultats[1] as List<Map<String, dynamic>>;
+        _radar = resultats[2] as RadarAgent;
         _chargement = false;
         _erreur = null;
       });
@@ -581,6 +590,101 @@ class _MaTourneePageState extends State<MaTourneePage> {
     );
   }
 
+  /// Mon radar personnel : un écart mesuré, jamais un jugement.
+  Widget _carteRadar(ThemeData theme) {
+    final RadarAgent r = _radar;
+    final Color couleur = switch (r.niveau) {
+      NiveauAnomalie.alerte => const Color(0xFFDC2626),
+      NiveauAnomalie.surveiller => const Color(0xFFF59E0B),
+      NiveauAnomalie.normal => const Color(0xFF0F766E),
+    };
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(Icons.radar_rounded, size: 20, color: couleur),
+                const SizedBox(width: 8),
+                Text('Mon radar (${r.jours} jours)',
+                    style: theme.textTheme.titleMedium),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: couleur.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Text(
+                    r.niveau.libelle,
+                    style: TextStyle(
+                      color: couleur,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${r.tournees} tournée(s) · '
+              '${formatQuantite(r.quantiteConfiee)} confié(s) · '
+              '${formatMontant(r.chiffreAffaires)} vendus',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            ...r.motifs.map((MotifRadar m) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Icon(
+                        m.code == 'AUCUNE_ANOMALIE'
+                            ? Icons.check_circle_outline
+                            : Icons.info_outline,
+                        size: 16,
+                        color: m.code == 'AUCUNE_ANOMALIE'
+                            ? const Color(0xFF0F766E)
+                            : couleur,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(m.libelle,
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600)),
+                            if (m.detail.isNotEmpty)
+                              Text(m.detail, style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+            Text(
+              'Ce score compare ce qui vous a été confié à ce que vous avez '
+              'vendu, rendu, cassé ou offert. Il n\'accuse de rien : il '
+              'montre ce qui reste à justifier.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _corps() {
     final ThemeData theme = Theme.of(context);
     final MaTournee? t = _tournee;
@@ -761,6 +865,10 @@ class _MaTourneePageState extends State<MaTourneePage> {
               ),
             ],
           ),
+          if (_radar.tournees > 0) ...<Widget>[
+            const SizedBox(height: 16),
+            _carteRadar(theme),
+          ],
           const SizedBox(height: 20),
           Text('Ma dotation', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),

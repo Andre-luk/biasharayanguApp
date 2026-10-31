@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/etat_installation.dart';
 import 'package:biashara_yangu/models/paiement_laperle.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
@@ -39,6 +40,10 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
   SoldeAbonnement? _solde;
   List<PaiementLaperle> _paiements = const <PaiementLaperle>[];
   int _dureeAbonnementJours = 30;
+
+  /// Ce que le prochain encaissement doit demander, et si l'installation est
+  /// déjà réglée. Lu sur le serveur, jamais déduit à l'écran.
+  EtatInstallation _installation = EtatInstallation.inconnu;
 
   bool _chargement = true;
   bool _actionEnCours = false;
@@ -78,6 +83,7 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
     SoldeAbonnement? solde;
     List<PaiementLaperle> paiements = const <PaiementLaperle>[];
     int duree = 30;
+    EtatInstallation installation = EtatInstallation.inconnu;
     String? messageErreur;
 
     try {
@@ -92,10 +98,12 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
         final List<dynamic> complement = await Future.wait<dynamic>([
           _service.getHistorique(id),
           _service.getDureeAbonnement(entreprise.groupeTarifaireId),
+          _service.etatInstallation(entrepriseId: id),
         ]);
 
         paiements = complement[0] as List<PaiementLaperle>;
         duree = complement[1] as int;
+        installation = complement[2] as EtatInstallation;
       }
     } on AbonnementServiceException catch (e) {
       messageErreur = e.message;
@@ -124,6 +132,7 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
       _solde = solde;
       _paiements = paiements;
       _dureeAbonnementJours = duree;
+      _installation = installation;
       _erreur = null;
       _chargement = false;
     });
@@ -286,6 +295,8 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
             _alerteStatut(theme, solde.statut),
           ],
           const SizedBox(height: 16),
+          _encartInstallation(theme),
+          const SizedBox(height: 16),
           _carteMontants(theme, solde),
           const SizedBox(height: 16),
           _carteEcheances(theme, entreprise, solde),
@@ -415,6 +426,63 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
                 fontWeight: FontWeight.w600,
                 color: couleur,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 🔁 L'INSTALLATION NE SE PAIE QU'UNE FOIS.
+  ///
+  /// Le patron doit voir noir sur blanc ce que le prochain encaissement
+  /// demandera. Sans cet encart, la même question revient à chaque
+  /// renouvellement : « est-ce que je dois encore payer l'installation ? »
+  Widget _encartInstallation(ThemeData theme) {
+    final EtatInstallation etat = _installation;
+    if (etat.entrepriseId.isEmpty) return const SizedBox.shrink();
+
+    final bool reglee = etat.installationDejaReglee;
+    final Color couleur =
+        reglee ? const Color(0xFF0F766E) : const Color(0xFFB45309);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: couleur.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: couleur.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(
+            reglee ? Icons.verified_rounded : Icons.info_outline_rounded,
+            size: 20,
+            color: couleur,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  etat.libelleInstallation,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Prochain encaissement : '
+                  '${etat.libelleProchainEncaissement}',
+                  style: theme.textTheme.bodySmall,
+                ),
+                if (etat.cyclesSoldes > 0)
+                  Text(
+                    '${etat.cyclesSoldes} cycle(s) déjà soldé(s).',
+                    style: theme.textTheme.bodySmall,
+                  ),
+              ],
             ),
           ),
         ],
