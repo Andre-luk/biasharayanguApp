@@ -26,6 +26,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/activation.dart';
+import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -63,7 +64,9 @@ class ActivationService {
   Future<EtatActivation> chargerEtat({String? entrepriseId}) {
     return _executer(
       () async {
-        final dynamic reponse = await _client.rpc(
+        // 🔌 HORS LIGNE : le dossier d'activation affiché est celui du
+        // dernier passage réussi (source = cache si le réseau manque).
+        final dynamic reponse = await CacheLecture.instance.rpc(
           'rpc_activation_etat',
           params: <String, dynamic>{'p_entreprise_id': entrepriseId},
         );

@@ -14,6 +14,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -55,13 +56,13 @@ class TableauBordStatsService {
 
   static final TableauBordStatsService instance = TableauBordStatsService._();
 
-  SupabaseClient get _client => SupabaseService.instance.client;
-
   /// `null` si le serveur ne répond pas (l'appelant garde alors ses chiffres
   /// locaux — jamais un écran vide).
   Future<StatsAccueil?> charger() async {
     try {
-      final dynamic reponse = await _client.rpc('rpc_accueil_stats');
+      // 🔌 HORS LIGNE : la dernière réponse connue est affichée si le
+      // serveur ne répond pas (jamais un écran vide).
+      final dynamic reponse = await CacheLecture.instance.rpc('rpc_accueil_stats');
       final Map<String, dynamic>? json = parseMap(reponse);
       if (json == null || json['ok'] != true) return null;
       return StatsAccueil.depuisJson(json);

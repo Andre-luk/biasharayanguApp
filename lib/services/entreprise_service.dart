@@ -13,6 +13,7 @@ import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/models/ville.dart';
+import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -127,16 +128,39 @@ class EntrepriseService {
         // (best-effort, l'échec est ignoré).
         await _actualiserStatutsExpires();
 
-        final List<dynamic> reponses = await Future.wait<dynamic>([
-          _client.from('entreprises').select().order('nom', ascending: true),
-          _client.from('villes').select(),
-          _client.from('activites').select(),
-          _client.from('groupes_tarifaires').select(),
-          // Responsable + téléphone (correctif 21). `select()` sans liste de
-          // colonnes : reste compatible même si la colonne `telephone` n'a
-          // pas encore été créée en base.
-          _client.from('utilisateurs').select(),
-        ]);
+        // 🔌 HORS LIGNE — la liste des entreprises (et ses tables de
+        // référence) est la PREMIÈRE chose lue à l'ouverture : sans elle,
+        // l'application paraît vide alors que tout est déjà sur l'appareil.
+        // On garde donc les cinq réponses et on les rejoue si le réseau
+        // manque. Une entreprise créée hors ligne arrivera au prochain
+        // passage : elle n'est jamais inventée ici.
+        const String cleListe = 'entreprises_liste';
+        List<dynamic> reponses;
+        try {
+          reponses = await Future.wait<dynamic>([
+            _client.from('entreprises').select().order('nom', ascending: true),
+            _client.from('villes').select(),
+            _client.from('activites').select(),
+            _client.from('groupes_tarifaires').select(),
+            // Responsable + téléphone (correctif 21). `select()` sans liste de
+            // colonnes : reste compatible même si la colonne `telephone` n'a
+            // pas encore été créée en base.
+            _client.from('utilisateurs').select(),
+          ]).timeout(CacheLecture.delaiReseau);
+          await CacheLecture.instance.memoriser(
+            CacheLecture.cleRpc(cleListe),
+            reponses,
+          );
+        } catch (e) {
+          final dynamic cache =
+              await CacheLecture.instance.relire(CacheLecture.cleRpc(cleListe));
+          if (cache is! List || cache.length < 5) {
+            debugPrint('EntrepriseService.getEntreprises hors ligne : $e');
+            rethrow;
+          }
+          debugPrint('EntrepriseService.getEntreprises : liste locale ($e)');
+          reponses = cache;
+        }
 
         final Map<String, String> villes = {
           for (final Ville ville

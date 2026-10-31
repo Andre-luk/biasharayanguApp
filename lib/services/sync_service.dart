@@ -455,6 +455,9 @@ class SyncService {
   /// Dernier motif de blocage, affiché dans les outils de diagnostic.
   String? dernierMotifVenteBloquee;
 
+  /// Nombre de ventes passées en CONFLIT lors du dernier passage.
+  int ventesEnConflit = 0;
+
   /// Rejoue les ventes faites HORS LIGNE.
   ///
   /// ⚠️ Correctif important : on n'écrit plus directement dans la table
@@ -477,6 +480,7 @@ class SyncService {
     final clientMap = {for (var c in localClients) c.id: c};
 
     ventesEnAttente = 0;
+    ventesEnConflit = 0;
     dernierMotifVenteBloquee = null;
 
     for (final v in unsynced) {
@@ -513,13 +517,16 @@ class SyncService {
           },
         ];
 
+        final String mode = _modePaiementServeur(v.modePaiement);
         final dynamic reponse = await _withRetry(
           () => _sup.client.rpc(
             'rpc_vente_valider',
             params: <String, dynamic>{
               'p_lignes': lignes,
-              'p_mode_paiement': _modePaiementServeur(v.modePaiement),
-              'p_montant_recu': v.prix,
+              'p_mode_paiement': mode,
+              // Une vente à crédit n'a pas d'espèces reçues : envoyer le
+              // montant ferait croire à un encaissement.
+              'p_montant_recu': mode == 'credit' ? null : v.prix,
               'p_client_id': clientId,
             },
           ),
@@ -528,7 +535,20 @@ class SyncService {
         final String? supabaseId = _idVenteReponse(reponse);
         await _db.markVenteAsSynced(v.id!, supabaseId ?? '');
       } catch (e) {
-        _bloquerVente('Vente ${v.id} : $e');
+        // ⚠️ RÉSOLUTION DE CONFLIT — une vente qui échoue n'est jamais
+        // silencieuse ni perdue :
+        //  • tentatives 1 à 4 : elle reste dans la file (le stock serveur
+        //    peut être reconstitué par un approvisionnement en attente) ;
+        //  • à la 5ᵉ : elle devient un CONFLIT visible (`is_synced = -1`),
+        //    que l'utilisateur peut trancher depuis « Ventes à vérifier ».
+        final String motif = '$e';
+        final bool conflit = await _db.marquerVenteEnEchec(v.id!, motif);
+        if (conflit) {
+          ventesEnConflit++;
+          _bloquerVente('Vente ${v.id} en CONFLIT : $motif');
+        } else {
+          _bloquerVente('Vente ${v.id} : $motif');
+        }
       }
     }
 
@@ -537,6 +557,47 @@ class SyncService {
         'SyncService: $ventesEnAttente vente(s) conservée(s) hors ligne. '
         'Dernier motif : $dernierMotifVenteBloquee',
       );
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // CONFLITS DE VENTE — VISIBLES ET RÉSOLUBLES
+  // -------------------------------------------------------------------------
+
+  /// Propriétaire effectif (pour interroger les conflits depuis l'interface).
+  Future<String?> _ownerEffectif() async {
+    if (currentOwnerId != null) return currentOwnerId;
+    final String? userId = _sup.currentUserId;
+    if (userId == null) return null;
+    currentOwnerId = await _db.resolveEffectiveOwnerId(userId) ?? userId;
+    return currentOwnerId;
+  }
+
+  /// Ventes locales restées bloquées (statut `-1`) : à trancher à la main.
+  Future<List<Map<String, Object?>>> conflits() async {
+    final String? owner = await _ownerEffectif();
+    if (owner == null) return const <Map<String, Object?>>[];
+    return _db.getVentesEnConflit(ownerId: owner);
+  }
+
+  Future<int> nombreConflits() async {
+    final String? owner = await _ownerEffectif();
+    if (owner == null) return 0;
+    return _db.compterVentesEnConflit(ownerId: owner);
+  }
+
+  /// Remet une vente en conflit dans la file puis retente immédiatement.
+  ///
+  /// Utilisé quand le patron a corrigé la cause (stock réapprovisionné,
+  /// produit renommé…) : la vente repart au prochain `syncAll`.
+  Future<bool> rejouerConflit(int venteLocaleId) async {
+    await _db.remettreVenteEnFile(venteLocaleId);
+    try {
+      await syncAll();
+      return true;
+    } catch (e) {
+      debugPrint('SyncService.rejouerConflit($venteLocaleId) : $e');
+      return false;
     }
   }
 

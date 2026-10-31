@@ -27,6 +27,7 @@ import 'package:biashara_yangu/models/etat_installation.dart';
 import 'package:biashara_yangu/models/paiement_laperle.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
+import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -436,7 +437,8 @@ class AbonnementService {
   /// l'encart (on ne bloque jamais une consultation pour un bandeau).
   Future<EtatInstallation> etatInstallation({String? entrepriseId}) async {
     try {
-      final dynamic reponse = await _client.rpc(
+      // 🔌 HORS LIGNE : l'état de l'abonnement est relu dans le cache local.
+      final dynamic reponse = await CacheLecture.instance.rpc(
         'rpc_abonnement_installation_etat',
         params: <String, dynamic>{'p_entreprise': entrepriseId},
       );

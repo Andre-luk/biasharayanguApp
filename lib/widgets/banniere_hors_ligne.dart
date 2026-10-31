@@ -11,7 +11,9 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:biashara_yangu/pages/ventes_a_verifier_page.dart';
 import 'package:biashara_yangu/services/reseau_service.dart';
+import 'package:biashara_yangu/services/sync_service.dart';
 
 class BanniereHorsLigne extends StatelessWidget {
   const BanniereHorsLigne({super.key});
@@ -41,6 +43,7 @@ class BanniereHorsLigne extends StatelessWidget {
                       style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
+                  const _LienConflits(),
                   TextButton(
                     onPressed: () =>
                         ReseauService.instance.verifierMaintenant(),
@@ -56,6 +59,41 @@ class BanniereHorsLigne extends StatelessWidget {
                 ],
               ),
             ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 🔌 « Ventes à vérifier (N) » — n'apparaît que s'il y a réellement quelque
+/// chose à trancher. Une vente rejouée qui échoue plusieurs fois devient un
+/// conflit : elle n'est ni perdue, ni réessayée sans fin.
+class _LienConflits extends StatelessWidget {
+  const _LienConflits();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<int>(
+      future: SyncService.instance.nombreConflits(),
+      builder: (BuildContext context, AsyncSnapshot<int> snap) {
+        final int n = snap.data ?? 0;
+        if (n <= 0) return const SizedBox.shrink();
+
+        return TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const VentesAVerifierPage(),
+            ),
+          ),
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            minimumSize: const Size(0, 32),
+          ),
+          child: Text(
+            'À vérifier ($n)',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
         );
       },

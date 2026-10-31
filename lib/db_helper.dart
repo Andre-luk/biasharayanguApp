@@ -35,7 +35,8 @@ class DBHelper {
   static Database? _db;
 
   // 1. On définit la version à 2
-  static const int _dbVersion = 12;
+  // 🔌 V13 — 100 % HORS LIGNE : cache de lecture + conflits de synchronisation.
+  static const int _dbVersion = 13;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -135,7 +136,19 @@ CREATE TABLE ajustements (
   seller_id TEXT,
   client_id INTEGER,
   supabase_id TEXT,
-  is_synced INTEGER DEFAULT 0
+  is_synced INTEGER DEFAULT 0,
+  tentatives INTEGER DEFAULT 0,
+  sync_erreur TEXT
+  )
+''');
+
+    // 🔌 V13 — cache de lecture : la dernière réponse connue de chaque écran.
+    // Permet d'afficher rapports, abonnements et tableau de bord SANS réseau.
+    await db.execute('''
+  CREATE TABLE IF NOT EXISTS cache_lecture (
+  cle TEXT PRIMARY KEY,
+  valeur TEXT NOT NULL,
+  maj_le TEXT NOT NULL
   )
 ''');
 
@@ -296,6 +309,27 @@ CREATE TABLE approvisionnements (
       await _safeAddColumn(db, 'utilisateurs', 'new_role', 'TEXT');
       await _safeAddColumn(db, 'utilisateurs', 'entreprise_id', 'TEXT');
       debugPrint('✅ Migration V12 terminée.');
+    }
+
+    if (oldVersion < 13) {
+      // 🔌 100 % HORS LIGNE.
+      //  • `cache_lecture` : la dernière réponse connue de chaque écran
+      //    (rapports, abonnements, tableau de bord) pour fonctionner sans
+      //    réseau ;
+      //  • `tentatives` / `sync_erreur` sur `ventes` : une vente rejouée qui
+      //    échoue n'est plus perdue ni réessayée sans fin → elle devient un
+      //    CONFLIT lisible et résoluble.
+      debugPrint('🚀 Migration V13 : cache de lecture + conflits de vente...');
+      await _safeAddColumn(db, 'ventes', 'tentatives', 'INTEGER DEFAULT 0');
+      await _safeAddColumn(db, 'ventes', 'sync_erreur', 'TEXT');
+      await db.execute('''
+  CREATE TABLE IF NOT EXISTS cache_lecture (
+  cle TEXT PRIMARY KEY,
+  valeur TEXT NOT NULL,
+  maj_le TEXT NOT NULL
+  )
+''');
+      debugPrint('✅ Migration V13 terminée.');
     }
   }
 
@@ -1414,6 +1448,195 @@ CREATE TABLE approvisionnements (
     } else {
       map.remove('id');
       return await db.insert('ventes', map);
+    }
+  }
+
+  // =======================================================================
+  // 🔌 100 % HORS LIGNE — CACHE DE LECTURE
+  // -----------------------------------------------------------------------
+  // Chaque écran qui lit une RPC met sa dernière réponse connue ici. Hors
+  // ligne (ou si le serveur met trop de temps), on relit cette valeur : le
+  // patron voit ses chiffres au lieu d'un écran vide.
+  // =======================================================================
+
+  /// Dernière valeur connue de [cle], ou `null`.
+  Future<String?> cacheLire(String cle) async {
+    try {
+      final db = await database;
+      final List<Map<String, Object?>> lignes = await db.query(
+        'cache_lecture',
+        columns: <String>['valeur'],
+        where: 'cle = ?',
+        whereArgs: <Object?>[cle],
+        limit: 1,
+      );
+      if (lignes.isEmpty) return null;
+      return lignes.first['valeur'] as String?;
+    } catch (e) {
+      debugPrint('cacheLire($cle) ignoré : $e');
+      return null;
+    }
+  }
+
+  /// Enregistre (ou remplace) la valeur de [cle].
+  Future<void> cacheEcrire(String cle, String valeur) async {
+    try {
+      final db = await database;
+      await db.insert(
+        'cache_lecture',
+        <String, Object?>{
+          'cle': cle,
+          'valeur': valeur,
+          'maj_le': DateTime.now().toUtc().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    } catch (e) {
+      debugPrint('cacheEcrire($cle) ignoré : $e');
+    }
+  }
+
+  /// Date de la dernière mise à jour de [cle] (pour prévenir l'utilisateur).
+  Future<DateTime?> cacheMiseAJour(String cle) async {
+    try {
+      final db = await database;
+      final List<Map<String, Object?>> lignes = await db.query(
+        'cache_lecture',
+        columns: <String>['maj_le'],
+        where: 'cle = ?',
+        whereArgs: <Object?>[cle],
+        limit: 1,
+      );
+      if (lignes.isEmpty) return null;
+      return DateTime.tryParse('${lignes.first['maj_le']}')?.toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> cachePurger(String cle) async {
+    try {
+      final db = await database;
+      await db.delete('cache_lecture', where: 'cle = ?', whereArgs: <Object?>[cle]);
+    } catch (_) {}
+  }
+
+  /// Vide le cache (déconnexion, changement d'entreprise…).
+  Future<void> cacheVider() async {
+    try {
+      final db = await database;
+      await db.delete('cache_lecture');
+    } catch (_) {}
+  }
+
+  /// Nombre d'entrées en cache (diagnostic).
+  Future<int> cacheCompter() async {
+    try {
+      final db = await database;
+      final List<Map<String, Object?>> l =
+          await db.rawQuery('SELECT COUNT(*) AS n FROM cache_lecture');
+      return (l.first['n'] as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  // =======================================================================
+  // 🔌 100 % HORS LIGNE — CONFLITS DE VENTE
+  // -----------------------------------------------------------------------
+  // `is_synced` : 0 = en file, 1 = synchronisée, -1 = CONFLIT à trancher.
+  // Une vente en conflit n'est jamais supprimée : elle attend une décision.
+  // =======================================================================
+
+  /// Enregistre un échec de synchronisation pour la vente [localId].
+  ///
+  /// Au-delà de [maxTentatives], la vente passe en **conflit**
+  /// (`is_synced = -1`) : elle sort de la file automatique pour ne pas
+  /// boucler indéfiniment, mais reste visible et rejouable à la main.
+  /// Renvoie `true` si la vente est désormais en conflit.
+  Future<bool> marquerVenteEnEchec(
+    int localId,
+    String motif, {
+    int maxTentatives = 5,
+  }) async {
+    try {
+      final db = await database;
+      final List<Map<String, Object?>> lignes = await db.query(
+        'ventes',
+        columns: <String>['tentatives', 'is_synced'],
+        where: 'id = ?',
+        whereArgs: <Object?>[localId],
+        limit: 1,
+      );
+      if (lignes.isEmpty) return false;
+      if ((lignes.first['is_synced'] as num?)?.toInt() == 1) return false;
+
+      final int faites = (lignes.first['tentatives'] as num?)?.toInt() ?? 0;
+      final int total = faites + 1;
+      final bool conflit = total >= maxTentatives;
+
+      await db.update(
+        'ventes',
+        <String, Object?>{
+          'tentatives': total,
+          'sync_erreur': motif.length > 500 ? motif.substring(0, 500) : motif,
+          if (conflit) 'is_synced': -1,
+        },
+        where: 'id = ?',
+        whereArgs: <Object?>[localId],
+      );
+      return conflit;
+    } catch (e) {
+      debugPrint('marquerVenteEnEchec($localId) ignoré : $e');
+      return false;
+    }
+  }
+
+  /// Ventes en conflit (à trancher par l'utilisateur).
+  Future<List<Map<String, Object?>>> getVentesEnConflit({
+    required String ownerId,
+  }) async {
+    try {
+      final db = await database;
+      return await db.query(
+        'ventes',
+        where: 'owner_id = ? AND is_synced = -1',
+        whereArgs: <Object?>[ownerId],
+        orderBy: 'date ASC',
+      );
+    } catch (e) {
+      debugPrint('getVentesEnConflit ignoré : $e');
+      return const <Map<String, Object?>>[];
+    }
+  }
+
+  /// Combien de ventes attendent une décision ?
+  Future<int> compterVentesEnConflit({required String ownerId}) async {
+    try {
+      final db = await database;
+      final List<Map<String, Object?>> l = await db.rawQuery(
+        'SELECT COUNT(*) AS n FROM ventes WHERE owner_id = ? AND is_synced = -1',
+        <Object?>[ownerId],
+      );
+      return (l.first['n'] as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Remet une vente en conflit dans la file (l'utilisateur a corrigé le
+  /// stock, ou décide de réessayer). Le compteur repart de zéro.
+  Future<void> remettreVenteEnFile(int localId) async {
+    try {
+      final db = await database;
+      await db.update(
+        'ventes',
+        <String, Object?>{'is_synced': 0, 'tentatives': 0},
+        where: 'id = ?',
+        whereArgs: <Object?>[localId],
+      );
+    } catch (e) {
+      debugPrint('remettreVenteEnFile($localId) ignoré : $e');
     }
   }
 

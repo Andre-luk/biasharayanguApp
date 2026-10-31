@@ -22,6 +22,8 @@ import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/ligne_panier.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/models/produit.dart';
+import 'package:biashara_yangu/models/vente.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/donnees_service.dart';
@@ -240,7 +242,24 @@ class VenteService {
         type: _typeDepuisMessage(e.message),
       );
     } catch (e) {
-      debugPrint('VenteService.validerVente : $e');
+      // 🔌 100 % HORS LIGNE — le serveur est injoignable : la vente est
+      // ENREGISTRÉE SUR L'APPAREIL (stock local déduit, file de
+      // synchronisation remplie) et repartira seule dès le retour du réseau.
+      // Un refus MÉTIER du serveur (stock, droits, abonnement) n'arrive
+      // jamais ici : il lève un `PostgrestException` traité plus haut.
+      debugPrint('VenteService.validerVente hors ligne : $e');
+      final VenteEnregistree? locale = await _enregistrerVenteHorsLigne(
+        lignes: lignesPanier,
+        modePaiement: modePaiement,
+        montantRecu: montantRecu,
+        clientId: clientId,
+      );
+      if (locale != null) {
+        panier.vider();
+        DonneesService.instance.signale('vente-hors-ligne');
+        unawaited(_resynchroniser());
+        return locale;
+      }
       throw const VenteServiceException(
         'Connexion impossible : vérifiez votre réseau puis réessayez.',
         type: TypeErreurVente.reseau,
@@ -342,7 +361,19 @@ class VenteService {
         type: _typeDepuisMessage(e.message),
       );
     } catch (e) {
-      debugPrint('VenteService.venteRapide : $e');
+      // 🔌 100 % HORS LIGNE — vente express enregistrée sur l'appareil.
+      debugPrint('VenteService.venteRapide hors ligne : $e');
+      final VenteEnregistree? locale = await _enregistrerVenteRapideHorsLigne(
+        produitId: produitId,
+        quantite: quantite,
+        modePaiement: modePaiement,
+        montantRecu: montantRecu,
+      );
+      if (locale != null) {
+        DonneesService.instance.signale('vente-hors-ligne');
+        unawaited(_resynchroniser());
+        return locale;
+      }
       throw const VenteServiceException(
         'Connexion impossible : vérifiez votre réseau puis réessayez.',
         type: TypeErreurVente.reseau,
@@ -422,6 +453,181 @@ class VenteService {
 
   /// Décrémente le stock de la copie locale (SQLite) pour que la caisse
   /// classique affiche le bon stock sans attendre la prochaine synchronisation.
+  /// Vente express (une seule ligne, unité de base) sans réseau.
+  Future<VenteEnregistree?> _enregistrerVenteRapideHorsLigne({
+    required int produitId,
+    required double quantite,
+    required String modePaiement,
+    double? montantRecu,
+  }) async {
+    try {
+      final String? userId = SupabaseService.instance.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final String ownerId =
+          await DBHelper.instance.resolveEffectiveOwnerId(userId) ?? userId;
+
+      final Produit? produit = await DBHelper.instance
+          .getProduitBySupabaseId(produitId.toString());
+      if (produit == null || produit.id == null) return null;
+
+      final double prixUnitaire = produit.prixVente;
+      final double total = prixUnitaire * quantite;
+      final DateTime maintenant = DateTime.now();
+
+      await DBHelper.instance.insertVenteWithStockUpdate(
+        Vente(
+          produitId: produit.id!,
+          quantite: quantite,
+          prix: total,
+          modePaiement: modePaiement,
+          createdAt: maintenant.toIso8601String(),
+          ownerId: ownerId,
+          sellerId: userId,
+        ),
+      );
+
+      final double recu = montantRecu ?? total;
+      return VenteEnregistree(
+        numeroVente: 'HORS-LIGNE-'
+            '${maintenant.millisecondsSinceEpoch.toString().substring(6)}',
+        venteUuid: 'local-${maintenant.microsecondsSinceEpoch}',
+        total: total,
+        modePaiement: modePaiement,
+        montantRecu: recu,
+        rendu: recu > total ? recu - total : 0.0,
+        date: maintenant,
+        lignes: <LigneVenteEnregistree>[
+          LigneVenteEnregistree(
+            produitId: produitId,
+            nom: produit.nom,
+            unite: 'unité',
+            quantiteVendue: quantite,
+            quantiteBase: quantite,
+            prixUnitaire: prixUnitaire,
+            total: total,
+          ),
+        ],
+      );
+    } catch (e) {
+      debugPrint('VenteService._enregistrerVenteRapideHorsLigne : $e');
+      return null;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 🔌 100 % HORS LIGNE — VENTE ENREGISTRÉE SANS RÉSEAU
+  // -------------------------------------------------------------------------
+
+  /// Écrit la vente dans la base LOCALE : une ligne `ventes` par article
+  /// (`is_synced = 0`) et décrémentation du stock du téléphone, dans la même
+  /// transaction SQLite.
+  ///
+  /// Renvoie le récapitulatif à afficher au client (reçu), ou `null` si même
+  /// le stock local est insuffisant — dans ce cas la vente est refusée, comme
+  /// le ferait le serveur.
+  Future<VenteEnregistree?> _enregistrerVenteHorsLigne({
+    required List<LignePanier> lignes,
+    required String modePaiement,
+    double? montantRecu,
+    int? clientId,
+  }) async {
+    try {
+      final String? userId = SupabaseService.instance.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final String ownerId =
+          await DBHelper.instance.resolveEffectiveOwnerId(userId) ?? userId;
+      final DateTime maintenant = DateTime.now();
+      final String uuid = 'local-${maintenant.microsecondsSinceEpoch}';
+
+      // Le panier porte l'identifiant SERVEUR du client ; la base locale a
+      // le sien. On le retrouve pour ne pas perdre la vente à crédit.
+      int? clientLocal;
+      if (clientId != null) {
+        try {
+          clientLocal = (await DBHelper.instance
+                  .getClientBySupabaseId(clientId.toString()))
+              ?.id;
+        } catch (_) {
+          clientLocal = null;
+        }
+      }
+
+      final List<LigneVenteEnregistree> enregistrees =
+          <LigneVenteEnregistree>[];
+      double total = 0;
+
+      for (final LignePanier ligne in lignes) {
+        final int? localId = await _idLocalProduit(ligne);
+        if (localId == null) {
+          // Le produit n'existe pas dans la copie locale : impossible de
+          // garantir le stock, donc on refuse — jamais une vente fantôme.
+          debugPrint('VenteService hors ligne : produit local introuvable '
+              '(${ligne.nom})');
+          return null;
+        }
+
+        await DBHelper.instance.insertVenteWithStockUpdate(
+          Vente(
+            produitId: localId,
+            quantite: ligne.unitesBase,
+            prix: ligne.total,
+            modePaiement: modePaiement,
+            createdAt: maintenant.toIso8601String(),
+            ownerId: ownerId,
+            sellerId: userId,
+            clientId: clientLocal,
+          ),
+        );
+
+        total += ligne.total;
+        enregistrees.add(
+          LigneVenteEnregistree(
+            produitId: ligne.produitId,
+            nom: ligne.nom,
+            unite: ligne.conditionnementId != null ? 'conditionnement' : 'unité',
+            quantiteVendue: ligne.quantite,
+            quantiteBase: ligne.unitesBase,
+            prixUnitaire: ligne.prixUnitaire,
+            total: ligne.total,
+            conditionnement: ligne.conditionnementId,
+          ),
+        );
+      }
+
+      if (enregistrees.isEmpty) return null;
+
+      final double recu = montantRecu ?? total;
+      return VenteEnregistree(
+        numeroVente: 'HORS-LIGNE-'
+            '${maintenant.millisecondsSinceEpoch.toString().substring(6)}',
+        venteUuid: uuid,
+        total: total,
+        modePaiement: modePaiement,
+        montantRecu: recu,
+        rendu: recu > total ? recu - total : 0.0,
+        date: maintenant,
+        lignes: enregistrees,
+      );
+    } catch (e) {
+      debugPrint('VenteService._enregistrerVenteHorsLigne : $e');
+      return null;
+    }
+  }
+
+  /// Ramène une ligne de panier à son produit dans la base LOCALE.
+  Future<int?> _idLocalProduit(LignePanier ligne) async {
+    if (ligne.produitIdLocal != null) return ligne.produitIdLocal;
+    try {
+      final Produit? p = await DBHelper.instance
+          .getProduitBySupabaseId(ligne.produitId.toString());
+      return p?.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _appliquerSortieStockLocale(List<LignePanier> lignes) async {
     try {
       for (final LignePanier ligne in lignes) {

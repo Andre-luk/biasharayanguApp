@@ -35,6 +35,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/rapport.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart' show reponseRpcEnMap;
+import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/fichiers_locaux.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -755,7 +756,9 @@ class RapportService {
   }) async {
     dynamic reponse;
     try {
-      reponse = await _client.rpc(fonction, params: params);
+      // 🔌 HORS LIGNE : un rapport déjà consulté reste consultable (le
+      // serveur est prioritaire dès qu'il répond).
+      reponse = await CacheLecture.instance.rpc(fonction, params: params);
     } on PostgrestException catch (e) {
       debugPrint(
           'RapportService ($actionLibelle) PostgrestException: ${e.code} ${e.message}');

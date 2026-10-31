@@ -675,14 +675,80 @@ l'avance intelligente fonctionne de la même façon.
   reste dans la file (`is_synced = 0`), `ventesEnAttente` la compte et
   `dernierMotifVenteBloquee` dit pourquoi.
 
-⚠️ **Ce qui reste pour un « 100 % hors ligne » complet** :
-1. cache local en lecture pour les écrans encore branchés directement sur
-   Supabase (rapports, abonnements) ;
-2. résolution de conflits (prix modifié hors ligne, stock négatif).
+---
+
+## 13. Phase 12 — 100 % hors ligne (LIVRÉE le 31/10/2026)
+
+> **État au 31/10/2026 : LIVRÉE** — `cache_lecture` (SQLite v13),
+> `CacheLecture` (repli automatique), **vente possible sans réseau**,
+> conflits de synchronisation visibles et résolubles.
+> `test/hors_ligne_complet_test.dart` (10 tests).
+
+### 1. Vendre sans réseau (le vrai manque)
+
+Avant, une vente hors ligne était **refusée** : `rpc_vente_valider` est une
+transaction serveur. Désormais, quand le serveur est **injoignable** :
+
+- la vente est écrite dans la base **locale** (`ventes`, `is_synced = 0`)
+  et le stock du téléphone est décrémenté, dans la même transaction SQLite ;
+- le client reçoit un reçu **`HORS-LIGNE-…`** — il sait que la vente est
+  enregistrée sur l'appareil ;
+- au retour du réseau, `SyncService` la rejoue par la **RPC officielle**
+  (numéro de vente, stock, caisse, audit) : aucune différence avec une vente
+  en ligne.
+
+⚠️ Règle de sécurité : un **refus métier** du serveur (stock, droits,
+abonnement) lève toujours une erreur — on n'écrit jamais en local par-dessus
+un refus. Seule une panne réseau déclenche le repli.
+
+### 2. Lire sans réseau — `CacheLecture`
+
+`lib/services/cache_lecture.dart` : lire → mémoriser → **se replier sur la
+dernière valeur connue** si le serveur ne répond pas.
+
+| Écran | Fonction | Effet hors ligne |
+|---|---|---|
+| Accueil / tableau de bord | `rpc_accueil_stats` | derniers chiffres affichés |
+| Dossier d'activation | `rpc_activation_etat` | dossier du dernier passage |
+| Abonnement | `rpc_abonnement_installation_etat` | solde connu |
+| **Tous les rapports** | funnel `_appelerRpc` | rapport déjà consulté relisible |
+| Liste des entreprises | REST (5 tables) | liste locale au démarrage |
+
+Trois garanties :
+1. **Aucune écriture** ne passe par le cache ;
+2. une réponse du serveur **n'est jamais** remplacée par du cache
+   (`PostgrestException` → l'erreur remonte : un refus de droit reste un
+   refus) ;
+3. la clé est **cloisonnée** (utilisateur + fonction + arguments triés) :
+   deux boutiques sur le même téléphone ne voient pas les chiffres de l'autre.
+
+### 3. Conflits de synchronisation
+
+Une vente rejouée qui échoue :
+
+- tentatives **1 à 4** → elle reste dans la file (le stock serveur peut être
+  reconstitué par un approvisionnement en attente) ;
+- à la **5ᵉ** → `is_synced = -1` : elle devient un **conflit**, avec son
+  motif enregistré (`sync_erreur`).
+
+Elle n'est **jamais perdue** et n'est **jamais réessayée sans fin**.
+Le bandeau hors ligne affiche « **À vérifier (N)** » → écran
+`ventes_a_verifier_page` : date, montant, quantité, motif, tentatives, et
+bouton **Réessayer** (remet la vente en file + relance `syncAll`).
+
+### Bilan honnête
+
+| Capacité | État |
+|---|---|
+| Vendre, encaisser un reçu | ✅ sans réseau |
+| Consulter accueil, abonnement, rapports déjà ouverts | ✅ sans réseau |
+| Consulter un rapport **jamais ouvert** | ❌ nécessite une première connexion |
+| Créer un produit, un client | ✅ local, poussé ensuite |
+| Payer l'abonnement | ❌ intrinsèquement en ligne (Mobile Money) |
 
 ---
 
-## 13. Garde-fous transverses
+## 14. Garde-fous transverses
 
 - **Une entreprise = un périmètre** : toute nouvelle table porte `owner_id` + RLS.
 - **Rôles vérifiés côté serveur** : aucune nouvelle RPC ne fait confiance au client.
