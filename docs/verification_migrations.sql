@@ -93,7 +93,15 @@ order by (case when present then 1 else 0 end), migration, objet;
 --      where lower(coalesce(type_activite, '')) = 'distribution';
 --     → 50 000 / 20 000 attendus.
 --
---  5) Les agents ont-ils bien leurs dossiers rattachés ?
+--  5) `solde_restant` est-elle une colonne GÉNÉRÉE ? (doit être vide)
+--     select column_name, is_generated, generation_expression
+--       from information_schema.columns
+--      where table_schema = 'public' and table_name = 'entreprises'
+--        and is_generated = 'ALWAYS';
+--     → si une ligne apparaît, le moteur d'abonnement ne pourra PAS écrire
+--       cette colonne : lancez la migration 0094.
+--
+--  6) Les agents ont-ils bien leurs dossiers rattachés ?
 --     select count(*) filter (where agent_id is not null) as avec_agent,
 --            count(*)                                    as total
 --       from public.entreprises;
