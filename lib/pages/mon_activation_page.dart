@@ -18,8 +18,11 @@ import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/models/activation.dart';
 // 🪙 MODULE 18 — devise de travail et taux de change (équivalences).
 import 'package:biashara_yangu/models/devise.dart';
+import 'package:biashara_yangu/models/etat_installation.dart';
+import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/devise_service.dart';
+import 'package:biashara_yangu/utils/format_utils.dart';
 
 class MonActivationPage extends StatefulWidget {
   const MonActivationPage({super.key});
@@ -31,6 +34,7 @@ class MonActivationPage extends StatefulWidget {
 class _MonActivationPageState extends State<MonActivationPage> {
   EtatActivation? _etat;
   bool _chargement = true;
+  bool _renouvellement = false;
   String? _erreur;
 
   @override
@@ -46,7 +50,8 @@ class _MonActivationPageState extends State<MonActivationPage> {
     });
 
     try {
-      final EtatActivation etat = await ActivationService.instance.chargerEtat();
+      final EtatActivation etat =
+          await ActivationService.instance.chargerEtat();
       if (!mounted) return;
       setState(() {
         _etat = etat;
@@ -140,9 +145,15 @@ class _MonActivationPageState extends State<MonActivationPage> {
         _carteEtape(etat, colorScheme),
         const SizedBox(height: 12),
         _carteMontants(etat, colorScheme),
+        // 💳 LE CLIENT PAIE SEUL : soit il reste un solde (y compris une
+        // avance), soit l'abonnement est échu et il faut ouvrir le mois
+        // suivant. Dans les deux cas c'est ICI, sans passer par un agent.
         if (etat.soldeRestant > 0) ...<Widget>[
           const SizedBox(height: 12),
           _boutonPaiement(),
+        ] else if (etat.doitRenouveler) ...<Widget>[
+          const SizedBox(height: 12),
+          _boutonRenouvellement(),
         ],
         const SizedBox(height: 12),
         _carteDates(etat),
@@ -163,6 +174,65 @@ class _MonActivationPageState extends State<MonActivationPage> {
     await context.push<Object?>('/main/paiement-serdipay');
     if (!mounted) return;
     await _charger();
+  }
+
+  /// Ouvre le mois suivant au prix négocié, puis rafraîchit le dossier :
+  /// le bouton « Payer » apparaît alors avec le montant exact.
+  ///
+  /// Si l'abonnement court encore, le serveur refuse d'ouvrir un cycle : le
+  /// client ne peut donc pas payer deux fois le même mois.
+  Future<void> _renouveler() async {
+    setState(() => _renouvellement = true);
+    try {
+      final PreparationRenouvellement prep =
+          await AbonnementService.instance.preparerRenouvellement();
+      if (!mounted) return;
+
+      if (prep.motif == 'CYCLE_EN_COURS') {
+        _afficher(
+          'Votre abonnement court encore : le renouvellement sera possible '
+          'à l\'échéance.',
+        );
+      } else if (prep.aPayer) {
+        _afficher(
+          'Nouveau mois ouvert : ${formatMontant(prep.soldeRestant)} '
+          '${prep.devise} à régler.',
+        );
+      } else {
+        _afficher('Aucun montant à régler pour le moment.');
+      }
+      await _charger();
+    } on AbonnementServiceException catch (e) {
+      if (!mounted) return;
+      _afficher(e.message, erreur: true);
+    } finally {
+      if (mounted) setState(() => _renouvellement = false);
+    }
+  }
+
+  void _afficher(String texte, {bool erreur = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texte),
+        backgroundColor: erreur ? const Color(0xFFB91C1C) : null,
+      ),
+    );
+  }
+
+  Widget _boutonRenouvellement() {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: _renouvellement ? null : _renouveler,
+        icon: const Icon(Icons.autorenew_rounded),
+        label: Text(
+          _renouvellement
+              ? 'Ouverture du nouveau mois…'
+              : 'Renouveler maintenant',
+        ),
+      ),
+    );
   }
 
   Widget _boutonPaiement() {
@@ -283,9 +353,8 @@ class _MonActivationPageState extends State<MonActivationPage> {
             Expanded(
               child: Container(
                 height: 2,
-                color: etapes[i].$2
-                    ? Colors.green.shade400
-                    : Colors.grey.shade300,
+                color:
+                    etapes[i].$2 ? Colors.green.shade400 : Colors.grey.shade300,
               ),
             ),
           Column(
@@ -332,8 +401,8 @@ class _MonActivationPageState extends State<MonActivationPage> {
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(20),
@@ -353,8 +422,8 @@ class _MonActivationPageState extends State<MonActivationPage> {
             Row(
               children: <Widget>[
                 _montantBloc('Total dû', etat.montantTotalDu, Colors.black87),
-                _montantBloc('Déjà payé', etat.montantDejaPaye,
-                    Colors.green.shade700),
+                _montantBloc(
+                    'Déjà payé', etat.montantDejaPaye, Colors.green.shade700),
                 _montantBloc(
                   'Solde',
                   etat.soldeRestant,
@@ -369,9 +438,8 @@ class _MonActivationPageState extends State<MonActivationPage> {
                 value: etat.tauxPaiement,
                 minHeight: 8,
                 backgroundColor: Colors.grey.shade200,
-                color: etat.estSolde
-                    ? Colors.green.shade600
-                    : colorScheme.primary,
+                color:
+                    etat.estSolde ? Colors.green.shade600 : colorScheme.primary,
               ),
             ),
             const SizedBox(height: 6),
@@ -454,8 +522,7 @@ class _MonActivationPageState extends State<MonActivationPage> {
                 Icons.timer_outlined,
                 'Jours restants',
                 '${etat.joursRestants} jour(s)',
-                couleur:
-                    etat.joursRestants! <= 3 ? Colors.red.shade700 : null,
+                couleur: etat.joursRestants! <= 3 ? Colors.red.shade700 : null,
               ),
             if (etat.verifieLe != null)
               _ligne(Icons.fact_check_outlined, 'Vérifié le',
@@ -537,8 +604,7 @@ class _MonActivationPageState extends State<MonActivationPage> {
                 : Icons.fact_check_outlined;
 
     final List<String> details = <String>[
-      if (entree.montant != null)
-        '${entree.montant!.toStringAsFixed(0)} CDF',
+      if (entree.montant != null) '${entree.montant!.toStringAsFixed(0)} CDF',
       if ((entree.modePaiement ?? '').isNotEmpty) entree.modePaiement!,
       if ((entree.reference ?? '').isNotEmpty) 'Réf. ${entree.reference}',
       if ((entree.note ?? '').isNotEmpty) entree.note!,
@@ -575,8 +641,7 @@ class _MonActivationPageState extends State<MonActivationPage> {
                 if (details.isNotEmpty)
                   Text(
                     details.join('  •  '),
-                    style:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
                   ),
               ],
             ),

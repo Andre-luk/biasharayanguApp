@@ -427,6 +427,10 @@ class FicheEntreprise {
   final List<EtapeFiche> historique;
   final List<PaiementFiche> paiements;
 
+  /// 🪙 Quotas de l'assistant IA inclus dans l'abonnement (null = valeur du
+  /// pack). Crédités automatiquement à chaque cycle payé.
+  final int? quotasIaMensuels;
+
   const FicheEntreprise({
     required this.entreprise,
     this.proprietaire,
@@ -437,6 +441,7 @@ class FicheEntreprise {
     this.droits = const DroitsFiche(),
     this.historique = const <EtapeFiche>[],
     this.paiements = const <PaiementFiche>[],
+    this.quotasIaMensuels,
   });
 
   /// Construit la fiche depuis la réponse de `rpc_entreprise_fiche`.
@@ -465,12 +470,13 @@ class FicheEntreprise {
       prix: PrixFiche.depuisJson(map['prix']),
       suivi: SuiviFiche.depuisJson(map['suivi']),
       droits: DroitsFiche.depuisJson(map['droits']),
-      historique: parseMapList(map['historique'])
-          .map(EtapeFiche.depuisJson)
-          .toList(),
-      paiements: parseMapList(map['paiements'])
-          .map(PaiementFiche.depuisJson)
-          .toList(),
+      historique:
+          parseMapList(map['historique']).map(EtapeFiche.depuisJson).toList(),
+      paiements:
+          parseMapList(map['paiements']).map(PaiementFiche.depuisJson).toList(),
+      quotasIaMensuels: ent['quotas_ia_mensuels'] == null
+          ? null
+          : parseInt(ent['quotas_ia_mensuels']),
     );
   }
 

@@ -522,6 +522,92 @@ class EntrepriseService {
     );
   }
 
+  /// 🏪 Définit le TYPE D'ACTIVITÉ d'une entreprise (boutique / distribution).
+  ///
+  /// `null` remet le type à « non renseigné » : l'application retrouve alors
+  /// son comportement historique (toutes les cartes visibles).
+  Future<void> definirTypeActivite(String entrepriseId, TypeActivite? type) {
+    return _executer(
+      () async {
+        await _client.rpc(
+          'rpc_entreprise_definir_type_activite',
+          params: <String, dynamic>{
+            'p_entreprise_id': entrepriseId,
+            'p_type': type?.code,
+          },
+        );
+      },
+      actionLibelle: "la définition du type d'activité",
+      messageEchec:
+          "Impossible d'enregistrer le type d'activité. Vérifiez votre connexion internet.",
+    );
+  }
+
+  /// 🪙 Fixe les quotas IA mensuels d'une entreprise (`null` = valeur du pack).
+  ///
+  /// Ces quotas sont crédités automatiquement à chaque cycle d'abonnement
+  /// payé : le client n'a rien à réclamer.
+  Future<void> definirQuotasIa({
+    required String entrepriseId,
+    int? quotas,
+    String? note,
+  }) {
+    return _executer(
+      () async {
+        await _client.rpc(
+          'rpc_abonnement_definir_quotas_ia',
+          params: <String, dynamic>{
+            'p_entreprise_id': entrepriseId,
+            'p_quotas': quotas,
+            'p_note': note,
+          },
+        );
+      },
+      actionLibelle: 'la mise à jour des quotas IA',
+      messageEchec:
+          'Impossible d\'enregistrer les quotas IA. Vérifiez votre connexion internet.',
+    );
+  }
+
+  /// 🗑️ Supprime une entreprise, ses données et ses comptes.
+  ///
+  /// Réservé au Super Administrateur côté serveur ; [confirmation] doit
+  /// valoir « SUPPRIMER ». Lève une erreur explicite si des données liées
+  /// bloquent la suppression.
+  Future<Map<String, dynamic>> supprimerEntreprise({
+    required String entrepriseId,
+    required String confirmation,
+  }) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_entreprise_supprimer',
+        params: <String, dynamic>{
+          'p_entreprise': entrepriseId,
+          'p_confirmation': confirmation,
+        },
+      );
+      final Map<String, dynamic>? json = parseMap(reponse);
+      if (json == null || json['ok'] != true) {
+        throw const EntrepriseServiceException(
+          "La suppression n'a pas été confirmée par le serveur.",
+        );
+      }
+      return json;
+    } on PostgrestException catch (e) {
+      final String brut = e.message;
+      final int barre = brut.indexOf('|');
+      throw EntrepriseServiceException(
+        barre >= 0 ? brut.substring(barre + 1).trim() : brut,
+      );
+    } catch (e) {
+      if (e is EntrepriseServiceException) rethrow;
+      debugPrint('EntrepriseService.supprimerEntreprise : $e');
+      throw const EntrepriseServiceException(
+        'Suppression impossible : vérifiez votre connexion internet.',
+      );
+    }
+  }
+
   /// Enregistre un encaissement sur l'abonnement d'une entreprise.
   ///
   /// Impacte `montant_deja_paye` (augmenté) et `solde_restant` (diminué), et

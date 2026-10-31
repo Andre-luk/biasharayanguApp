@@ -90,12 +90,18 @@ class SerdipayService {
   /// la plateforme ; sinon l'entreprise active est utilisée.
   ///
   /// ⚠️ Aucun montant n'est transmis : le serveur le calcule.
+  /// [montant] : montant d'une AVANCE. `null` = la totalité de ce qui est dû.
+  ///
+  /// Le montant reste vérifié en base (`rpc_serdipay_ouvrir`) : il ne peut
+  /// jamais dépasser le solde réel. Une avance laisse donc la place à un
+  /// complément, et le compte s'active dès que le cycle est soldé.
   Future<PaiementSerdipay> initier({
     required String telephone,
     required OperateurSerdipay operateur,
     String objet = 'abonnement',
     String? objetId,
     String? entrepriseId,
+    double? montant,
   }) async {
     final String numero = telephone.replaceAll(RegExp(r'[^0-9]'), '');
     if (numero.length < 9) {
@@ -114,6 +120,7 @@ class SerdipayService {
         'telephone': numero,
         'operateur': operateur.code,
         if (entrepriseId != null) 'entrepriseId': entrepriseId,
+        if (montant != null) 'montant': montant,
       },
     );
 

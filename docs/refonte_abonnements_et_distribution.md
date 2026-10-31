@@ -346,7 +346,77 @@ Dart : `EcartProduit`, `RecommandationChargement`, `ConsigneARisque`,
 
 ---
 
-## 8. Garde-fous transverses
+## 8. Phase 7 — L'abonnement en autonomie (LIVRÉE le 31/10/2026)
+
+> **État au 31/10/2026 : LIVRÉE** — migration
+> `20260916000088_abonnement_autonomie.sql` (32/32 instructions),
+> Edge Function `serdipay` (montant d'avance), écrans « Mon dossier
+> d'activation » et « Paiement Mobile Money », menu de gestion du compte,
+> `test/abonnement_autonomie_test.dart` (11 tests).
+
+### Le blocage constaté
+
+`rpc_serdipay_ouvrir` (migration 0079) facturait `entreprises.solde_restant`.
+Un cycle **entièrement payé puis expiré** laisse `solde_restant = 0` : aucun
+mécanisme n'ouvrait le cycle suivant. Le client recevait
+« Aucun montant à payer : votre abonnement est déjà réglé » et ne pouvait donc
+PAS se renouveler seul. Le paiement passait obligatoirement par un agent.
+
+### Ce qui a été livré
+
+**1. `rpc_abonnement_prix_du_cycle(p_entreprise)`** — prix du prochain cycle :
+`prix_abonnement_mensuel` → `groupes_tarifaires.montant_abonnement` → montant du
+cycle précédent (**jamais** l'installation).
+
+**2. `rpc_abonnement_preparer_renouvellement(p_entreprise)`** — ouvre le cycle
+suivant (`montant_total_du = prix`, `montant_deja_paye = 0`).
+Garde-fous :
+- refus si le compte n'a jamais été activé (`PREMIER_CYCLE` : l'installation
+  est due, ce n'est pas un renouvellement) ;
+- refus si l'abonnement **court encore** (`CYCLE_EN_COURS`) : aucun risque de
+  facturer deux fois le même mois ;
+- rien à faire si un solde est déjà ouvert (`DEJA_OUVERT`).
+
+**3. `rpc_serdipay_ouvrir` v2** — supprime la v1 (sinon surcharge ambiguë),
+appelle la préparation quand l'abonnement est échu et accepte un
+`p_montant` : le client peut verser une **avance** (bornée par le solde réel).
+Le moteur (`rpc_abonnement_enregistrer_paiement`, inchangé) active
+automatiquement dès que le cycle est soldé, et place le dossier en
+`EN_ATTENTE_COMPLEMENT` sur un versement partiel.
+
+**4. Quotas IA inclus** — `groupes_tarifaires.quotas_ia_mensuels` (pack) et
+`entreprises.quotas_ia_mensuels` (négocié, prioritaire), réglables via
+`rpc_abonnement_definir_quotas_ia` ou l'écran « Prix de l'abonnement et quotas
+IA ». Un **trigger sur `entreprises.date_expiration`** crédite le pool
+`agent_ia_quotas` à chaque cycle payé — quel que soit le payeur (client,
+agent, webhook). Le trigger n'échoue jamais (erreurs avalées) : un quota ne
+peut pas bloquer un paiement.
+
+**5. `rpc_entreprise_supprimer(p_entreprise, p_confirmation)`** — nettoyage des
+entreprises de test : SUPER_ADMIN uniquement, confirmation écrite
+« SUPPRIMER ». Le catalogue est interrogé pour supprimer **toutes** les tables
+portant `owner_id` ou `entreprise_id`, puis les comptes liés (y compris par
+`parent_id`), puis l'entreprise. Les comptes Supabase *Authentication* restent
+à supprimer séparément (l'écran le dit).
+
+**6. Type d'activité des entreprises existantes** — menu « Gestion du compte »
+sur la fiche entreprise : Boutique / Distribution / Non renseigné
+(`rpc_entreprise_definir_type_activite`, migration 0083).
+
+### Parcours client
+
+```
+Mon abonnement  →  (solde > 0)  → Payer maintenant  → montant exact ou avance
+                →  (échu, soldé) → Renouveler maintenant → cycle ouvert
+                                 → Payer maintenant  → activation AUTOMATIQUE
+```
+
+Les agents de la plateforme ne sont plus un passage obligé ; ils restent
+disponibles en cas de demande du client.
+
+---
+
+## 9. Garde-fous transverses
 
 - **Une entreprise = un périmètre** : toute nouvelle table porte `owner_id` + RLS.
 - **Rôles vérifiés côté serveur** : aucune nouvelle RPC ne fait confiance au client.

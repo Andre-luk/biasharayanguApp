@@ -15,17 +15,20 @@
 // de la même façon : rien ne dépend de cet écran.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/activation.dart';
 import 'package:biashara_yangu/models/paiement_serdipay.dart';
+import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/serdipay_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 class PaiementSerdipayPage extends StatefulWidget {
-  const PaiementSerdipayPage({super.key, this.objet = 'abonnement', this.objetId});
+  const PaiementSerdipayPage(
+      {super.key, this.objet = 'abonnement', this.objetId});
 
   /// `abonnement` (cycle en cours) ou `facture`.
   final String objet;
@@ -39,6 +42,10 @@ class PaiementSerdipayPage extends StatefulWidget {
 
 class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   final TextEditingController _telephone = TextEditingController();
+
+  /// Montant réellement payé : la totalité par défaut, ou une AVANCE que le
+  /// client choisit. Le serveur refuse tout montant supérieur au solde.
+  final TextEditingController _montant = TextEditingController();
 
   EtatActivation? _etat;
   bool _chargement = true;
@@ -58,6 +65,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   @override
   void dispose() {
     _telephone.dispose();
+    _montant.dispose();
     super.dispose();
   }
 
@@ -72,7 +80,16 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
     });
 
     try {
-      final EtatActivation etat = await ActivationService.instance.chargerEtat();
+      EtatActivation etat = await ActivationService.instance.chargerEtat();
+
+      // 🔁 ABONNEMENT ÉCHU ET DÉJÀ SOLDÉ : il n'y a « rien à payer » parce
+      // qu'aucun cycle n'est ouvert. On l'ouvre au prix mensuel négocié —
+      // c'est ce qui permet au client de se renouveler SEUL.
+      if (widget.objet == 'abonnement' && etat.doitRenouveler) {
+        await AbonnementService.instance.preparerRenouvellement();
+        etat = await ActivationService.instance.chargerEtat();
+      }
+
       final String? numero = await _telephoneConnu();
 
       if (!mounted) return;
@@ -81,6 +98,9 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
         _chargement = false;
         if (_telephone.text.trim().isEmpty && numero != null) {
           _telephone.text = numero;
+        }
+        if (_montant.text.trim().isEmpty && !etat.estSolde) {
+          _montant.text = etat.soldeRestant.toStringAsFixed(0);
         }
       });
     } catch (e) {
@@ -132,6 +152,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
         operateur: _operateur,
         objet: widget.objet,
         objetId: widget.objetId,
+        montant: _montantPartiel(),
       );
 
       if (!mounted) return;
@@ -161,14 +182,29 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
     }
   }
 
+  /// Montant d'une avance, ou `null` pour payer la totalité du solde.
+  ///
+  /// Un montant vide, invalide, nul ou égal au solde renvoie `null` : on
+  /// paie alors tout, et le serveur recalcule de toute façon.
+  double? _montantPartiel() {
+    if (widget.objet != 'abonnement') return null;
+
+    final double solde = _etat?.soldeRestant ?? 0;
+    final double? saisi =
+        double.tryParse(_montant.text.replaceAll(' ', '').replaceAll(',', '.'));
+
+    if (saisi == null || saisi <= 0 || saisi >= solde - 0.01) return null;
+    return saisi;
+  }
+
   Future<void> _sonder({PaiementSerdipay? depart}) async {
     final PaiementSerdipay paiement = depart ?? _paiement!;
     if (_sondage) return;
 
     setState(() => _sondage = true);
 
-    final PaiementSerdipay resultat = await SerdipayService.instance
-        .attendreConfirmation(
+    final PaiementSerdipay resultat =
+        await SerdipayService.instance.attendreConfirmation(
       paiement,
       onChangement: (PaiementSerdipay p) {
         if (mounted) setState(() => _paiement = p);
@@ -242,9 +278,8 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   }
 
   Widget _carteMontant() {
-    final double solde = widget.objet == 'facture'
-        ? 0
-        : (_etat?.soldeRestant ?? 0);
+    final double solde =
+        widget.objet == 'facture' ? 0 : (_etat?.soldeRestant ?? 0);
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -280,7 +315,9 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            if (_etat != null && !_etat!.estSolde && widget.objet != 'facture') ...<Widget>[
+            if (_etat != null &&
+                !_etat!.estSolde &&
+                widget.objet != 'facture') ...<Widget>[
               const SizedBox(height: 8),
               Text(
                 'Total dû ${formatMontant(_etat!.montantTotalDu)} · '
@@ -295,8 +332,8 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   }
 
   Widget _formulaire() {
-    final bool rienAPayer = widget.objet != 'facture' &&
-        (_etat?.estSolde ?? false);
+    final bool rienAPayer =
+        widget.objet != 'facture' && (_etat?.estSolde ?? false);
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -318,6 +355,29 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                 prefixIcon: Icon(Icons.phone_android_rounded),
               ),
             ),
+            // 💰 AVANCE : le client choisit ce qu'il verse maintenant.
+            // Le champ est pré-rempli avec le solde ; le serveur refuse
+            // tout montant supérieur. Une avance laisse le compte en
+            // « complément attendu » — il s'active dès que le cycle est soldé.
+            if (widget.objet == 'abonnement' &&
+                !(_etat?.estSolde ?? true)) ...<Widget>[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _montant,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: <TextInputFormatter>[
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                decoration: InputDecoration(
+                  labelText: 'Montant à payer',
+                  helperText: 'Vous pouvez payer une partie seulement : '
+                      'le reste sera à compléter. Total dû '
+                      '${formatMontant(_etat?.soldeRestant ?? 0)}.',
+                  prefixIcon: const Icon(Icons.payments_rounded),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             const Text(
               'Moyen de paiement',
@@ -439,8 +499,8 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => SerdipayService.instance
-                      .ouvrirLien(paiement.urlPaiement),
+                  onPressed: () =>
+                      SerdipayService.instance.ouvrirLien(paiement.urlPaiement),
                   icon: const Icon(Icons.open_in_new_rounded),
                   label: const Text('Ouvrir la page de paiement'),
                 ),

@@ -1,5 +1,6 @@
 // lib/models/entreprise.dart
 import 'package:biashara_yangu/models/statut_abonnement.dart';
+import 'package:biashara_yangu/models/type_activite.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// Entreprise cliente de la plateforme — table `public.entreprises`.
@@ -44,6 +45,10 @@ class Entreprise {
   /// (voir `EntrepriseService.enregistrerPaiement`).
   final int? groupeTarifaireDureeJours;
 
+  /// 🏪 Type d'activité (migration 0083) : `boutique`, `distribution`, ou
+  /// `null` = non renseigné (tous les écrans restent visibles).
+  final TypeActivite? typeActivite;
+
   const Entreprise({
     required this.id,
     required this.nom,
@@ -65,6 +70,7 @@ class Entreprise {
     this.responsableNom,
     this.telephone,
     this.activationEtape,
+    this.typeActivite,
   });
 
   factory Entreprise.fromMap(Map<String, dynamic> map) {
@@ -94,6 +100,8 @@ class Entreprise {
       createdAt: parseDateTimeOrNull(map['created_at']),
       updatedAt: parseDateTimeOrNull(map['updated_at']),
       activationEtape: parseStringOrNull(map['activation_etape']),
+      typeActivite:
+          TypeActivite.depuis(parseStringOrNull(map['type_activite'])),
     );
   }
 

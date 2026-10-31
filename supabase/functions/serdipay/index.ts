@@ -260,7 +260,17 @@ function traduireErreurBase(brut: string): { code: string; message: string } {
     FACTURE_INTROUVABLE:
       'Cette facture est introuvable ou ne concerne pas votre entreprise.',
     SOLDE_NUL:
-      'Aucun montant à payer : votre abonnement est déjà réglé.',
+      "Rien à payer pour le moment : votre abonnement est déjà réglé. " +
+      'Si votre abonnement est échu, ouvrez « Mon abonnement » puis ' +
+      '« Renouveler maintenant » pour obtenir le montant du mois.',
+    PREMIER_CYCLE:
+      "Ce compte n'a pas encore été activé : le prix d'installation est dû. " +
+      'Le montant apparaît dans « Mon abonnement ».',
+    PRIX_ABSENT:
+      "Aucun prix n'est défini pour ce compte : contactez la plateforme.",
+    CONFIRMATION_REQUISE: 'Confirmation manquante.',
+    MONTANT_SUPERIEUR:
+      'Le montant dépasse ce que vous devez : corrigez la somme.',
     REFERENCE_INCONNUE:
       "Référence de paiement inconnue.",
     STATUT_INVALIDE:
@@ -1298,6 +1308,25 @@ async function routeInitier(req: Request): Promise<Response> {
   const operateur = String(corps.operateur ?? '').trim().toLowerCase();
   const entrepriseId = corps.entrepriseId ?? corps.entreprise_id ?? null;
 
+  // AVANCE : le client peut payer une PARTIE de ce qu'il doit. Le montant
+  // reste vérifié en base (jamais supérieur au solde) : l'application ne
+  // peut donc pas « négocier » un prix par ce champ.
+  const montantBrut = corps.montant ?? corps.p_montant ?? null;
+  const montantDemande =
+    montantBrut === null || montantBrut === undefined || montantBrut === ''
+      ? null
+      : Number(montantBrut);
+  if (
+    montantDemande !== null &&
+    (!Number.isFinite(montantDemande) || montantDemande <= 0)
+  ) {
+    return erreur(
+      'MONTANT_INCORRECT',
+      'Le montant saisi est invalide.',
+      400,
+    );
+  }
+
   if (telephone.length < 9) {
     return erreur(
       'TELEPHONE_INVALIDE',
@@ -1315,6 +1344,7 @@ async function routeInitier(req: Request): Promise<Response> {
       p_telephone: telephone,
       p_operateur: operateur || null,
       p_entreprise_id: entrepriseId,
+      p_montant: montantDemande,
     },
   );
 

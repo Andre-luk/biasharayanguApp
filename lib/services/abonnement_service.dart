@@ -435,6 +435,35 @@ class AbonnementService {
     }
   }
 
+  /// Ouvre le cycle suivant au prix mensuel négocié, si l'abonnement est échu.
+  ///
+  /// ⚠️ Contrairement à [etatInstallation], cette méthode LÈVE une erreur :
+  /// le client doit savoir pourquoi il ne peut pas payer (prix absent,
+  /// compte jamais activé…).
+  Future<PreparationRenouvellement> preparerRenouvellement({
+    String? entrepriseId,
+  }) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_abonnement_preparer_renouvellement',
+        params: <String, dynamic>{'p_entreprise': entrepriseId},
+      );
+      final Map<String, dynamic>? json = parseMap(reponse);
+      if (json == null) return PreparationRenouvellement.aucune;
+      return PreparationRenouvellement.depuisJson(json);
+    } on PostgrestException catch (e) {
+      final String brut = e.message;
+      final int barre = brut.indexOf('|');
+      final String message = barre >= 0 ? brut.substring(barre + 1) : brut;
+      throw AbonnementServiceException(message);
+    } catch (e) {
+      debugPrint('AbonnementService.preparerRenouvellement : $e');
+      throw const AbonnementServiceException(
+        'Impossible de préparer le renouvellement : vérifiez votre connexion.',
+      );
+    }
+  }
+
   /// Calcule l'état complet de l'abonnement d'une entreprise :
   /// total dû, déjà payé, solde, jours restants et statut effectif.
   Future<SoldeAbonnement> calculerSolde(String entrepriseId) {

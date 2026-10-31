@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/type_activite.dart';
 import 'package:biashara_yangu/models/fonctionnalites.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
@@ -291,8 +292,7 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           // 💳 MODULE 3 — Accès au détail d'abonnement du moteur (paiements
           // typés, renouvellement, historique du moteur).
           IconButton(
-            onPressed:
-                _entreprise == null ? null : () => _ouvrirAbonnement(),
+            onPressed: _entreprise == null ? null : () => _ouvrirAbonnement(),
             icon: const Icon(Icons.card_membership_rounded),
             tooltip: "Détail de l'abonnement",
           ),
@@ -300,6 +300,38 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
             onPressed: () => _charger(silencieux: true),
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualiser',
+          ),
+          // ⚙️ Actions de GESTION DU COMPTE : type d'activité et suppression
+          // (nettoyage des entreprises de test). Le serveur reste seul juge
+          // des droits : un appel non autorisé renvoie un message clair.
+          PopupMenuButton<String>(
+            tooltip: 'Gestion du compte',
+            enabled: _entreprise != null,
+            onSelected: (String valeur) {
+              if (valeur == 'type') _choisirTypeActivite();
+              if (valeur == 'supprimer') _supprimerEntreprise();
+            },
+            itemBuilder: (BuildContext ctx) => const <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'type',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.storefront_rounded),
+                  title: Text("Type d'activité"),
+                  subtitle: Text('Boutique ou distribution'),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'supprimer',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.delete_forever_rounded,
+                      color: Color(0xFFB91C1C)),
+                  title: Text('Supprimer cette entreprise'),
+                  subtitle: Text('Données et comptes compris'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -535,8 +567,7 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
 
   /// Montant saisi, ou `null` si le champ est vide (⇒ prix inchangé).
   static double? _lireMontant(String texte) {
-    final String propre =
-        texte.trim().replaceAll(' ', '').replaceAll(',', '.');
+    final String propre = texte.trim().replaceAll(' ', '').replaceAll(',', '.');
     if (propre.isEmpty) return null;
     return double.tryParse(propre);
   }
@@ -729,6 +760,155 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
   // ---------------------------------------------------------------------------
   // ENCAISSEMENT
   // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // GESTION DU COMPTE — type d'activité et suppression
+  // ---------------------------------------------------------------------------
+
+  /// 🏪 Le type d'activité décide des écrans proposés : une entreprise de
+  /// distribution voit les tournées, une boutique voit sa caisse. C'est ce
+  /// réglage qui « range » les entreprises qui existaient déjà.
+  Future<void> _choisirTypeActivite() async {
+    final Entreprise? entreprise = _entreprise;
+    if (entreprise == null) return;
+
+    final TypeActivite? actuel = entreprise.typeActivite;
+
+    final String? choix = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => SimpleDialog(
+        title: Text("Type d'activité — ${entreprise.nom}",
+            overflow: TextOverflow.ellipsis),
+        children: <Widget>[
+          RadioListTile<String>(
+            value: 'boutique',
+            // ignore: deprecated_member_use
+            groupValue: actuel?.code ?? 'aucun',
+            // ignore: deprecated_member_use
+            onChanged: (String? v) => Navigator.of(ctx).pop(v),
+            title: const Text('Boutique'),
+            subtitle: const Text('Caisse, stock, ventes, clients'),
+          ),
+          RadioListTile<String>(
+            value: 'distribution',
+            // ignore: deprecated_member_use
+            groupValue: actuel?.code ?? 'aucun',
+            // ignore: deprecated_member_use
+            onChanged: (String? v) => Navigator.of(ctx).pop(v),
+            title: const Text('Distribution'),
+            subtitle: const Text('Tournées, agents, récipients, bonus'),
+          ),
+          RadioListTile<String>(
+            value: 'aucun',
+            // ignore: deprecated_member_use
+            groupValue: actuel?.code ?? 'aucun',
+            // ignore: deprecated_member_use
+            onChanged: (String? v) => Navigator.of(ctx).pop(v),
+            title: const Text('Non renseigné'),
+            subtitle: const Text('Tous les écrans restent visibles'),
+          ),
+        ],
+      ),
+    );
+
+    if (choix == null) return;
+
+    final TypeActivite? nouveau =
+        choix == 'aucun' ? null : TypeActivite.depuis(choix);
+
+    setState(() => _actionEnCours = true);
+    try {
+      await _service.definirTypeActivite(entreprise.id, nouveau);
+      if (!mounted) return;
+      _afficherMessage(
+        nouveau == null
+            ? 'Type effacé : tous les écrans redeviennent visibles.'
+            : 'Type d\'activité enregistré : ${nouveau.libelle}.',
+      );
+      await _charger(silencieux: true);
+    } on EntrepriseServiceException catch (e) {
+      if (!mounted) return;
+      _afficherMessage(e.message, estErreur: true);
+    } finally {
+      if (mounted) setState(() => _actionEnCours = false);
+    }
+  }
+
+  /// 🗑️ Destruction COMPLÈTE : entreprise, données applicatives et comptes.
+  ///
+  /// Deux garde-fous : une confirmation écrite (« SUPPRIMER ») et le contrôle
+  /// de rôle côté serveur (Super Administrateur). Utile pour les comptes de
+  /// démonstration créés pendant les formations.
+  Future<void> _supprimerEntreprise() async {
+    final Entreprise? entreprise = _entreprise;
+    if (entreprise == null) return;
+
+    final TextEditingController saisie = TextEditingController();
+
+    final bool? confirme = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Supprimer définitivement ?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Entreprise « ${entreprise.nom} » : ses ventes, son stock, ses '
+              'clients, son abonnement et ses comptes seront effacés. '
+              'Cette action est irréversible.',
+            ),
+            const SizedBox(height: 12),
+            const Text('Écrivez SUPPRIMER pour confirmer :'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: saisie,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                hintText: 'SUPPRIMER',
+                prefixIcon: Icon(Icons.keyboard_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFB91C1C)),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    final String texte = saisie.text.trim().toUpperCase();
+    saisie.dispose();
+    if (confirme != true) return;
+
+    setState(() => _actionEnCours = true);
+    try {
+      final Map<String, dynamic> resultat = await _service.supprimerEntreprise(
+        entrepriseId: entreprise.id,
+        confirmation: texte,
+      );
+      if (!mounted) return;
+      _afficherMessage(
+        'Entreprise supprimée '
+        '(${resultat['comptes_supprimes'] ?? 0} compte(s)).',
+      );
+      if (mounted) context.pop(true);
+    } on EntrepriseServiceException catch (e) {
+      if (!mounted) return;
+      _afficherMessage(e.message, estErreur: true);
+    } finally {
+      if (mounted) setState(() => _actionEnCours = false);
+    }
+  }
 
   Future<void> _ouvrirEncaissement() async {
     final Entreprise? entreprise = _entreprise;
@@ -1054,8 +1234,8 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
 
   Widget _carteNiveau(ThemeData theme, Entreprise entreprise) {
     return FutureBuilder<NiveauEntreprise>(
-      future: NiveauxAbonnementService.instance
-          .lireNiveauEntreprise(entreprise.id),
+      future:
+          NiveauxAbonnementService.instance.lireNiveauEntreprise(entreprise.id),
       builder: (BuildContext ctx, AsyncSnapshot<NiveauEntreprise> snap) {
         final List<Widget> enfants = <Widget>[];
 

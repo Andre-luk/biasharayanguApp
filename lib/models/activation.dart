@@ -144,7 +144,8 @@ class EntreeActivation {
 
   factory EntreeActivation.fromMap(Map<String, dynamic> map) {
     return EntreeActivation(
-      etape: EtapeHistoriqueActivation.fromCode(parseStringOrNull(map['etape'])),
+      etape:
+          EtapeHistoriqueActivation.fromCode(parseStringOrNull(map['etape'])),
       role: parseStringOrNull(map['role']),
       montant: parseDoubleOrNull(map['montant']),
       modePaiement: parseStringOrNull(map['mode_paiement']),
@@ -222,6 +223,22 @@ class EtatActivation {
 
   /// `true` si l'abonnement est intégralement réglé.
   bool get estSolde => soldeRestant <= 0;
+
+  /// `true` si l'abonnement est échu (statut ou date dépassée).
+  bool get abonnementEchu {
+    if (statut == StatutAbonnement.expire ||
+        statut == StatutAbonnement.enAttenteComplement) {
+      return true;
+    }
+    final DateTime? echeance = dateExpiration;
+    return echeance != null && echeance.isBefore(DateTime.now());
+  }
+
+  /// `true` si le client doit ouvrir un nouveau cycle avant de pouvoir payer :
+  /// abonnement échu ET rien à régler sur le cycle précédent.
+  ///
+  /// C'est exactement le cas qui bloquait le renouvellement en autonomie.
+  bool get doitRenouveler => abonnementEchu && estSolde;
 
   /// Taux de règlement (0 → 1), pour la barre de progression.
   double get tauxPaiement {

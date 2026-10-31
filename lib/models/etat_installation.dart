@@ -120,3 +120,42 @@ class EtatInstallation {
     );
   }
 }
+
+/// Résultat de `rpc_abonnement_preparer_renouvellement`.
+///
+/// Ce que le client doit comprendre en une ligne : « un nouveau mois est
+/// ouvert, voici ce qu'il reste à payer ». Le serveur refuse d'ouvrir un
+/// cycle si l'abonnement court encore (pas de double facturation).
+class PreparationRenouvellement {
+  const PreparationRenouvellement({
+    this.cycleOuvert = false,
+    this.motif = '',
+    this.soldeRestant = 0,
+    this.prixMensuel = 0,
+    this.devise = 'CDF',
+  });
+
+  /// `true` si un nouveau cycle vient d'être ouvert par cet appel.
+  final bool cycleOuvert;
+
+  /// `CYCLE_OUVERT`, `DEJA_OUVERT` ou `CYCLE_EN_COURS`.
+  final String motif;
+
+  final double soldeRestant;
+  final double prixMensuel;
+  final String devise;
+
+  bool get aPayer => soldeRestant > 0.0001;
+
+  static const PreparationRenouvellement aucune = PreparationRenouvellement();
+
+  factory PreparationRenouvellement.depuisJson(Map<String, dynamic> json) {
+    return PreparationRenouvellement(
+      cycleOuvert: json['cycle_ouvert'] == true,
+      motif: parseString(json['motif']),
+      soldeRestant: parseDouble(json['solde_restant']),
+      prixMensuel: parseDouble(json['prix_mensuel']),
+      devise: parseString(json['devise'], fallback: 'CDF'),
+    );
+  }
+}

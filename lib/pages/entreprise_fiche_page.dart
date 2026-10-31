@@ -110,10 +110,18 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
     );
     final TextEditingController noteCtrl = TextEditingController();
 
+    // 🪙 Quotas IA inclus dans l'abonnement : ils sont crédités tout seuls à
+    // chaque cycle payé. Vide = on garde la valeur du pack.
+    final TextEditingController quotasCtrl = TextEditingController(
+      text: fiche.quotasIaMensuels == null
+          ? ''
+          : fiche.quotasIaMensuels!.toString(),
+    );
+
     final bool? confirme = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
-        title: const Text('Ajuster les deux prix'),
+        title: const Text('Prix de l\'abonnement et quotas IA'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -144,6 +152,17 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: quotasCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Quotas IA par mois (optionnel)',
+                  helperText: 'Crédités automatiquement à chaque cycle payé. '
+                      'Vide = valeur du pack.',
+                  prefixIcon: Icon(Icons.auto_awesome_rounded),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
                 controller: noteCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Motif (optionnel)',
@@ -170,6 +189,7 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
       installationCtrl.dispose();
       mensuelCtrl.dispose();
       noteCtrl.dispose();
+      quotasCtrl.dispose();
       return;
     }
 
@@ -180,7 +200,17 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
         mensuel: _montant(mensuelCtrl.text),
         note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
       );
-      _message('Prix enregistrés.');
+
+      // Les quotas IA suivent le même geste : ce que le client paie et ce
+      // qu'il reçoit en assistant IA se décident au même endroit.
+      final String quotasTexte = quotasCtrl.text.trim();
+      await EntrepriseService.instance.definirQuotasIa(
+        entrepriseId: widget.entrepriseId,
+        quotas: quotasTexte.isEmpty ? null : int.tryParse(quotasTexte),
+        note: noteCtrl.text.trim().isEmpty ? null : noteCtrl.text.trim(),
+      );
+
+      _message('Prix et quotas IA enregistrés.');
       await _charger();
     } on EntrepriseServiceException catch (e) {
       _message(e.message, estErreur: true);
@@ -188,6 +218,7 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
       installationCtrl.dispose();
       mensuelCtrl.dispose();
       noteCtrl.dispose();
+      quotasCtrl.dispose();
     }
   }
 
@@ -293,8 +324,7 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
           children: <Widget>[
             const Icon(Icons.info_outline_rounded, size: 44),
             const SizedBox(height: 12),
-            Text(_erreur ?? 'Fiche indisponible.',
-                textAlign: TextAlign.center),
+            Text(_erreur ?? 'Fiche indisponible.', textAlign: TextAlign.center),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: _charger,
@@ -533,8 +563,7 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
                       ),
                       Text(
                         <String>[
-                          if (p.createdAt != null)
-                            formatDate(p.createdAt!),
+                          if (p.createdAt != null) formatDate(p.createdAt!),
                           if ((p.modePaiement ?? '').isNotEmpty)
                             p.modePaiement!,
                           if (p.prolongationJours > 0)
@@ -590,8 +619,7 @@ class _EntrepriseFichePageState extends State<EntrepriseFichePage> {
                               fontSize: 13, fontWeight: FontWeight.w600)),
                       Text(
                         <String>[
-                          if (e.createdAt != null)
-                            formatDate(e.createdAt!),
+                          if (e.createdAt != null) formatDate(e.createdAt!),
                           if (e.montant != null) formatMontant(e.montant!),
                           if ((e.modePaiement ?? '').isNotEmpty)
                             e.modePaiement!,
