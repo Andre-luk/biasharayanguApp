@@ -19,6 +19,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/activation.dart';
+import 'package:biashara_yangu/models/etat_installation.dart';
 import 'package:biashara_yangu/models/paiement_serdipay.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
@@ -54,6 +55,10 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   String? _erreur;
 
   OperateurSerdipay _operateur = OperateurSerdipay.orange;
+
+  /// Nature du cycle ouvert par la préparation : « Installation (premier mois
+  /// inclus) » ou « Abonnement du mois ». Le client doit savoir ce qu'il paie.
+  PreparationRenouvellement _preparation = PreparationRenouvellement.aucune;
   PaiementSerdipay? _paiement;
 
   @override
@@ -85,8 +90,9 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
       // 🔁 ABONNEMENT ÉCHU ET DÉJÀ SOLDÉ : il n'y a « rien à payer » parce
       // qu'aucun cycle n'est ouvert. On l'ouvre au prix mensuel négocié —
       // c'est ce qui permet au client de se renouveler SEUL.
+      PreparationRenouvellement preparation = PreparationRenouvellement.aucune;
       if (widget.objet == 'abonnement' && etat.doitRenouveler) {
-        await AbonnementService.instance.preparerRenouvellement();
+        preparation = await AbonnementService.instance.preparerRenouvellement();
         etat = await ActivationService.instance.chargerEtat();
       }
 
@@ -95,6 +101,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
       if (!mounted) return;
       setState(() {
         _etat = etat;
+        _preparation = preparation;
         _chargement = false;
         if (_telephone.text.trim().isEmpty && numero != null) {
           _telephone.text = numero;
@@ -306,6 +313,13 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                   : formatMontant(solde),
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
+            if (_preparation.cycleOuvert) ...<Widget>[
+              const SizedBox(height: 4),
+              Text(
+                _preparation.libelleCycle,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
             const SizedBox(height: 6),
             Text(
               "Le montant est vérifié et recalculé sur le serveur au moment "

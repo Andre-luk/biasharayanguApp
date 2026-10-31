@@ -16,7 +16,10 @@
 // calculerFinCycle, evaluerAcces) reproduisent ces règles côté application :
 // elles servent à l'affichage immédiat et aux tests unitaires, sans réseau.
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
@@ -130,6 +133,17 @@ class AbonnementService {
   static final AbonnementService instance = AbonnementService._();
 
   static const int _dureeAbonnementParDefautJours = 30;
+
+  /// ⚡ DÉMARRAGE RAPIDE, MÊME SANS INTERNET.
+  ///
+  /// Sans délai maximal, un contrôle réseau sur un appareil hors ligne peut
+  /// attendre longtemps avant d'échouer : l'application restait bloquée sur
+  /// l'écran de lancement. Au-delà de ce délai, on utilise la dernière
+  /// décision connue du serveur (voir [_etatMemorise]).
+  static const Duration delaiReseau = Duration(seconds: 4);
+
+  /// Clé du cache : dernière décision d'accès rendue par le serveur.
+  static const String cleCacheAcces = 'acces_abonnement_dernier';
 
   SupabaseClient get _client => SupabaseService.instance.client;
 
@@ -730,7 +744,7 @@ class AbonnementService {
         await _client.rpc(
           'rpc_entreprises_de_utilisateur',
           params: {'p_user_id': userId},
-        ),
+        ).timeout(delaiReseau),
       );
 
       // 🧾 MODULE 17 — filet de sécurité : sur certaines bases, la RPC
@@ -740,17 +754,74 @@ class AbonnementService {
       // alors l'état du DOSSIER D'ACTIVATION (module 14), qui répond
       // toujours pour le compte connecté.
       if (lignes.isEmpty) {
-        lignes = await _lignesDepuisDossierActivation();
+        lignes = await _lignesDepuisDossierActivation().timeout(delaiReseau);
       }
 
       etat = evaluerAcces(lignes);
+      // Le serveur a répondu : on garde sa décision pour les démarrages
+      // hors ligne (une seule écriture locale, non bloquante).
+      await _memoriserEtat(etat);
     } catch (e) {
-      debugPrint('AbonnementService.verifierAccesUtilisateur (fail-open): $e');
-      etat = const EtatAccesAbonnement.ouvert();
+      debugPrint(
+          'AbonnementService.verifierAccesUtilisateur (hors ligne ?): $e');
+      // 🔌 HORS LIGNE : on reprend la dernière décision connue du serveur.
+      // Sans cache (premier lancement), on laisse l'accès complet : on ne
+      // bloque jamais un commerçant à cause d'un incident réseau.
+      etat = await _etatMemorise() ?? const EtatAccesAbonnement.ouvert();
     }
 
     acces.value = etat;
     return etat;
+  }
+
+  // ---------------------------------------------------------------------------
+  // CACHE LOCAL DE LA DÉCISION D'ACCÈS (démarrage hors ligne)
+  // ---------------------------------------------------------------------------
+
+  /// Mémorise la décision du serveur (JSON minimal).
+  Future<void> _memoriserEtat(EtatAccesAbonnement etat) async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        cleCacheAcces,
+        jsonEncode(<String, dynamic>{
+          'bloque': etat.bloque,
+          'lecture_seule': etat.lectureSeule,
+          'en_attente_activation': etat.enAttenteActivation,
+          'message': etat.message,
+          'statut': etat.statut?.code,
+          'le': DateTime.now().toIso8601String(),
+        }),
+      );
+    } catch (e) {
+      debugPrint('AbonnementService._memoriserEtat : $e');
+    }
+  }
+
+  /// Relit la dernière décision connue (`null` si aucune).
+  Future<EtatAccesAbonnement?> _etatMemorise() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String? brut = prefs.getString(cleCacheAcces);
+      if (brut == null || brut.isEmpty) return null;
+
+      final dynamic decode = jsonDecode(brut);
+      final Map<String, dynamic>? map = parseMap(decode);
+      if (map == null) return null;
+
+      final String? codeStatut = parseStringOrNull(map['statut']);
+      return EtatAccesAbonnement(
+        bloque: map['bloque'] == true,
+        lectureSeule: map['lecture_seule'] == true,
+        enAttenteActivation: map['en_attente_activation'] == true,
+        message: parseStringOrNull(map['message']),
+        statut:
+            codeStatut == null ? null : StatutAbonnement.fromCode(codeStatut),
+      );
+    } catch (e) {
+      debugPrint('AbonnementService._etatMemorise : $e');
+      return null;
+    }
   }
 
   /// 🧾 MODULE 17 — construit une « ligne d'accès » à partir du dossier

@@ -195,7 +195,7 @@ class _MonActivationPageState extends State<MonActivationPage> {
         );
       } else if (prep.aPayer) {
         _afficher(
-          'Nouveau mois ouvert : ${formatMontant(prep.soldeRestant)} '
+          '${prep.libelleCycle} : ${formatMontant(prep.soldeRestant)} '
           '${prep.devise} à régler.',
         );
       } else {

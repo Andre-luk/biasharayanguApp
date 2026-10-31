@@ -475,8 +475,7 @@ class PermissionService {
     _RegleRoute('/import-produits', PageAccess.articles, ActionAccess.creer),
     // 🪙 MODULE 18 — taux de change de la plateforme (Super Admin : mêmes
     // droits que la configuration de l'assistant IA).
-    _RegleRoute(
-        '/admin/devises', PageAccess.parametres, ActionAccess.modifier),
+    _RegleRoute('/admin/devises', PageAccess.parametres, ActionAccess.modifier),
 
     // 🤖 MODULE 13 — assistant IA (chat + quotas) et configuration IA
     // (réservée au Super Admin via `parametres/modifier`, revérifié serveur).
@@ -570,8 +569,8 @@ class PermissionService {
     _RegleRoute('/main/vitrine', PageAccess.publications),
     _RegleRoute('/main/publications', PageAccess.publications),
     _RegleRoute('/main/visibilite', PageAccess.visibilite),
-    _RegleRoute('/main/publicites/new', PageAccess.publicites,
-        ActionAccess.creer),
+    _RegleRoute(
+        '/main/publicites/new', PageAccess.publicites, ActionAccess.creer),
     _RegleRoute('/main/publicites', PageAccess.publicites),
     _RegleRoute('/admin/publicites', PageAccess.publicites),
 
@@ -684,11 +683,15 @@ class PermissionService {
   /// Relit `app_settings.permissions_roles`.
   Future<void> rechargerSurcharges() async {
     try {
+      // ⚡ Hors ligne, cette lecture ne doit pas retarder le démarrage :
+      // au-delà de 4 s on garde les permissions par défaut (fail-open,
+      // comportement historique).
       final dynamic reponse = await _client
           .from('app_settings')
           .select('value')
           .eq('key', cleAppSettings)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 4));
 
       final Map<String, dynamic>? ligne = parseMap(reponse);
       _surcharges

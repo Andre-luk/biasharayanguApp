@@ -473,7 +473,62 @@ le rapport de tournée liste leurs numéros, heures et montants.
 
 ---
 
-## 10. Garde-fous transverses
+## 10. Phase 9 — Installation optionnelle, abonnement obligatoire, démarrage hors ligne (LIVRÉE le 31/10/2026)
+
+> **État au 31/10/2026 : LIVRÉE** — migration
+> `20260916000090_mode_simple_abonnement_obligatoire.sql` (11/11),
+> cache local de la décision d'accès, délais réseau bornés.
+
+### La règle demandée
+
+« Le client peut **ou non** payer l'installation, mais il est **obligé** de
+payer un abonnement. »
+
+| Cas | Ce que le système demande |
+|---|---|
+| `prix_installation` défini (> 0), **aucun versement** enregistré | l'**installation** (premier mois inclus) — une seule fois |
+| `prix_installation` = 0 / NULL (offertes) | directement l'**abonnement mensuel** |
+| après le premier versement | **l'abonnement mensuel**, à chaque cycle |
+| aucun prix défini nulle part | `PRIX_ABSENT` : la plateforme doit fixer un tarif (aucun accès payant n'est ouvert) |
+
+### Pourquoi ça ne marchait pas
+
+`rpc_entreprise_creer_simple` (mode simple) pose `date_activation = now()` pour
+activer l'essai de 7 jours. Le moteur en déduisait « compte déjà activé » et
+facturait le **mensuel** : l'installation n'était jamais réclamée, même quand
+un prix avait été négocié.
+
+### Les deux corrections (sans toucher au moteur)
+
+1. **`rpc_abonnement_prix_du_cycle`** : si *aucun versement* n'existe sur le
+   dossier et qu'une installation est définie, le prochain cycle est
+   l'installation. Nouvelle RPC `rpc_abonnement_type_cycle` pour l'afficher.
+2. **`rpc_abonnement_preparer_renouvellement`** : à l'ouverture du cycle, le
+   statut passe à `EN_ATTENTE_COMPLEMENT`. C'est ce qui **fige le montant** :
+   le moteur ne rouvre un cycle que sur `EXPIRE` ou solde nul, donc il crédite
+   exactement le montant préparé (installation ou mensuel), sans le recalculer.
+
+### Démarrage rapide, même sans Internet
+
+Le socle local existait déjà (`db_helper` : produits, ventes, clients,
+dépenses, dettes, inventaire, approvisionnements). Deux points bloquaient :
+
+- `AbonnementService.verifierAccesUtilisateur` était **attendu sans limite de
+  temps** au démarrage → l'écran de lancement pouvait rester figé hors ligne.
+  Désormais : **délai de 4 s**, puis **reprise de la dernière décision connue**
+  du serveur (`SharedPreferences`, clé `acces_abonnement_dernier`). Sans cache
+  (premier lancement), accès complet : on ne bloque jamais un commerçant à
+  cause du réseau.
+- `PermissionService.rechargerSurcharges` (lecture `app_settings`) : **délai
+  de 4 s**, puis permissions par défaut (fail-open).
+
+⚠️ Ce qui reste à faire pour un mode 100 % hors ligne : la **file d'attente
+d'écritures** (ventes saisies sans réseau, rejouées à la reconnexion) et la
+résolution des conflits. Le socle SQLite existe ; c'est un chantier à part.
+
+---
+
+## 11. Garde-fous transverses
 
 - **Une entreprise = un périmètre** : toute nouvelle table porte `owner_id` + RLS.
 - **Rôles vérifiés côté serveur** : aucune nouvelle RPC ne fait confiance au client.

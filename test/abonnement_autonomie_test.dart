@@ -117,6 +117,44 @@ void main() {
       expect(p.motif, 'CYCLE_EN_COURS');
     });
 
+    test('le PREMIER cycle payant est l\'installation', () {
+      final PreparationRenouvellement p =
+          PreparationRenouvellement.depuisJson(<String, dynamic>{
+        'cycle_ouvert': true,
+        'motif': 'CYCLE_OUVERT',
+        'type_cycle': 'installation',
+        'solde_restant': 50000,
+        'devise': 'CDF',
+      });
+
+      expect(p.estInstallation, isTrue);
+      expect(p.libelleCycle, contains('Installation'));
+      expect(p.soldeRestant, 50000);
+    });
+
+    test('ensuite, c\'est l\'abonnement du mois', () {
+      final PreparationRenouvellement p =
+          PreparationRenouvellement.depuisJson(<String, dynamic>{
+        'cycle_ouvert': true,
+        'type_cycle': 'abonnement',
+        'solde_restant': 15000,
+      });
+
+      expect(p.estInstallation, isFalse);
+      expect(p.libelleCycle, 'Abonnement du mois');
+    });
+
+    test('sans indication, on suppose le mensuel (jamais l\'installation)', () {
+      final PreparationRenouvellement p =
+          PreparationRenouvellement.depuisJson(<String, dynamic>{
+        'cycle_ouvert': true,
+        'solde_restant': 15000,
+      });
+
+      expect(p.typeCycle, 'abonnement');
+      expect(p.estInstallation, isFalse);
+    });
+
     test('réponse vide : aucune préparation inventée', () {
       expect(PreparationRenouvellement.aucune.aPayer, isFalse);
       expect(PreparationRenouvellement.aucune.soldeRestant, 0);

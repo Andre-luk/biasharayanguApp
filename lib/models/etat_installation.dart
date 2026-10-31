@@ -133,6 +133,7 @@ class PreparationRenouvellement {
     this.soldeRestant = 0,
     this.prixMensuel = 0,
     this.devise = 'CDF',
+    this.typeCycle = 'abonnement',
   });
 
   /// `true` si un nouveau cycle vient d'être ouvert par cet appel.
@@ -145,7 +146,18 @@ class PreparationRenouvellement {
   final double prixMensuel;
   final String devise;
 
+  /// `installation` (premier cycle payant) ou `abonnement` (mensuel).
+  final String typeCycle;
+
   bool get aPayer => soldeRestant > 0.0001;
+
+  /// Vrai quand le cycle ouvert est le PREMIER paiement (installation).
+  bool get estInstallation => typeCycle == 'installation';
+
+  /// Libellé à afficher : l'installation comprend le premier mois.
+  String get libelleCycle => estInstallation
+      ? 'Installation (premier mois inclus)'
+      : 'Abonnement du mois';
 
   static const PreparationRenouvellement aucune = PreparationRenouvellement();
 
@@ -156,6 +168,7 @@ class PreparationRenouvellement {
       soldeRestant: parseDouble(json['solde_restant']),
       prixMensuel: parseDouble(json['prix_mensuel']),
       devise: parseString(json['devise'], fallback: 'CDF'),
+      typeCycle: parseString(json['type_cycle'], fallback: 'abonnement'),
     );
   }
 }
