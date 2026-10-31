@@ -640,6 +640,31 @@ Un versement partiel a maintenant une **durée lisible** :
 - Payer la totalité → `cycle_complet = true`, 30 jours.
 - Un montant sous le prix d'une journée → message explicite, jamais un blocage.
 
+### Rattrapage des comptes déjà existants (migration 0093)
+
+Un trigger `BEFORE INSERT OR UPDATE` **n'a aucun effet rétroactif** : après
+l'exécution des migrations, les entreprises créées avant `0091` restaient avec
+`prix_*` à `NULL` (moteur bloqué, « prix absent ») et celles qui attendaient
+une validation administrative restaient bloquées.
+
+`0093` fait **une seule fois** ce que le trigger fait désormais tout seul, et
+est **idempotente** :
+
+- prix par défaut appliqués **là où ils manquent seulement** (boutique
+  30 000 / 10 000, distribution 50 000 / 20 000) — une négociation n'est
+  jamais écrasée ;
+- `en_attente_verification` → `actif` + `ESSAI_7J` + 7 jours ;
+- `raise notice` indique le nombre de lignes traitées, `raise warning` liste
+  les comptes restés sans prix.
+
+Elle ne touche ni les comptes déjà `actif` / `restreint` / `rejete`, ni les
+dates d'expiration en cours.
+
+**Contrôle d'installation** : `docs/verification_migrations.sql` (lecture
+seule) liste chaque objet attendu de `0083` à `0093` avec `OK` / `MANQUANT`,
+puis propose les cinq vérifications de données (barème, comptes sans prix,
+dossiers en attente, entreprises de distribution, rattachement des agents).
+
 ### L'agent encaisse pour l'entreprise (migration 0092)
 
 Demande du patron : « si c'est un agent qui crée le compte, il peut effectuer
