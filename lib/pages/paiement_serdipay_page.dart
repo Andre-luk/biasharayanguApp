@@ -61,6 +61,9 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   PreparationRenouvellement _preparation = PreparationRenouvellement.aucune;
   PaiementSerdipay? _paiement;
 
+  /// « 5 000 ⇒ environ 5 jours » : recalculé à chaque frappe, en LOCAL.
+  SimulationAvance _simulation = SimulationAvance.vide;
+
   @override
   void initState() {
     super.initState();
@@ -110,6 +113,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
           _montant.text = etat.soldeRestant.toStringAsFixed(0);
         }
       });
+      _recalculerAvance();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -187,6 +191,32 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
         _enCours = false;
       });
     }
+  }
+
+  /// Recalcule la durée achetée par le montant saisi — sans réseau.
+  ///
+  /// Règle (identique au serveur) : prix d'une journée = prix du cycle / 30.
+  /// Donc 5 000 sur un mois à 30 000 donne 5 jours.
+  void _recalculerAvance() {
+    if (widget.objet != 'abonnement') return;
+
+    final double solde = _etat?.soldeRestant ?? 0;
+    final double? saisi = double.tryParse(
+      _montant.text.replaceAll(' ', '').replaceAll(',', '.'),
+    );
+
+    final double prixCycle = _preparation.prixMensuel > 0
+        ? _preparation.prixMensuel
+        : solde;
+
+    final SimulationAvance nouvelle = SimulationAvance.calculer(
+      montant: saisi ?? 0,
+      resteAPayer: solde,
+      prixCycle: prixCycle,
+    );
+
+    if (!mounted) return;
+    setState(() => _simulation = nouvelle);
   }
 
   /// Montant d'une avance, ou `null` pour payer la totalité du solde.
@@ -345,6 +375,67 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
     );
   }
 
+  /// Encart « avance intelligente » : la durée que le montant achète.
+  Widget _encartAvance() {
+    final SimulationAvance sim = _simulation;
+    if (sim.montantSaisi <= 0 && !sim.exploitable) {
+      return const SizedBox.shrink();
+    }
+
+    final bool complet = sim.cycleComplet;
+    final bool zero = sim.insuffisant;
+    final Color teinte = zero
+        ? Colors.orange.shade800
+        : (complet ? Colors.green.shade700 : Colors.blue.shade700);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: teinte.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: teinte.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(
+            complet
+                ? Icons.verified_rounded
+                : (zero ? Icons.info_outline_rounded : Icons.schedule_rounded),
+            size: 18,
+            color: teinte,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  sim.libelle,
+                  style: TextStyle(
+                    color: teinte,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (sim.dateFinEstimee != null && sim.joursObtenus > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Droit d\'utiliser l\'application jusqu\'au '
+                      '${formatDate(sim.dateFinEstimee!)}.',
+                      style: TextStyle(fontSize: 12, color: teinte),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _formulaire() {
     final bool rienAPayer =
         widget.objet != 'facture' && (_etat?.estSolde ?? false);
@@ -383,6 +474,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                 inputFormatters: <TextInputFormatter>[
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                 ],
+                onChanged: (_) => _recalculerAvance(),
                 decoration: InputDecoration(
                   labelText: 'Montant à payer',
                   helperText: 'Vous pouvez payer une partie seulement : '
@@ -391,6 +483,8 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                   prefixIcon: const Icon(Icons.payments_rounded),
                 ),
               ),
+              const SizedBox(height: 10),
+              _encartAvance(),
             ],
             const SizedBox(height: 16),
             const Text(

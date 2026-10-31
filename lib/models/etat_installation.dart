@@ -172,3 +172,111 @@ class PreparationRenouvellement {
     );
   }
 }
+
+/// Résultat de `rpc_abonnement_simulation_avance` — « l'avance intelligente ».
+///
+/// Question du client : « je verse 5 000 maintenant, ça me donne quoi ? »
+/// Réponse : le prix du cycle divisé par 30 donne un prix par jour, donc
+/// 5 000 sur un mois à 30 000 = environ 5 jours.
+///
+/// Le même calcul existe en LOCAL ([SimulationAvance.calculer]) pour répondre
+/// instantanément à l'écran et **hors ligne**, sans attendre le serveur.
+class SimulationAvance {
+  const SimulationAvance({
+    this.montantSaisi = 0,
+    this.resteAPayer = 0,
+    this.prixCycle = 0,
+    this.prixJour = 0,
+    this.joursObtenus = 0,
+    this.cycleComplet = false,
+    this.devise = 'CDF',
+    this.dateFinEstimee,
+  });
+
+  final double montantSaisi;
+  final double resteAPayer;
+  final double prixCycle;
+  final double prixJour;
+
+  /// Nombre de jours que ce montant achète (0 si insuffisant).
+  final int joursObtenus;
+
+  /// `true` si le montant solde tout le cycle (un mois entier).
+  final bool cycleComplet;
+
+  final String devise;
+  final DateTime? dateFinEstimee;
+
+  static const SimulationAvance vide = SimulationAvance();
+
+  bool get exploitable => montantSaisi > 0 && (prixJour > 0 || cycleComplet);
+
+  bool get insuffisant => montantSaisi > 0 && !cycleComplet && joursObtenus <= 0;
+
+  /// Phrase affichée sous le champ de montant.
+  String get libelle {
+    if (montantSaisi <= 0) {
+      return 'Saisissez un montant : nous vous dirons combien de jours il couvre.';
+    }
+    if (cycleComplet) {
+      return 'Mois complet réglé : l\'abonnement repart pour 30 jours.';
+    }
+    if (joursObtenus <= 0) {
+      return 'Montant inférieur au prix d\'une journée '
+          '(${prixJour.toStringAsFixed(0)} $devise).';
+    }
+    return 'Ce versement couvre environ $joursObtenus jour(s) '
+        '(${prixJour.toStringAsFixed(0)} $devise/jour).';
+  }
+
+  factory SimulationAvance.depuisJson(Map<String, dynamic> json) {
+    final String? fin = parseStringOrNull(json['date_fin_estimee']);
+    return SimulationAvance(
+      montantSaisi: parseDouble(json['montant_saisi']),
+      resteAPayer: parseDouble(json['reste_a_payer']),
+      prixCycle: parseDouble(json['prix_cycle']),
+      prixJour: parseDouble(json['prix_jour']),
+      joursObtenus: parseInt(json['jours_obtenus']),
+      cycleComplet: json['cycle_complet'] == true,
+      devise: parseString(json['devise'], fallback: 'CDF'),
+      dateFinEstimee: fin == null ? null : DateTime.tryParse(fin),
+    );
+  }
+
+  /// Calcul **hors ligne**, identique à la règle serveur :
+  /// `prix_jour = prix_du_cycle / 30`, jours plafonnés à 30.
+  ///
+  /// [resteAPayer] à 0 ou inconnu → on prend [prixCycle] comme référence.
+  factory SimulationAvance.calculer({
+    required double montant,
+    required double resteAPayer,
+    required double prixCycle,
+    String devise = 'CDF',
+    DateTime? maintenant,
+  }) {
+    // Le prix d'une journée se lit sur le PRIX DU CYCLE (30 000 ⇒ 1 000/jour),
+    // pas sur le reste : une avance garde la même valeur en jours.
+    final double reference = prixCycle > 0.0001 ? prixCycle : resteAPayer;
+    final double jour = reference > 0 ? reference / 30.0 : 0;
+    final bool complet = montant > 0 &&
+        resteAPayer > 0.0001 &&
+        montant + 0.01 >= resteAPayer;
+    int jours = 0;
+    if (!complet && jour > 0 && montant > 0) {
+      jours = (montant / jour).floor();
+      if (jours > 30) jours = 30;
+    }
+    final DateTime base = maintenant ?? DateTime.now();
+    return SimulationAvance(
+      montantSaisi: montant,
+      resteAPayer: resteAPayer,
+      prixCycle: prixCycle,
+      prixJour: jour,
+      joursObtenus: complet ? 30 : jours,
+      cycleComplet: complet,
+      devise: devise,
+      dateFinEstimee:
+          base.add(Duration(days: complet ? 30 : jours)),
+    );
+  }
+}

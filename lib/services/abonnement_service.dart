@@ -478,6 +478,32 @@ class AbonnementService {
     }
   }
 
+  /// « L'avance intelligente » : combien de jours ce montant achète-t-il ?
+  ///
+  /// Le serveur reste la référence (`rpc_abonnement_simulation_avance`), mais
+  /// l'écran de paiement utilise [SimulationAvance.calculer] en local pour
+  /// répondre immédiatement et **même hors ligne**.
+  Future<SimulationAvance?> simulerAvance(
+    double montant, {
+    String? entrepriseId,
+  }) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_abonnement_simulation_avance',
+        params: <String, dynamic>{
+          'p_entreprise': entrepriseId,
+          'p_montant': montant,
+        },
+      );
+      final Map<String, dynamic>? json = parseMap(reponse);
+      if (json == null) return null;
+      return SimulationAvance.depuisJson(json);
+    } catch (e) {
+      debugPrint('AbonnementService.simulerAvance : $e');
+      return null;
+    }
+  }
+
   /// Calcule l'état complet de l'abonnement d'une entreprise :
   /// total dû, déjà payé, solde, jours restants et statut effectif.
   Future<SoldeAbonnement> calculerSolde(String entrepriseId) {

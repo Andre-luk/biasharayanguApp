@@ -575,16 +575,91 @@ vers Supabase).
 ventes restent enregistrées sur cet appareil et seront synchronisées
 automatiquement. » + bouton *Réessayer*.
 
+---
+
+## 12. Phase 11 — Barème automatique, activation sans administration, avance intelligente (LIVRÉE le 31/10/2026)
+
+> **État au 31/10/2026 : LIVRÉE** — migration `0091`, `SimulationAvance`
+> (modèle + tests), encart d'avance dans l'écran SerdiPay, reprise des ventes
+> hors ligne par la RPC officielle. **1106 tests verts**, `flutter analyze`
+> 0 erreur.
+
+### Le principe : le client se débrouille seul
+
+Plus aucune étape ne dépend de la bonne volonté d'un administrateur.
+
+| Avant | Maintenant |
+|---|---|
+| création → `en_attente_verification` → validation admin | création → **compte actif, essai 7 jours** |
+| code de validation transmis à l'agent | **aucun code** |
+| prix saisis à la main, souvent oubliés | **barème par défaut** appliqué automatiquement |
+
+Un **trigger `BEFORE INSERT OR UPDATE`** (`abonnement_politique_automatique`)
+fait les deux choses, pour **tous** les chemins de création (client seul, agent
+terrain, administrateur) :
+
+1. `activation_etape = 'en_attente_verification'` → `'actif'`,
+   `statut = 'ESSAI_7J'`, `date_expiration = now() + 7 jours` ;
+2. `prix_installation` / `prix_abonnement_mensuel` remplis **seulement s'ils
+   sont vides**. Un prix négocié garde donc toujours la priorité.
+
+⚠️ Conséquence assumée : un administrateur qui remet une entreprise en
+`en_attente_verification` la réactive immédiatement. C'est le prix de
+« plus d'activation par administration » ; une **suspension** doit passer par
+`statut` / l'accès, pas par l'étape d'activation.
+
+### Le barème (`bareme_abonnement`)
+
+| Profil | Installation | Mensuel | Plafond installation |
+|---|---|---|---|
+| `boutique_simple` | 10 000 | 5 000 | — |
+| `boutique_complete` | 30 000 | 10 000 | — |
+| `distribution` | 50 000 | 20 000 | 100 000 |
+
+- `rpc_bareme_abonnement()` renvoie le barème (lecture seule pour tous).
+- Le profil se choisit sur `entreprises.type_activite` : `distribution` →
+  distribution, sinon boutique complète.
+- La création autonome (`rpc_entreprise_creer_simple`) force le profil
+  `boutique_simple` (10 000 / 5 000) — sauf pour une distribution.
+- Le patron ou l'agent peut changer le prix à la création : il est négocié,
+  donc le barème ne l'écrase plus.
+
+### L'avance intelligente
+
+Un versement partiel a maintenant une **durée lisible** :
+
+> prix d'une journée = **prix du cycle ÷ 30**
+> 30 000 le mois → 1 000 / jour → **5 000 = 5 jours**
+
+- `rpc_abonnement_simulation_avance(p_entreprise, p_montant)` répond
+  `{prix_jour, jours_obtenus, cycle_complet, reste_a_payer, date_fin_estimee}`.
+- Le même calcul existe **en Dart, hors ligne** (`SimulationAvance.calculer`) :
+  l'écran de paiement affiche la durée à chaque frappe, sans réseau.
+- Le prix du jour se lit sur le prix du **cycle**, jamais sur le reste à payer :
+  une avance garde la même valeur en jours même après un premier versement.
+- Payer la totalité → `cycle_complet = true`, 30 jours.
+- Un montant sous le prix d'une journée → message explicite, jamais un blocage.
+
+### Reprise des ventes hors ligne (correctif)
+
+`SyncService._syncVentes` n'écrit plus dans la table `ventes` :
+
+- la vente rejouée passe par **`rpc_vente_valider`** → numéro de vente, contrôle
+  du stock, audit et traçabilité identiques à une vente faite en ligne ;
+- les produits sont poussés **avant** les ventes (la vente a besoin de leur
+  identifiant serveur) ;
+- une vente qui ne peut pas partir n'est **plus sautée en silence** : elle
+  reste dans la file (`is_synced = 0`), `ventesEnAttente` la compte et
+  `dernierMotifVenteBloquee` dit pourquoi.
+
 ⚠️ **Ce qui reste pour un « 100 % hors ligne » complet** :
-1. router les ventes rejouées par la **RPC officielle** (`rpc_vente_valider`)
-   au lieu d'un `insert` REST, pour garder numéro de vente, stock et audit ;
-2. cache local en lecture pour les écrans encore branchés directement sur
+1. cache local en lecture pour les écrans encore branchés directement sur
    Supabase (rapports, abonnements) ;
-3. résolution de conflits (prix modifié hors ligne, stock négatif).
+2. résolution de conflits (prix modifié hors ligne, stock négatif).
 
 ---
 
-## 12. Garde-fous transverses
+## 13. Garde-fous transverses
 
 - **Une entreprise = un périmètre** : toute nouvelle table porte `owner_id` + RLS.
 - **Rôles vérifiés côté serveur** : aucune nouvelle RPC ne fait confiance au client.

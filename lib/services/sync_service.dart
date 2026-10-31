@@ -446,9 +446,29 @@ class SyncService {
     }
   }
 
+  /// Nombre de ventes locales que la reprise n'a PAS pu envoyer.
+  ///
+  /// Aucune vente n'est jamais jetée en silence : une vente bloquée reste
+  /// dans la file (`is_synced = 0`) et son motif est conservé ici.
+  int ventesEnAttente = 0;
+
+  /// Dernier motif de blocage, affiché dans les outils de diagnostic.
+  String? dernierMotifVenteBloquee;
+
+  /// Rejoue les ventes faites HORS LIGNE.
+  ///
+  /// ⚠️ Correctif important : on n'écrit plus directement dans la table
+  /// `ventes`. Une vente rejouée passe par la MÊME transaction que la vente
+  /// en ligne (`rpc_vente_valider`) : numéro de vente, contrôle du stock,
+  /// audit et traçabilité sont donc identiques, et le rapport ne voit aucune
+  /// différence entre une vente faite en ligne et une vente rejouée.
   Future<void> _syncVentes({required String ownerId}) async {
     final unsynced = await _db.getUnsyncedVentes(ownerId: ownerId);
     if (unsynced.isEmpty) return;
+
+    // 1) Les produits doivent d'abord exister côté serveur : la vente a
+    //    besoin de leur identifiant. On pousse donc les produits AVANT.
+    await _syncProduits(ownerId: ownerId);
 
     final localProducts = await _db.getProduits(ownerId: ownerId);
     final productMap = {for (var p in localProducts) p.id: p};
@@ -456,39 +476,105 @@ class SyncService {
     final localClients = await _db.getClients(ownerId: ownerId);
     final clientMap = {for (var c in localClients) c.id: c};
 
+    ventesEnAttente = 0;
+    dernierMotifVenteBloquee = null;
+
     for (final v in unsynced) {
       try {
         final p = productMap[v.produitId];
-        if (p == null || p.supabaseId == null) continue;
-
-        final client = v.clientId != null ? clientMap[v.clientId] : null;
-
-        final Map<String, dynamic> map = {
-          'produit_id': int.tryParse(p.supabaseId!) ?? p.supabaseId,
-          'quantite': v.quantite,
-          'prix': v.prix,
-          'mode_paiement': v.modePaiement ?? 'cash',
-          'date': v.createdAt,
-          'owner_id': ownerId,
-          'seller_id': _sup.currentUserId,
-        };
-
-        // ✅ AJOUT IMPORTANT
-        if (client != null && client.supabaseId != null) {
-          map['client_id'] =
-              int.tryParse(client.supabaseId!) ?? client.supabaseId;
+        if (p == null) {
+          _bloquerVente('Produit introuvable en local (vente ${v.id})');
+          continue;
+        }
+        if (p.supabaseId == null || p.supabaseId!.isEmpty) {
+          // Le produit n'a pas encore d'identifiant serveur : la vente est
+          // CONSERVÉE et repartira au prochain passage, une fois le produit
+          // créé. On ne la saute plus en silence.
+          _bloquerVente(
+            'Produit « ${p.nom} » pas encore synchronisé (vente ${v.id})',
+          );
+          continue;
         }
 
-        final res = await _withRetry(() => _sup.insertVente(map));
-
-        final supabaseId = res['id']?.toString();
-        if (supabaseId != null) {
-          await _db.markVenteAsSynced(v.id!, supabaseId);
+        final int? produitId = int.tryParse(p.supabaseId!);
+        if (produitId == null) {
+          _bloquerVente('Identifiant produit invalide (vente ${v.id})');
+          continue;
         }
+
+        final Client? client = v.clientId != null ? clientMap[v.clientId] : null;
+        final int? clientId = int.tryParse(client?.supabaseId ?? '');
+
+        final List<Map<String, dynamic>> lignes = <Map<String, dynamic>>[
+          <String, dynamic>{
+            'produit_id': produitId,
+            'quantite': v.quantite,
+            'quantite_vendue': v.quantite,
+          },
+        ];
+
+        final dynamic reponse = await _withRetry(
+          () => _sup.client.rpc(
+            'rpc_vente_valider',
+            params: <String, dynamic>{
+              'p_lignes': lignes,
+              'p_mode_paiement': _modePaiementServeur(v.modePaiement),
+              'p_montant_recu': v.prix,
+              'p_client_id': clientId,
+            },
+          ),
+        );
+
+        final String? supabaseId = _idVenteReponse(reponse);
+        await _db.markVenteAsSynced(v.id!, supabaseId ?? '');
       } catch (e) {
-        debugPrint('SyncService: Erreur sync vente: $e');
+        _bloquerVente('Vente ${v.id} : $e');
       }
     }
+
+    if (ventesEnAttente > 0) {
+      debugPrint(
+        'SyncService: $ventesEnAttente vente(s) conservée(s) hors ligne. '
+        'Dernier motif : $dernierMotifVenteBloquee',
+      );
+    }
+  }
+
+  void _bloquerVente(String motif) {
+    ventesEnAttente++;
+    dernierMotifVenteBloquee = motif;
+    debugPrint('SyncService: vente non envoyée — $motif');
+  }
+
+  /// Le serveur attend `especes` / `mobile_money` / `credit`.
+  String _modePaiementServeur(String? mode) {
+    switch ((mode ?? '').trim().toLowerCase()) {
+      case 'cash':
+      case 'especes':
+      case 'espèces':
+        return 'especes';
+      case 'mobile':
+      case 'mobile_money':
+      case 'momo':
+        return 'mobile_money';
+      case 'credit':
+      case 'crédit':
+        return 'credit';
+      default:
+        return 'especes';
+    }
+  }
+
+  /// `rpc_vente_valider` répond `{vente_id: ...}` (ou `{id: ...}` selon la
+  /// version) : on accepte les deux, et l'absence des deux n'est pas grave.
+  String? _idVenteReponse(dynamic reponse) {
+    dynamic brut = reponse;
+    if (brut is List && brut.isNotEmpty) brut = brut.first;
+    if (brut is Map) {
+      final dynamic id = brut['vente_id'] ?? brut['id'];
+      if (id != null) return id.toString();
+    }
+    return null;
   }
 
   Future<void> _syncClients({required String ownerId}) async {
