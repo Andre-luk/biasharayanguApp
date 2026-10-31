@@ -528,7 +528,63 @@ résolution des conflits. Le socle SQLite existe ; c'est un chantier à part.
 
 ---
 
-## 11. Garde-fous transverses
+## 11. Phase 10 — Paramètres adaptatifs et reprise hors ligne (LIVRÉE le 31/10/2026)
+
+> **État au 31/10/2026 : LIVRÉE** — `CatalogueParametres` (registre unique),
+> écran Paramètres piloté par le catalogue + recherche, `ReseauService`
+> (surveillance + reprise automatique), `BanniereHorsLigne`,
+> `test/catalogue_parametres_test.dart` (19 tests).
+
+### Des paramètres qui s'adaptent — et que le propriétaire configure
+
+Un réglage n'est proposé que s'il a un sens pour **cette** entreprise :
+
+| Critère | Effet |
+|---|---|
+| `typeRequis` (TypeActivite) | « Tournées » et « Récipients » n'apparaissent qu'en distribution |
+| `module` (ModuleCode) | « Catégories » exige `produits`, « Alerte de péremption » `lots_expiration` |
+| `page` / `action` (permissions) | un vendeur ne voit pas les réglages du patron |
+
+Règle d'or : **fail-open**. Type non renseigné, profil non chargé, module
+inconnu → le réglage reste visible, exactement comme avant.
+
+Tout est déclaré dans `lib/ui/parametres/catalogue_parametres.dart` :
+**ajouter un réglage = ajouter une entrée**. La page ne contient plus aucune
+condition métier ; elle affiche les sections renvoyées par le catalogue.
+
+**Recherche** : le patron tape « devise », « tournée », « publicités » — accents
+et casse ignorés — et trouve le réglage sans connaître sa rubrique.
+
+### Hors ligne : la pièce qui manquait
+
+Le socle local existait déjà (`db_helper` : ventes, produits, clients,
+dépenses, dettes, inventaire, approvisionnements ; `SyncService` pousse ensuite
+vers Supabase).
+
+**`ReseauService`** ajoute ce qui manquait vraiment :
+
+- une sonde minuscule (`app_settings`, 1 ligne, 6 s max) toutes les 25 s en
+  ligne, toutes les 8 s hors ligne ;
+- `enLigne` (ValueNotifier) : l'état réel, pas une supposition ;
+- **transition hors-ligne → en-ligne = `SyncService.syncAll()`** : la file
+  locale se vide toute seule, sans bouton ;
+- `signalerEchec()` / `signalerSucces()` pour que les écrans informent le
+  service sans attendre la sonde.
+
+**`BanniereHorsLigne`** (sous la bannière d'abonnement) : « Hors ligne — vos
+ventes restent enregistrées sur cet appareil et seront synchronisées
+automatiquement. » + bouton *Réessayer*.
+
+⚠️ **Ce qui reste pour un « 100 % hors ligne » complet** :
+1. router les ventes rejouées par la **RPC officielle** (`rpc_vente_valider`)
+   au lieu d'un `insert` REST, pour garder numéro de vente, stock et audit ;
+2. cache local en lecture pour les écrans encore branchés directement sur
+   Supabase (rapports, abonnements) ;
+3. résolution de conflits (prix modifié hors ligne, stock négatif).
+
+---
+
+## 12. Garde-fous transverses
 
 - **Une entreprise = un périmètre** : toute nouvelle table porte `owner_id` + RLS.
 - **Rôles vérifiés côté serveur** : aucune nouvelle RPC ne fait confiance au client.

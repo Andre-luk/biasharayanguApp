@@ -37,6 +37,7 @@ import 'services/mode_application_service.dart';
 // 🪙 MODULE 18 — devises de travail (CDF/USD) et taux de conversion.
 import 'services/devise_service.dart';
 import 'services/permission_service.dart';
+import 'services/reseau_service.dart';
 import 'db_helper.dart';
 
 import 'dart:async' show TimeoutException, unawaited;
@@ -184,13 +185,10 @@ void main() async {
   // 🔔 Notifications locales : initialisation + surveillance du rapport de
   // fin de journée (best-effort — jamais bloquant au démarrage).
   try {
-    await _avecDelai(
-        Future<void>(() async {
-          await NotificationService.instance.initialiser();
-          NotificationService.instance.demarrerSurveillanceQuotidienne();
-        }),
-        const Duration(seconds: 3),
-        'notifications');
+    await _avecDelai(Future<void>(() async {
+      await NotificationService.instance.initialiser();
+      NotificationService.instance.demarrerSurveillanceQuotidienne();
+    }), const Duration(seconds: 3), 'notifications');
   } catch (e) {
     debugPrint('Notifications désactivées : $e');
   }
@@ -353,8 +351,7 @@ class _BiasharaAppState extends State<BiasharaApp> {
           );
           targetRoute = '/admin';
         } else {
-          final localUser =
-              await _utilisateurLocal(uid);
+          final localUser = await _utilisateurLocal(uid);
           _checkSubscriptionInBackground(localUser?.parentId ?? uid);
 
           final RoleUtilisateur roleProfil =
@@ -385,9 +382,9 @@ class _BiasharaAppState extends State<BiasharaApp> {
           // erreur laisse l'accès complet (jamais de blocage accidentel).
           final String? identifiant = uid;
           if (identifiant != null) {
-            final EtatAccesAbonnement accesCompte =
-                await AbonnementService.instance
-                    .verifierAccesUtilisateur(identifiant);
+            final EtatAccesAbonnement accesCompte = await AbonnementService
+                .instance
+                .verifierAccesUtilisateur(identifiant);
 
             final String? accueilRole =
                 PermissionService.instance.accueilPour(roleEffectif);
@@ -400,13 +397,17 @@ class _BiasharaAppState extends State<BiasharaApp> {
               targetRoute = '/main';
             }
           } else {
-            targetRoute = PermissionService.instance.accueilPour(roleEffectif) ??
-                '/main';
+            targetRoute =
+                PermissionService.instance.accueilPour(roleEffectif) ?? '/main';
           }
         }
 
         // 🚀 SYNCHRONISATION CRITIQUE (Pour Lukengu et après réinstallation)
         if (uid != null) {
+          // 📡 SURVEILLANCE DU RÉSEAU — dès qu'une connexion revient, la file
+          // locale (ventes, produits, clients…) est poussée toute seule.
+          ReseauService.instance.demarrerSurveillance();
+
           // ⚡️ Sync du profil (Nom, Rôle) EN ARRIÈRE-PLAN : l'écran d'accueil
           // s'ouvre sans attendre le réseau (le profil local est déjà chargé).
           SyncService.instance

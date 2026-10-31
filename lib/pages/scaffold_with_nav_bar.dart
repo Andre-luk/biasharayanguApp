@@ -1,5 +1,7 @@
 // lib/pages/scaffold_with_nav_bar.dart
 import 'package:flutter/material.dart';
+
+import 'package:biashara_yangu/widgets/banniere_hors_ligne.dart';
 import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/db_helper.dart';
@@ -114,8 +116,7 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     }
 
     final user = await DBHelper.instance.getUtilisateurById(userIdString);
-    final RoleUtilisateur role =
-        PermissionService.roleDepuisUtilisateur(user);
+    final RoleUtilisateur role = PermissionService.roleDepuisUtilisateur(user);
 
     PermissionService.instance.definirRoleCourant(role);
 
@@ -139,7 +140,8 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
 
     final List<_BrancheNav> visibles = _toutesLesBranches
         .where((_BrancheNav branche) =>
-            branche.pages.any((PageAccess page) => permissions.peutVoir(page)) &&
+            branche.pages
+                .any((PageAccess page) => permissions.peutVoir(page)) &&
             (branche.activite == null ||
                 branche.activite!(modules, profilCharge)))
         // ⚡ MODE RAPIDE : pas d'onglets Rapports ni Stock. Le vendeur garde
@@ -195,35 +197,35 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     }
 
     // Icônes sélectionné / non sélectionné : la barre est plus vivante.
-    final List<NavigationDestination> destinations = visibles
-        .map((_BrancheNav branche) { switch (branche.index) {
-            case 0:
-              return NavigationDestination(
-                icon: const Icon(Icons.home_outlined),
-                selectedIcon: const Icon(Icons.home_rounded),
-                label: T.navHome,
-              );
-            case 1:
-              return NavigationDestination(
-                icon: const Icon(Icons.insert_chart_outlined_rounded),
-                selectedIcon: const Icon(Icons.insert_chart_rounded),
-                label: T.navReports,
-              );
-            case 2:
-              return NavigationDestination(
-                icon: const Icon(Icons.inventory_2_outlined),
-                selectedIcon: const Icon(Icons.inventory_2_rounded),
-                label: T.navStock,
-              );
-            default:
-              return NavigationDestination(
-                icon: const Icon(Icons.settings_outlined),
-                selectedIcon: const Icon(Icons.settings_rounded),
-                label: T.navSettings,
-              );
-          }
-        })
-        .toList(growable: false);
+    final List<NavigationDestination> destinations =
+        visibles.map((_BrancheNav branche) {
+      switch (branche.index) {
+        case 0:
+          return NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded),
+            label: T.navHome,
+          );
+        case 1:
+          return NavigationDestination(
+            icon: const Icon(Icons.insert_chart_outlined_rounded),
+            selectedIcon: const Icon(Icons.insert_chart_rounded),
+            label: T.navReports,
+          );
+        case 2:
+          return NavigationDestination(
+            icon: const Icon(Icons.inventory_2_outlined),
+            selectedIcon: const Icon(Icons.inventory_2_rounded),
+            label: T.navStock,
+          );
+        default:
+          return NavigationDestination(
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings_rounded),
+            label: T.navSettings,
+          );
+      }
+    }).toList(growable: false);
 
     return Scaffold(
       // Affiche la page actuelle de la branche sélectionnée
@@ -232,6 +234,8 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
       body: Column(
         children: [
           const BanniereAbonnement(),
+          // 📡 Hors ligne : dire pourquoi ça ne bouge pas, et rassurer.
+          const BanniereHorsLigne(),
           Expanded(child: widget.navigationShell),
         ],
       ),
@@ -240,7 +244,8 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+            top:
+                BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           boxShadow: <BoxShadow>[
             BoxShadow(

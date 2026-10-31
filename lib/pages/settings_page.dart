@@ -10,6 +10,8 @@ import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/audit_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/type_activite_service.dart';
+import 'package:biashara_yangu/ui/parametres/catalogue_parametres.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
@@ -77,6 +79,9 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  /// 🔎 Recherche dans les réglages (accents et casse ignorés).
+  final TextEditingController _rechercheController = TextEditingController();
+  String _filtre = '';
   Utilisateur? _currentUser;
   bool _loading = true;
 
@@ -115,6 +120,12 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  @override
+  void dispose() {
+    _rechercheController.dispose();
+    super.dispose();
+  }
+
   Future<void> _chargerDelaiPeremption() async {
     final int delai = await PeremptionService.instance.charger();
     if (!mounted) return;
@@ -127,8 +138,7 @@ class _SettingsPageState extends State<SettingsPage> {
   /// libre : une pharmacie qui veut 45 jours ne doit pas être coincée entre
   /// deux boutons.
   Future<void> _reglerDelaiPeremption() async {
-    final int actuel =
-        _delaiPeremption ?? PeremptionService.delaiParDefaut;
+    final int actuel = _delaiPeremption ?? PeremptionService.delaiParDefaut;
     final TextEditingController saisie =
         TextEditingController(text: actuel.toString());
 
@@ -271,7 +281,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   void _showLanguageDialog() {
-    final languageManager = Provider.of<LanguageManager>(context, listen: false);
+    final languageManager =
+        Provider.of<LanguageManager>(context, listen: false);
     final T = AppLocalizations.of(context)!;
 
     showDialog(
@@ -294,7 +305,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     value: 'fr',
                     groupValue: selected,
                     title: const Text('Français'),
-                    onChanged: (v) => setStateDialog(() => selected = v ?? 'fr'),
+                    onChanged: (v) =>
+                        setStateDialog(() => selected = v ?? 'fr'),
                   ),
                   const RadioListTile<String>(
                     value: 'en',
@@ -315,7 +327,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: Text(T.cancelButton)),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(T.cancelButton)),
                 TextButton(
                   onPressed: () async {
                     await languageManager.changeLanguage(Locale(selected));
@@ -351,24 +365,29 @@ class _SettingsPageState extends State<SettingsPage> {
                     value: ThemeMode.system,
                     groupValue: selected,
                     title: Text(T.themeSystem),
-                    onChanged: (v) => setStateDialog(() => selected = v ?? ThemeMode.system),
+                    onChanged: (v) =>
+                        setStateDialog(() => selected = v ?? ThemeMode.system),
                   ),
                   RadioListTile<ThemeMode>(
                     value: ThemeMode.light,
                     groupValue: selected,
                     title: Text(T.themeLight),
-                    onChanged: (v) => setStateDialog(() => selected = v ?? ThemeMode.light),
+                    onChanged: (v) =>
+                        setStateDialog(() => selected = v ?? ThemeMode.light),
                   ),
                   RadioListTile<ThemeMode>(
                     value: ThemeMode.dark,
                     groupValue: selected,
                     title: Text(T.themeDark),
-                    onChanged: (v) => setStateDialog(() => selected = v ?? ThemeMode.dark),
+                    onChanged: (v) =>
+                        setStateDialog(() => selected = v ?? ThemeMode.dark),
                   ),
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: Text(T.cancelButton)),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(T.cancelButton)),
                 TextButton(
                   onPressed: () async {
                     await themeManager.setThemeMode(selected);
@@ -402,25 +421,15 @@ class _SettingsPageState extends State<SettingsPage> {
       );
     }
 
-    final bool isPatron = _currentUser?.parentId == null;
-
     // 🔐 MODULE 4 — les entrées « équipe » et « administration » dépendent des
     // permissions du rôle : un vendeur ou un magasinier ne les voit plus.
     final PermissionService permissions = PermissionService.instance;
-    final bool peutGererEquipe =
-        isPatron && permissions.peutVoir(PageAccess.collaborateurs);
     final bool isAdmin = permissions.peutModifier(PageAccess.parametres);
 
     // 🧩 MODULE 16 — les entrées d'écran suivent AUSSI l'activité : un hôtel
     // ne voit ni « Catégories » d'articles, ni « Importer des articles », ni
     // l'assistant IA si son profil ne les contient pas (masquage uniquement).
     final ModulesService modules = ModulesService.instance;
-    final bool catalogueDisponible = ReglesActivite.catalogue(
-      modules.modules.value,
-      modules.charge,
-    );
-    final bool assistantDisponible =
-        modules.moduleActif(ModuleCode.assistantIa);
 
     // 🧮 CORRECTIF 72 — le délai d'alerte de péremption ne concerne que les
     // activités qui suivent les dates (pharmacie, alimentaire…). L'afficher
@@ -437,126 +446,43 @@ class _SettingsPageState extends State<SettingsPage> {
           _EnteteProfil(utilisateur: _currentUser),
           const SizedBox(height: 22),
 
-          _SectionParametres(
-            titre: 'Compte',
-            tuiles: <Widget>[
-              _TuileParametre(
-                icone: Icons.person_rounded,
-                titre: T.profileTitle,
-                sousTitre: T.profileSubtitle,
-                onTap: () => context.pushNamed('profile-edit'),
+          // 🔎 RECHERCHE — le patron tape « devise », « tournée », « audit »…
+          // et trouve le réglage sans connaître la rubrique.
+          Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: TextField(
+              controller: _rechercheController,
+              onChanged: (String v) => setState(() => _filtre = v),
+              decoration: InputDecoration(
+                hintText: 'Rechercher un réglage…',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _filtre.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Effacer',
+                        icon: const Icon(Icons.close_rounded),
+                        onPressed: () {
+                          _rechercheController.clear();
+                          setState(() => _filtre = '');
+                        },
+                      ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              _TuileParametre(
-                icone: Icons.lock_rounded,
-                titre: T.changePasswordTitle,
-                sousTitre: T.changePasswordSubtitle,
-                onTap: () => context.pushNamed('password-change'),
-              ),
-            ],
+            ),
           ),
 
-          if (peutGererEquipe)
-            _SectionParametres(
-              titre: "Gestion d'équipe",
-              tuiles: <Widget>[
-                _TuileParametre(
-                  icone: Icons.badge_rounded,
-                  titre: 'Mes vendeurs',
-                  sousTitre: 'Ajouter ou supprimer des collaborateurs',
-                  onTap: () => context.pushNamed('manage-users'),
-                ),
-              ],
-            ),
+          // ⚙️ RÉGLAGES ADAPTÉS — sections construites à partir du catalogue
+          // (`CatalogueParametres`) : chaque réglage n'apparaît que s'il a un
+          // sens pour le TYPE d'entreprise, les MODULES actifs et le RÔLE.
+          ..._sectionsParametres(T),
 
-          // 🏢 MODULE 15 — pack multi-entreprises : liste, création et
-          // bascule d'entreprise active (boutique, hôtel, pharmacie…).
-          if (permissions.peutVoir(PageAccess.dashboard))
-            _SectionParametres(
-              titre: 'Mes entreprises',
-              tuiles: <Widget>[
-                _TuileParametre(
-                  icone: Icons.apartment_rounded,
-                  titre: 'Mes entreprises',
-                  sousTitre:
-                      'Boutique, hôtel, pharmacie… : créer, basculer, suivre le pack',
-                  onTap: () => context.pushNamed('mes-entreprises'),
-                ),
-              ],
-            ),
-
-          // 🧾 CORRECTIF 67 — FACTURES D'ABONNEMENT.
-          //  Le client suit enfin ce qu'il a payé : chaque encaissement produit
-          //  une facture figée (prix d'installation, prix mensuel, avance
-          //  versée, versement reçu, reste à payer) qui dit qui l'a générée.
-          //  Il peut la consulter, la télécharger ou la redemander par
-          //  WhatsApp. Il ne peut ni l'émettre ni l'annuler : ce sont des
-          //  documents de la plateforme.
-          if (permissions.peutVoir(PageAccess.facturesAbonnement))
-            _SectionParametres(
-              titre: 'Abonnement',
-              tuiles: <Widget>[
-                _TuileParametre(
-                  icone: Icons.description_rounded,
-                  titre: 'Mes factures d\'abonnement',
-                  sousTitre:
-                      'Installation, mensuel, avances et reste à payer — '
-                      'chaque facture, avec son auteur',
-                  onTap: () =>
-                      context.pushNamed('factures-abonnement'),
-                ),
-              ],
-            ),
-
-          // 🛒 MODULE 19 — MARKETPLACE PUBLIC « BIASHARA ».
-          //  Le patron gère SA présence publique : vitrine (position, horaires,
-          //  contacts), articles publiés, tableau de bord de visibilité et
-          //  campagnes publicitaires. Chaque écran n'apparaît que si le rôle a
-          //  la permission correspondante (le vendeur, par exemple, ne voit
-          //  rien ici : la vitrine engage la responsabilité du patron).
-          if (permissions.peutVoir(PageAccess.publications))
-            _SectionParametres(
-              titre: 'Ma vitrine Biashara',
-              tuiles: <Widget>[
-                _TuileParametre(
-                  icone: Icons.storefront_rounded,
-                  titre: 'Vitrine & localisation',
-                  sousTitre:
-                      'Position de la boutique, adresse, horaires et contacts publics',
-                  onTap: () => context.pushNamed('ma-vitrine'),
-                ),
-                _TuileParametre(
-                  icone: Icons.checklist_rounded,
-                  titre: 'Mes publications',
-                  sousTitre:
-                      'Choisir les articles visibles dans le catalogue public',
-                  onTap: () => context.pushNamed('mes-publications'),
-                ),
-              ],
-            ),
-          if (permissions.peutVoir(PageAccess.visibilite))
-            _SectionParametres(
-              titre: 'Résultats Biashara',
-              tuiles: <Widget>[
-                _TuileParametre(
-                  icone: Icons.insights_rounded,
-                  titre: 'Ma visibilité Biashara',
-                  sousTitre:
-                      'Affichages, intérêt, itinéraires, appels et ventes attribuées',
-                  onTap: () => context.pushNamed('ma-visibilite'),
-                ),
-                if (permissions.peutVoir(PageAccess.publicites))
-                  _TuileParametre(
-                    icone: Icons.campaign_rounded,
-                    titre: 'Publicités Biashara',
-                    sousTitre:
-                        'Promouvoir un produit, une promotion ou votre boutique',
-                    onTap: () => context.pushNamed('publicites'),
-                  ),
-              ],
-            ),
-
+          // 🎨 APPARENCE — réglages propres à CET APPAREIL (thème, langue,
+          // confort de lecture) : ils ne dépendent ni du type d'activité ni des
+          // modules, et restent donc toujours proposés.
           _SectionParametres(
-            titre: 'Application',
+            titre: 'Apparence',
             tuiles: <Widget>[
               _TuileParametre(
                 icone: Icons.palette_rounded,
@@ -571,21 +497,16 @@ class _SettingsPageState extends State<SettingsPage> {
               _TuileParametre(
                 icone: Icons.language_rounded,
                 titre: T.languageTitle,
-                sousTitre:
-                    languageManager.appLocale.languageCode.toUpperCase(),
+                sousTitre: languageManager.appLocale.languageCode.toUpperCase(),
                 onTap: _showLanguageDialog,
               ),
               _TuileParametre(
-                icone: Icons.currency_exchange_rounded,
-                titre: 'Devise & conversion',
-                sousTitre:
-                    'Devise de travail (CDF/USD) et taux de change 1 USD = X CDF',
-                onTap: () => context.pushNamed('devise'),
+                icone: Icons.accessibility_new_rounded,
+                titre: 'Accessibilité',
+                sousTitre: 'Taille du texte et confort de lecture',
+                onTap: () => context.pushNamed('accessibilite'),
               ),
-              // 🧮 CORRECTIF 72 — délai d'alerte de péremption, réglé PAR la
-              // boutique. Sans cette tuile, le réglage n'existait que dans la
-              // base : le commerçant voyait des alertes sans pouvoir dire à
-              // partir de quand il voulait être prévenu.
+              // 🧮 délai d'alerte de péremption, réglé PAR la boutique.
               if (peremptionDisponible)
                 _TuileParametre(
                   icone: Icons.event_busy_rounded,
@@ -595,63 +516,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       : 'Prévenu $_delaiPeremption jours avant la date',
                   onTap: _reglerDelaiPeremption,
                 ),
-              if (catalogueDisponible)
-                _TuileParametre(
-                  icone: Icons.category_rounded,
-                  titre: T.manageCategories,
-                  sousTitre: T.manageCategoriesSubtitle,
-                  onTap: () => context.pushNamed('manage-categories'),
-                ),
-              // 🤖 MODULE 13 — assistant IA & quotas (selon permissions du rôle
-              // ET module de l'activité).
-              if (assistantDisponible &&
-                  permissions.peutVoir(PageAccess.assistantIa))
-                _TuileParametre(
-                  icone: Icons.smart_toy_rounded,
-                  titre: 'Assistant IA',
-                  sousTitre:
-                      'Posez vos questions, l\'assistant agit selon vos droits',
-                  onTap: () => context.pushNamed('assistant-ia'),
-                ),
-              if (assistantDisponible &&
-                  permissions.peutVoir(PageAccess.assistantIa))
-                _TuileParametre(
-                  icone: Icons.shopping_cart_checkout_rounded,
-                  titre: 'Quotas IA',
-                  sousTitre:
-                      'Packs, paiements suivis et attributions (patron)',
-                  onTap: () => context.pushNamed('achat-quotas'),
-                ),
-              _TuileParametre(
-                icone: Icons.accessibility_new_rounded,
-                titre: 'Accessibilité',
-                sousTitre: 'Taille du texte et confort de lecture',
-                onTap: () => context.pushNamed('accessibilite'),
-              ),
-              _TuileParametre(
-                icone: Icons.menu_book_rounded,
-                titre: 'Guide d\'utilisation',
-                sousTitre: 'Apprendre à utiliser Biashara Yangu pas à pas',
-                onTap: () => context.pushNamed('guide-utilisation'),
-              ),
-              _TuileParametre(
-                icone: Icons.privacy_tip_outlined,
-                titre: 'Politique de confidentialité',
-                sousTitre: 'Protection et traitement de vos données',
-                onTap: () => context.pushNamed('politique-confidentialite'),
-              ),
-              _TuileParametre(
-                icone: Icons.gavel_rounded,
-                titre: 'Conditions d\'utilisation',
-                sousTitre: 'Règles du service, abonnement et responsabilités',
-                onTap: () => context.pushNamed('conditions-utilisation'),
-              ),
-              _TuileParametre(
-                icone: Icons.info_outline_rounded,
-                titre: T.settingsAboutTitle,
-                sousTitre: T.aboutAppDescription,
-                onTap: () => context.pushNamed('about'),
-              ),
             ],
           ),
 
@@ -700,8 +564,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     'Résumé des ventes du jour à ${NotificationService.libelleHeure(_notifHeureMinutes)}'),
                 value: _notifRapport,
                 onChanged: (bool actif) async {
-                  await NotificationService.instance
-                      .definirRapportActif(actif);
+                  await NotificationService.instance.definirRapportActif(actif);
                   if (mounted) setState(() => _notifRapport = actif);
                 },
               ),
@@ -735,35 +598,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
 
-          // 🔐 MODULE 12 — traçabilité & données (selon permissions :
-          // journal d'audit pour le propriétaire, import d'articles pour
-          // les rôles autorisés à créer des articles).
-          if (permissions.peutVoir(PageAccess.audit) ||
-              (catalogueDisponible &&
-                  permissions.peut(PageAccess.articles, ActionAccess.creer)))
-            _SectionParametres(
-              titre: 'Traçabilité & données',
-              tuiles: <Widget>[
-                if (permissions.peutVoir(PageAccess.audit))
-                  _TuileParametre(
-                    icone: Icons.history_edu_rounded,
-                    titre: 'Journal d\'audit',
-                    sousTitre:
-                        'Qui a fait quoi, quand — filtres, détail et export PDF signé',
-                    onTap: () => context.pushNamed('journal-audit'),
-                  ),
-                if (catalogueDisponible &&
-                    permissions.peut(PageAccess.articles, ActionAccess.creer))
-                  _TuileParametre(
-                    icone: Icons.upload_file_rounded,
-                    titre: 'Importer des articles',
-                    sousTitre:
-                        'Coller un contenu CSV ou choisir un fichier — tracé (IMPORT_PRODUITS)',
-                    onTap: () => context.pushNamed('import-produits'),
-                  ),
-              ],
-            ),
-
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: _logout,
@@ -779,6 +613,69 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+}
+
+extension _SectionsCatalogue on _SettingsPageState {
+  /// Réglages visibles pour cette entreprise et ce rôle, filtrés par la
+  /// recherche, puis regroupés en sections.
+  ///
+  /// Fail-open : modules non chargés ou type inconnu → tout reste visible.
+  List<Widget> _sectionsParametres(AppLocalizations T) {
+    final PermissionService permissions = PermissionService.instance;
+
+    final List<ParametreApp> visibles = CatalogueParametres.visibles(
+      modules: ModulesService.instance.modules.value,
+      profilCharge: ModulesService.instance.charge,
+      typeActivite: TypeActiviteService.instance.type.value,
+      peut: permissions.peut,
+    );
+
+    final List<ParametreApp> filtres =
+        CatalogueParametres.rechercher(_filtre, visibles, T);
+
+    if (filtres.isEmpty) {
+      return <Widget>[
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Column(
+            children: <Widget>[
+              Icon(Icons.search_off_rounded,
+                  size: 40, color: Theme.of(context).colorScheme.outline),
+              const SizedBox(height: 8),
+              Text(
+                'Aucun réglage ne correspond à « $_filtre ».',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ];
+    }
+
+    final Map<String, List<ParametreApp>> sections =
+        CatalogueParametres.sections(filtres);
+
+    return <Widget>[
+      for (final MapEntry<String, List<ParametreApp>> entree
+          in sections.entries) ...<Widget>[
+        _SectionParametres(
+          titre: entree.key,
+          tuiles: <Widget>[
+            for (final ParametreApp p in entree.value)
+              _TuileParametre(
+                icone: p.icone,
+                titre: p.titre(T),
+                sousTitre: p.sousTitre(T),
+                onTap: () {
+                  if (p.route != null) context.pushNamed(p.route!);
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 22),
+      ],
+    ];
   }
 }
 
