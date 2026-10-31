@@ -660,8 +660,30 @@ est **idempotente** :
 Elle ne touche ni les comptes déjà `actif` / `restreint` / `rejete`, ni les
 dates d'expiration en cours.
 
+### `solde_restant` doit être une colonne ordinaire (migration 0094)
+
+La base réelle déclare `public.entreprises.solde_restant` en **colonne
+générée** (`GENERATED ALWAYS AS … STORED`). Or le moteur d'abonnement l'écrit
+lui-même partout (module 1, module 3
+`rpc_abonnement_enregistrer_paiement`, module 4) en posant simultanément
+`montant_total_du`, `montant_deja_paye` **et** `solde_restant`.
+
+Sans correctif, **chaque encaissement d'abonnement échoue** avec l'erreur
+`428C9` (« column can only be updated to DEFAULT »).
+
+`0094` supprime l'expression de génération
+(`alter column solde_restant drop expression`) : la colonne redevient
+ordinaire, **ses valeurs sont conservées** (la migration compare la somme des
+soldes avant/après et alerte en cas d'écart), et le moteur retrouve le
+comportement prévu par toutes les migrations. Elle est idempotente et affiche
+en fin d'exécution la liste des colonnes encore générées sur `entreprises`.
+
+`0093` s'adapte d'ailleurs aux deux schémas : elle lit
+`information_schema.columns.is_generated` et n'écrit `solde_restant` que si la
+colonne est ordinaire.
+
 **Contrôle d'installation** : `docs/verification_migrations.sql` (lecture
-seule) liste chaque objet attendu de `0083` à `0093` avec `OK` / `MANQUANT`,
+seule) liste chaque objet attendu de `0083` à `0094` avec `OK` / `MANQUANT`,
 puis propose les cinq vérifications de données (barème, comptes sans prix,
 dossiers en attente, entreprises de distribution, rattachement des agents).
 
