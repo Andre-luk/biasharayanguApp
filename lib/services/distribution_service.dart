@@ -288,6 +288,20 @@ class DistributionService {
     );
   }
 
+  /// Rapport imprimable d'une tournée : mouvement par produit, reçus,
+  /// production du jour et totaux.
+  ///
+  /// `null` si le serveur n'a pas renvoyé de rapport exploitable (module pas
+  /// encore installé, tournée supprimée).
+  Future<RapportTournee?> rapportTourneeDetail(String tourneeId) async {
+    final Map<String, dynamic>? json = parseMap(await _rpcAppel(
+      'rpc_rapport_tournee_detail',
+      <String, dynamic>{'p_tournee': tourneeId},
+    ));
+    if (json == null) return null;
+    return RapportTournee.depuisJson(json);
+  }
+
   // ---------------------------------------------------------------------------
   // RADAR (phase 6) — ce qui manque, quoi charger, qui relancer
   // ---------------------------------------------------------------------------

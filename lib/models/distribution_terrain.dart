@@ -562,6 +562,222 @@ class AgentDistribution {
 }
 
 // ---------------------------------------------------------------------------
+// RAPPORT DE TOURNÉE IMPRIMABLE (phase 8)
+// ---------------------------------------------------------------------------
+
+/// Une ligne du rapport : le mouvement d'UN produit sur la tournée.
+///
+/// Rien n'est saisi ici : le serveur relit les faits et calcule le manquant.
+class LigneRapportTournee {
+  const LigneRapportTournee({
+    required this.produitId,
+    this.nom = '',
+    this.unite = '',
+    this.confie = 0,
+    this.vendu = 0,
+    this.rendu = 0,
+    this.offert = 0,
+    this.casse = 0,
+    this.manquant = 0,
+    this.prixVente = 0,
+    this.valeurVendue = 0,
+    this.valeurManquant = 0,
+  });
+
+  final int produitId;
+  final String nom;
+  final String unite;
+  final double confie;
+  final double vendu;
+  final double rendu;
+  final double offert;
+  final double casse;
+
+  /// Confié − vendu − rendu − offert − cassé. Le « trou » de la tournée.
+  final double manquant;
+
+  final double prixVente;
+  final double valeurVendue;
+  final double valeurManquant;
+
+  bool get aUnManquant => manquant > 0.0001;
+
+  factory LigneRapportTournee.depuisJson(Map<String, dynamic> json) {
+    return LigneRapportTournee(
+      produitId: _entier(json['produit_id']),
+      nom: _texte(json['nom']),
+      unite: _texte(json['unite']),
+      confie: _nombre(json['confie']),
+      vendu: _nombre(json['vendu']),
+      rendu: _nombre(json['rendu']),
+      offert: _nombre(json['offert']),
+      casse: _nombre(json['casse']),
+      manquant: _nombre(json['manquant']),
+      prixVente: _nombre(json['prix_vente']),
+      valeurVendue: _nombre(json['valeur_vendue']),
+      valeurManquant: _nombre(json['valeur_manquant']),
+    );
+  }
+}
+
+/// Un reçu (panier) encaissé pendant la tournée.
+class RecuTournee {
+  const RecuTournee({
+    this.numero = '',
+    this.heure,
+    this.total = 0,
+    this.nbLignes = 0,
+  });
+
+  final String numero;
+  final DateTime? heure;
+  final double total;
+  final int nbLignes;
+
+  factory RecuTournee.depuisJson(Map<String, dynamic> json) {
+    return RecuTournee(
+      numero: _texte(json['numero']),
+      heure: _date(json['heure']),
+      total: _nombre(json['total']),
+      nbLignes: _entier(json['nb_lignes']),
+    );
+  }
+}
+
+/// Ce qui a été produit (entré en stock) le jour de la tournée.
+class ProductionDuJour {
+  const ProductionDuJour({
+    this.produitId = 0,
+    this.nom = '',
+    this.produite = 0,
+    this.pertes = 0,
+    this.nb = 0,
+  });
+
+  final int produitId;
+  final String nom;
+  final double produite;
+  final double pertes;
+  final int nb;
+
+  factory ProductionDuJour.depuisJson(Map<String, dynamic> json) {
+    return ProductionDuJour(
+      produitId: _entier(json['produit_id']),
+      nom: _texte(json['nom']),
+      produite: _nombre(json['produite']),
+      pertes: _nombre(json['pertes']),
+      nb: _entier(json['nb']),
+    );
+  }
+}
+
+/// Le rapport complet d'une tournée, prêt à être affiché ou imprimé.
+class RapportTournee {
+  const RapportTournee({
+    this.reference = '',
+    this.dateTournee,
+    this.zone = '',
+    this.statut = '',
+    this.agentNom = '',
+    this.entreprise = '',
+    this.devise = 'CDF',
+    this.objectifMontant,
+    this.commissionTaux,
+    this.commissionMontant = 0,
+    this.lignes = const <LigneRapportTournee>[],
+    this.recus = const <RecuTournee>[],
+    this.productions = const <ProductionDuJour>[],
+    this.confie = 0,
+    this.vendu = 0,
+    this.rendu = 0,
+    this.offert = 0,
+    this.casse = 0,
+    this.manquant = 0,
+    this.valeurManquant = 0,
+    this.chiffreAffaires = 0,
+    this.nbRecus = 0,
+    this.noteStock = '',
+  });
+
+  final String reference;
+  final DateTime? dateTournee;
+  final String zone;
+  final String statut;
+  final String agentNom;
+  final String entreprise;
+  final String devise;
+  final double? objectifMontant;
+  final double? commissionTaux;
+  final double commissionMontant;
+
+  final List<LigneRapportTournee> lignes;
+  final List<RecuTournee> recus;
+  final List<ProductionDuJour> productions;
+
+  final double confie;
+  final double vendu;
+  final double rendu;
+  final double offert;
+  final double casse;
+  final double manquant;
+  final double valeurManquant;
+  final double chiffreAffaires;
+  final int nbRecus;
+
+  /// Explication à imprimer : la dotation ne retire rien du stock.
+  final String noteStock;
+
+  bool get aUnManquant => manquant > 0.0001;
+
+  /// Quantité réellement justifiée : vendue + rendue + offerte + cassée.
+  double get justifie => vendu + rendu + offert + casse;
+
+  static RapportTournee? depuisJson(Map<String, dynamic> json) {
+    if (json['ok'] != true) return null;
+    final Map<String, dynamic> entete =
+        (json['entete'] as Map?)?.cast<String, dynamic>() ??
+            <String, dynamic>{};
+    final Map<String, dynamic> totaux =
+        (json['totaux'] as Map?)?.cast<String, dynamic>() ??
+            <String, dynamic>{};
+    if (entete.isEmpty) return null;
+
+    return RapportTournee(
+      reference: _texte(entete['reference']),
+      dateTournee: _date(entete['date_tournee']),
+      zone: _texte(entete['zone']),
+      statut: _texte(entete['statut']),
+      agentNom: _texte(entete['agent_nom']),
+      entreprise: _texte(entete['entreprise']),
+      devise:
+          _texte(entete['devise']).isEmpty ? 'CDF' : _texte(entete['devise']),
+      objectifMontant: _nombreOuNull(entete['objectif_montant']),
+      commissionTaux: _nombreOuNull(entete['commission_taux']),
+      commissionMontant: _nombre(entete['commission_montant']),
+      lignes: _liste(json['lignes'])
+          .map(LigneRapportTournee.depuisJson)
+          .toList(growable: false),
+      recus: _liste(json['recus'])
+          .map(RecuTournee.depuisJson)
+          .toList(growable: false),
+      productions: _liste(json['productions'])
+          .map(ProductionDuJour.depuisJson)
+          .toList(growable: false),
+      confie: _nombre(totaux['confie']),
+      vendu: _nombre(totaux['vendu']),
+      rendu: _nombre(totaux['rendu']),
+      offert: _nombre(totaux['offert']),
+      casse: _nombre(totaux['casse']),
+      manquant: _nombre(totaux['manquant']),
+      valeurManquant: _nombre(totaux['valeur_manquant']),
+      chiffreAffaires: _nombre(totaux['chiffre_affaires']),
+      nbRecus: _entier(totaux['nb_recus']),
+      noteStock: _texte(json['note_stock']),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // RADAR DE TOURNÉE (phase 6)
 // ---------------------------------------------------------------------------
 

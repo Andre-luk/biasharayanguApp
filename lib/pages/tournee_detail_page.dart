@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 
 import 'package:biashara_yangu/models/distribution_terrain.dart';
 import 'package:biashara_yangu/services/distribution_service.dart';
+import 'package:biashara_yangu/services/rapport_tournee_pdf.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
@@ -39,6 +40,9 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
   /// Radar : conseils calculés par le serveur (écarts, consignes à risque).
   /// Il peut rester vide (module pas encore exécuté) : l'écran fonctionne.
   RadarTournee _radar = RadarTournee.vide;
+
+  /// Impression du rapport en cours (évite les doubles clics).
+  bool _impression = false;
 
   @override
   void initState() {
@@ -272,7 +276,24 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
     final bool peutCloturer = _tournee.statut == TourneeStatut.enCours;
 
     return Scaffold(
-      appBar: AppBar(title: Text(_tournee.reference)),
+      appBar: AppBar(
+        title: Text(_tournee.reference),
+        actions: <Widget>[
+          // 🖨️ Le rapport que le patron peut classer : confié / vendu /
+          // rendu / manquant par produit, reçus et production du jour.
+          IconButton(
+            tooltip: 'Imprimer le rapport de tournée',
+            onPressed: _impression ? null : _imprimerRapport,
+            icon: _impression
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.print_rounded),
+          ),
+        ],
+      ),
       body: _chargement
           ? const Center(child: ModernLoader(legende: 'Chargement…'))
           : RefreshIndicator(
@@ -547,6 +568,37 @@ class _TourneeDetailPageState extends State<TourneeDetailPage> {
         ),
       ),
     );
+  }
+
+  /// Charge le rapport détaillé puis ouvre l'aperçu d'impression.
+  ///
+  /// Si le serveur ne renvoie rien (module pas encore installé), on le dit
+  /// franchement au lieu d'imprimer une page vide.
+  Future<void> _imprimerRapport() async {
+    setState(() => _impression = true);
+    try {
+      final RapportTournee? rapport =
+          await _service.rapportTourneeDetail(_tournee.id);
+      if (!mounted) return;
+
+      if (rapport == null) {
+        _message(
+          'Rapport indisponible : exécutez la migration 0089 sur le serveur.',
+          erreur: true,
+        );
+        return;
+      }
+
+      await RapportTourneePdf.imprimer(rapport);
+    } on DistributionException catch (e) {
+      if (!mounted) return;
+      _message(e.message, erreur: true);
+    } catch (e) {
+      if (!mounted) return;
+      _message('Impression impossible : $e', erreur: true);
+    } finally {
+      if (mounted) setState(() => _impression = false);
+    }
   }
 
   Widget _entete(ThemeData theme) {

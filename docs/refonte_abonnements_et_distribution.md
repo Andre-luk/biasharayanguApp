@@ -416,7 +416,64 @@ disponibles en cas de demande du client.
 
 ---
 
-## 9. Garde-fous transverses
+## 9. Phase 8 — Traçabilité du produit et rapport imprimable (LIVRÉE le 31/10/2026)
+
+> **État au 31/10/2026 : LIVRÉE** — migration
+> `20260916000089_rapport_tournee_detail.sql` (7/7 instructions),
+> `RapportTourneePdf` (A4), bouton « Imprimer » sur le détail d'une tournée,
+> `test/rapport_tournee_test.dart` (8 tests).
+
+### Le circuit complet d'une bouteille
+
+```
+1. PRODUCTION   → `productions` (quantite_reelle) → à la clôture, le produit
+                  fini ENTRE EN STOCK (ajustement officiel, module 9).
+                  Profil d'espace « distribution » : module `production` inclus.
+2. DOTATION     → `tournee_lignes.quantite_attribuee` : RÉSERVATION.
+                  ⚠️ Le stock ne baisse PAS ici.
+3. VENTE        → `rpc_tournee_vente` → `rpc_vente_valider` : le stock baisse
+                  réellement, un reçu (numero_vente) est émis.
+4. RETOUR       → `quantite_retournee` : rien à réinjecter, car rien n'est
+                  sorti du stock à la dotation.
+5. CASSE/OFFERT → `quantite_casse` / `quantite_bonus` : sortis sans vente.
+6. ÉCART        → confié − vendu − rendu − offert − cassé, CALCULÉ.
+```
+
+**Conséquence à retenir** : « ce que l'agent rapporte s'ajoute au stock » est
+vrai en comptabilité physique, mais dans l'application la bouteille n'a jamais
+quitté le stock. Double-saisir le retour créerait un stock faux. Le rapport
+l'écrit noir sur blanc (`note_stock`).
+
+### `rpc_rapport_tournee_detail(p_tournee)`
+
+Renvoie un JSON prêt à imprimer :
+- `entete` : référence, date, agent, zone, statut, société, devise, objectif,
+  taux et montant de commission ;
+- `lignes[]` : par produit — confié / vendu / rendu / offert / cassé /
+  manquant + valeur du manquant ;
+- `recus[]` : numéro, heure, nombre de lignes, montant (une ligne par panier) ;
+- `productions[]` : ce qui est entré en stock le jour de la tournée ;
+- `totaux` : somme de tout, plus CA et nombre de reçus.
+
+### Application
+
+- `RapportTournee`, `LigneRapportTournee`, `RecuTournee`, `ProductionDuJour`
+  (`lib/models/distribution_terrain.dart`).
+- `RapportTourneePdf.imprimer()` : A4, en-tête répété, totaux colorés selon
+  qu'il y a un manquant ou non, tableau par produit, production du jour,
+  reçus, note sur le stock, deux lignes de signature (agent / responsable).
+- Bouton 🖨️ dans la barre du détail de tournée.
+- `DistributionService.rapportTourneeDetail(tourneeId)`.
+
+### Reçus déjà disponibles
+
+Les reçus de vente existent depuis la caisse : `InvoiceService` imprime un
+ticket 57 mm ou une facture A4 (`new_sale_page`, `vente_confirmation_page`), et
+le rapport de tournée liste leurs numéros, heures et montants.
+
+---
+
+## 10. Garde-fous transverses
 
 - **Une entreprise = un périmètre** : toute nouvelle table porte `owner_id` + RLS.
 - **Rôles vérifiés côté serveur** : aucune nouvelle RPC ne fait confiance au client.
