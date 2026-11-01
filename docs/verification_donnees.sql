@@ -45,7 +45,17 @@ with bases as (
       order by pronargs desc limit 1)                              as args_serdipay,
     (select count(*) filter (where agent_id is not null)
        from public.entreprises)                                    as dossiers_avec_agent,
-    (select count(*) from public.entreprises)                      as nb_entreprises
+    (select count(*) from public.entreprises)                      as nb_entreprises,
+    -- Correctif 96 : type d'activité réellement renseigné partout ?
+    (select count(*) from public.entreprises
+      where type_activite is null or btrim(type_activite) = '')    as sans_type,
+    (select count(*) from public.types_espaces_modules
+      where type = 'distribution' and coalesce(actif, true))       as profil_distribution,
+    (select count(*) from pg_trigger
+      where tgname = 'trg_espace_aligne_type_activite')            as nb_trigger_type,
+    -- Correctif 95 : les espaces « distribution » ont-ils le bon profil ?
+    (select count(*) from public.espaces
+      where lower(coalesce(type, '')) = 'distribution')            as espaces_distribution
 ),
 controles as (
   select 1 as ordre, 'Barème présent (3 profils actifs)' as controle,
@@ -100,6 +110,34 @@ controles as (
          dossiers_avec_agent || ' dossier(s) sur ' || nb_entreprises
            || ' peuvent être encaissés par un agent',
          'Migration 0092'
+    from bases
+  union all
+  select 9, 'Profil de modules « distribution » proposé',
+         case when profil_distribution > 0 then 'OK' else 'À CORRIGER' end,
+         profil_distribution || ' profil(s) actif(s) — attendu : 1 '
+           || '(sinon Distribution n''apparaît pas à la création)',
+         'Migration 0096'
+    from bases
+  union all
+  select 10, 'Chaque entreprise a un type d''activité',
+         case when sans_type = 0 then 'OK' else 'À CORRIGER' end,
+         sans_type || ' entreprise(s) sans type — elles affichent TOUS les '
+           || 'écrans, y compris ceux de distribution',
+         'Migration 0096'
+    from bases
+  union all
+  select 11, 'Type déduit automatiquement à la création',
+         case when nb_trigger_type > 0 then 'OK' else 'À CORRIGER' end,
+         nb_trigger_type || ' déclencheur(s) trg_espace_aligne_type_activite '
+           || '— attendu : 1',
+         'Migration 0096'
+    from bases
+  union all
+  select 12, 'Espaces en profil distribution (information)',
+         'OK',
+         espaces_distribution || ' espace(s) sur ' || nb_entreprises
+           || ' utilisent le profil distribution',
+         'Migration 0096'
     from bases
 )
 select ordre, migration, controle, etat, constat
