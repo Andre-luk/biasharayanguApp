@@ -12,6 +12,9 @@ import 'package:biashara_yangu/models/type_activite.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
+import 'package:biashara_yangu/services/espace_service.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/type_activite_service.dart';
 import 'package:biashara_yangu/models/ville.dart';
 import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
@@ -560,6 +563,20 @@ class EntrepriseService {
             'p_type': type?.code,
           },
         );
+
+        // ⚙️ CORRECTIF 96 — l'ENVIRONNEMENT suit immédiatement le type.
+        // Sans ce rafraîchissement, passer une entreprise en distribution
+        // n'affichait Tournées / Ma tournée / Récipients qu'après redémarrage.
+        try {
+          await EspaceService.instance.chargerSilencieux();
+
+          if (EspaceService.instance.actif?.id == entrepriseId) {
+            await ModulesService.instance.chargerSilencieux();
+            await TypeActiviteService.instance.charger();
+          }
+        } catch (e) {
+          debugPrint('definirTypeActivite : rafraîchissement ignoré ($e)');
+        }
       },
       actionLibelle: "la définition du type d'activité",
       messageEchec:

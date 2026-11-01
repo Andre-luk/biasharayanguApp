@@ -43,6 +43,14 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
   SoldeAbonnement? _solde;
   int _dureeAbonnementJours = 30;
 
+  /// Prix que le serveur facturera pour le PROCHAIN cycle.
+  ///
+  /// Indispensable quand l'abonnement est échu : `montant_total_du` décrit le
+  /// cycle précédent, or le moteur en ouvre un nouveau au prix mensuel actuel.
+  /// Proposer l'ancien montant faisait refuser le paiement
+  /// (« le montant dépasse le solde restant »).
+  double _prixCycle = 0;
+
   TypePaiement _type = TypePaiement.avance;
   String _modePaiement = modesPaiementDisponibles.first;
 
@@ -122,21 +130,34 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
     final SoldeAbonnement solde =
         AbonnementService.soldeDepuisEntreprise(entreprise);
 
-    // Valeurs par défaut intelligentes :
-    //  - le solde restant est prérempli (cas nominal : règlement du solde) ;
-    //  - un abonnement soldé propose le renouvellement au montant de la grille.
-    final double montantPropose = solde.solde > 0 ? solde.solde : solde.total;
+    // ⚠️ Un abonnement échu est RENOUVELÉ, pas « soldé » : le moteur ouvre un
+    // nouveau cycle au prix mensuel actuel. On demande donc à la base le prix
+    // du prochain cycle, sinon l'écran propose le montant du cycle précédent
+    // et le serveur refuse le paiement.
+    final bool nouveauCycle = AbonnementService.ouvreNouveauCycle(solde);
+    double prixCycle = 0;
+    if (nouveauCycle) {
+      prixCycle = await _service.prixDuCycle(entreprise.id);
+    }
+
+    // La règle vit dans le service (testée) : jamais le montant du cycle
+    // précédent quand un nouveau cycle va s'ouvrir.
+    final double montantPropose = AbonnementService.montantAEncaisser(
+      solde: solde,
+      prixCycle: prixCycle,
+    );
 
     setState(() {
       _entreprise = entreprise;
       _solde = solde;
+      _prixCycle = prixCycle;
       _dureeAbonnementJours = duree;
       _chargement = false;
 
       _montantController.text =
           montantPropose > 0 ? montantPropose.toStringAsFixed(0) : '';
 
-      _type = solde.solde <= 0
+      _type = nouveauCycle
           ? TypePaiement.renouvellement
           : (montantPropose > 0 && montantPropose <= solde.solde
               ? TypePaiement.solde
@@ -167,10 +188,29 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
   double get _plafond {
     final SoldeAbonnement? solde = _solde;
     if (solde == null) return 0;
-    return solde.solde > 0 ? solde.solde : solde.total;
+    if (_estRenouvellement) {
+      return _prixCycle > 0 ? _prixCycle : solde.total;
+    }
+    return solde.solde;
   }
 
-  bool get _estRenouvellement => (_solde?.solde ?? 0) <= 0;
+  /// `true` quand le paiement va ouvrir un NOUVEAU cycle : le solde du cycle
+  /// courant est nul, ou l'abonnement est échu.
+  bool get _estRenouvellement {
+    final SoldeAbonnement? solde = _solde;
+    if (solde == null) return false;
+    return solde.solde <= 0 || solde.statut == StatutAbonnement.expire;
+  }
+
+  /// Montant sur lequel le moteur va imputer ce paiement.
+  double get _baseImputation {
+    final SoldeAbonnement? solde = _solde;
+    if (solde == null) return 0;
+    if (_estRenouvellement) {
+      return _prixCycle > 0 ? _prixCycle : solde.total;
+    }
+    return solde.solde;
+  }
 
   /// Aperçu du statut après paiement (reproduit la règle de la base).
   StatutAbonnement? get _statutApres {
@@ -470,13 +510,24 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
             ),
             const Divider(height: 20),
             _ligneRecap('Statut actuel', solde.statut.libelle),
-            _ligneRecap('Montant total dû', formatMontant(solde.total)),
-            _ligneRecap('Déjà payé', formatMontant(solde.paye)),
             _ligneRecap(
-              'Solde restant',
-              formatMontant(solde.solde),
-              accent: true,
+              _estRenouvellement ? 'Cycle précédent' : 'Montant total dû',
+              formatMontant(solde.total),
             ),
+            _ligneRecap('Déjà payé', formatMontant(solde.paye)),
+            if (_estRenouvellement && _prixCycle > 0) ...<Widget>[
+              _ligneRecap(
+                'Nouveau cycle à encaisser',
+                formatMontant(_prixCycle),
+                accent: true,
+              ),
+            ] else ...<Widget>[
+              _ligneRecap(
+                'Solde restant',
+                formatMontant(solde.solde),
+                accent: true,
+              ),
+            ],
           ],
         ),
       ),
@@ -485,7 +536,7 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
 
   Widget _apercu(ThemeData theme, SoldeAbonnement solde) {
     final double montant = _montantSaisi;
-    final double base = _estRenouvellement ? solde.total : solde.solde;
+    final double base = _baseImputation;
     final double nouveauSolde = base - montant > 0 ? base - montant : 0;
     final StatutAbonnement? statutApres = _statutApres;
     final DateTime? expirationApres = _expirationApres;

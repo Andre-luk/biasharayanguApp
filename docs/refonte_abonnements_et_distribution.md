@@ -795,7 +795,76 @@ bouton **Réessayer** (remet la vente en file + relance `syncAll`).
 
 ---
 
-## 14. Garde-fous transverses
+## 14. Phase 13 — Incohérences relevées en Super Admin (corrigées le 01/11/2026)
+
+> **État : CORRIGÉE** — migrations `0095`, `0096`, corrections Dart,
+> `test/paiement_abonnement_coherence_test.dart` (6 tests).
+
+### 1. « Le montant dépasse le solde restant » alors qu'on paie ce qui est dû
+
+Cas exact : entreprise **EXPIRE**, « montant total dû 15 000 », encaissement
+15 000 → refus.
+
+**Cause** : pour un abonnement échu, le moteur ouvre un **nouveau cycle** au
+prix mensuel **actuel** (`rpc_abonnement_prix_du_cycle`) et compare le
+paiement à CE montant. Depuis que le barème remplit `prix_abonnement_mensuel`
+(0091/0093), le nouveau cycle vaut 10 000 et non plus 15 000 : l'écran
+proposait donc un montant supérieur au dû réel.
+
+**Correctif** : la règle est centralisée dans
+`AbonnementService.montantAEncaisser` (testée) — abonnement échu ou cycle
+soldé → **prix du prochain cycle** ; sinon → solde restant. L'écran affiche
+« Nouveau cycle à encaisser » et le message d'erreur dit quoi encaisser.
+
+### 2. Le type d'activité ne pilotait rien
+
+**Trois causes, trois correctifs (migration 0096)** :
+
+1. le profil d'espace « distribution » (0089) pouvait rester `actif = false`
+   → il n'apparaissait pas dans le sélecteur d'activité ;
+2. choisir « Distribution » ne renseignait pas `entreprises.type_activite`
+   → l'accueil restait en fail-open (toutes les cartes) : **déclencheur
+   `trg_espace_aligne_type_activite`** ;
+3. changer le type ne touchait pas le profil de modules de l'espace
+   → `rpc_entreprise_definir_type_activite` (v2) bascule l'espace sur le
+   profil « distribution » (production + tournées), sans jamais écraser un
+   espace spécialisé (pharmacie, hôtel…) ;
+4. côté application, le type et les modules sont **rechargés immédiatement**
+   après le changement (avant : seulement au redémarrage).
+
+Une carte « Type d'activité » sur la fiche entreprise dit désormais, en
+clair, ce que le type active ou masque.
+
+### 3. Suppression d'entreprise bloquée par le journal d'audit
+
+`rpc_entreprise_supprimer` parcourait toutes les tables portant
+`entreprise_id`, dont `public.journal_audit`, protégée en **append-only** :
+la suppression échouait sur ce message.
+
+**Correctif (0095)** : le journal est traité à part — son déclencheur est
+neutralisé le temps de la transaction, les lignes de l'entreprise sont
+supprimées, puis il est **remis immédiatement**. Les autres suppressions sont
+tolérantes (une table récalcitrante est signalée au lieu de tout annuler).
+
+### 4. Inscription : pas d'activité, et l'ancienne entreprise restait affichée
+
+- le sélecteur d'activité n'apparaissait qu'en **mode complet** → il est
+  désormais proposé dans les deux modes, et la catégorie choisie est
+  transmise au serveur ;
+- après la création, l'entreprise devient **active immédiatement**
+  (`EspaceService.chargerSilencieux` + modules + type + abonnement) : plus
+  besoin de quitter l'application et de se reconnecter.
+
+### 5. Reste ouvert (prochaine étape)
+
+**Quotas IA payables en Mobile Money.** Aujourd'hui la demande passe par
+l'administration. La bascule demande son propre cycle de paiement
+(packs → `rpc_serdipay_ouvrir` avec `objet = 'quotas_ia'` → confirmation par
+le webhook → crédit des quotas), donc un lot dédié plutôt qu'une rustine.
+
+---
+
+## 15. Garde-fous transverses
 
 - **Une entreprise = un périmètre** : toute nouvelle table porte `owner_id` + RLS.
 - **Rôles vérifiés côté serveur** : aucune nouvelle RPC ne fait confiance au client.

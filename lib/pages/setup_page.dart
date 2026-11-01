@@ -11,6 +11,9 @@ import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/espace_service.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/type_activite_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -292,10 +295,9 @@ class _SetupPageState extends State<SetupPage> {
                 if (nomBoutique.isNotEmpty) 'p_nom': nomBoutique,
                 if (telephone.isNotEmpty) 'p_telephone': telephone,
                 // 🧩 MODULE 17 — la CATÉGORIE choisie détermine
-                // l'environnement du client (Hôtel → chambres…).
-                'p_type': _mode == ModeApplication.rapide
-                    ? 'boutique'
-                    : _categorieActivite,
+                // l'environnement du client (Hôtel → chambres,
+                // Distribution → tournées & production…).
+                'p_type': _categorieActivite,
               },
             );
             // L'état d'accès (essai actif) est relu en arrière-plan :
@@ -326,6 +328,26 @@ class _SetupPageState extends State<SetupPage> {
               debugPrint('Création de l\'entreprise ignorée : $e');
             }
           }
+        }
+
+        if (!mounted) return;
+
+        // ⚙️ CORRECTIF 96 — L'ENTREPRISE QUI VIENT D'ÊTRE CRÉÉE DOIT DEVENIR
+        // L'ACTIVE. Sans ce rechargement, l'application continuait d'afficher
+        // l'entreprise précédente (« biasharagroup ») jusqu'à ce que
+        // l'utilisateur quitte et se reconnecte.
+        try {
+          await EspaceService.instance.chargerSilencieux();
+
+          final String? idActif = EspaceService.instance.actif?.id;
+          if (idActif != null && idActif != parentId) {
+            await EspaceService.instance.basculer(idActif);
+          }
+          await ModulesService.instance.chargerSilencieux();
+          await TypeActiviteService.instance.charger();
+          await AbonnementService.instance.rafraichirSilencieux();
+        } catch (e) {
+          debugPrint('Setup : actualisation après création ignorée ($e)');
         }
 
         if (!mounted) return;
@@ -484,9 +506,11 @@ class _SetupPageState extends State<SetupPage> {
 
                       // 🧩 MODULE 17 — CATÉGORIE D'ACTIVITÉ : l'environnement
                       // du client (modules, tableaux de bord) suit ce choix.
+                      // ⚙️ CORRECTIF 96 — le choix d'activité ne doit pas
+                      // disparaître en « mode rapide » : c'est lui qui décide
+                      // de l'environnement (Boutique ou Distribution).
                       if (!widget.adminCreating &&
                           !_aCodeBoutique &&
-                          _mode == ModeApplication.complet &&
                           (_chargementCategories || _categories.isNotEmpty)) ...[
                         const SizedBox(height: 20),
                         _buildFieldTitle("Catégorie d'activité"),

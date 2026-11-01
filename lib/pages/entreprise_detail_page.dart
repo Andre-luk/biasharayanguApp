@@ -356,6 +356,10 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           const SizedBox(height: 16),
           _carteInformations(theme, entreprise),
           const SizedBox(height: 16),
+          //  ⚙️ CORRECTIF 96 — le TYPE d'activité et ce qu'il change
+          //  réellement : c'était invisible, donc invérifiable.
+          _carteTypeActivite(theme, entreprise),
+          const SizedBox(height: 16),
           _carteAbonnement(theme, entreprise),
           const SizedBox(height: 16),
           //  🧩 CORRECTIF 65 — ce que cette entreprise peut VOIR : son niveau
@@ -768,6 +772,81 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
   /// 🏪 Le type d'activité décide des écrans proposés : une entreprise de
   /// distribution voit les tournées, une boutique voit sa caisse. C'est ce
   /// réglage qui « range » les entreprises qui existaient déjà.
+  /// ⚙️ CORRECTIF 96 — « Type d'activité » : la valeur ET ses conséquences.
+  ///
+  /// Le patron ne pouvait pas vérifier ce que le type changeait : il est écrit
+  /// ici, en clair, avec les écrans réellement masqués ou ouverts.
+  Widget _carteTypeActivite(ThemeData theme, Entreprise entreprise) {
+    final TypeActivite? type = entreprise.typeActivite;
+
+    final String libelle;
+    final String consequence;
+    final Color teinte;
+    final IconData icone;
+
+    if (type == TypeActivite.distribution) {
+      libelle = 'Distribution';
+      consequence = 'Tournées, Ma tournée, Consignes clients, Récipients & '
+          'bonus et Production sont ACTIVÉS. Le profil de modules de son '
+          'espace passe sur « Distribution (production & tournées) ».';
+      teinte = const Color(0xFF0F766E);
+      icone = Icons.local_shipping_rounded;
+    } else if (type == TypeActivite.boutique) {
+      libelle = 'Boutique';
+      consequence = 'Caisse, stock, ventes et clients. Les écrans de '
+          'distribution (tournées, récipients, consignes) sont MASQUÉS.';
+      teinte = theme.colorScheme.primary;
+      icone = Icons.storefront_rounded;
+    } else {
+      libelle = 'Non renseigné';
+      consequence = 'Tous les écrans restent visibles (aucune restriction). '
+          'Choisissez un type pour que l\'environnement s\'adapte.';
+      teinte = Colors.orange.shade800;
+      icone = Icons.help_outline_rounded;
+    }
+
+    return Card(
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(icone, size: 20, color: teinte),
+                const SizedBox(width: 8),
+                const Text("Type d'activité",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const Spacer(),
+                Text(
+                  libelle,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, color: teinte, fontSize: 13),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(consequence, style: const TextStyle(fontSize: 12.5)),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed:
+                    _actionEnCours ? null : () => _choisirTypeActivite(),
+                icon: const Icon(Icons.edit_rounded, size: 18),
+                label: const Text('Changer le type'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _choisirTypeActivite() async {
     final Entreprise? entreprise = _entreprise;
     if (entreprise == null) return;
@@ -823,7 +902,10 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
       _afficherMessage(
         nouveau == null
             ? 'Type effacé : tous les écrans redeviennent visibles.'
-            : 'Type d\'activité enregistré : ${nouveau.libelle}.',
+            : nouveau == TypeActivite.distribution
+                ? 'Distribution : tournées, récipients et production '
+                    'activés pour cette entreprise.'
+                : 'Boutique : les écrans de distribution sont masqués.',
       );
       await _charger(silencieux: true);
     } on EntrepriseServiceException catch (e) {

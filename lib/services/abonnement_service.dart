@@ -451,6 +451,56 @@ class AbonnementService {
     }
   }
 
+  /// 💰 MONTANT À ENCAISSER — la règle, en un seul endroit.
+  ///
+  /// C'est LA correction du 31/10 : l'écran admin proposait le montant du
+  /// cycle PRÉCÉDENT (ex. 15 000) alors que le moteur, pour un abonnement
+  /// échu, ouvre un NOUVEAU cycle au prix mensuel actuel (ex. 10 000). Le
+  /// paiement était donc refusé (« le montant dépasse le solde restant »).
+  ///
+  /// Règles :
+  ///   • abonnement échu ou cycle soldé → le prix du **prochain** cycle ;
+  ///   • sinon → le solde restant du cycle en cours.
+  static double montantAEncaisser({
+    required SoldeAbonnement solde,
+    required double prixCycle,
+  }) {
+    final bool nouveauCycle =
+        solde.solde <= 0 || solde.statut == StatutAbonnement.expire;
+    if (nouveauCycle) {
+      return prixCycle > 0 ? prixCycle : solde.total;
+    }
+    return solde.solde;
+  }
+
+  /// Vrai quand le prochain paiement ouvre un NOUVEAU cycle.
+  static bool ouvreNouveauCycle(SoldeAbonnement solde) =>
+      solde.solde <= 0 || solde.statut == StatutAbonnement.expire;
+
+  /// Prix que le moteur demandera pour le **prochain** cycle.
+  ///
+  /// ⚠️ Différence capitale avec `entreprises.montant_total_du` : ce dernier
+  /// décrit le cycle PRÉCÉDENT. Quand l'abonnement est échu, le moteur en
+  /// ouvre un nouveau au prix mensuel actuel — payer l'ancien montant est donc
+  /// refusé (« le montant dépasse le solde restant »). Cet appel donne le bon
+  /// chiffre, celui que la base facturera vraiment.
+  ///
+  /// Renvoie 0 si le serveur ne répond pas : l'appelant garde alors son
+  /// estimation locale.
+  Future<double> prixDuCycle(String entrepriseId) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_abonnement_prix_du_cycle',
+        params: <String, dynamic>{'p_entreprise': entrepriseId},
+      );
+      if (reponse is num) return reponse.toDouble();
+      return double.tryParse('$reponse') ?? 0;
+    } catch (e) {
+      debugPrint('AbonnementService.prixDuCycle : $e');
+      return 0;
+    }
+  }
+
   /// Ouvre le cycle suivant au prix mensuel négocié, si l'abonnement est échu.
   ///
   /// ⚠️ Contrairement à [etatInstallation], cette méthode LÈVE une erreur :
@@ -980,7 +1030,12 @@ class AbonnementService {
           'grille tarifaire de cette entreprise est manquante.';
     }
     if (brut.contains('MONTANT_SUPERIEUR')) {
-      return "Le montant dépasse le solde restant de l'abonnement.";
+      // Cas réel (31/10) : l'écran proposait le montant du cycle PRÉCÉDENT
+      // (ex. 15 000) alors que le moteur rouvre un cycle au prix mensuel
+      // actuel (ex. 10 000). Le message doit dire QUOI encaisser.
+      return "Le montant dépasse ce que le prochain cycle demande. Un "
+          "abonnement échu est renouvelé au prix mensuel actuel : encaissez "
+          'le montant indiqué dans « Nouveau cycle à encaisser ».';
     }
     if (brut.contains('SOLDE_RESTANT')) {
       return "L'abonnement n'est pas intégralement réglé : la réactivation "
