@@ -8,6 +8,7 @@
 // mêmes chiffres viennent du serveur (`dist_tableau_bord`).
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/distribution_gestion.dart';
 import 'package:biashara_yangu/pages/distribution_collaborateurs_page.dart';
@@ -16,8 +17,14 @@ import 'package:biashara_yangu/pages/distribution_finance_page.dart';
 import 'package:biashara_yangu/pages/distribution_journal_page.dart';
 import 'package:biashara_yangu/pages/distribution_production_page.dart';
 import 'package:biashara_yangu/pages/distribution_stock_page.dart';
+import 'package:biashara_yangu/services/audit_service.dart';
+import 'package:biashara_yangu/services/contexte_distribution.dart';
 import 'package:biashara_yangu/services/distribution_gestion_service.dart';
+import 'package:biashara_yangu/services/panier_service.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
+import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/widgets/distribution_widgets.dart';
 
 class DistributionProPage extends StatefulWidget {
@@ -241,6 +248,13 @@ class _DistributionProPageState extends State<DistributionProPage> {
             onPressed: () => _charger(),
             icon: const Icon(Icons.refresh_rounded),
           ),
+          // 🚪 Les membres de la distribution n'ont plus l'onglet Paramètres :
+          // la déconnexion doit rester accessible depuis leur espace.
+          IconButton(
+            tooltip: 'Se déconnecter',
+            onPressed: _deconnecter,
+            icon: const Icon(Icons.logout_rounded),
+          ),
         ],
       ),
       body: _chargement
@@ -252,6 +266,44 @@ class _DistributionProPageState extends State<DistributionProPage> {
                   child: _contenu(),
                 ),
     );
+  }
+
+  /// Déconnexion complète (session, panier, historique du scanner).
+  Future<void> _deconnecter() async {
+    final bool? confirme = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Se déconnecter ?'),
+        content: const Text(
+          'Les opérations déjà enregistrées sont conservées. Celles qui '
+          'attendent le réseau restent sur ce téléphone.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Se déconnecter'),
+          ),
+        ],
+      ),
+    );
+    if (confirme != true) return;
+
+    try {
+      await AuditService.instance.deconnexion();
+    } catch (e) {
+      debugPrint('Distribution — audit de déconnexion ignoré : $e');
+    }
+    await SessionManager.clearSession();
+    PanierService.instance.vider();
+    ScannerService.instance.viderHistorique();
+    PermissionService.instance.reinitialiser();
+    ContexteDistribution.instance.reinitialiser();
+    if (!mounted) return;
+    context.go('/login');
   }
 
   Widget _vueErreur() {

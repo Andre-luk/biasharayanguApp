@@ -24,7 +24,14 @@ import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
 /// 🧩 MODULE 16 — une branche peut en plus dépendre de l'ACTIVITÉ
 /// ([activite]) : un hôtel n'a pas d'onglet « Stock ».
 class _BrancheNav {
-  const _BrancheNav({required this.index, required this.pages, this.activite});
+  const _BrancheNav({
+    required this.index,
+    required this.pages,
+    this.activite,
+    this.route,
+    this.libelle,
+    this.icone,
+  });
 
   final int index;
   final List<PageAccess> pages;
@@ -32,6 +39,15 @@ class _BrancheNav {
   /// Condition d'activité (module 16) : la branche n'est proposée que si elle
   /// renvoie `true`. `null` = aucune restriction d'activité.
   final bool Function(Set<String> modules, bool profilCharge)? activite;
+
+  /// 🚚 MODULE 24 — route à ouvrir quand l'onglet est touché (ex. l'espace
+  /// Distribution, qui vit à l'intérieur de la branche d'accueil).
+  final String? route;
+
+  /// Libellé et icône personnalisés (branches ajoutées hors de la liste
+  /// historique : Distribution).
+  final String? libelle;
+  final IconData? icone;
 }
 
 // Ce widget est le 'Shell' qui enveloppe les pages principales (/main, /reports, /catalog, /settings)
@@ -166,13 +182,11 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
             (branche.index != 1 && branche.index != 2))
         .toList(growable: false);
 
-    // 🔐 La branche « Paramètres » (qui contient la DÉCONNEXION) est toujours
-    // proposée : sans elle, un compte sans droit « dashboard » se retrouvait
-    // coincé entre Rapports et Stock, sans aucun moyen de se déconnecter.
-    final _BrancheNav parametres = _toutesLesBranches
-        .firstWhere((_BrancheNav b) => b.index == 3);
-    if (!visibles.any((_BrancheNav b) => b.index == 3)) {
-      visibles.add(parametres);
+    // � MODULE 24 — un membre de la distribution ne voit QUE son espace :
+    // c'est là que se trouvent les intrants, la production, la caisse du
+    // module… et la déconnexion. Rien de la boutique.
+    if (ContexteDistribution.instance.estMembre) {
+      return <_BrancheNav>[_brancheDistribution];
     }
 
     return visibles.isEmpty
@@ -180,10 +194,23 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
         : visibles;
   }
 
+  /// Onglet unique des membres de la distribution (pointe sur le module).
+  _BrancheNav get _brancheDistribution => _BrancheNav(
+        index: 0,
+        pages: const <PageAccess>[PageAccess.distribution],
+        route: '/main/distribution',
+        libelle: 'Distribution',
+        icone: Icons.factory_rounded,
+      );
+
   // Méthode pour basculer entre les onglets
   void _onTap(List<_BrancheNav> visibles, int indexAffiche) {
     final _BrancheNav branche = visibles[indexAffiche];
     widget.navigationShell.goBranch(branche.index);
+    // Branche « route » (Distribution) : l'onglet ouvre une page précise de
+    // la branche d'accueil.
+    final String? route = branche.route;
+    if (route != null) context.go(route);
   }
 
   @override
@@ -223,6 +250,16 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     // Icônes sélectionné / non sélectionné : la barre est plus vivante.
     final List<NavigationDestination> destinations =
         visibles.map((_BrancheNav branche) {
+      // Branche personnalisée (Distribution) : son propre libellé et sa propre
+      // icône, sinon elle serait étiquetée « Accueil ».
+      if (branche.libelle != null) {
+        final IconData icone = branche.icone ?? Icons.circle_outlined;
+        return NavigationDestination(
+          icon: Icon(icone),
+          selectedIcon: Icon(icone),
+          label: branche.libelle!,
+        );
+      }
       switch (branche.index) {
         case 0:
           return NavigationDestination(

@@ -575,6 +575,43 @@ function construireCorpsInitier(
 
   // Modèle surchargeable sans redéploiement : secret SERDIPAY_CORPS_INITIER.
   const modele = Deno.env.get('SERDIPAY_CORPS_INITIER');
+
+  // 🔐 Champs EXIGÉS par SerdiPay (l'API répond
+  // « clientPhone: validation.required · telecom: validation.required »
+  // dès que l'un d'eux est vide). Ils sont réinjectés après application du
+  // modèle : un secret incomplet ne peut plus casser un paiement.
+  const obligatoires: Record<string, unknown> = {
+    merchantCode: SERDIPAY_MERCHANT_CODE,
+    api_id: SERDIPAY_API_ID,
+    api_password: SERDIPAY_API_PASSWORD,
+    merchant_pin: SERDIPAY_PIN,
+    clientPhone,
+    telecom,
+    amount: Number(p.montant),
+    currency: p.devise || SERDIPAY_DEVISE,
+  };
+
+  const injecterObligatoires = (
+    corps: Record<string, unknown>,
+    origine: string,
+  ): Record<string, unknown> => {
+    const manquants: string[] = [];
+    for (const [cle, valeur] of Object.entries(obligatoires)) {
+      const actuel = corps[cle];
+      if (actuel === undefined || actuel === null || actuel === '') {
+        corps[cle] = valeur;
+        manquants.push(cle);
+      }
+    }
+    if (manquants.length > 0) {
+      console.warn(
+        `[serdipay] champs obligatoires réinjectés (${origine}) : ` +
+          manquants.join(', '),
+      );
+    }
+    return corps;
+  };
+
   if (modele && modele.trim().length > 0) {
     const rempli = modele
       .replaceAll('{apiId}', SERDIPAY_API_ID)
@@ -593,7 +630,7 @@ function construireCorpsInitier(
     try {
       const lu = JSON.parse(rempli) as Record<string, unknown>;
       lu.merchantCode ??= SERDIPAY_MERCHANT_CODE;
-      return lu;
+      return injecterObligatoires(lu, 'modèle SERDIPAY_CORPS_INITIER');
     } catch {
       // Modèle invalide : on utilise le corps par défaut ci-dessous.
       console.error('[serdipay] SERDIPAY_CORPS_INITIER n’est pas un JSON valide');
@@ -604,21 +641,24 @@ function construireCorpsInitier(
   // Champs obligatoires découverts le 30/10/2026 en interrogeant l'API :
   //   merchantCode, api_id, api_password, merchant_pin, clientPhone,
   //   telecom, amount, currency
-  return {
-    merchantCode: SERDIPAY_MERCHANT_CODE,
-    api_id: SERDIPAY_API_ID,
-    api_password: SERDIPAY_API_PASSWORD,
-    merchant_pin: SERDIPAY_PIN,
-    clientPhone,
-    telecom,
-    amount: Number(p.montant),
-    currency: p.devise || SERDIPAY_DEVISE,
-    // Facultatifs, utiles au reçu et au rapprochement :
-    reference: p.reference,
-    description,
-    callbackUrl: callback,
-    returnUrl: SERDIPAY_RETURN_URL,
-  };
+  return injecterObligatoires(
+    {
+      merchantCode: SERDIPAY_MERCHANT_CODE,
+      api_id: SERDIPAY_API_ID,
+      api_password: SERDIPAY_API_PASSWORD,
+      merchant_pin: SERDIPAY_PIN,
+      clientPhone,
+      telecom,
+      amount: Number(p.montant),
+      currency: p.devise || SERDIPAY_DEVISE,
+      // Facultatifs, utiles au reçu et au rapprochement :
+      reference: p.reference,
+      description,
+      callbackUrl: callback,
+      returnUrl: SERDIPAY_RETURN_URL,
+    },
+    'corps par défaut',
+  );
 }
 
 function extraireUrlPaiement(data: unknown): string | null {
