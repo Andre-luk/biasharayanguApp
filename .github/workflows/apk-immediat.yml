@@ -71,9 +71,13 @@ jobs:
           if [ -z "$B64" ]; then B64="$B64_ALT"; fi
 
           if [ -z "$B64" ]; then
-            echo "::warning::Aucun keystore configuré : l'APK sera signé avec la clé DEBUG."
-            echo "   (Il ne pourra pas s'installer par-dessus une version signée officiellement.)"
-            exit 0
+            echo "❌ APK refusé : aucun keystore de release trouvé."
+            echo "   Cet APK est publié dans une release : il doit porter la clé"
+            echo "   officielle, sinon les téléphones clients ne pourront pas se"
+            echo "   mettre à jour (signature différente)."
+            echo "   Créez ANDROID_KEYSTORE_BASE64 (+ ANDROID_STORE_PASSWORD,"
+            echo "   ANDROID_KEY_PASSWORD, ANDROID_KEY_ALIAS)."
+            exit 1
           fi
 
           printf '%s' "$B64" | base64 -d > android/upload-keystore.jks 2>/dev/null || true

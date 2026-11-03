@@ -157,8 +157,15 @@ jobs:
           if [ -z "$B64" ]; then B64="$B64_ALT"; fi
 
           if [ -z "$B64" ]; then
-            echo "ℹ️ Aucun keystore configuré : repli sur la clé debug (APK NON signé officiellement)."
-            echo "   Pour signer : créez ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD, ANDROID_KEY_PASSWORD, ANDROID_KEY_ALIAS."
+            if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+              echo "❌ PUBLICATION REFUSÉE : aucun keystore de release trouvé."
+              echo "   L'application est déjà installée chez des clients : un APK"
+              echo "   signé avec la clé debug ne pourrait PAS les mettre à jour."
+              echo "   Créez ANDROID_KEYSTORE_BASE64 (+ ANDROID_STORE_PASSWORD,"
+              echo "   ANDROID_KEY_PASSWORD, ANDROID_KEY_ALIAS) puis relancez le tag."
+              exit 1
+            fi
+            echo "ℹ️ Compilation de test (pas un tag) : repli sur la clé debug."
             exit 0
           fi
 
