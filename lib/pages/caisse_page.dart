@@ -5,12 +5,17 @@
 //   • solde global de la caisse (tout l'historique) ;
 //   • encaissements / décaissements du jour, détail par mode de paiement ;
 //   • historique filtrable (période, sens, mode) ;
+//   • bouton « Décaissement » (dépense) si le rôle peut créer une dépense ;
 //   • bouton « Clôture de caisse » (si le rôle peut modifier/valider).
 //
 // ⚠️ La caisse est CALCULÉE par le serveur (`rpc_caisse_resume` /
 //    `rpc_caisse_journal`) : ventes encaissées + règlements de dettes −
 //    dépenses. Un vendeur sans droit `depenses/voir` ne voit ni le solde ni
 //    les décaissements (le serveur renvoie alors `null`).
+//
+// ⚠️ Un décaissement ne touche JAMAIS le solde en direct : il crée une
+//    dépense (`rpc_depense_creer` → `depenses`), que le serveur déduit du
+//    solde au rechargement.
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +25,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/finance_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/widgets/decaissement_caisse_dialogue.dart';
 
 class CaissePage extends StatefulWidget {
   const CaissePage({super.key});
@@ -98,9 +104,29 @@ class _CaissePageState extends State<CaissePage> {
       PermissionService.instance.peut(PageAccess.caisse, ActionAccess.modifier) ||
       PermissionService.instance.peut(PageAccess.caisse, ActionAccess.valider);
 
+  /// Créer une dépense (= sortie de caisse) est un droit distinct de la
+  /// clôture : un comptable peut ainsi décaisser sans clôturer.
+  bool get _peutDecaisser =>
+      PermissionService.instance.peut(PageAccess.depenses, ActionAccess.creer);
+
   Future<void> _ouvrirCloture() async {
     final bool? cloture = await context.push<bool>('/main/caisse/cloture');
     if (cloture == true) _charger();
+  }
+
+  Future<void> _ouvrirDecaissement() async {
+    final bool enregistre = await afficherDecaissementCaisse(
+      context,
+      soldeActuel: _resume?.solde,
+    );
+    if (!enregistre) return;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Décaissement enregistré : le solde a été mis à jour.'),
+      ),
+    );
+    await _charger();
   }
 
   // ---------------------------------------------------------------------------
@@ -117,6 +143,12 @@ class _CaissePageState extends State<CaissePage> {
         ),
         centerTitle: false,
         actions: <Widget>[
+          if (_peutDecaisser)
+            IconButton(
+              tooltip: 'Décaissement',
+              onPressed: _chargement ? null : _ouvrirDecaissement,
+              icon: const Icon(Icons.south_east_rounded),
+            ),
           IconButton(
             tooltip: 'Actualiser',
             onPressed: _charger,
@@ -124,14 +156,45 @@ class _CaissePageState extends State<CaissePage> {
           ),
         ],
       ),
-      floatingActionButton: _peutCloturer && _resume != null
-          ? FloatingActionButton.extended(
-              onPressed: _ouvrirCloture,
-              icon: const Icon(Icons.lock_clock_rounded),
-              label: const Text('Clôture de caisse'),
-            )
-          : null,
+      floatingActionButton: _boutonsFlottants(),
       body: _construireCorps(),
+    );
+  }
+
+  /// Un seul emplacement flottant, mais deux actions possibles : chaque
+  /// bouton a son propre `heroTag` (sinon Flutter lève « multiple heroes
+  /// share the same tag »).
+  Widget? _boutonsFlottants() {
+    if (_resume == null) return null;
+
+    final List<Widget> boutons = <Widget>[
+      if (_peutDecaisser)
+        FloatingActionButton.extended(
+          heroTag: 'caisse-fab-decaissement',
+          onPressed: _ouvrirDecaissement,
+          icon: const Icon(Icons.south_east_rounded),
+          label: const Text('Décaissement'),
+        ),
+      if (_peutCloturer)
+        FloatingActionButton.extended(
+          heroTag: 'caisse-fab-cloture',
+          onPressed: _ouvrirCloture,
+          icon: const Icon(Icons.lock_clock_rounded),
+          label: const Text('Clôture'),
+        ),
+    ];
+
+    if (boutons.isEmpty) return null;
+    if (boutons.length == 1) return boutons.first;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        for (int i = 0; i < boutons.length; i++) ...<Widget>[
+          boutons[i],
+          if (i != boutons.length - 1) const SizedBox(height: 10),
+        ],
+      ],
     );
   }
 
@@ -173,6 +236,10 @@ class _CaissePageState extends State<CaissePage> {
           _carteSolde(resume),
           const SizedBox(height: 16),
           _cartesJour(resume.jour),
+          if (_peutDecaisser) ...<Widget>[
+            const SizedBox(height: 12),
+            _carteActions(),
+          ],
           const SizedBox(height: 16),
           _carteParMode(resume),
           if (resume.derniereCloture != null) ...<Widget>[
@@ -195,6 +262,71 @@ class _CaissePageState extends State<CaissePage> {
             const SizedBox(height: 8),
             _piedTotaux(_journal!.totaux),
           ],
+        ],
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------- actions
+
+  /// Actions rapides : décaisser une dépense, ou consulter le détail des
+  /// dépenses déjà enregistrées (écran « Dépenses » du module 10).
+  Widget _carteActions() {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(Icons.flash_on_rounded,
+                  size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Actions rapides',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _ouvrirDecaissement,
+                  icon: const Icon(Icons.south_east_rounded, size: 18),
+                  label: const Text('Décaissement'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/main/depenses'),
+                  icon: const Icon(Icons.receipt_long_rounded, size: 18),
+                  label: const Text('Dépenses'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Un décaissement est une sortie de caisse : il réduit le solde et '
+            'le bénéfice net, et reste tracé dans le journal.',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );

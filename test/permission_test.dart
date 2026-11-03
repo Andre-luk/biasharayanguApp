@@ -324,6 +324,9 @@ void main() {
           PageAccess.evenements,
           // 🥖 MODULE 16 C5 — boulanger-vendeur : productions (voir + créer).
           PageAccess.production,
+          // 🚚 MODULE 24 — espace Distribution : produits, clients, ventes,
+          // retours et remises du commercial.
+          PageAccess.distribution,
           // 🚚 MODULE 23 — agent/livreur : sa tournée du jour.
           PageAccess.maTournee,
         ],
@@ -679,7 +682,7 @@ void main() {
 
   group('Menu dynamique', () {
     test(
-        'le menu d\'un vendeur contient ses quinze pages (hôtel, resto, fêtes, boulangerie & tournée)',
+        'le menu d\'un vendeur contient ses seize pages (hôtel, resto, fêtes, boulangerie, tournée & distribution)',
         () {
       final List<EntreeMenu> menu = service.menuPour(
           RoleUtilisateur.vendeur, EspaceApplication.entreprise);
@@ -705,6 +708,9 @@ void main() {
           PageAccess.evenements,
           // 🥖 MODULE 16 C5 — boulangerie.
           PageAccess.production,
+          // 🚚 MODULE 24 — espace Distribution complet (le commercial y
+          // trouve ses produits, ses clients, ses ventes et ses remises).
+          PageAccess.distribution,
           // 🚚 MODULE 23 — « Ma tournée » (l'agent ne voit pas le rapport
           // du patron : PageAccess.distribution ne lui est pas ouvert).
           PageAccess.maTournee,

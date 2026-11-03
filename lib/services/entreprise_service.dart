@@ -564,10 +564,16 @@ class EntrepriseService {
           },
         );
 
-        // ⚙️ CORRECTIF 96 — l'ENVIRONNEMENT suit immédiatement le type.
+        // ⚙️ CORRECTIF 96/97 — l'ENVIRONNEMENT suit immédiatement le type.
         // Sans ce rafraîchissement, passer une entreprise en distribution
         // n'affichait Tournées / Ma tournée / Récipients qu'après redémarrage.
         try {
+          // La liste des entreprises est mise en cache (100 % hors ligne) :
+          // on la périme pour que la fiche relise le type qu'on vient
+          // d'écrire, au lieu de réafficher « Non renseigné ».
+          await CacheLecture.instance
+              .oublier(CacheLecture.cleRpc('entreprises_liste'));
+
           await EspaceService.instance.chargerSilencieux();
 
           if (EspaceService.instance.actif?.id == entrepriseId) {

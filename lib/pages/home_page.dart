@@ -71,6 +71,10 @@ import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 // 🧩 MODULE 16 (phase B) — registre des cartes d'accueil par module.
 import 'package:biashara_yangu/ui/accueil/cartes_accueil.dart';
+
+// 🚚 MODULE 24 — séparation boutique / distribution.
+import 'package:biashara_yangu/services/contexte_distribution.dart';
+import 'package:biashara_yangu/widgets/bandeau_distribution_accueil.dart';
 // 🖥️ Mise en page adaptative (contenu centré et grille à l'échelle du bureau).
 import 'package:biashara_yangu/ui/mise_en_page_adaptative.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -808,10 +812,26 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final bool profilCharge = ModulesService.instance.charge;
     final bool ventesActives = ReglesActivite.ventes(modules, profilCharge);
 
+    // 🚚 MODULE 24 — dans une distribution, le geste principal n'est pas la
+    // vente au comptoir mais l'ouverture du module (ses écrans portent SA
+    // caisse, SON stock, SES commerciaux).
+    final bool universDistribution =
+        ContexteDistribution.instance.universDistribution;
+
     final List<Widget> actions = <Widget>[];
 
-    // ⚡ MODULE 23 — MODE RAPIDE : deux gestes seulement.
-    if (ModeApplicationService.instance.rapide &&
+    if (universDistribution) {
+      actions.add(
+        _ActionRapide(
+          libelle: 'Espace distribution',
+          icone: Icons.factory_rounded,
+          degrade: AppDegrades.hero,
+          couleurTexte: Colors.white,
+          verrouille: verrouille,
+          onTap: () => _navTo('/main/distribution'),
+        ),
+      );
+    } else if (ModeApplicationService.instance.rapide &&
         permissions.peut(PageAccess.caisse, ActionAccess.creer)) {
       actions.add(
         _ActionRapide(
@@ -895,7 +915,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     // ⚖️ Pesée rapide (boucherie, primeur…) : un raccourci direct pour les
     // boutiques qui vendent au poids.
-    if (ModulesService.instance.moduleActif(ModuleCode.pesee) &&
+    if (!universDistribution &&
+        ModulesService.instance.moduleActif(ModuleCode.pesee) &&
         permissions.peut(PageAccess.caisse, ActionAccess.creer)) {
       actions.add(
         _ActionRapide(
@@ -1013,13 +1034,30 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ],
           ),
           // 🚚 La distribution reste joignable même en mode rapide : un
-          // livreur d'eau minérale vit de ses tournées.
+          // livreur d'eau minérale vit de ses livraisons. Depuis le module 24,
+          // le bouton ouvre l'ESPACE DISTRIBUTION (et non les tournées du
+          // module 23, qui n'existent plus pour ces comptes).
           if (permissions.peutVoir(PageAccess.distribution)) ...<Widget>[
             const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: verrouille ? null : () => _navTo('/main/tournees'),
-              icon: const Icon(Icons.local_shipping_rounded, size: 18),
-              label: const Text('Tournées & distribution'),
+              onPressed: verrouille
+                  ? null
+                  : () => _navTo(
+                        ContexteDistribution.instance.universDistribution
+                            ? '/main/distribution'
+                            : '/main/tournees',
+                      ),
+              icon: Icon(
+                ContexteDistribution.instance.universDistribution
+                    ? Icons.factory_rounded
+                    : Icons.local_shipping_rounded,
+                size: 18,
+              ),
+              label: Text(
+                ContexteDistribution.instance.universDistribution
+                    ? 'Production & distribution'
+                    : 'Tournées & distribution',
+              ),
             ),
           ],
           // ⚖️ Une boucherie en mode rapide pèse et encaisse ici.
@@ -1049,6 +1087,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       // ⚙️ Séparation boutique / distribution : un type non renseigné
       // (null) ne masque aucune carte.
       typeActivite: TypeActiviteService.instance.type.value,
+      // 🚚 MODULE 24 — un compte de distribution ne voit pas les cartes de la
+      // boutique (stock, ventes, caisse, rapports) : il a SES écrans.
+      universDistribution: ContexteDistribution.instance.universDistribution,
+      // …et le module 24 complet remplace les cartes « Tournées ».
+      masquerTournees: ContexteDistribution.instance.masquerTournees,
     );
 
     // ⚡ MODULE 23 — MODE RAPIDE : on ne garde que l'essentiel (produits,
@@ -1058,8 +1101,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ModeApplicationService.instance.rapide
             ? cartes
                 .where((CarteAccueil c) => const <String>{
-                      'produits',
-                      'ventes',
+                      'products',
+                      'distribution-pro',
                       'tournees',
                       'consignes',
                       'ma-tournee',
@@ -1301,6 +1344,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     delai: 0,
                     child: _buildCarteHero(T),
                   ),
+                  // 🚚 MODULE 24 — tableau de bord DIFFÉRENT pour la
+                  // distribution : rôle, opérations en attente, caisse et
+                  // anomalies du module, au lieu des repères de la boutique.
+                  if (ContexteDistribution.instance.universDistribution) ...<
+                    Widget>[
+                    const SizedBox(height: 16),
+                    _Apparition(
+                      delai: 1,
+                      child: const BandeauDistributionAccueil(),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   _Apparition(
                     delai: 1,
@@ -1312,7 +1366,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       delai: 2,
                       child: _buildBandeauModeRapide(),
                     ),
-                  ] else if (!_isCollaborator) ...[
+                  ] else if (!_isCollaborator ||
+                      ContexteDistribution.instance.universDistribution) ...[
                     const SizedBox(height: 28),
                     _Apparition(
                       delai: 2,

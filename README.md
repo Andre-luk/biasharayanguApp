@@ -23,7 +23,7 @@ du Congo. Collaborateur marketing : **La Perle Corp**. Développeur principal :
 | **Caisse & finance** | Encaissements, clôtures de caisse, dépenses, tableau de bord CA/bénéfice |
 | **Rapports** | 11+ types (ventes, articles, catégories, vendeurs, top produits, finance, stock, caisse, dépenses, dettes, expirations), exports PDF/Excel signés |
 | **Modules métier** | 🏨 Hôtel (chambres, réservations, check-in/out, facture séjour) · 💊 Pharmacie (lots, péremption, blocage de vente expirée) · 🍽️ Restaurant (tables, commandes, écran cuisine, encaissement caisse) · 🎉 Salle des fêtes (salles, calendrier, prestations, avances & soldes) · 🥖 Boulangerie (matières premières, productions, pertes, coût de revient) · 🥩 Boucherie (vente au poids, pas de 0,5 kg, ticket au kg) · 👕 Mode (variantes taille/couleur/marque, recherche par variante) |
-| **Distribution terrain** | 🚚 Tournées de livraison : dotation par agent, vente plafonnée à la dotation, clôture avec retours et écarts, rapport par agent (CA, quantités, zone), consignes de récipients chez les clients, bonus tracés · ⚖️ **Pesée rapide** : prix au kilo défini sur l'article, poids lu sur la balance, encaissement immédiat (ou code balance `BAL:<produit>:<grammes>`) · ⚡ **Mode rapide** : nom + prix → vendre |
+| **Distribution terrain** | 🚚 Tournées de livraison : dotation par agent, vente plafonnée à la dotation, clôture avec retours et écarts, rapport par agent (CA, quantités, zone), consignes de récipients chez les clients, bonus tracés · ⚖️ **Pesée rapide** : prix au kilo défini sur l'article, poids lu sur la balance, encaissement immédiat (ou code balance `BAL:<produit>:<grammes>`) · ⚡ **Mode rapide** : nom + prix → vendre · 🏭 **Distribution complète (Module 24)** : collaborateurs dédiés (gérant, production, stock, commercial, comptable), stock d'intrants séparé des produits finis, réceptions à double confirmation, demandes d'intrants, productions avec pertes motivées, dotations commerciales, retours comptés, remises d'argent à trois confirmations, caisse/dépenses et anomalies |
 | **Équipe** | Collaborateurs, 8 rôles, permissions fines personnalisables par le Super Admin |
 | **Assistant IA** | Chat intégré (quotas par packs), actions contrôlées par les droits |
 | **Abonnement** | Workflow d'activation vérifié (comptes → finance), essai 7 j / total 30 j, restrictions sans suppression de données |
@@ -138,6 +138,33 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               limitées à l'agent, contrôle du client (autre entreprise
               refusée), statistiques d'accueil en une seule lecture par
               table + nombre total de ventes, index de performance
+0100          Module 24 — DISTRIBUTION : PRODUCTION, STOCK, TERRAIN, CAISSE :
+              rôles distribution dédiés (`utilisateurs.role_distribution`),
+              stock d'intrants séparé des produits finis, réceptions à double
+              confirmation, demandes d'intrants de la production, productions
+              avec pertes motivées et réception au stock, demandes de
+              dotations des commerciaux, retours comptés, clients privés par
+              commercial, ventes + factures PDF, remises d'argent à TROIS
+              confirmations (commercial → comptable → gérant), caisse et
+              dépenses propres au module, anomalies, journal et tableau de
+              bord `dist_tableau_bord`
+0101          Module 24 (compléments) : refus motivé d'une réception
+              d'intrants (`dist_reception_intrants_refuser`) et journal de
+              traçabilité lisible (`dist_journal_lister`)
+0102          PAIEMENTS — Mobile Money obligatoirement via SerdiPay :
+              garde-fous en base (triggers sur `paiements_abonnements_laperle`
+              et `agent_ia_achats`), helper de reconnaissance des libellés et
+              vue d'audit `v_serdipay_audit` pour le Super Admin
+0103          Module 24 — compléments 2 : grille multi-tarifs des bidons
+              (`dist_tarifs`), bonus/produits endommagés par commercial
+              (`dist_bonus_dommages`, validation gérant) et coût de revient /
+              marges (`dist_cout_revient`, `dist_rentabilite`)
+0104          Module 24 — la grille tarifaire s'applique en caisse :
+              `dist_ventes.type_operation` + `p_type_operation` dans
+              `dist_vente_enregistrer` (prix figé sur la ligne de vente)
+0105          Module 24 — hors-ligne : idempotence des opérations
+              (`reference_locale` unique sur `dist_ventes` et
+              `dist_bonus_dommages`, rejeu sans doublon)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise

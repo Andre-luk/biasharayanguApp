@@ -416,3 +416,53 @@ select statut, montant_total_du, montant_deja_paye, solde_restant,
 
 6. Rejouer **le même** webhook → doit répondre `{deja:true}` **sans** modifier
    `montant_deja_paye`.
+
+---
+
+## 9. Règle absolue : Mobile Money ⇒ SerdiPay (migration `0102`)
+
+**Constat (audit des paiements).** Le moteur d'abonnement accepte un « mode de
+paiement » libre. Avec `Mobile Money`, l'écriture était créditée
+**immédiatement**, exactement comme des espèces — y compris depuis la
+validation finance du Super Admin. Aucune transaction SerdiPay n'était créée.
+
+**Corrigé à deux niveaux.**
+
+### Côté base (source de vérité) — `0102_mobile_money_serdipay_obligatoire.sql`
+
+| Objet | Rôle |
+|---|---|
+| `mode_paiement_mobile_money(text)` | reconnaît `Mobile Money`, `MOBILE_MONEY`, `M-Pesa`, `Orange Money`, `Airtel Money`, `MM`… |
+| trigger `trg_paiement_mm_serdipay` sur `paiements_abonnements_laperle` | **refuse** toute écriture Mobile Money s'il n'existe pas, pour la même entreprise et le même montant, une transaction `paiements_serdipay` en `en_attente` **avec `provider_reference`** (donc réellement créée chez SerdiPay) |
+| trigger `trg_achat_quota_mm_serdipay` sur `agent_ia_achats` | même contrôle au passage `impaye → paye` : les quotas IA achetés par Mobile Money ne peuvent être crédités qu'après SerdiPay |
+| vue `v_serdipay_audit` | lecture seule pour le Super Admin : montants, entreprises, statuts, erreurs — **aucune** mutation possible |
+
+Conséquences : un rôle (même Super Admin) ne peut plus « marquer payé » un
+paiement Mobile Money ; les espèces, elles, gardent leur circuit (aucun trigger
+ne les concerne).
+
+### Côté application — `lib/services/paiement_platforme_service.dart`
+
+Point d'entrée **unique** des paiements de plateforme :
+
+- `estMobileMoney(mode)` / `estEspeces(mode)` : décision normalisée ;
+- `payerParMobileMoney(...)` : ouvre `PaiementSerdipayPage` (montant calculé en
+  base, crédit après webhook) ;
+- `messageModeIndisponible(mode)` : la carte bancaire n'étant pas sous contrat,
+  elle est **refusée explicitement** au lieu d'être encaissée comme des espèces.
+
+Écrans branchés : `paiement_abonnement_page.dart` (commerçant) et
+`activations_finance_page.dart` (validation finance / Super Admin). Les deux
+enregistrent d'abord le montant total dû, puis délèguent à SerdiPay quand le
+mode est Mobile Money.
+
+### Ce qui reste hors application
+
+- Les **secrets** `SERDIPAY_USERNAME`, `SERDIPAY_PASSWORD`,
+  `SERDIPAY_WEBHOOK_SECRET` et la **déclaration d'IP** `213.130.145.53` restent
+  à faire (voir §0) : sans eux, la passerelle répond `503` et **aucun** paiement
+  Mobile Money ne peut aboutir — c'est volontaire.
+- Les **quotas IA par Mobile Money** sont désormais bloqués côté base tant
+  qu'une transaction SerdiPay n'existe pas ; l'objet `quota` doit être ajouté à
+  `rpc_serdipay_ouvrir` + Edge Function (contrainte actuelle :
+  `objet in ('abonnement','facture')`).

@@ -22,6 +22,8 @@ IconData iconePourTypeEspace(TypeEspace type) {
   switch (type) {
     case TypeEspace.boutique:
       return Icons.storefront_rounded;
+    case TypeEspace.distribution:
+      return Icons.local_shipping_rounded;
     case TypeEspace.depot:
       return Icons.warehouse_rounded;
     case TypeEspace.hotel:

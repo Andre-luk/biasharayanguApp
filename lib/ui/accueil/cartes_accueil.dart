@@ -171,6 +171,20 @@ class CarteAccueil {
   // ---------------------------------------------------------------------------
 
   static final List<CarteAccueil> registre = <CarteAccueil>[
+    // 🚚 MODULE 24 — tableau de bord Distribution complet (production,
+    // intrants, produits finis, commerciaux, caisse). Distinct de « Tournées ».
+    CarteAccueil(
+      id: 'distribution-pro',
+      module: ModuleCode.distribution,
+      typeRequis: TypeActivite.distribution,
+      page: PageAccess.distribution,
+      priorite: 21,
+      titre: (AppLocalizations T) => 'Production & distribution',
+      valeur: (DonneesAccueil d, AppLocalizations T) => 'Ouvrir',
+      icone: Icons.factory_rounded,
+      couleur: const Color(0xFF1D4ED8),
+      route: '/main/distribution',
+    ),
     // � MODULE 23 — distribution terrain (cartes transverses, sans module :
     // elles restent utiles à toute activité qui livre).
     CarteAccueil(
@@ -516,13 +530,30 @@ class CarteAccueil {
   /// [modules] : modules du profil actif ; [profilCharge] : un profil serveur
   /// a-t-il été reçu ? (sinon fail-open) ; [autorise] : matrice de permissions
   /// du rôle courant.
+  ///
+  /// 🚚 MODULE 24 — [universDistribution] et [masquerTournees] séparent les
+  /// deux univers :
+  ///   • [universDistribution] : un compte de distribution ne voit PLUS les
+  ///     cartes de la boutique (Stock, Ventes, Caisse, Rapports…). Il travaille
+  ///     dans SES écrans (`dist_*`), qui ont leur propre stock et leur propre
+  ///     caisse ;
+  ///   • [masquerTournees] : le module 24 complet remplace les cartes
+  ///     « Tournées », « Ma tournée », « Consignes clients » et « Récipients &
+  ///     bonus » du module 23.
+  /// Valeurs par défaut `false` : aucune régression pour les boutiques.
   static List<CarteAccueil> visibles({
     required Set<String> modules,
     required bool profilCharge,
     required bool Function(PageAccess page, ActionAccess action) autorise,
     TypeActivite? typeActivite,
+    bool universDistribution = false,
+    bool masquerTournees = false,
   }) {
     final List<CarteAccueil> selection = registre.where((CarteAccueil carte) {
+      // 0. Séparation des univers (module 24).
+      if (masquerTournees && _idsTournees.contains(carte.id)) return false;
+      if (universDistribution && _idsBoutique.contains(carte.id)) return false;
+
       // 1. Module de l'activité (fail-open si profil non chargé/vide).
       final String? module = carte.module;
       if (module != null &&
@@ -548,4 +579,38 @@ class CarteAccueil {
           (CarteAccueil a, CarteAccueil b) => a.priorite.compareTo(b.priorite));
     return triees;
   }
+
+  /// Cartes propres à la BOUTIQUE : masquées dès que le compte travaille dans
+  /// une distribution (module 24), car le module a son propre stock, ses
+  /// ventes, sa caisse et son tableau de bord.
+  static const Set<String> _idsBoutique = <String>{
+    'produits',
+    'stock',
+    'expirations',
+    'chambres',
+    'reservations',
+    'checkin',
+    'tables',
+    'commandes',
+    'cuisine',
+    'evenements',
+    'salles',
+    'production',
+    'ventes',
+    'clients',
+    'publications',
+    'visibilite',
+    'publicites',
+    'caisse',
+    'finance',
+    'rapports',
+  };
+
+  /// Cartes du module 23 (tournées) : un module 24 complet les remplace.
+  static const Set<String> _idsTournees = <String>{
+    'tournees',
+    'consignes',
+    'ma-tournee',
+    'recipients',
+  };
 }

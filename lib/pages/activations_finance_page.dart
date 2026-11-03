@@ -25,6 +25,7 @@ import 'package:biashara_yangu/models/activation.dart';
 import 'package:biashara_yangu/models/paiement_laperle.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
+import 'package:biashara_yangu/services/paiement_platforme_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/codes_validation_finance.dart';
@@ -129,10 +130,9 @@ class _ActivationsFinancePageState extends State<ActivationsFinancePage> {
     setState(() => _enCours = dossier.id);
 
     try {
-      // 🧮 MODULE 21 — Le MONTANT TOTAL DÛ est enregistré AVANT le paiement :
-      // le moteur d'abonnement calcule le solde à partir de lui. Sans cette
-      // étape, une entreprise sans grille tarifaire échouait en
-      // « MONTANT_TOTAL_INCONNU » et les montants négociés étaient ignorés.
+      // ⚙️ MODULE 21 — Le MONTANT TOTAL DÛ est enregistré AVANT le paiement :
+      // le moteur d'abonnement (et la passerelle SerdiPay) calculent le solde
+      // à partir de lui.
       final double? totalSaisi = paiement.montantTotalDu;
       if (totalSaisi != null &&
           totalSaisi > 0 &&
@@ -142,6 +142,44 @@ class _ActivationsFinancePageState extends State<ActivationsFinancePage> {
           montant: totalSaisi,
           note: paiement.note,
         );
+      }
+
+      // 💳 AUDIT DES PAIEMENTS — MOBILE MONEY = SERDIPAY, MÊME POUR LE SUPER
+      //  ADMIN. Aucun rôle ne peut transformer un paiement Mobile Money en
+      //  encaissement immédiat : on ouvre la passerelle, et le crédit n'arrive
+      //  qu'après confirmation réelle (le serveur le revérifie via un trigger).
+      if (PaiementPlatformeService.estMobileMoney(paiement.modePaiement)) {
+        if (!mounted) return;
+        final bool paye = await PaiementPlatformeService.payerParMobileMoney(
+          context,
+          entrepriseId: dossier.id,
+          libelleEntreprise: dossier.nom,
+        );
+        if (!mounted) return;
+        setState(() => _enCours = null);
+        if (paye) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Paiement Mobile Money confirmé par SerdiPay : abonnement '
+                'crédité.',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Paiement Mobile Money non confirmé : aucun abonnement n\'a '
+                'été crédité.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        await _charger();
+        return;
       }
 
       final Map<String, dynamic> reponse =

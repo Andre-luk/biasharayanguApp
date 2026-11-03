@@ -111,7 +111,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 26);
+      expect(cartes.length, 27);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
@@ -135,6 +135,8 @@ void main() {
       expect(idsDe(cartes), contains('tournees'));
       expect(idsDe(cartes), contains('consignes'));
       expect(idsDe(cartes), contains('ma-tournee'));
+      // 🚚 MODULE 24 — tableau de bord Distribution complet.
+      expect(idsDe(cartes), contains('distribution-pro'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -144,7 +146,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 26);
+      expect(cartes.length, 27);
     });
   });
 

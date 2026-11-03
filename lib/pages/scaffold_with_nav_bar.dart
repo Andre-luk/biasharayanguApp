@@ -10,6 +10,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/contexte_distribution.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
@@ -119,6 +120,11 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     final RoleUtilisateur role = PermissionService.roleDepuisUtilisateur(user);
 
     PermissionService.instance.definirRoleCourant(role);
+
+    // 🚚 MODULE 24 — le rôle DANS la distribution (`role_distribution`) ne
+    // peut pas être déduit du rôle global : on le lit au serveur (best-effort,
+    // jamais bloquant). Il décide de l'univers affiché à l'accueil.
+    await ContexteDistribution.instance.charger();
 
     if (mounted) {
       if (role.estPlateforme) {

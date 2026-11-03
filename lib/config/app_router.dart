@@ -135,6 +135,8 @@ import 'package:biashara_yangu/pages/production_form_page.dart';
 import 'package:biashara_yangu/pages/productions_page.dart';
 // 🚚 MODULE 23 — distribution terrain : tournées (patron) et ma tournée (agent).
 import 'package:biashara_yangu/models/distribution_terrain.dart';
+import 'package:biashara_yangu/pages/distribution_journal_page.dart';
+import 'package:biashara_yangu/pages/distribution_pro_page.dart';
 import 'package:biashara_yangu/pages/ma_tournee_page.dart';
 import 'package:biashara_yangu/pages/pesee_rapide_page.dart';
 import 'package:biashara_yangu/pages/tournee_detail_page.dart';
@@ -1225,6 +1227,24 @@ final GoRouter appRouter = GoRouter(
                   path: 'ma-tournee',
                   name: 'ma-tournee',
                   builder: (context, state) => const MaTourneePage(),
+                ),
+                // 🚚 MODULE 24 — ESPACE DISTRIBUTION COMPLET : production,
+                // stock intrants/produits finis, commerciaux, caisse et
+                // collaborateurs. Le rôle distribution décide de ce que
+                // chacun voit (contrôlé côté serveur).
+                GoRoute(
+                  path: 'distribution',
+                  name: 'distribution-pro',
+                  builder: (context, state) => const DistributionProPage(),
+                  routes: <RouteBase>[
+                    // 🚚 MODULE 24 — journal de traçabilité (lecture seule).
+                    GoRoute(
+                      path: 'journal',
+                      name: 'distribution-journal',
+                      builder: (context, state) =>
+                          const DistributionJournalPage(),
+                    ),
+                  ],
                 ),
 
                 // � MODULE 19 — MARKETPLACE : la vitrine publique de la

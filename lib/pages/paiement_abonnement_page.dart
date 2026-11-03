@@ -17,6 +17,7 @@ import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/paiement_laperle.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
+import 'package:biashara_yangu/services/paiement_platforme_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 
@@ -261,6 +262,32 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
 
     final Entreprise? entreprise = _entreprise;
     if (entreprise == null) return;
+
+    // 💳 AUDIT DES PAIEMENTS — MOBILE MONEY = SERDIPAY, JAMAIS LA CAISSE.
+    //  Avant ce correctif, choisir « Mobile Money » appelait directement le
+    //  moteur d'abonnement : l'abonnement était activé sans transaction.
+    //  Désormais le seul chemin est l'écran SerdiPay (montant calculé en base,
+    //  crédit après confirmation du webhook).
+    if (PaiementPlatformeService.estMobileMoney(_modePaiement)) {
+      final bool paye = await PaiementPlatformeService.payerParMobileMoney(
+        context,
+        entrepriseId: entreprise.id,
+        libelleEntreprise: entreprise.nom,
+      );
+      if (!mounted) return;
+      if (paye) Navigator.of(context).pop(true);
+      return;
+    }
+
+    // Aucun contrat d'acquisition carte : on ne fait pas semblant d'encaisser.
+    if (!PaiementPlatformeService.estEspeces(_modePaiement) &&
+        _modePaiement.toLowerCase().contains('carte')) {
+      _afficherMessage(
+        PaiementPlatformeService.messageModeIndisponible(_modePaiement),
+        estErreur: true,
+      );
+      return;
+    }
 
     setState(() => _enregistrement = true);
 

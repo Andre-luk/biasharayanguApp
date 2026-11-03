@@ -77,11 +77,19 @@ class Entreprise {
     final double montantTotal = parseDouble(map['montant_total_du']);
     final double montantPaye = parseDouble(map['montant_deja_paye']);
 
-    // La base reste la source de vérité quand la colonne est présente ;
-    // sinon on recalcule pour éviter d'afficher un solde incohérent.
+    // 🔴 CORRECTIF 100 — le solde affiché ne doit JAMAIS contredire le dû et
+    // le déjà-payé. La colonne `solde_restant` a été rendue « ordinaire » par
+    // la migration 0094 : un chemin de code qui oublie de l'écrire la laisse
+    // périmée (cas réel : 5 000 payés, solde toujours affiché à 15 000).
+    // On calcule donc `total - payé` et on ne retient la colonne que si elle
+    // est cohérente (à 1 centime près).
+    final double soldeCalcule = montantTotal - montantPaye;
     final bool soldeFourni =
         map.containsKey('solde_restant') && map['solde_restant'] != null;
-    final double soldeCalcule = montantTotal - montantPaye;
+    final double soldeStocke =
+        soldeFourni ? parseDouble(map['solde_restant']) : soldeCalcule;
+    final bool soldeCoherent =
+        (soldeStocke - soldeCalcule).abs() <= 0.01;
 
     return Entreprise(
       id: parseString(map['id']),
@@ -92,8 +100,8 @@ class Entreprise {
       statut: StatutAbonnement.fromCode(parseStringOrNull(map['statut'])),
       montantTotalDu: montantTotal,
       montantDejaPaye: montantPaye,
-      soldeRestant: soldeFourni
-          ? parseDouble(map['solde_restant'])
+      soldeRestant: soldeCoherent
+          ? (soldeStocke > 0 ? soldeStocke : 0.0)
           : (soldeCalcule > 0 ? soldeCalcule : 0.0),
       dateActivation: parseDateTimeOrNull(map['date_activation']),
       dateExpiration: parseDateTimeOrNull(map['date_expiration']),

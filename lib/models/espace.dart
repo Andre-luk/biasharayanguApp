@@ -19,6 +19,10 @@ import 'package:biashara_yangu/utils/json_parsing.dart';
 /// toujours le référentiel côté serveur).
 enum TypeEspace {
   boutique('boutique', 'Boutique'),
+  // ⚙️ CORRECTIF 97 — la DISTRIBUTION est un métier à part entière :
+  // elle doit apparaître dans le sélecteur d'activité même si le serveur
+  // ne répond pas (liste de secours hors ligne).
+  distribution('distribution', 'Distribution (production & tournées)'),
   depot('depot', 'Dépôt / Entrepôt'),
   hotel('hotel', 'Hôtel'),
   pharmacie('pharmacie', 'Pharmacie'),

@@ -380,6 +380,13 @@ class PermissionService {
           ActionAccess.voir,
           ActionAccess.creer,
         },
+        // 🚚 MODULE 24 — l'espace Distribution complet est aussi l'entrée du
+        // commercial (ses produits, ses clients, ses ventes et ses remises).
+        // Le serveur restreint chaque action à son rôle distribution.
+        PageAccess.distribution: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+        },
       },
     ),
     RoleUtilisateur.magasinier: RolePermission.personnalise(
@@ -400,6 +407,14 @@ class PermissionService {
           ActionAccess.voir,
           ActionAccess.creer,
           ActionAccess.modifier,
+        },
+        // 🚚 MODULE 24 — le gestionnaire de stock entre dans l'espace
+        // Distribution : réceptions, sorties, dotations et retours.
+        PageAccess.distribution: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+          ActionAccess.modifier,
+          ActionAccess.valider,
         },
       },
     ),
@@ -423,6 +438,14 @@ class PermissionService {
           ActionAccess.creer,
         },
         PageAccess.parametres: const <ActionAccess>{ActionAccess.voir},
+        // 🚚 MODULE 24 — le comptable réceptionne les remises et tient la
+        // caisse/les dépenses de la distribution. La validation finale de
+        // l'entrée en caisse reste au gérant/propriétaire (serveur).
+        PageAccess.distribution: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+          ActionAccess.valider,
+        },
       },
     ),
   };
@@ -559,6 +582,7 @@ class PermissionService {
     // 🚚 MODULE 23 — distribution terrain.
     _RegleRoute('/main/ma-tournee', PageAccess.maTournee),
     _RegleRoute('/main/tournees', PageAccess.distribution),
+    _RegleRoute('/main/distribution', PageAccess.distribution),
     // ⚖️ Pesée rapide : c'est un encaissement (même droit que la caisse).
     _RegleRoute('/main/pesee', PageAccess.caisse, ActionAccess.creer),
 
