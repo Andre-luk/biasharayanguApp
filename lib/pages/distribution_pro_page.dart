@@ -227,6 +227,15 @@ class _DistributionProPageState extends State<DistributionProPage> {
       appBar: AppBar(
         title: const Text('Distribution'),
         actions: <Widget>[
+          // 👥 Les collaborateurs se gèrent depuis la barre du haut : la
+          // grille d'accès rapide reste consacrée aux opérations du jour.
+          if (_bord.role.peutGererCollaborateurs)
+            IconButton(
+              tooltip: 'Mes collaborateurs',
+              onPressed: () =>
+                  _ouvrir(const DistributionCollaborateursPage()),
+              icon: const Icon(Icons.groups_2_outlined),
+            ),
           IconButton(
             tooltip: 'Actualiser',
             onPressed: () => _charger(),
@@ -527,12 +536,7 @@ class _DistributionProPageState extends State<DistributionProPage> {
                 libelle: 'Traçabilité',
                 onTap: () => _ouvrir(const DistributionJournalPage()),
               ),
-              if (role.peutGererCollaborateurs)
-                TuileDistribution(
-                  icone: Icons.groups_2_outlined,
-                  libelle: 'Collaborateurs',
-                  onTap: () => _ouvrir(const DistributionCollaborateursPage()),
-                ),
+
             ],
           ),
         ),

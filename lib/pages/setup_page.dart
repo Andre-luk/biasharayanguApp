@@ -13,6 +13,8 @@ import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/contexte_distribution.dart';
 import 'package:biashara_yangu/services/type_activite_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
@@ -346,6 +348,22 @@ class _SetupPageState extends State<SetupPage> {
           await ModulesService.instance.chargerSilencieux();
           await TypeActiviteService.instance.charger();
           await AbonnementService.instance.rafraichirSilencieux();
+
+          // 🔐 Le compte vient d'être créé : le rôle et les permissions de
+          // CETTE session doivent être relus AVANT d'afficher la barre de
+          // navigation. Sans cela, l'accueil n'affichait que « Accueil » et
+          // il fallait quitter l'application pour que le compte du patron
+          // soit pris en charge.
+          final Utilisateur? profil =
+              await DBHelper.instance.getUtilisateurById(user.id!);
+          PermissionService.instance.definirRoleCourant(
+            PermissionService.roleDepuisUtilisateur(profil),
+          );
+          await PermissionService.instance.initialiser(
+            profil?.newRole ?? profil?.role,
+            forcerRechargement: true,
+          );
+          await ContexteDistribution.instance.charger();
         } catch (e) {
           debugPrint('Setup : actualisation après création ignorée ($e)');
         }

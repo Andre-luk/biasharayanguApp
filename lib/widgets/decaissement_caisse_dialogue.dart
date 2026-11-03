@@ -14,6 +14,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/services/finance_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
@@ -53,6 +55,34 @@ class _DialogueDecaissementState extends State<_DialogueDecaissement> {
   String? _erreur;
   bool _enregistrement = false;
 
+  /// 🛒 Achat de marchandise : l'argent sorti paie des articles qui ENTRENT
+  /// en stock. Sans cela, la caisse et le stock racontaient deux histoires
+  /// différentes.
+  bool _achat = false;
+  List<Produit> _produits = const <Produit>[];
+  Produit? _produit;
+  final TextEditingController _quantite = TextEditingController(text: '1');
+
+  @override
+  void initState() {
+    super.initState();
+    _chargerProduits();
+  }
+
+  Future<void> _chargerProduits() async {
+    try {
+      final List<Produit> produits = await DBHelper.instance.getProduits();
+      if (!mounted) return;
+      setState(() => _produits = produits);
+    } catch (e) {
+      debugPrint('DecaissementCaisse produits (ignoré) : $e');
+    }
+  }
+
+  double get _quantiteSaisie =>
+      double.tryParse(_quantite.text.replaceAll(' ', '').replaceAll(',', '.')) ??
+      0;
+
   @override
   void dispose() {
     _montantCtrl.dispose();
@@ -86,6 +116,20 @@ class _DialogueDecaissementState extends State<_DialogueDecaissement> {
       return;
     }
 
+    // 🛒 Achat de marchandise : un article et une quantité sont exigés —
+    // pas de stock inventé, pas de quantité à zéro.
+    if (_achat) {
+      if (_produit == null) {
+        setState(() => _erreur =
+            'Choisissez l\'article acheté (ou désactivez l\'achat de marchandise).');
+        return;
+      }
+      if (_quantiteSaisie <= 0) {
+        setState(() => _erreur = 'Indiquez la quantité achetée.');
+        return;
+      }
+    }
+
     final double? solde = widget.soldeActuel;
     if (solde != null && _montant > solde) {
       final bool continuer = await _confirmerDepassement(solde);
@@ -102,8 +146,19 @@ class _DialogueDecaissementState extends State<_DialogueDecaissement> {
         motif: motif,
         montant: _montant,
         date: _date,
-        categorie: _categorie,
+        categorie: _achat ? 'achat' : _categorie,
       );
+
+      // 🛒 MODULE 9 — l'argent sorti paie une marchandise qui ENTRE en stock,
+      // au prix unitaire réellement payé (montant / quantité).
+      if (_achat && _produit != null) {
+        final double prixUnitaire = _montant / _quantiteSaisie;
+        await DBHelper.instance.addStockAndLog(
+          _produit!,
+          _quantiteSaisie,
+          prixUnitaire,
+        );
+      }
 
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -225,6 +280,58 @@ class _DialogueDecaissementState extends State<_DialogueDecaissement> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (_produits.isNotEmpty) ...<Widget>[
+                // 🛒 Achat de marchandise : le décaissement peut payer un
+                // article qui entre en stock (quantité + prix unitaire déduit).
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: _achat,
+                  onChanged: (bool v) => setState(() {
+                    _achat = v;
+                    _erreur = null;
+                  }),
+                  title: const Text('Achat de marchandise'),
+                  subtitle: Text(
+                    'L\'article acheté entre en stock au prix payé.',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+                if (_achat) ...<Widget>[
+                  AppDropdownField<String>(
+                    label: 'Article acheté',
+                    value: _produit?.id?.toString(),
+                    prefixIcon: Icons.inventory_2_outlined,
+                    items: _produits
+                        .map((Produit p) => DropdownMenuItem<String>(
+                              value: p.id?.toString(),
+                              child: Text(p.nom),
+                            ))
+                        .toList(growable: false),
+                    onChanged: (String? v) {
+                      setState(() {
+                        _produit = _produits.firstWhere(
+                          (Produit p) => p.id?.toString() == v,
+                          orElse: () => _produits.first,
+                        );
+                        _erreur = null;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _quantite,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Quantité reçue',
+                      helperText:
+                          'Le prix unitaire en stock = montant ÷ quantité',
+                    ),
+                    onChanged: (_) => setState(() => _erreur = null),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
               AppDropdownField<String>(
                 label: 'Catégorie',
                 value: _categorie,

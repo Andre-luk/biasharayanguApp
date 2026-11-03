@@ -168,6 +168,9 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0106          ABONNEMENT — montant dû renseigné dès la création « setup »
               (prix de la grille sur les essais de 7 jours) + réparation des
               entreprises en essai créées avec 0 CDF
+0107          ABONNEMENT — toute entreprise reçoit une GRILLE TARIFAIRE
+              (trigger `entreprise_grille_par_defaut` + réparation des comptes
+              sans grille, montant dû des essais recalculé)
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
