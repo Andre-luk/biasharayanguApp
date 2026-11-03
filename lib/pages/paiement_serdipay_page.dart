@@ -180,6 +180,45 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   }
 
   // -------------------------------------------------------------------------
+  // REPÈRES VISUELS DES OPÉRATEURS
+  // -------------------------------------------------------------------------
+  // Une couleur et un sigle par opérateur : le commerçant reconnaît le bon
+  // service d'un coup d'œil, sans dépendre d'un logo officiel (droits) ni
+  // d'un fichier image à télécharger.
+
+  /// Couleur d'identification de l'opérateur.
+  static Color _couleurOperateur(OperateurSerdipay operateur) {
+    switch (operateur) {
+      case OperateurSerdipay.orange:
+        return const Color(0xFFFF7900); // orange historique du réseau
+      case OperateurSerdipay.airtel:
+        return const Color(0xFFE40000); // rouge Airtel
+      case OperateurSerdipay.mpesa:
+        return const Color(0xFFE60000); // rouge du service M-Pesa
+      case OperateurSerdipay.afrimoney:
+        return const Color(0xFF0F62FE); // bleu Afrimoney
+      case OperateurSerdipay.carte:
+        return const Color(0xFF1F3864); // marine Biashara
+    }
+  }
+
+  /// Sigle affiché dans la pastille.
+  static String _sigleOperateur(OperateurSerdipay operateur) {
+    switch (operateur) {
+      case OperateurSerdipay.orange:
+        return 'OM';
+      case OperateurSerdipay.airtel:
+        return 'AM';
+      case OperateurSerdipay.mpesa:
+        return 'MP';
+      case OperateurSerdipay.afrimoney:
+        return 'AF';
+      case OperateurSerdipay.carte:
+        return 'CB';
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // PAIEMENT
   // -------------------------------------------------------------------------
 
@@ -535,6 +574,21 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                 for (final OperateurSerdipay operateur
                     in OperateurSerdipay.values)
                   ChoiceChip(
+                    // 🎨 Repère visuel par opérateur : une pastille de couleur
+                    // avec son sigle (pas de logo tiers : aucun risque de
+                    // droits, et lisible même en petit).
+                    avatar: CircleAvatar(
+                      radius: 10,
+                      backgroundColor: _couleurOperateur(operateur),
+                      child: Text(
+                        _sigleOperateur(operateur),
+                        style: const TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                     label: Text(operateur.libelle),
                     selected: _operateur == operateur,
                     onSelected: (_) => setState(() => _operateur = operateur),

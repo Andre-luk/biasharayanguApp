@@ -416,6 +416,10 @@ class PermissionService {
           ActionAccess.modifier,
           ActionAccess.valider,
         },
+        // Les Paramètres restent ACCESSIBLES à tous : c'est là que se trouve
+        // la déconnexion (sans cela, un gestionnaire de stock n'avait plus
+        // aucun moyen de quitter son compte).
+        PageAccess.parametres: const <ActionAccess>{ActionAccess.voir},
       },
     ),
     RoleUtilisateur.comptableEntreprise: RolePermission.personnalise(

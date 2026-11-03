@@ -126,6 +126,15 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     // jamais bloquant). Il décide de l'univers affiché à l'accueil.
     await ContexteDistribution.instance.charger();
 
+    // 🚚 Un collaborateur de distribution (gérant, production, stock,
+    // commercial, comptable) n'a rien à faire dans les onglets de la
+    // boutique : on l'ouvre directement sur SON espace. Le `proprietaire`
+    // garde l'accueil (il peut aussi tenir une boutique).
+    if (mounted &&
+        ContexteDistribution.instance.estCollaborateur) {
+      context.go('/main/distribution');
+    }
+
     if (mounted) {
       if (role.estPlateforme) {
         context.go('/admin');
@@ -156,6 +165,15 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
             !ModeApplicationService.instance.rapide ||
             (branche.index != 1 && branche.index != 2))
         .toList(growable: false);
+
+    // 🔐 La branche « Paramètres » (qui contient la DÉCONNEXION) est toujours
+    // proposée : sans elle, un compte sans droit « dashboard » se retrouvait
+    // coincé entre Rapports et Stock, sans aucun moyen de se déconnecter.
+    final _BrancheNav parametres = _toutesLesBranches
+        .firstWhere((_BrancheNav b) => b.index == 3);
+    if (!visibles.any((_BrancheNav b) => b.index == 3)) {
+      visibles.add(parametres);
+    }
 
     return visibles.isEmpty
         ? <_BrancheNav>[_toutesLesBranches.first]

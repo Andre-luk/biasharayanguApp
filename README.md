@@ -165,6 +165,9 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0105          Module 24 — hors-ligne : idempotence des opérations
               (`reference_locale` unique sur `dist_ventes` et
               `dist_bonus_dommages`, rejeu sans doublon)
+0106          ABONNEMENT — montant dû renseigné dès la création « setup »
+              (prix de la grille sur les essais de 7 jours) + réparation des
+              entreprises en essai créées avec 0 CDF
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
