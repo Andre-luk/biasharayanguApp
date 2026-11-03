@@ -183,6 +183,17 @@ const SERDIPAY_RETURN_URL = Deno.env.get('SERDIPAY_RETURN_URL') ??
   'https://biashara-yangu-app.netlify.app/';
 const SERDIPAY_DEVISE = Deno.env.get('SERDIPAY_DEVISE') ?? 'CDF';
 
+// 💰 BARÈME SERDIPAY (réponse réelle de leur API le 03/11/2026) :
+//   « The amount is not within allowed range! min: 2300 - max : 5750000 CDF »
+// En dessous/en dessus, la transaction est refusée (HTTP 402) avec un message
+// technique. On l'intercepte pour expliquer clairement au commerçant.
+const SERDIPAY_MONTANT_MIN = Number(
+  Deno.env.get('SERDIPAY_MONTANT_MIN') ?? 2300,
+);
+const SERDIPAY_MONTANT_MAX = Number(
+  Deno.env.get('SERDIPAY_MONTANT_MAX') ?? 5_750_000,
+);
+
 const DELAI_FOURNISSEUR_MS = 20_000;
 
 const CORS: Record<string, string> = {
@@ -567,11 +578,24 @@ function resumeErreurFournisseur(data: unknown, texte: string): string {
 function construireCorpsInitier(
   p: PaiementOuvert,
   nomClient: string,
+  repli?: { telephone?: string | null; operateur?: string | null },
 ): Record<string, unknown> {
   const callback = `${SUPABASE_URL}/functions/v1/${FONCTION}/webhook`;
   const description = `Abonnement Biashara Yangu - ${p.reference}`;
-  const clientPhone = numeroInternational(p.telephone ?? '');
-  const telecom = codeTelecom(p.operateur);
+
+  // 🔎 Le téléphone/opérateur viennent normalement de la ligne ouverte en
+  // base. S'ils y sont vides (ligne ancienne, RPC d'une version antérieure),
+  // on reprend ceux de la REQUÊTE : sans eux SerdiPay répond
+  // « clientPhone: validation.required · telecom: validation.required ».
+  const telBrut = (p.telephone ?? '').trim().length >= 9
+    ? p.telephone
+    : (repli?.telephone ?? p.telephone);
+  const opBrut = (p.operateur ?? '').trim().length > 0
+    ? p.operateur
+    : (repli?.operateur ?? p.operateur);
+
+  const clientPhone = numeroInternational(telBrut ?? '');
+  const telecom = codeTelecom(opBrut ?? null);
 
   // Modèle surchargeable sans redéploiement : secret SERDIPAY_CORPS_INITIER.
   const modele = Deno.env.get('SERDIPAY_CORPS_INITIER');
@@ -1396,6 +1420,31 @@ async function routeInitier(req: Request): Promise<Response> {
 
   const paiement = ouvert as PaiementOuvert;
 
+  // 💰 Barème SerdiPay : hors bornes, leur API répond 402 avec un message
+  // technique. On explique AVANT de créer la transaction.
+  const devise = (paiement.devise || SERDIPAY_DEVISE).toUpperCase();
+  if (devise === 'CDF') {
+    const montant = Number(paiement.montant);
+    if (
+      Number.isFinite(montant) &&
+      (montant < SERDIPAY_MONTANT_MIN || montant > SERDIPAY_MONTANT_MAX)
+    ) {
+      await clientService().rpc('rpc_serdipay_echec', {
+        p_reference: paiement.reference,
+        p_motif:
+          `MONTANT_HORS_BAREME : ${montant} CDF (autorisé ` +
+          `${SERDIPAY_MONTANT_MIN} - ${SERDIPAY_MONTANT_MAX})`,
+      });
+      return erreur(
+        'MONTANT_HORS_BAREME',
+        'Montant hors du barème Mobile Money : SerdiPay accepte de ' +
+          `${SERDIPAY_MONTANT_MIN} à ${SERDIPAY_MONTANT_MAX} CDF. ` +
+          `Votre paiement de ${montant} CDF est refusé.`,
+        400,
+      );
+    }
+  }
+
   let nom = '';
   try {
     const id = await identiteClient(ctx.client, ctx.userId);
@@ -1410,7 +1459,11 @@ async function routeInitier(req: Request): Promise<Response> {
     reponse = await appelFournisseur(
       SERDIPAY_PATH_INITIER,
       'POST',
-      construireCorpsInitier(paiement, nom),
+      construireCorpsInitier(paiement, nom, {
+        // Repli : les valeurs réellement demandées par l'utilisateur.
+        telephone,
+        operateur,
+      }),
     );
   } catch (e) {
     const motif = String(e);

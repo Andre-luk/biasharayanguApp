@@ -466,3 +466,37 @@ mode est Mobile Money.
   qu'une transaction SerdiPay n'existe pas ; l'objet `quota` doit être ajouté à
   `rpc_serdipay_ouvrir` + Edge Function (contrainte actuelle :
   `objet in ('abonnement','facture')`).
+
+---
+
+## 10. Diagnostic réel du 03/11/2026 (appels directs à l'API)
+
+Deux constats obtenus en interrogeant SerdiPay via `POST /diag-paiement`
+(aucune transaction créée) :
+
+| Corps envoyé | Réponse SerdiPay |
+|---|---|
+| `{}` | `400` « Fraudulent request, Wrong Merchant code send » |
+| champs complets + `clientPhone:""`, `telecom:""` | `400` `{"clientPhone":["validation.required"],"telecom":["validation.required"]}` |
+| champs complets + `clientPhone:"243000000000"` + 100 CDF | `402` « The amount is not within allowed range! **min: 2300 - max : 5750000 CDF** » |
+
+### 10.1 Cause de « validation.required »
+
+Les noms de champs (`clientPhone`, `telecom`) sont **corrects** et nos
+identifiants sont acceptés. L'erreur signifie uniquement que ces deux valeurs
+étaient **vides** au moment de l'appel.
+
+Correction : `construireCorpsInitier` reprend le téléphone et l'opérateur de la
+**requête** quand la ligne ouverte en base ne les contient pas, et réinjecte
+tous les champs obligatoires après application d'un éventuel modèle
+`SERDIPAY_CORPS_INITIER`.
+
+### 10.2 Barème Mobile Money
+
+SerdiPay refuse tout montant hors de **2 300 – 5 750 000 CDF** (HTTP 402).
+La fonction le vérifie désormais **avant** l'appel et renvoie un message clair
+(`MONTANT_HORS_BAREME`) : une avance de 1 000 CDF n'est donc plus possible par
+Mobile Money.
+
+Les bornes sont surchargeables par les secrets `SERDIPAY_MONTANT_MIN` et
+`SERDIPAY_MONTANT_MAX` si SerdiPay les révise.
