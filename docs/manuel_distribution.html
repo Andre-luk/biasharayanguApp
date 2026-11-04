@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Manuel — Module Distribution (Biashara Yangu)</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 20mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10.5pt;
+         color: #16294A; line-height: 1.5; margin: 0; }
+  h1, h2, h3, h4 { color: #1F3864; margin: 0 0 6px 0; line-height: 1.25; }
+  h1 { font-size: 22pt; }
+  h2 { font-size: 15pt; border-bottom: 2px solid #F08A4B;
+       padding-bottom: 4px; margin-top: 22px; }
+  h3 { font-size: 12pt; margin-top: 16px; color: #2E5AA8; }
+  p, li { margin: 4px 0; }
+  ul, ol { padding-left: 20px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 9.5pt; }
+  th { background: #1F3864; color: #fff; text-align: left; padding: 6px 8px; }
+  td { border: 1px solid #d6dcea; padding: 6px 8px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f5f7fc; }
+  .couverture { text-align: center; padding-top: 40mm; page-break-after: always; }
+  .couverture h1 { font-size: 30pt; margin-bottom: 4px; }
+  .couverture .sous { color: #F08A4B; font-size: 14pt; font-weight: bold;
+                       margin-bottom: 28px; }
+  .couverture .meta { color: #5a6b8c; font-size: 10pt; }
+  .badge { display: inline-block; background: #E8EEF9; color: #1F3864;
+           border-radius: 20px; padding: 3px 12px; font-size: 9pt;
+           font-weight: bold; margin: 2px 2px; }
+  .encadre { background: #FFF6EE; border-left: 4px solid #F08A4B;
+             padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+  .danger { background: #FDEEEE; border-left-color: #DC2626; }
+  .info { background: #EEF6FF; border-left-color: #0EA5E9; }
+  .ok { background: #EFFAF3; border-left-color: #16A34A; }
+  .encadre strong { color: #1F3864; }
+  .etapes { counter-reset: etape; list-style: none; padding-left: 0; }
+  .etapes li { counter-increment: etape; position: relative;
+               padding-left: 30px; margin: 7px 0; }
+  .etapes li::before { content: counter(etape); position: absolute; left: 0;
+    top: 0; width: 21px; height: 21px; border-radius: 50%;
+    background: #1F3864; color: #fff; font-size: 9pt; font-weight: bold;
+    text-align: center; line-height: 21px; }
+  .role-entete { display: flex; align-items: center; gap: 10px;
+                 margin-bottom: 6px; }
+  .role-icone { width: 34px; height: 34px; border-radius: 9px;
+                background: #1F3864; color: #fff; text-align: center;
+                line-height: 34px; font-size: 16pt; }
+  .saut { page-break-before: always; }
+  .eviter { page-break-inside: avoid; }
+  .sommaire ol { line-height: 1.9; }
+  code { background: #eef1f7; padding: 1px 5px; border-radius: 3px;
+         font-size: 9.5pt; }
+  .pied { margin-top: 26px; border-top: 1px solid #d6dcea; padding-top: 8px;
+          font-size: 8.5pt; color: #5a6b8c; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ============================ COUVERTURE ============================ -->
+<div class="couverture">
+  <h1>Module Distribution</h1>
+  <div class="sous">Production · Stock · Terrain · Caisse</div>
+  <p style="font-size:12pt;color:#2E5AA8;font-weight:bold;">
+    Manuel d'utilisation — par rôle
+  </p>
+  <p class="meta">Biashara Yangu · version 3.5.4 (build 48)<br>
+  Module 24 — migrations <code>0100</code> à <code>0107</code></p>
+  <div style="margin-top:14mm;">
+    <span class="badge">Propriétaire</span>
+    <span class="badge">Gérant</span>
+    <span class="badge">Production</span>
+    <span class="badge">Stock</span>
+    <span class="badge">Commercial</span>
+    <span class="badge">Comptable</span>
+  </div>
+</div>
+
+<!-- ============================ SOMMAIRE ============================ -->
+<h2>Sommaire</h2>
+<div class="sommaire">
+<ol>
+  <li>À quoi sert ce module (et à qui)</li>
+  <li>Les six rôles et ce que chacun peut faire</li>
+  <li>Deux stocks qui ne se mélangent jamais</li>
+  <li>Démarrer : créer les comptes collaborateurs</li>
+  <li>Le gérant, de bout en bout</li>
+  <li>Le gestionnaire de stock, pas à pas</li>
+  <li>Le responsable de production, pas à pas</li>
+  <li>Le commercial, pas à pas</li>
+  <li>Le comptable, pas à pas</li>
+  <li>Le propriétaire : pilotage et contrôle</li>
+  <li>Les circuits d'argent (remises, caisse, dépenses)</li>
+  <li>Tarifs des bidons, bonus et produits endommagés</li>
+  <li>Coût de revient et marges</li>
+  <li>Travailler sans réseau</li>
+  <li>Traçabilité et anomalies</li>
+  <li>Questions fréquentes et messages d'erreur</li>
+</ol>
+</div>
+
+<!-- ============================ 1 ============================ -->
+<h2 class="saut">1. À quoi sert ce module (et à qui)</h2>
+<p>
+Le module <strong>Distribution</strong> gère une entreprise qui <strong>produit</strong>
+puis <strong>vend sur le terrain</strong> : eau en fardes, bouteilles ou gros
+bidons, avec ses intrants (PET, caps, bouteilles vides), ses commerciaux, ses
+clients et sa caisse.
+</p>
+<p>Il ne remplace pas les tournées du module 23 : il les remplace
+<em>dans l'application</em> pour les comptes de distribution, qui ne voient plus
+que leur propre espace.</p>
+
+<table>
+  <tr><th style="width:32%">Ce que le module apporte</th><th>Concrètement</th></tr>
+  <tr><td>Stock séparé</td><td>Les intrants, les produits finis et le stock de chaque commercial sont trois mondes distincts.</td></tr>
+  <tr><td>Double contrôle</td><td>Une réception, une production ou une remise d'argent n'est jamais validée par une seule personne.</td></tr>
+  <tr><td>Traçabilité</td><td>Chaque opération est écrite dans un journal que personne ne peut modifier.</td></tr>
+  <tr><td>Rentabilité</td><td>Coût de revient réel des produits, marges, bonus et pertes valorisés.</td></tr>
+  <tr><td>Hors ligne</td><td>Le commercial peut vendre sans réseau ; la synchronisation est idempotente.</td></tr>
+</table>
+
+<div class="encadre info">
+  <strong>Une règle simple à retenir :</strong> chaque mouvement de marchandise
+  ou d'argent a un <em>demandeur</em> et un <em>valideur</em>. Personne ne valide
+  son propre mouvement.
+</div>
+
+<!-- ============================ 2 ============================ -->
+<h2>2. Les six rôles et ce que chacun peut faire</h2>
+<p>
+Le rôle <strong>distribution</strong> est indépendant du rôle global du compte.
+Un même compte peut être « vendeur » dans l'application et « commercial » dans
+la distribution : c'est le rôle distribution qui décide de son espace.
+</p>
+
+<table>
+  <tr>
+    <th style="width:18%">Rôle</th>
+    <th style="width:37%">Ce qu'il fait</th>
+    <th>Ce qu'il ne peut pas faire</th>
+  </tr>
+  <tr>
+    <td><strong>Propriétaire</strong></td>
+    <td>Tout : pilotage, collaborateurs, validation finale de l'argent, anomalies, paramètres.</td>
+    <td>Rien n'est interdit — mais il ne peut pas remplacer un comptage : il valide ce qu'un autre a constaté.</td>
+  </tr>
+  <tr>
+    <td><strong>Gérant</strong></td>
+    <td>Confirme les réceptions, valide les productions reçues au stock, les remises d'argent et les dépenses, tranche les anomalies, valide bonus et dommages.</td>
+    <td>Créer des comptes collaborateurs (réservé au propriétaire).</td>
+  </tr>
+  <tr>
+    <td><strong>Production</strong></td>
+    <td>Demande les intrants, déclare les productions (reçu / consommé / perdu), confirme les dotations qu'il peut fournir, réceptionne ses intrants.</td>
+    <td>Valider l'argent, modifier le stock central.</td>
+  </tr>
+  <tr>
+    <td><strong>Stock</strong></td>
+    <td>Crée les intrants et produits finis, enregistre les réceptions, autorise les sorties, compte les retours et les productions, gère la grille tarifaire.</td>
+    <td>Valider l'argent, créer des collaborateurs.</td>
+  </tr>
+  <tr>
+    <td><strong>Commercial</strong></td>
+    <td>Demande ses produits, gère <em>ses</em> clients, vend, déclare retours, remises, bonus et dommages.</td>
+    <td>Voir les clients ou ventes d'un autre commercial ; créditer la caisse.</td>
+  </tr>
+  <tr>
+    <td><strong>Comptable</strong></td>
+    <td>Reçoit les remises d'argent, crée les dépenses, consulte la caisse et la rentabilité.</td>
+    <td>Valider une remise (c'est le gérant), modifier le stock.</td>
+  </tr>
+</table>
+
+<div class="encadre">
+  <strong>Où l'on trouve quoi :</strong> un membre de la distribution n'a
+  qu'un seul onglet en bas de l'écran : <strong>Distribution</strong>. Tout se
+  passe à l'intérieur. La <strong>déconnexion</strong> est l'icône en haut à
+  droite de cet écran.
+</div>
+
+<!-- ============================ 3 ============================ -->
+<h2 class="saut">3. Deux stocks qui ne se mélangent jamais</h2>
+
+<table>
+  <tr><th style="width:26%">Stock</th><th>Contenu</th><th style="width:30%">Qui le fait bouger</th></tr>
+  <tr>
+    <td><strong>Intrants</strong></td>
+    <td>PET, caps, bouteilles vides, eau, tout ce qui entre dans la fabrication.</td>
+    <td>Réception (gérant) et sorties vers la production (stock).</td>
+  </tr>
+  <tr>
+    <td><strong>Produits finis</strong></td>
+    <td>Fardes, bouteilles, gros bidons prêts à vendre.</td>
+    <td>Réception des productions (stock) et dotations aux commerciaux (stock).</td>
+  </tr>
+  <tr>
+    <td><strong>Stock commercial</strong></td>
+    <td>Ce que chaque commercial détient physiquement.</td>
+    <td>Dotation (entrée), ventes et retours (sortie), bonus et dommages validés.</td>
+  </tr>
+</table>
+
+<div class="encadre danger">
+  <strong>À ne jamais confondre :</strong> le stock d'articles de la boutique
+  (module 9) et le stock de distribution sont deux bases différentes. Une
+  réception d'intrants n'augmente jamais le stock d'articles de la boutique, et
+  inversement.
+</div>
+
+<!-- ============================ 4 ============================ -->
+<h2>4. Démarrer : créer les comptes collaborateurs</h2>
+<p><strong>Réservé au propriétaire.</strong> Écran : tableau de bord
+Distribution → icône <em>Collaborateurs</em> en haut à droite.</p>
+
+<ol class="etapes">
+  <li>Ouvrez <strong>Distribution</strong>, puis l'icône 👥 en haut à droite.</li>
+  <li>Touchez <strong>Ajouter un collaborateur</strong>.</li>
+  <li>Saisissez nom, prénom, e-mail et téléphone.</li>
+  <li>Choisissez le <strong>rôle distribution</strong> (gérant, production, stock, commercial ou comptable).</li>
+  <li>Définissez un mot de passe de <strong>8 caractères minimum</strong>.</li>
+  <li>Validez : le compte est créé et rattaché à votre entreprise.</li>
+</ol>
+
+<div class="encadre">
+  <strong>Bon à savoir :</strong> un collaborateur désactivé ne peut plus se
+  connecter, mais son historique reste intact. Le rôle peut être changé à tout
+  moment sans recréer le compte.
+</div>
+
+<!-- ============================ 5 ============================ -->
+<h2 class="saut">5. Le gérant, de bout en bout</h2>
+
+<h3>5.1 Confirmer une réception d'intrants</h3>
+<ol class="etapes">
+  <li>Le gestionnaire de stock a enregistré les quantités reçues : la réception est <em>en attente du gérant</em>.</li>
+  <li>Ouvrez <strong>Stock → Réceptions</strong>.</li>
+  <li>Touchez <strong>Confirmer</strong> et recomptez si nécessaire.</li>
+  <li>Si le comptage diffère de l'annoncé, un <strong>motif est obligatoire</strong> : une anomalie est ouverte automatiquement.</li>
+  <li>Validez : <strong>c'est à cet instant seulement</strong> que les quantités entrent en stock.</li>
+</ol>
+<p>Une réception erronée se refuse avec <strong>Refuser</strong> et un motif :
+aucun stock n'est touché.</p>
+
+<h3>5.2 Valider une production reçue au stock</h3>
+<ol class="etapes">
+  <li>Le producteur a déclaré sa production : elle est <em>en attente du stock</em>.</li>
+  <li>Le gestionnaire de stock compte et valide (écart éventuel ⇒ motif + anomalie).</li>
+  <li>Les produits finis augmentent alors le stock central.</li>
+</ol>
+
+<h3>5.3 Valider une remise d'argent</h3>
+<ol class="etapes">
+  <li>Le commercial a déclaré un montant ; le comptable a confirmé l'avoir reçu.</li>
+  <li>Ouvrez <strong>Caisse &amp; dépenses → Remises</strong>.</li>
+  <li>Touchez <strong>Valider</strong> : le montant entre en caisse.</li>
+</ol>
+<div class="encadre danger">
+  Une vente ne crédite <strong>jamais</strong> la caisse directement. Seule une
+  remise validée le fait.
+</div>
+
+<h3>5.4 Valider une dépense</h3>
+<ol class="etapes">
+  <li>Ouvrez <strong>Caisse &amp; dépenses → Dépenses</strong>.</li>
+  <li>Contrôlez le motif et le montant, puis <strong>Valider</strong> (la caisse est débitée) ou <strong>Refuser</strong> avec un motif.</li>
+</ol>
+
+<h3>5.5 Trancher une anomalie</h3>
+<ol class="etapes">
+  <li>Ouvrez la tuile <strong>Anomalies</strong> du tableau de bord.</li>
+  <li>Lisez le détail (écart de réception, de retour, de remise, perte de production).</li>
+  <li>Résolvez avec un commentaire : l'anomalie est historisée, rien n'est effacé.</li>
+</ol>
+
+<!-- ============================ 6 ============================ -->
+<h2 class="saut">6. Le gestionnaire de stock, pas à pas</h2>
+
+<h3>6.1 Créer les intrants</h3>
+<ol class="etapes">
+  <li>Ouvrez <strong>Stock → Intrants</strong>.</li>
+  <li>Touchez <strong>Ajouter</strong> → <em>Intrant</em>.</li>
+  <li>Nom (ex. « PET 50cl »), unité, seuil d'alerte, prix unitaire, puis validez.</li>
+</ol>
+<p>Le <strong>prix unitaire</strong> sert au calcul du coût de revient : sans lui,
+aucune marge fiable ne peut être calculée.</p>
+
+<h3>6.2 Créer les produits finis</h3>
+<ol class="etapes">
+  <li><strong>Stock → Produits finis → Ajouter → Produit</strong>.</li>
+  <li>Nom, format (farde, bouteille, bidon), unité, prix de vente.</li>
+  <li>Validez. Sans produit fini, les commerciaux n'ont <strong>aucun catalogue</em> et ne peuvent rien demander.</li>
+</ol>
+
+<h3>6.3 Enregistrer une réception d'intrants</h3>
+<ol class="etapes">
+  <li><strong>Stock → Réceptions → Nouvelle réception</strong>.</li>
+  <li>Indiquez le fournisseur, puis les quantités annoncées par intrant.</li>
+  <li>Validez : la réception passe <em>en attente du gérant</em>. Aucun stock n'est encore entré.</li>
+  <li>Le gérant confirme (ou refuse) : voir §5.1.</li>
+</ol>
+
+<h3>6.4 Autoriser une demande d'intrants de la production</h3>
+<ol class="etapes">
+  <li>La production a créé une demande (n° DIN-…).</li>
+  <li>Ouvrez <strong>Production → Demandes</strong> (ou la tuile Production du tableau de bord).</li>
+  <li>Autorisez, ajustez les quantités, ou refusez avec un motif.</li>
+  <li>La sortie de stock est enregistrée : le producteur confirme ensuite ce qu'il a réellement reçu.</li>
+</ol>
+
+<h3>6.5 Compter une production reçue</h3>
+<ol class="etapes">
+  <li><strong>Production → Productions</strong>, ligne <em>en attente du stock</em>.</li>
+  <li>Comptez et validez ; un écart ouvre une anomalie.</li>
+</ol>
+
+<h3>6.6 Autoriser une dotation commerciale</h3>
+<ol class="etapes">
+  <li>Le commercial a demandé des produits, la production a confirmé les quantités.</li>
+  <li><strong>Espace commercial → Demandes</strong> (vue direction).</li>
+  <li>Autorisez : le stock central diminue, le stock du commercial augmente.</li>
+</ol>
+
+<h3>6.7 Compter un retour</h3>
+<ol class="etapes">
+  <li><strong>Espace commercial → Retours</strong>.</li>
+  <li>Comptez les produits rendus et confirmez : ils rentrent au stock central.</li>
+  <li>Tout écart entre déclaré et compté ouvre une anomalie.</li>
+</ol>
+
+<h3>6.8 Gérer la grille tarifaire des bidons</h3>
+<ol class="etapes">
+  <li><strong>Stock → Produits finis → ⋮ → Grille tarifaire (bidons)</strong>.</li>
+  <li>Renseignez les prix : bidon neuf, eau avec échange d'un bidon vide, remplissage, bidon vide seul, remplacement d'un bidon endommagé, prix normal.</li>
+  <li>Enregistrez. <strong>Les ventes déjà faites gardent leurs prix</strong> : seule la grille change.</li>
+</ol>
+
+<!-- ============================ 7 ============================ -->
+<h2 class="saut">7. Le responsable de production, pas à pas</h2>
+
+<h3>7.1 Demander des intrants</h3>
+<ol class="etapes">
+  <li>Ouvrez <strong>Production → Demandes</strong>, bouton <strong>Nouvelle demande</strong>.</li>
+  <li>Choisissez les intrants et les quantités nécessaires.</li>
+  <li>Envoyez : le stock autorise ou refuse (avec motif).</li>
+  <li>À la sortie, confirmez les quantités <strong>réellement reçues</strong> ; un manque ouvre une anomalie.</li>
+</ol>
+
+<h3>7.2 Déclarer une production</h3>
+<ol class="etapes">
+  <li><strong>Production → Productions → Nouvelle production</strong>.</li>
+  <li>Pour chaque intrant : quantité <strong>reçue</strong>, <strong>consommée</strong>, <strong>perdue</strong>, <strong>restante</strong>.</li>
+  <li>Indiquez les produits fabriqués (quantité par produit).</li>
+  <li>Toute <strong>perte exige un motif</strong> : sans motif, le serveur refuse l'enregistrement.</li>
+  <li>Validez : la production reste <em>en attente du stock</em> jusqu'au comptage.</li>
+</ol>
+
+<h3>7.3 Confirmer une demande commerciale</h3>
+<ol class="etapes">
+  <li>Un commercial a demandé une dotation.</li>
+  <li><strong>Espace commercial → Demandes</strong>.</li>
+  <li>Confirmez les quantités que vous pouvez fournir, ou refusez avec un motif.</li>
+  <li>Le stock autorise ensuite la sortie.</li>
+</ol>
+
+<!-- ============================ 8 ============================ -->
+<h2 class="saut">8. Le commercial, pas à pas</h2>
+
+<h3>8.1 Recevoir sa dotation</h3>
+<ol class="etapes">
+  <li><strong>Espace commercial → Mes produits → Demander des produits</strong>.</li>
+  <li>Sélectionnez les produits et quantités souhaités.</li>
+  <li>Après validation de la production puis du stock, ouvrez la demande et <strong>confirmez ce que vous avez physiquement reçu</strong>.</li>
+  <li>Un écart est signalé au gérant : il ne passe pas inaperçu.</li>
+</ol>
+
+<h3>8.2 Créer un client</h3>
+<ol class="etapes">
+  <li><strong>Espace commercial → Clients → Nouveau client</strong>.</li>
+  <li>Nom, téléphone, quartier / repère.</li>
+  <li>Le client vous appartient : un autre commercial ne le voit pas.</li>
+</ol>
+
+<h3>8.3 Vendre</h3>
+<ol class="etapes">
+  <li><strong>Espace commercial → Vendre</strong> (bouton <strong>Vendre</strong>).</li>
+  <li>Choisissez le client (ou « client comptant »).</li>
+  <li>Sélectionnez le <strong>type d'opération</strong> : prix normal, bidon neuf, eau avec échange, remplissage, bidon vide, remplacement.</li>
+  <li>Saisissez les quantités : le total suit la <strong>grille tarifaire</strong> (sinon le prix catalogue).</li>
+  <li>Indiquez le montant reçu et le mode de paiement (espèces, Mobile Money, carte, virement, crédit).</li>
+  <li>Validez : la facture est générée, imprimable et partageable en PDF.</li>
+</ol>
+<div class="encadre danger">
+  Vendre ne met <strong>pas</strong> l'argent en caisse. Le commercial le
+  déclare ensuite (§11.1) ; le comptable confirme, le gérant valide.
+</div>
+
+<h3>8.4 Déclarer un retour</h3>
+<ol class="etapes">
+  <li><strong>Espace commercial → Retours → Déclarer un retour</strong>.</li>
+  <li>Produits et quantités rendus : ils sortent de <strong>votre</strong> stock.</li>
+  <li>Le gestionnaire de stock compte et confirme ; il faut ensuite son accord pour qu'ils rentrent au stock central.</li>
+</ol>
+
+<h3>8.5 Déclarer une remise d'argent</h3>
+<ol class="etapes">
+  <li><strong>Espace commercial → Remises → Remettre l'argent</strong>.</li>
+  <li>Indiquez le montant remis au comptable.</li>
+  <li>Le comptable confirme ce qu'il a reçu, puis le gérant valide : le montant entre en caisse.</li>
+</ol>
+
+<h3>8.6 Déclarer un bonus ou un produit endommagé</h3>
+<ol class="etapes">
+  <li>Onglet <strong>Bonus → Déclarer</strong>.</li>
+  <li>Produit, nature (bonus offert, endommagé, cassé, perdu), quantité, motif obligatoire, justificatif facultatif.</li>
+  <li>Le stock n'est retiré qu'après <strong>validation du gérant</strong>.</li>
+</ol>
+
+<!-- ============================ 9 ============================ -->
+<h2 class="saut">9. Le comptable, pas à pas</h2>
+
+<h3>9.1 Réceptionner une remise d'argent</h3>
+<ol class="etapes">
+  <li><strong>Caisse &amp; dépenses → Remises</strong>.</li>
+  <li>Comptez l'argent remis par le commercial et confirmez le montant réellement reçu.</li>
+  <li>Un écart exige un motif et ouvre une anomalie.</li>
+  <li>La remise part ensuite au gérant pour validation finale.</li>
+</ol>
+
+<h3>9.2 Enregistrer une dépense</h3>
+<ol class="etapes">
+  <li><strong>Caisse &amp; dépenses → Dépenses → Nouvelle dépense</strong>.</li>
+  <li>Motif (obligatoire), montant, catégorie, date.</li>
+  <li>La dépense reste <em>en attente</em> jusqu'à la validation du gérant.</li>
+</ol>
+
+<h3>9.3 Consulter la caisse et la rentabilité</h3>
+<p>
+La caisse affiche le solde calculé par le serveur :
+<strong>apports + remises validées − dépenses validées</strong>. L'onglet
+<strong>Rentabilité</strong> donne la marge brute du mois, le coût des
+marchandises, le taux de marge, les bonus/dommages validés, le coût de revient
+par produit et le chiffre d'affaires par commercial.
+</p>
+<div class="encadre">
+  Aucun solde ne se saisit à la main. Un solde négatif est refusé, sauf réglage
+  explicite dans les paramètres du module.
+</div>
+
+<!-- ============================ 10 ============================ -->
+<h2 class="saut">10. Le propriétaire : pilotage et contrôle</h2>
+
+<h3>10.1 Lire le tableau de bord</h3>
+<p>
+Il présente des données réelles uniquement : intrants, produits finis, produits
+attribués, demandes en attente, ventes, argent collecté non remis, caisse,
+dépenses du mois, anomalies et tournées en cours. Il affiche aussi
+<strong>la liste des opérations en attente et le rôle attendu</strong> pour
+chacune.
+</p>
+
+<h3>10.2 Paramétrer le module</h3>
+<ol class="etapes">
+  <li>Solde initial de caisse : une seule fois, avant tout mouvement.</li>
+  <li>Autorisation ou non du solde négatif.</li>
+  <li>Une fois des mouvements enregistrés, le solde initial ne peut plus être
+      modifié : utilisez un <strong>apport en caisse</strong>.</li>
+</ol>
+
+<h3>10.3 Contrôler</h3>
+<ul>
+  <li><strong>Traçabilité</strong> : toutes les opérations, qui, quand, avec le détail (lecture seule).</li>
+  <li><strong>Anomalies</strong> : écarts de réception, de retour, de remise, pertes de production.</li>
+  <li><strong>Rentabilité</strong> : comparer les commerciaux, vérifier les marges.</li>
+  <li><strong>Bonus et dommages par commercial</strong> : qui offre, qui casse, et combien cela coûte.</li>
+</ul>
+
+<!-- ============================ 11 ============================ -->
+<h2 class="saut">11. Les circuits d'argent</h2>
+
+<h3>11.1 Remise d'argent — trois confirmations</h3>
+<table>
+  <tr><th style="width:22%">Étape</th><th style="width:24%">Qui</th><th>Effet</th></tr>
+  <tr><td>1. Déclarer</td><td>Commercial</td><td>Le montant est annoncé. La caisse ne bouge pas.</td></tr>
+  <tr><td>2. Réceptionner</td><td>Comptable</td><td>Constate le montant réellement reçu ; écart ⇒ motif + anomalie.</td></tr>
+  <tr><td>3. Valider</td><td>Gérant</td><td><strong>Le montant entre en caisse.</strong></td></tr>
+</table>
+
+<h3>11.2 Dépense</h3>
+<table>
+  <tr><th style="width:22%">Étape</th><th style="width:24%">Qui</th><th>Effet</th></tr>
+  <tr><td>1. Créer</td><td>Comptable / gérant / propriétaire</td><td>Dépense <em>en attente</em>.</td></tr>
+  <tr><td>2. Valider</td><td>Gérant</td><td>La caisse est débitée.</td></tr>
+  <tr><td>Refuser</td><td>Gérant</td><td>Motif obligatoire, la caisse ne bouge pas.</td></tr>
+</table>
+
+<h3>11.3 Achat de marchandise depuis la caisse</h3>
+<p>
+Dans la <strong>caisse générale</strong>, un décaissement peut être un achat :
+activez <em>Achat de marchandise</em>, choisissez l'article et la quantité.
+La dépense est enregistrée en catégorie <code>achat</code> et la marchandise
+entre en stock au prix unitaire réellement payé
+(<strong>montant ÷ quantité</strong>).
+</p>
+
+<!-- ============================ 12 ============================ -->
+<h2 class="saut">12. Tarifs des bidons, bonus et produits endommagés</h2>
+
+<h3>12.1 Grille multi-tarifs</h3>
+<ul>
+  <li>Prix par type d'opération, configurable par produit.</li>
+  <li>Le commercial choisit le type ; le serveur applique le prix et le fige sur la ligne de vente.</li>
+  <li>Ordre de résolution : grille du type ⇒ grille « prix normal » ⇒ prix catalogue.</li>
+  <li>Modifier la grille <strong>ne change aucune facture passée</strong>.</li>
+</ul>
+
+<h3>12.2 Bonus, endommagés, cassés, perdus</h3>
+<ul>
+  <li>Déclaration par le commercial (ou la direction pour autrui).</li>
+  <li>Motif obligatoire ; justificatif facultatif.</li>
+  <li>Le stock du commercial n'est retiré qu'à la <strong>validation du gérant</strong>.</li>
+  <li>Les bonus ne sont jamais additionnés au chiffre d'affaires : ils apparaissent en déduction séparée.</li>
+</ul>
+
+<!-- ============================ 13 ============================ -->
+<h2>13. Coût de revient et marges</h2>
+<p>
+Le coût de revient est calculé sur les données réellement enregistrées :
+intrants <strong>consommés et perdus</strong>, valorisés au prix unitaire
+d'achat, divisés par les quantités produites. On obtient :
+</p>
+<table>
+  <tr><th style="width:34%">Indicateur</th><th>Signification</th></tr>
+  <tr><td>Coût unitaire</td><td>Ce qu'a coûté réellement une unité produite.</td></tr>
+  <tr><td>Prix de vente</td><td>Prix catalogue du produit.</td></tr>
+  <tr><td>Marge unitaire / taux</td><td>Prix − coût, en valeur et en pourcentage.</td></tr>
+  <tr><td>Marge du mois</td><td>Chiffre d'affaires − coût des marchandises vendues.</td></tr>
+  <tr><td>Bonus &amp; dommages</td><td>Valorisés à part, jamais confondus avec les ventes.</td></tr>
+</table>
+<div class="encadre danger">
+  <strong>Aucune marge n'est inventée.</strong> Si un intrant n'a pas de prix
+  d'achat, l'analyse affiche « coûts incomplets » et laisse la marge vide.
+  Renseignez le prix des intrants pour obtenir des chiffres fiables.
+</div>
+
+<!-- ============================ 14 ============================ -->
+<h2 class="saut">14. Travailler sans réseau</h2>
+
+<h3>14.1 Ce qui fonctionne hors ligne</h3>
+<ul>
+  <li>Consulter son stock attribué, ses clients et la grille tarifaire (dernier chargement).</li>
+  <li>Enregistrer une vente et déclarer un bonus : l'opération est mise en file sur le téléphone.</li>
+</ul>
+<div class="encadre">
+  Les <strong>encaissements, remises et validations restent en ligne</strong> :
+  l'argent ne circule qu'entre deux comptes vérifiés.
+</div>
+
+<h3>14.2 Le bandeau orange</h3>
+<p>
+Il apparaît dès qu'une opération attend. Trois états possibles :
+</p>
+<table>
+  <tr><th style="width:26%">État</th><th>Que faire</th></tr>
+  <tr><td>En attente</td><td>Rien : la synchronisation partira au retour du réseau. Bouton <strong>Synchroniser</strong> pour forcer.</td></tr>
+  <tr><td>À vérifier</td><td>L'envoi a été interrompu. Contrôlez vos ventes, puis <strong>Relancer</strong> ou retirez l'opération si elle existe déjà.</td></tr>
+  <tr><td>Conflit</td><td>Le serveur a refusé (stock insuffisant, produit inconnu…). Lisez le message, corrigez, puis relancez.</td></tr>
+</table>
+<div class="encadre ok">
+  <strong>Pourquoi c'est sûr :</strong> chaque opération porte un identifiant
+  unique. Une synchronisation rejouée ne crée jamais deux ventes, et une
+  réponse perdue n'est jamais rejouée silencieusement.
+</div>
+
+<!-- ============================ 15 ============================ -->
+<h2>15. Traçabilité et anomalies</h2>
+<p>
+<strong>Traçabilité</strong> (tableau de bord → tuile) affiche toutes les
+opérations : qui, quel rôle, quelle action, quand, avec le détail des quantités
+et des montants. Filtre par famille : réceptions, productions, ventes, retours,
+remises, dépenses, ajustements de stock, anomalies. Aucune écriture n'y est
+possible : le journal ne peut pas être réécrit.
+</p>
+<p>
+<strong>Anomalies</strong> sont ouvertes dès qu'un écart est constaté :
+réception comptée différente de l'annoncée, retour différent du déclaré, remise
+différente du montant annoncé, quantité reçue inférieure à celle sortie. Elles
+sont tranchées par le gérant ou le propriétaire et restent historisées.
+</p>
+
+<!-- ============================ 16 ============================ -->
+<h2 class="saut">16. Questions fréquentes et messages d'erreur</h2>
+
+<table>
+  <tr><th style="width:40%">Message</th><th>Ce qu'il faut faire</th></tr>
+  <tr>
+    <td>« Aucun produit fini au catalogue »</td>
+    <td>Le stock n'a pas encore créé de produit fini. Créez-les dans <strong>Stock → Produits finis</strong> ; ils apparaîtront ensuite dans le catalogue commercial.</td>
+  </tr>
+  <tr>
+    <td>« Vous n'avez aucun produit en dotation »</td>
+    <td>Le commercial n'a pas encore reçu de dotation validée. Faites une demande, puis attendez la confirmation production + stock.</td>
+  </tr>
+  <tr>
+    <td>« Stock insuffisant »</td>
+    <td>Le stock (central ou commercial) ne couvre pas la quantité demandée. Réduisez la quantité ou réapprovisionnez.</td>
+  </tr>
+  <tr>
+    <td>« Motif obligatoire »</td>
+    <td>Écart, refus, perte de production, bonus : une explication écrite est exigée. C'est ce qui rend le contrôle possible.</td>
+  </tr>
+  <tr>
+    <td>« Votre rôle ne permet pas cette opération »</td>
+    <td>L'opération appartient à un autre rôle (voir §2). Exemple : seul le gérant valide une remise.</td>
+  </tr>
+  <tr>
+    <td>« Rien à payer pour le moment »</td>
+    <td>L'abonnement est déjà soldé. Le montant apparaît dans « Mon abonnement » après ouverture du cycle.</td>
+  </tr>
+  <tr>
+    <td>« Montant hors du barème Mobile Money »</td>
+    <td>SerdiPay n'accepte que de 2 300 à 5 750 000 CDF par transaction. Une avance inférieure à 2 300 CDF n'est pas possible.</td>
+  </tr>
+  <tr>
+    <td>« Paiement en attente » qui ne se confirme pas</td>
+    <td>La confirmation vient du serveur, pas du téléphone. Vérifiez le solde Mobile Money ; la transaction se régularise à l'arrivée de la confirmation.</td>
+  </tr>
+</table>
+
+<div class="encadre info">
+  <strong>Rappel de sécurité :</strong> un membre de la distribution ne voit que
+  son espace. La déconnexion se trouve en haut à droite de l'écran
+  Distribution. En cas de doute sur un écart, ne corrigez jamais un stock pour
+  « faire tomber juste » : déclarez l'anomalie, elle sera tranchée et
+  historisée.
+</div>
+
+<div class="pied">
+  Biashara Yangu — Manuel du module Distribution · version 3.5.4 (build 48)<br>
+  Document généré le 4 novembre 2026 · à conserver avec les procédures internes
+  de l'entreprise.
+</div>
+
+</body>
+</html>
