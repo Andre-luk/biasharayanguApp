@@ -55,6 +55,14 @@ class _NewSalePageState extends State<NewSalePage> {
   Client? selectedClient;
   bool isModeDette = false;
 
+  /// 🧾 V14 — FORMATS DE VENTE PAR ARTICLE (clé = identifiant SERVEUR).
+  ///
+  /// « Ce produit se vend-il aussi en farde / carton ? » : la réponse est
+  /// chargée depuis la base du téléphone, donc disponible MÊME HORS LIGNE.
+  /// Une carte produit qui a des formats ouvre le sélecteur à l'ajout.
+  Map<String, List<Conditionnement>> _formatsParProduit =
+      <String, List<Conditionnement>>{};
+
   /// 🔳 MODULE 7 — panier partagé de la boutique : la caisse et le scanner
   /// vendeur y ajoutent leurs lignes (articles et conditionnements).
   final PanierService _panier = PanierService.instance;
@@ -175,22 +183,33 @@ class _NewSalePageState extends State<NewSalePage> {
             : articles.length;
         await Future.wait(
           articles.sublist(debut, fin).map(
-                (Article a) => DBHelper.instance.upsertProduitFromSupabase(
-                  Produit(
-                    nom: a.nom,
-                    categorie: a.categorie,
-                    prixAchat: a.prixAchat,
-                    prixVente: a.prixVente,
-                    quantite: a.quantite,
-                    uniteMesure: a.uniteMesure,
-                    photo: a.photo,
-                    createdAt: a.createdAt?.toIso8601String(),
-                    updatedAt: a.updatedAt?.toIso8601String(),
+                (Article a) async {
+                  await DBHelper.instance.upsertProduitFromSupabase(
+                    Produit(
+                      nom: a.nom,
+                      categorie: a.categorie,
+                      prixAchat: a.prixAchat,
+                      prixVente: a.prixVente,
+                      quantite: a.quantite,
+                      uniteMesure: a.uniteMesure,
+                      photo: a.photo,
+                      createdAt: a.createdAt?.toIso8601String(),
+                      updatedAt: a.updatedAt?.toIso8601String(),
+                      ownerId: a.ownerId,
+                      supabaseId: '${a.id}',
+                      isSynced: 1,
+                    ),
+                  );
+
+                  // 🧾 V14 — les FORMATS de l'article suivent le produit :
+                  // la caisse peut alors proposer « à l'unité / farde /
+                  // carton » sans aucune requête réseau au moment de vendre.
+                  await DBHelper.instance.remplacerConditionnementsProduit(
+                    produitSupabaseId: '${a.id}',
                     ownerId: a.ownerId,
-                    supabaseId: '${a.id}',
-                    isSynced: 1,
-                  ),
-                ),
+                    formats: a.conditionnements,
+                  );
+                },
               ),
         );
       }
@@ -243,16 +262,20 @@ class _NewSalePageState extends State<NewSalePage> {
       final data = await Future.wait([
         DBHelper.instance.getProduits(ownerId: ownerId),
         DBHelper.instance.getClients(ownerId: ownerId),
+        DBHelper.instance.getConditionnementsParProduit(ownerId: ownerId),
       ]);
 
       if (!mounted) return;
 
       final loadedProducts = data[0] as List<Produit>;
       final loadedClients = data[1] as List<Client>;
+      final formats =
+          data[2] as Map<String, List<Conditionnement>>;
 
       setState(() {
         produits = loadedProducts;
         clients = loadedClients;
+        _formatsParProduit = formats;
         _loading = false;
       });
 
@@ -331,63 +354,46 @@ class _NewSalePageState extends State<NewSalePage> {
     return null;
   }
 
-  /// ➕ AJOUTER AU PANIER — IMMÉDIAT.
+  /// ➕ AJOUTER AU PANIER — IMMÉDIAT, AVEC LE FORMAT.
   ///
   /// 🔴 CORRECTIF 78 — l'ajout attendait auparavant une réponse du serveur
-  /// (`getArticleById`) AVANT d'inscrire quoi que ce soit : d'où le temps
-  /// d'attente, les appuis répétés et l'impression que « le produit ne
-  /// s'ajoute pas en une seule fois ».
+  /// AVANT d'inscrire quoi que ce soit : d'où le temps d'attente et
+  /// l'impression que « le produit ne s'ajoute pas en une seule fois ».
   ///
-  /// Désormais la ligne est ajoutée TOUT DE SUITE (données du téléphone), et
-  /// les emballages éventuels (farde, carton…) sont proposés **après**, par un
-  /// message discret : la vente n'attend plus jamais le réseau.
-  void _ajouterAuPanier(Produit p) {
+  /// 🧾 V14 — LE FORMAT SE CHOISIT MAINTENANT. Si l'article possède des
+  /// emballages (farde, carton, sachet…), la caisse ouvre le sélecteur
+  /// **au moment de l'ajout** : le vendeur voit tout de suite les prix par
+  /// format et choisit la quantité. Les formats viennent de la base LOCALE
+  /// (`conditionnements`, V14) : cela fonctionne donc même sans réseau.
+  ///
+  /// Un article sans emballage s'ajoute directement à l'unité, comme avant.
+  Future<void> _ajouterAuPanier(Produit p) async {
     final int? idServeur = p.idServeur;
-    final double actuel =
-        idServeur == null ? 0 : _panier.quantiteProduit(idServeur);
-    _updateQuantity(p, actuel + 1);
-
-    // Proposer les emballages sans bloquer ni ralentir l'ajout.
-    unawaited(_proposerFormats(p));
-  }
-
-  /// 🧾 MULTI-FORMATS (en arrière-plan) — si l'article a des emballages, on
-  /// le signale par un message avec un bouton « Choisir ». Aucun échec réseau
-  /// n'a d'effet sur le panier : la ligne est déjà ajoutée.
-  Future<void> _proposerFormats(Produit p) async {
-    final int? idServeur = p.idServeur;
-    if (idServeur == null) return;
-
-    try {
-      final Article? article =
-          await ArticleService.instance.getArticleById(idServeur);
-      if (!mounted || article == null) return;
-
-      final List<Conditionnement> formats = article.conditionnements;
-      if (formats.isEmpty) return;
-
-      final String liste =
-          formats.map((Conditionnement c) => c.libelle).take(3).join(', ');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('« ${p.nom} » se vend aussi par : $liste'),
-          duration: const Duration(seconds: 6),
-          action: SnackBarAction(
-            label: 'Choisir',
-            onPressed: () => _choisirFormat(article, formats),
-          ),
-        ),
-      );
-    } catch (e) {
-      // Silencieux : un emballage indisponible ne doit jamais gêner la vente.
-      debugPrint('Formats indisponibles pour ${p.nom} : $e');
+    if (idServeur == null) {
+      _updateQuantity(p, 0);
+      return;
     }
-  }
 
-  Future<void> _choisirFormat(
-    Article article,
-    List<Conditionnement> formats,
-  ) async {
+    final List<Conditionnement> formats =
+        _formatsParProduit['$idServeur'] ?? const <Conditionnement>[];
+
+    // Aucun emballage : ajout à l'unité, immédiat et inchangé.
+    if (formats.isEmpty) {
+      final double actuel = _panier.quantiteProduit(idServeur);
+      _updateQuantity(p, actuel + 1);
+      return;
+    }
+
+    // L'article se vend sous plusieurs formats : on demande lequel.
+    final Article article = _articleDepuisProduit(p, formats);
+
+    if (_panier.quantiteProduit(idServeur) > 0) {
+      // Une ligne « à l'unité » est déjà au panier : le sélecteur s'ouvre
+      // quand même, c'est la seule façon de composer un panier mixte
+      // (2 bouteilles + 1 farde).
+      debugPrint('Caisse : ligne unité déjà présente pour ${p.nom}');
+    }
+
     final ChoixFormatVente? choix = await choisirFormatVente(
       context,
       article: article,
@@ -395,11 +401,90 @@ class _NewSalePageState extends State<NewSalePage> {
     );
     if (choix == null || !mounted) return;
 
-    // La ligne à l'unité laisse la place à l'emballage choisi.
-    _panier.retirer('PROD:${article.id}');
-    _panier.ajouterArticle(
-      ArticleScanne(article: article, conditionnement: choix.format),
-      quantite: choix.quantite,
+    _ajouterLigneFormat(p, article, choix);
+  }
+
+  /// Ajoute la ligne correspondant au format choisi, en tenant compte du
+  /// stock réel du téléphone (jamais plus que disponible).
+  void _ajouterLigneFormat(
+    Produit p,
+    Article article,
+    ChoixFormatVente choix,
+  ) {
+    final ArticleScanne scanne = ArticleScanne(
+      article: article,
+      conditionnement: choix.format,
+      produitIdLocal: p.id,
+    );
+
+    // ⚠️ Le stock se compte en UNITÉS DE BASE, tous formats confondus :
+    // « 3 bouteilles + 2 fardes de 12 » consomme 27 bouteilles, pas 5.
+    final int? idServeur = p.idServeur;
+    double baseAuPanier = 0;
+    for (final LignePanier ligne in _panier.lignes) {
+      if (ligne.produitId == idServeur) baseAuPanier += ligne.unitesBase;
+    }
+    final double baseDemandee = scanne.unitesBasePour(choix.quantite);
+
+    if (baseAuPanier + baseDemandee > p.quantite + 0.0001) {
+      final double restant = p.quantite - baseAuPanier;
+      _showSnackBar(
+        'Stock insuffisant pour ${p.nom} : '
+        '${restant > 0 ? _quantiteTexte(restant) : '0'} '
+        '${p.uniteMesure} encore disponible(s).',
+        isError: true,
+      );
+      return;
+    }
+
+    final double ajoutee =
+        _panier.ajouterArticle(scanne, quantite: choix.quantite);
+
+    if (ajoutee <= 0) {
+      _showSnackBar(
+        '« ${p.nom} » n\'a plus de stock dans ce format.',
+        isError: true,
+      );
+      return;
+    }
+
+    setState(() {});
+
+    final String libelle = choix.format == null
+        ? p.uniteMesure
+        : '${choix.format!.libelle} '
+            '(${choix.format!.quantiteUnitesBase.toStringAsFixed(0)} '
+            '${p.uniteMesure})';
+    _showSnackBar('${p.nom} — $libelle ajouté au panier.');
+  }
+
+  /// « 12 » pour une quantité entière, « 1,5 » sinon.
+  String _quantiteTexte(double valeur) {
+    if (valeur == valeur.roundToDouble()) return valeur.toStringAsFixed(0);
+    return valeur
+        .toStringAsFixed(2)
+        .replaceAll(RegExp(r'0+$'), '')
+        .replaceAll(RegExp(r'\.$'), '')
+        .replaceAll('.', ',');
+  }
+
+  /// Construit l'[Article] attendu par le sélecteur à partir du produit local.
+  ///
+  /// Le prix de vente et l'unité sont ceux du téléphone : le serveur les
+  /// revérifiera de toute façon à l'encaissement.
+  Article _articleDepuisProduit(Produit p, List<Conditionnement> formats) {
+    final int idServeur = int.tryParse(p.supabaseId ?? '') ?? (p.id ?? 0);
+    return Article(
+      id: idServeur,
+      nom: p.nom,
+      categorie: p.categorie,
+      prixAchat: p.prixAchat,
+      prixVente: p.prixVente.toDouble(),
+      quantite: p.quantite,
+      uniteMesure: p.uniteMesure,
+      photo: p.photo,
+      ownerId: p.ownerId,
+      conditionnements: formats,
     );
   }
 
@@ -842,6 +927,12 @@ class _NewSalePageState extends State<NewSalePage> {
         idServeur == null ? 0.0 : _panier.quantiteProduit(idServeur);
     final isSelected = q > 0;
 
+    // 🧾 V14 — les formats de CET article (farde, carton…), lus en local.
+    final List<Conditionnement> formats = idServeur == null
+        ? const <Conditionnement>[]
+        : (_formatsParProduit['$idServeur'] ?? const <Conditionnement>[]);
+    final bool multiFormats = formats.isNotEmpty;
+
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
@@ -906,6 +997,22 @@ class _NewSalePageState extends State<NewSalePage> {
                       color: p.quantite <= 5 ? Colors.red : Colors.grey,
                     ),
                   ),
+                  // 🧾 V14 — le vendeur voit AVANT de cliquer que l'article
+                  // se vend aussi en farde / carton.
+                  if (multiFormats)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(
+                        'Aussi : ${formats.map((Conditionnement c) => c.libelle).take(3).join(', ')}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -947,11 +1054,69 @@ class _NewSalePageState extends State<NewSalePage> {
                 else
                   FilledButton.tonal(
                     onPressed: () => _ajouterAuPanier(p),
-                    child: Text(T.addButton),
+                    child: Text(multiFormats ? 'Choisir' : T.addButton),
                   ),
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 🧾 V14 — les lignes du panier, format compris (« 2 × Farde de 12 »).
+  Widget _buildLignesPanier(ThemeData theme) {
+    final List<LignePanier> lignes = _panier.lignes;
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 132),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: lignes.map((LignePanier ligne) {
+            final String quantite = ligne.quantite ==
+                    ligne.quantite.roundToDouble()
+                ? ligne.quantite.toStringAsFixed(0)
+                : ligne.quantite.toStringAsFixed(2);
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      '$quantite × ${ligne.nom}'
+                      '${ligne.vendu.estConditionnement ? ' (${ligne.vendu.libelleConditionnement})' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12.5),
+                    ),
+                  ),
+                  Text(
+                    formatMontant(ligne.total),
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 28,
+                    ),
+                    tooltip: 'Retirer du panier',
+                    icon: const Icon(Icons.close_rounded, size: 17),
+                    onPressed: () {
+                      _panier.retirer(ligne.cle);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            );
+          }).toList(growable: false),
         ),
       ),
     );
@@ -979,6 +1144,14 @@ class _NewSalePageState extends State<NewSalePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // 🧾 V14 — CE QUI EST VRAIMENT DANS LE PANIER.
+            //  Avec plusieurs formats, « 2 fardes + 3 bouteilles » doit être
+            //  lisible d'un coup d'œil : on liste les lignes, chacune
+            //  supprimable d'un geste.
+            if (_panier.lignes.isNotEmpty) ...<Widget>[
+              _buildLignesPanier(theme),
+              const SizedBox(height: 8),
+            ],
             Wrap(
               spacing: 12,
               runSpacing: 8,

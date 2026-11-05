@@ -15,6 +15,7 @@ import 'models/dette.dart';
 import 'models/paiement_dette.dart';
 import 'models/inventaire_quotidien.dart';
 import 'models/produit.dart';
+import 'models/conditionnement.dart';
 import 'models/vente.dart';
 import 'models/utilisateur.dart';
 import 'models/client.dart';
@@ -36,7 +37,9 @@ class DBHelper {
 
   // 1. On définit la version à 2
   // 🔌 V13 — 100 % HORS LIGNE : cache de lecture + conflits de synchronisation.
-  static const int _dbVersion = 13;
+  // 🧾 V14 — CONDITIONNEMENTS LOCAUX : la caisse sait, SANS RÉSEAU, qu'un
+  //          article se vend à l'unité, en farde ou en carton (et à quel prix).
+  static const int _dbVersion = 14;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -152,8 +155,24 @@ CREATE TABLE ajustements (
   )
 ''');
 
-
-    // utilisateurs (Pas de champ sync car ils sont insérés directement avec l'ID Supabase)
+    // 🧾 V14 — les FORMATS DE VENTE de chaque article (farde, carton…),
+    // recopiés du serveur pour que la caisse les propose même hors ligne.
+    await db.execute('''
+  CREATE TABLE IF NOT EXISTS conditionnements (
+  id TEXT PRIMARY KEY NOT NULL,
+  produit_supabase_id TEXT NOT NULL,
+  owner_id TEXT,
+  libelle TEXT NOT NULL,
+  quantite_unites_base REAL NOT NULL DEFAULT 1,
+  prix_vente REAL NOT NULL DEFAULT 0,
+  qr_code_id TEXT,
+  code_barre_texte TEXT
+  )
+''');
+    await db.execute('''
+  CREATE INDEX IF NOT EXISTS idx_conditionnements_produit
+  ON conditionnements(produit_supabase_id)
+''');
     // Dans votre méthode onCreate ou lors de la création de la table :
     await db.execute('''
   CREATE TABLE utilisateurs (
@@ -330,6 +349,31 @@ CREATE TABLE approvisionnements (
   )
 ''');
       debugPrint('✅ Migration V13 terminée.');
+    }
+
+    if (oldVersion < 14) {
+      // 🧾 V14 — LES FORMATS DE VENTE, DISPONIBLES HORS LIGNE.
+      //  Une farde, un carton, un sachet : chaque emballage a son prix et le
+      //  nombre d'unités de base qu'il contient. Sans ce cache, la caisse ne
+      //  pouvait proposer les formats qu'en interrogeant le serveur.
+      debugPrint('🚀 Migration V14 : conditionnements locaux...');
+      await db.execute('''
+  CREATE TABLE IF NOT EXISTS conditionnements (
+  id TEXT PRIMARY KEY NOT NULL,
+  produit_supabase_id TEXT NOT NULL,
+  owner_id TEXT,
+  libelle TEXT NOT NULL,
+  quantite_unites_base REAL NOT NULL DEFAULT 1,
+  prix_vente REAL NOT NULL DEFAULT 0,
+  qr_code_id TEXT,
+  code_barre_texte TEXT
+  )
+''');
+      await db.execute('''
+  CREATE INDEX IF NOT EXISTS idx_conditionnements_produit
+  ON conditionnements(produit_supabase_id)
+''');
+      debugPrint('✅ Migration V14 terminée.');
     }
   }
 
@@ -1015,6 +1059,111 @@ CREATE TABLE approvisionnements (
   Future<int> deleteProduit(int id) async {
     final db = await database;
     return await db.delete('produits', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // ===========================================================================
+  // 🧾 V14 — FORMATS DE VENTE (CONDITIONNEMENTS) EN LOCAL
+  // ===========================================================================
+  //
+  //  La caisse doit savoir, SANS RÉSEAU, qu'un article se vend à l'unité mais
+  //  aussi en farde de 12 ou en carton de 24 — et à quel prix. Ces méthodes
+  //  recopient les `conditionnements` du serveur dans la base du téléphone.
+  //
+  //  ⚠️ La clé est l'identifiant SERVEUR du produit (`supabase_id`) : c'est
+  //  celui qu'utilisent le panier et la vente, jamais le numéro local.
+
+  /// Remplace les formats d'un article par ceux qui viennent du serveur.
+  ///
+  /// On supprime puis on réinsère : un emballage retiré côté serveur doit
+  /// disparaître du téléphone (sinon la caisse proposerait un format qui
+  /// n'existe plus et la vente serait refusée).
+  Future<void> remplacerConditionnementsProduit({
+    required String produitSupabaseId,
+    String? ownerId,
+    required List<Conditionnement> formats,
+  }) async {
+    final db = await database;
+    final String produit = produitSupabaseId.trim();
+    if (produit.isEmpty) return;
+
+    await db.delete(
+      'conditionnements',
+      where: 'produit_supabase_id = ?',
+      whereArgs: <Object?>[produit],
+    );
+
+    if (formats.isEmpty) return;
+
+    final Batch lot = db.batch();
+    for (final Conditionnement c in formats) {
+      lot.insert(
+        'conditionnements',
+        <String, Object?>{
+          'id': c.id,
+          'produit_supabase_id': produit,
+          'owner_id': ownerId,
+          'libelle': c.libelle,
+          'quantite_unites_base': c.quantiteUnitesBase,
+          'prix_vente': c.prixVente,
+          'qr_code_id': c.qrCodeId,
+          'code_barre_texte': c.codeBarreTexte,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    await lot.commit(noResult: true);
+  }
+
+  /// Tous les formats de la boutique, groupés par identifiant SERVEUR de
+  /// produit (`'123'` → liste des emballages).
+  Future<Map<String, List<Conditionnement>>> getConditionnementsParProduit({
+    String? ownerId,
+  }) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = (ownerId == null)
+        ? await db.query('conditionnements')
+        : await db.query(
+            'conditionnements',
+            where: 'owner_id = ?',
+            whereArgs: <Object?>[ownerId],
+          );
+
+    final Map<String, List<Conditionnement>> resultat =
+        <String, List<Conditionnement>>{};
+    for (final Map<String, dynamic> m in maps) {
+      final String produit = '${m['produit_supabase_id'] ?? ''}';
+      if (produit.isEmpty) continue;
+      final Conditionnement format = Conditionnement(
+        id: '${m['id']}',
+        produitId: int.tryParse(produit) ?? 0,
+        libelle: '${m['libelle'] ?? ''}',
+        quantiteUnitesBase:
+            (m['quantite_unites_base'] as num?)?.toDouble() ?? 1,
+        prixVente: (m['prix_vente'] as num?)?.toDouble() ?? 0,
+        qrCodeId: '${m['qr_code_id'] ?? ''}',
+        codeBarreTexte:
+            (m['code_barre_texte'] as String?)?.trim().isEmpty ?? true
+                ? null
+                : m['code_barre_texte'] as String,
+      );
+      resultat.putIfAbsent(produit, () => <Conditionnement>[]).add(format);
+    }
+
+    // Ordre lisible : du plus petit au plus grand emballage.
+    for (final List<Conditionnement> liste in resultat.values) {
+      liste.sort((Conditionnement a, Conditionnement b) =>
+          a.quantiteUnitesBase.compareTo(b.quantiteUnitesBase));
+    }
+    return resultat;
+  }
+
+  /// Formats d'UN article (identifiant serveur).
+  Future<List<Conditionnement>> getConditionnementsProduit(
+    String produitSupabaseId,
+  ) async {
+    final Map<String, List<Conditionnement>> tous =
+        await getConditionnementsParProduit();
+    return tous[produitSupabaseId.trim()] ?? const <Conditionnement>[];
   }
 
   /// Supprime un produit local par supabase_id

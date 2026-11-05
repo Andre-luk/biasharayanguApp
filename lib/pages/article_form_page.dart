@@ -20,6 +20,7 @@ import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/article_service.dart';
+import 'package:biashara_yangu/services/code_barre_nom_service.dart';
 import 'package:biashara_yangu/services/image_service.dart';
 // 🧩 MODULE 16 C1 — les champs lot/date n'apparaissent que si l'activité
 // a le module « lots_expiration » (pharmacie, alimentation, dépôt…).
@@ -92,6 +93,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   bool _chargement = true;
   bool _enregistrement = false;
   String? _erreurChargement;
+
+  /// 🏷️ Une recherche de nom est en cours après un scan.
+  bool _rechercheCode = false;
 
   bool get _estModification => _article != null;
 
@@ -187,10 +191,116 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // 🏷️ CODE-BARRES → NOM DU PRODUIT
+  // ---------------------------------------------------------------------------
+  //
+  //  Le commerçant braque la caméra sur l'emballage : le code est enregistré
+  //  ET le nom s'écrit tout seul.
+  //
+  //  1. Le code appartient déjà à un article de SA boutique → nom, unité et
+  //     prix sont repris (remplissage direct, aucune question).
+  //  2. Le code est inconnu de la boutique → on interroge une base publique et
+  //     on PROPOSE un nom : un appui sur « Utiliser » et il est écrit.
+  //  3. Rien n'est trouvé (hors ligne, produit très local) → le code reste
+  //     enregistré et le commerçant saisit le nom, comme avant.
+  //
+  //  ⚠️ Aucun champ déjà rempli n'est écrasé : ce qui a été saisi à la main
+  //     reste la priorité du commerçant.
+
+  Future<void> _codeBarreLu(String code) async {
+    FocusScope.of(context).unfocus();
+    final String brut = code.trim();
+    if (brut.isEmpty) return;
+
+    setState(() => _rechercheCode = true);
+
+    // 1. Notre propre catalogue (fonctionne hors ligne grâce au cache local).
+    Article? connu;
+    try {
+      connu = await _service.trouverParCodeBarre(brut);
+    } on ArticleServiceException catch (e) {
+      debugPrint('ArticleFormPage — recherche code-barres ignorée : ${e.message}');
+    } catch (e) {
+      debugPrint('ArticleFormPage — recherche code-barres ignorée : $e');
+    }
+
+    if (!mounted) return;
+
+    if (connu != null) {
+      _appliquerNomConnu(connu);
+      setState(() => _rechercheCode = false);
+      _message(
+        '« ${connu.nom} » reconnu : les champs vides ont été complétés.',
+      );
+      return;
+    }
+
+    // 2. Base publique : seulement une PROPOSITION, jamais une écriture dictée.
+    final String? suggestion =
+        await CodeBarreNomService.instance.nomProbable(brut);
+
+    if (!mounted) return;
+    setState(() => _rechercheCode = false);
+
+    if (suggestion == null || suggestion.trim().isEmpty) {
+      _message(
+        'Code-barres enregistré. Nouveau produit : saisissez son nom — '
+        'il sera reconnu automatiquement la prochaine fois.',
+      );
+      return;
+    }
+
+    if (_nomController.text.trim().isNotEmpty) {
+      _message('Code-barres enregistré.');
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 8),
+        content: Text('Nom trouvé : « $suggestion »'),
+        action: SnackBarAction(
+          label: 'Utiliser',
+          onPressed: () {
+            if (!mounted) return;
+            setState(() => _nomController.text = suggestion);
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Recopie les informations d'un article déjà connu (sans rien écraser).
+  void _appliquerNomConnu(Article article) {
+    setState(() {
+      if (_nomController.text.trim().isEmpty) {
+        _nomController.text = article.nom;
+      }
+      if (_uniteController.text.trim().isEmpty) {
+        _uniteController.text = article.uniteMesure;
+      }
+      final String prixActuel = _prixVenteController.text.trim();
+      if (prixActuel.isEmpty || _lireNombre(prixActuel) == 0) {
+        _prixVenteController.text = _champNombre(article.prixVente);
+      }
+    });
+  }
+
+  void _message(String texte) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(texte),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   /// Recharge l'article (après ajout / modification / suppression d'un
   /// conditionnement) en conservant la saisie en cours du formulaire.
-  Future<void> _rechargerArticle() async {
-    final Article? article = _article;
+  Future<void> _rechargerArticle() async {    final Article? article = _article;
     if (article == null) return;
 
     try {
@@ -1102,13 +1212,39 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                       //  CORRECTIF 59 — le code du fabricant : saisi au
                       //  clavier, scanné à la caméra, ou tapé par une
                       //  douchette USB/Bluetooth.
+                      //  🏷️ NOUVEAU — dès que le code est lu, le NOM du
+                      //  produit s'écrit automatiquement (catalogue de la
+                      //  boutique, sinon proposition issue d'une base
+                      //  publique). Plus besoin de taper le nom à la main.
                       ChampCodeBarre(
                         controller: _codeBarreController,
-                        aide: 'Scannez le code du fabricant '
-                            '(EAN-13, UPC, Code 128…).',
-                        onCode: (String code) =>
-                            FocusScope.of(context).unfocus(),
+                        aide: 'Scannez le code du fabricant : le nom du '
+                            'produit se remplit tout seul.',
+                        onCode: _codeBarreLu,
                       ),
+                      if (_rechercheCode)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            children: <Widget>[
+                              const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Recherche du nom du produit…',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
                       // 🧩 MODULE 16 C1 — PHARMACIE : lot & péremption.
                       //  Affiché uniquement si l'activité a le module
