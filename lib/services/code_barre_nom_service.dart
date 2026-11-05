@@ -66,7 +66,7 @@ class CodeBarreNomService {
     final http.Response reponse = await http.get(
       uri,
       headers: <String, String>{
-        'User-Agent': 'BiasharaYangu/3.5.4 (application de gestion)',
+        'User-Agent': 'BiasharaYangu/3.6.0 (application de gestion)',
         'Accept': 'application/json',
       },
     ).timeout(_delai);
