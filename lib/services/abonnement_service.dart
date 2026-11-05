@@ -501,6 +501,29 @@ class AbonnementService {
     }
   }
 
+  /// 🧮 MODULE 26 — DÉTAIL DE FACTURATION PAR COLLABORATEUR.
+  ///
+  /// Renvoie : prix de base, nombre de collaborateurs ACTIFS facturés, prix
+  /// unitaire, supplément, total du prochain cycle, échéance.
+  ///
+  /// `null` si le serveur ne répond pas : l'écran masque simplement le détail
+  /// (il n'invente jamais un supplément).
+  Future<Map<String, dynamic>?> detailCollaborateurs({
+    String? entrepriseId,
+  }) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'abonnement_detail_collaborateurs',
+        params: <String, dynamic>{'p_entreprise': entrepriseId},
+      );
+      if (reponse is Map) return Map<String, dynamic>.from(reponse);
+      return null;
+    } catch (e) {
+      debugPrint('AbonnementService.detailCollaborateurs : $e');
+      return null;
+    }
+  }
+
   /// Ouvre le cycle suivant au prix mensuel négocié, si l'abonnement est échu.
   ///
   /// ⚠️ Contrairement à [etatInstallation], cette méthode LÈVE une erreur :

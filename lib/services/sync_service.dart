@@ -528,6 +528,11 @@ class SyncService {
               // montant ferait croire à un encaissement.
               'p_montant_recu': mode == 'credit' ? null : v.prix,
               'p_client_id': clientId,
+              // 🔁 MODULE 25 — CLÉ D'IDEMPOTENCE. Si la réponse du serveur
+              // s'est perdue, la vente rejouée renvoie celle déjà
+              // enregistrée : jamais de double vente, jamais de double
+              // sortie de stock.
+              'p_reference_locale': 'local:${v.id}',
             },
           ),
         );

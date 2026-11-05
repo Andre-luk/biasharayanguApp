@@ -106,6 +106,15 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
             .toList(growable: false),
         saleDate: vente.date ?? DateTime.now(),
         invoiceId: _numeroTicket(),
+        // 🛒 MODULE 25 — la facture explique le prix payé.
+        totalInitial: vente.totalInitial,
+        negociation: vente.montantNegociation,
+        remise: vente.remise,
+        remiseLibelle: vente.remiseType == 'pourcentage' ? '%' : null,
+        cadeaux: vente.cadeaux
+            .map((CadeauVente c) =>
+                '${_nombreTexte(c.quantite)} × ${c.nom}')
+            .toList(growable: false),
       );
 
       await facture.generateAndPrintInvoice(isTicket: true);
@@ -246,6 +255,27 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: <Widget>[
+            // 🛒 MODULE 25 — ce qui a été accordé, ligne par ligne.
+            if (vente.montantNegociation > 0)
+              _ligneInfo(theme, 'Prix catalogue',
+                  formatMontant(vente.totalInitial)),
+            if (vente.montantNegociation > 0)
+              _ligneInfo(theme, 'Négociation accordée',
+                  '- ${formatMontant(vente.montantNegociation)}'),
+            if (vente.remise > 0)
+              _ligneInfo(
+                  theme,
+                  vente.remiseType == 'pourcentage'
+                      ? 'Réduction accordée (%)'
+                      : 'Réduction accordée',
+                  '- ${formatMontant(vente.remise)}'),
+            if (vente.cadeaux.isNotEmpty)
+              _ligneInfo(
+                  theme,
+                  'Cadeaux offerts',
+                  '${vente.cadeaux.length} produit(s) — '
+                      '${formatMontant(vente.valeurCadeaux)}'),
+            if (vente.estFlexible) const Divider(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
@@ -268,6 +298,29 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
             if (vente.rendu != null && vente.rendu! > 0)
               _ligneInfo(theme, 'Rendu', formatMontant(vente.rendu!),
                   valeurEnVert: true),
+            // 🎁 Les cadeaux sont rappelés nommément sur le reçu.
+            if (vente.cadeaux.isNotEmpty) ...<Widget>[
+              const Divider(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Produits offerts',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+              ...vente.cadeaux.map(
+                (CadeauVente cadeau) => _ligneInfo(
+                  theme,
+                  '${_nombreTexte(cadeau.quantite)} × ${cadeau.nom}',
+                  'OFFERT',
+                  valeurEnVert: true,
+                ),
+              ),
+            ],
           ],
         ),
       ),

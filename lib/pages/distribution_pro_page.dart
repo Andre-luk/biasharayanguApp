@@ -23,6 +23,7 @@ import 'package:biashara_yangu/services/distribution_gestion_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
+import 'package:biashara_yangu/services/ventes_commerciales_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/widgets/distribution_widgets.dart';
@@ -299,6 +300,7 @@ class _DistributionProPageState extends State<DistributionProPage> {
     }
     await SessionManager.clearSession();
     PanierService.instance.vider();
+    VentesCommercialesService.instance.reinitialiser();
     ScannerService.instance.viderHistorique();
     PermissionService.instance.reinitialiser();
     ContexteDistribution.instance.reinitialiser();

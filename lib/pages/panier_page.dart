@@ -424,7 +424,9 @@ class _PanierPageState extends State<PanierPage> {
 
   Widget _buildPied() {
     final ThemeData theme = Theme.of(context);
-    final double total = _panier.total();
+    // 🛒 MODULE 25 — le pied du panier montre ce que le client PAIE :
+    // négociations de lignes et réduction globale incluses.
+    final double total = _panier.totalAPayer();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),

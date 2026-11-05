@@ -61,6 +61,43 @@ class LigneVenteEnregistree {
   }
 }
 
+/// 🎁 Produit offert, tel que le serveur l'a enregistré.
+class CadeauVente {
+  final int produitId;
+  final String nom;
+  final String? conditionnement;
+  final double quantite;
+  final double quantiteBase;
+
+  /// Valeur au prix du catalogue (ce que le client aurait payé).
+  final double valeur;
+
+  /// Coût réel du cadeau (`null` si le prix d'achat n'est pas connu).
+  final double? cout;
+
+  const CadeauVente({
+    required this.produitId,
+    required this.nom,
+    required this.quantite,
+    required this.quantiteBase,
+    required this.valeur,
+    this.conditionnement,
+    this.cout,
+  });
+
+  factory CadeauVente.fromMap(Map<String, dynamic> map) {
+    return CadeauVente(
+      produitId: parseInt(map['produit_id']),
+      nom: parseString(map['nom']),
+      conditionnement: parseStringOrNull(map['conditionnement']),
+      quantite: parseDouble(map['quantite']),
+      quantiteBase: parseDouble(map['quantite_base']),
+      valeur: parseDouble(map['valeur']),
+      cout: parseDoubleOrNull(map['cout']),
+    );
+  }
+}
+
 /// Vente validée : numéro unique + récapitulatif complet.
 class VenteEnregistree {
   final String numeroVente;
@@ -71,6 +108,24 @@ class VenteEnregistree {
   final double total;
   final String modePaiement;
   final double? montantRecu;
+
+  /// 🛒 MODULE 25 — total au prix catalogue, avant négociation et réduction.
+  final double totalInitial;
+
+  /// Montant accordé par négociation de lignes.
+  final double montantNegociation;
+
+  /// Réduction accordée sur l'ensemble du panier.
+  final double remise;
+
+  /// `montant` ou `pourcentage` (NULL si aucune réduction).
+  final String? remiseType;
+
+  /// Valeur des produits offerts, au prix du catalogue.
+  final double valeurCadeaux;
+
+  /// Produits offerts lors de cette vente.
+  final List<CadeauVente> cadeaux;
 
   /// Monnaie rendue (espèces uniquement).
   final double? rendu;
@@ -87,6 +142,12 @@ class VenteEnregistree {
     this.montantRecu,
     this.rendu,
     this.date,
+    this.totalInitial = 0,
+    this.montantNegociation = 0,
+    this.remise = 0,
+    this.remiseType,
+    this.valeurCadeaux = 0,
+    this.cadeaux = const <CadeauVente>[],
   });
 
   /// Construit depuis la réponse JSON de `rpc_vente_valider`.
@@ -103,12 +164,25 @@ class VenteEnregistree {
       montantRecu: parseDoubleOrNull(map['montant_recu']),
       rendu: parseDoubleOrNull(map['rendu']),
       date: parseDateTimeOrNull(map['date']),
+      totalInitial: parseDouble(map['total_initial'],
+          fallback: parseDouble(map['total'])),
+      montantNegociation: parseDouble(map['negociation']),
+      remise: parseDouble(map['remise']),
+      remiseType: parseStringOrNull(map['remise_type']),
+      valeurCadeaux: parseDouble(map['valeur_cadeaux']),
+      cadeaux: parseMapList(map['cadeaux'])
+          .map(CadeauVente.fromMap)
+          .toList(growable: false),
       lignes: lignes,
     );
   }
 
   /// Nombre de lignes (articles distincts).
   int get nombreLignes => lignes.length;
+
+  /// Cette vente a-t-elle bénéficié d'une flexibilité commerciale ?
+  bool get estFlexible =>
+      montantNegociation > 0 || remise > 0 || cadeaux.isNotEmpty;
 }
 
 /// Ligne d'une vente relue dans l'historique (`public.ventes`).

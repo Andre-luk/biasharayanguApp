@@ -16,13 +16,28 @@ import 'package:biashara_yangu/models/article_scanne.dart';
 
 /// Ligne du panier (article ou conditionnement + quantité).
 class LignePanier {
-  LignePanier({required this.vendu, this.quantite = 1});
+  LignePanier({
+    required this.vendu,
+    this.quantite = 1,
+    this.prixNegocie,
+    this.estCadeau = false,
+  });
 
   /// Article (et conditionnement éventuel) vendu.
   final ArticleScanne vendu;
 
   /// Quantité commandée, exprimée en unités vendues.
   double quantite;
+
+  /// 🛒 MODULE 25 — prix unitaire NÉGOCIÉ accepté par le vendeur.
+  ///
+  /// `null` = la ligne est vendue au prix du catalogue. Le prix catalogue de
+  /// l'article (`vendu.prixUnitaire`) n'est jamais modifié : ce champ ne décrit
+  /// que CETTE vente.
+  double? prixNegocie;
+
+  /// 🎁 Cadeau commercial : la ligne sort du stock mais n'est pas facturée.
+  final bool estCadeau;
 
   /// Identifiant de la ligne : code du QR scanné (`PROD:…` / `COND:…`).
   String get cle => vendu.code;
@@ -50,8 +65,27 @@ class LignePanier {
   /// Prix d'une unité vendue (relu dans la base au moment du scan).
   double get prixUnitaire => vendu.prixUnitaire;
 
-  /// Total de la ligne : `quantité × prix unitaire`.
-  double get total => prixUnitaire * quantite;
+  /// Prix unitaire RÉELLEMENT appliqué (négocié s'il existe).
+  double get prixUnitaireEffectif => estCadeau ? 0 : (prixNegocie ?? prixUnitaire);
+
+  /// Prix unitaire au catalogue (référence de la négociation).
+  double get prixUnitaireCatalogue => prixUnitaire;
+
+  /// Y a-t-il eu un accord de prix sur cette ligne ?
+  bool get estNegociee =>
+      !estCadeau &&
+      prixNegocie != null &&
+      (prixNegocie! - prixUnitaire).abs() > 0.005;
+
+  /// Montant accordé au client sur cette ligne (catalogue − négocié).
+  double get remiseNegociation =>
+      estNegociee ? (prixUnitaire - prixNegocie!) * quantite : 0;
+
+  /// Total de la ligne AVANT négociation (prix catalogue).
+  double get totalCatalogue => prixUnitaire * quantite;
+
+  /// Total de la ligne : `quantité × prix appliqué` (0 pour un cadeau).
+  double get total => prixUnitaireEffectif * quantite;
 
   /// Sous-total de la ligne (alias métier de [total]).
   double get sousTotal => total;

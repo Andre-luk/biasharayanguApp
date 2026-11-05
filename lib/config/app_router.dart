@@ -205,6 +205,9 @@ import 'package:biashara_yangu/pages/encaissement_page.dart';
 import 'package:biashara_yangu/pages/vente_confirmation_page.dart';
 import 'package:biashara_yangu/pages/mes_ventes_page.dart';
 
+// ========== MODULE 25 : VENTES FLEXIBLES (négociation, réduction, cadeaux) ====
+import 'package:biashara_yangu/pages/parametres_vente_page.dart';
+
 // ========== MODULE 9 : GESTION DU STOCK (CONVERSIONS MULTI-UNITÉS) ==========
 //
 // L'écran « Stock » remplace les anciens écrans locaux (SQLite) : le module 9
@@ -1493,6 +1496,14 @@ final GoRouter appRouter = GoRouter(
                   path: 'devise',
                   name: 'devise',
                   builder: (context, state) => const DevisePage(),
+                ),
+
+                // 🛒 MODULE 25 — négociation, réductions et cadeaux :
+                // le propriétaire autorise, limite et contrôle.
+                GoRoute(
+                  path: 'parametres-vente',
+                  name: 'parametres-vente',
+                  builder: (context, state) => const ParametresVentePage(),
                 ),
 
                 // 👥 GESTION DES VENDEURS

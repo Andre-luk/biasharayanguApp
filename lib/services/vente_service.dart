@@ -21,6 +21,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/ligne_panier.dart';
+import 'package:biashara_yangu/models/parametres_vente.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/models/vente.dart';
@@ -156,6 +157,17 @@ class VenteService {
       case 'VENTE_INVALIDE':
       case 'VENTE_INTROUVABLE':
         return TypeErreurVente.validation;
+      // 🛒 MODULE 25 — flexibilité commerciale.
+      case 'NEGOCIATION_INTERDITE':
+      case 'NEGOCIATION_HORS_LIMITE':
+      case 'REMISE_INTERDITE':
+      case 'REMISE_HORS_LIMITE':
+      case 'CADEAU_INTERDIT':
+      case 'VALIDATION_REQUISE':
+      case 'VALEUR_INVALIDE':
+        return TypeErreurVente.droits;
+      case 'CADEAU_STOCK':
+        return TypeErreurVente.stock;
       case 'DETTE_LIEE':
         return TypeErreurVente.dette;
       case 'ABONNEMENT_BLOQUE':
@@ -180,6 +192,10 @@ class VenteService {
     double? montantRecu,
     String? numeroTransaction,
     int? clientId,
+    double remise = 0,
+    String remiseType = 'montant',
+    List<CadeauPanier> cadeaux = const <CadeauPanier>[],
+    String? referenceLocale,
   }) async {
     final PanierService panier = PanierService.instance;
 
@@ -216,7 +232,9 @@ class VenteService {
         // Unités VENDUES (3 fardes) — pour le reçu et le retour du serveur.
         'quantite_vendue': ligne.quantite,
         'conditionnement_id': ligne.conditionnementId,
-        // Aucun prix n'est transmis : le serveur relit celui de la base.
+        // 🛒 MODULE 25 — prix unitaire négocié (jamais le prix catalogue :
+        // le serveur relit le catalogue et contrôle l'écart autorisé).
+        if (ligne.estNegociee) 'prix_negocie': ligne.prixNegocie,
       };
     }).toList(growable: false);
 
@@ -234,6 +252,13 @@ class VenteService {
           'p_montant_recu': montantRecu,
           'p_numero_transaction': transaction,
           'p_client_id': clientId,
+          // 🛒 MODULE 25 — réduction globale, cadeaux et idempotence.
+          'p_remise': remise > 0 ? remise : 0,
+          'p_remise_type': remise > 0 ? remiseType : null,
+          'p_cadeaux': cadeaux.isEmpty
+              ? null
+              : cadeaux.map((CadeauPanier c) => c.versPayload()).toList(),
+          'p_reference_locale': referenceLocale,
         },
       );
     } on PostgrestException catch (e) {
@@ -248,11 +273,25 @@ class VenteService {
       // Un refus MÉTIER du serveur (stock, droits, abonnement) n'arrive
       // jamais ici : il lève un `PostgrestException` traité plus haut.
       debugPrint('VenteService.validerVente hors ligne : $e');
+
+      // 🎁 Un cadeau consomme du stock : il exige la vérification du serveur.
+      // On refuse poliment plutôt que de risquer une double sortie de stock
+      // ou un cadeau non facturé qui passerait inaperçu.
+      if (cadeaux.isNotEmpty) {
+        throw const VenteServiceException(
+          'Un cadeau commercial nécessite le réseau : le stock doit être '
+          'vérifié par le serveur. Retirez le cadeau ou reconnectez-vous.',
+          type: TypeErreurVente.reseau,
+        );
+      }
+
       final VenteEnregistree? locale = await _enregistrerVenteHorsLigne(
         lignes: lignesPanier,
         modePaiement: modePaiement,
         montantRecu: montantRecu,
         clientId: clientId,
+        remise: remise,
+        remiseType: remiseType,
       );
       if (locale != null) {
         panier.vider();
@@ -531,6 +570,8 @@ class VenteService {
     required String modePaiement,
     double? montantRecu,
     int? clientId,
+    double remise = 0,
+    String remiseType = 'montant',
   }) async {
     try {
       final String? userId = SupabaseService.instance.auth.currentUser?.id;
@@ -558,7 +599,22 @@ class VenteService {
           <LigneVenteEnregistree>[];
       double total = 0;
 
-      for (final LignePanier ligne in lignes) {
+      // 🛒 MODULE 25 — la réduction globale est répartie au prorata sur les
+      // lignes : la somme écrite en base égale EXACTEMENT ce que le client a
+      // payé, donc les rapports restent justes même hors ligne.
+      final double brut = lignes.fold<double>(
+        0,
+        (double somme, LignePanier l) => somme + l.total,
+      );
+      final double remiseMontant = ReglesVenteFlexible.remiseEnMontant(
+        base: brut,
+        valeur: remise,
+        type: TypeReduction.depuis(remiseType),
+      );
+      double restantARepartir = remiseMontant;
+
+      for (int i = 0; i < lignes.length; i++) {
+        final LignePanier ligne = lignes[i];
         final int? localId = await _idLocalProduit(ligne);
         if (localId == null) {
           // Le produit n'existe pas dans la copie locale : impossible de
@@ -568,11 +624,24 @@ class VenteService {
           return null;
         }
 
+        // Part de la réduction : au prorata, la dernière ligne absorbe
+        // l'arrondi pour que le total soit exact au centime près.
+        double part = 0;
+        if (remiseMontant > 0 && brut > 0) {
+          part = (i == lignes.length - 1)
+              ? restantARepartir
+              : ReglesVenteFlexible.arrondi(remiseMontant * ligne.total / brut);
+          if (part > restantARepartir) part = restantARepartir;
+          restantARepartir = ReglesVenteFlexible.arrondi(restantARepartir - part);
+        }
+        final double prixLigne =
+            ReglesVenteFlexible.arrondi(ligne.total - part);
+
         await DBHelper.instance.insertVenteWithStockUpdate(
           Vente(
             produitId: localId,
             quantite: ligne.unitesBase,
-            prix: ligne.total,
+            prix: prixLigne,
             modePaiement: modePaiement,
             createdAt: maintenant.toIso8601String(),
             ownerId: ownerId,
@@ -581,7 +650,7 @@ class VenteService {
           ),
         );
 
-        total += ligne.total;
+        total += prixLigne;
         enregistrees.add(
           LigneVenteEnregistree(
             produitId: ligne.produitId,
@@ -589,8 +658,8 @@ class VenteService {
             unite: ligne.conditionnementId != null ? 'conditionnement' : 'unité',
             quantiteVendue: ligne.quantite,
             quantiteBase: ligne.unitesBase,
-            prixUnitaire: ligne.prixUnitaire,
-            total: ligne.total,
+            prixUnitaire: ligne.prixUnitaireEffectif,
+            total: prixLigne,
             conditionnement: ligne.conditionnementId,
           ),
         );
@@ -604,6 +673,12 @@ class VenteService {
             '${maintenant.millisecondsSinceEpoch.toString().substring(6)}',
         venteUuid: uuid,
         total: total,
+        totalInitial: brut,
+        montantNegociation: ReglesVenteFlexible.arrondi(
+          lignes.fold<double>(0, (double s, LignePanier l) => s + l.remiseNegociation),
+        ),
+        remise: remiseMontant,
+        remiseType: remiseMontant > 0 ? remiseType : null,
         modePaiement: modePaiement,
         montantRecu: recu,
         rendu: recu > total ? recu - total : 0.0,

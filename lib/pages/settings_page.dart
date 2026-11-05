@@ -15,6 +15,7 @@ import 'package:biashara_yangu/ui/parametres/catalogue_parametres.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
+import 'package:biashara_yangu/services/ventes_commerciales_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/notification_service.dart';
@@ -275,6 +276,9 @@ class _SettingsPageState extends State<SettingsPage> {
     // 🔳 MODULE 7 — fin de la session de vente : on vide le panier partagé
     // et l'historique du scanner.
     PanierService.instance.vider();
+    // 🛒 MODULE 25 — les droits de négociation/réduction/cadeau appartiennent
+    // à l'utilisateur : on repart de zéro à la déconnexion.
+    VentesCommercialesService.instance.reinitialiser();
     ScannerService.instance.viderHistorique();
     if (!mounted) return;
     context.go('/login');

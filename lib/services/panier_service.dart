@@ -21,6 +21,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:biashara_yangu/models/article_scanne.dart';
 import 'package:biashara_yangu/models/ligne_panier.dart';
+import 'package:biashara_yangu/models/parametres_vente.dart';
 
 /// Panier en mémoire de la session de vente.
 ///
@@ -31,6 +32,14 @@ class PanierService {
   static final PanierService instance = PanierService._();
 
   final Map<String, LignePanier> _lignes = <String, LignePanier>{};
+
+  // ---------------------------------------------------------------- MODULE 25
+  // Flexibilité commerciale : réduction globale et cadeaux. Ces valeurs
+  // appartiennent à la vente EN COURS et disparaissent dès que le panier est
+  // vidé (vente confirmée, annulation, déconnexion).
+  double _remiseValeur = 0;
+  TypeReduction _remiseType = TypeReduction.montant;
+  final Map<String, CadeauPanier> _cadeaux = <String, CadeauPanier>{};
 
   /// Notifiée à chaque modification du panier (ajout, retrait, vidage).
   ///
@@ -61,14 +70,82 @@ class PanierService {
     return somme;
   }
 
-  /// Montant total du panier (CDF).
+  /// Montant total du panier (CDF), avant réduction globale et hors cadeaux.
+  ///
+  /// C'est le total APRÈS négociations de lignes : ce que le serveur appellera
+  /// `total_initial` avant application de la réduction du panier.
   double total() {
     double somme = 0;
     for (final LignePanier ligne in _lignes.values) {
       somme += ligne.total;
     }
+    return ReglesVenteFlexible.arrondi(somme);
+  }
+
+  /// Total au PRIX CATALOGUE (référence de la négociation).
+  double totalCatalogue() {
+    double somme = 0;
+    for (final LignePanier ligne in _lignes.values) {
+      somme += ligne.totalCatalogue;
+    }
+    return ReglesVenteFlexible.arrondi(somme);
+  }
+
+  /// Montant accordé par négociation sur l'ensemble des lignes.
+  double montantNegociation() {
+    double somme = 0;
+    for (final LignePanier ligne in _lignes.values) {
+      somme += ligne.remiseNegociation;
+    }
+    return ReglesVenteFlexible.arrondi(somme);
+  }
+
+  /// Nombre de lignes négociées.
+  int get nombreLignesNegociees =>
+      _lignes.values.where((LignePanier l) => l.estNegociee).length;
+
+  /// Réduction globale telle que saisie (montant ou pourcentage).
+  double get remiseValeur => _remiseValeur;
+
+  TypeReduction get remiseType => _remiseType;
+
+  /// Réduction globale RÉELLEMENT déduite du total.
+  double montantRemise() => ReglesVenteFlexible.remiseEnMontant(
+        base: total(),
+        valeur: _remiseValeur,
+        type: _remiseType,
+      );
+
+  /// Ce que le client paie réellement.
+  double totalAPayer() => ReglesVenteFlexible.arrondi(
+        (total() - montantRemise()).clamp(0, double.infinity),
+      );
+
+  // ------------------------------------------------------------------ CADEAUX
+
+  /// Produits offerts, dans l'ordre d'ajout.
+  List<CadeauPanier> get cadeaux =>
+      List<CadeauPanier>.unmodifiable(_cadeaux.values);
+
+  /// Nombre total d'unités offertes.
+  double get quantiteCadeaux {
+    double somme = 0;
+    for (final CadeauPanier cadeau in _cadeaux.values) {
+      somme += cadeau.quantite;
+    }
     return somme;
   }
+
+  /// Valeur des cadeaux au prix du catalogue.
+  double valeurCadeaux() {
+    double somme = 0;
+    for (final CadeauPanier cadeau in _cadeaux.values) {
+      somme += cadeau.valeur;
+    }
+    return ReglesVenteFlexible.arrondi(somme);
+  }
+
+  CadeauPanier? cadeau(String cle) => _cadeaux[cle];
 
   /// Nombre d'articles du panier — somme des quantités (arrondie).
   ///
@@ -138,9 +215,87 @@ class PanierService {
       return 0;
     }
 
-    _lignes[vendu.code] = LignePanier(vendu: vendu, quantite: finale);
+    // 🛒 MODULE 25 — un changement de quantité ne doit JAMAIS effacer le prix
+    // négocié : on reprend la ligne existante avant de la remplacer.
+    final LignePanier? existante = _lignes[vendu.code];
+    _lignes[vendu.code] = LignePanier(
+      vendu: vendu,
+      quantite: finale,
+      prixNegocie: existante?.prixNegocie,
+    );
     _notifier();
     return finale;
+  }
+
+  // ---------------------------------------------------------------------------
+  // MODULE 25 — NÉGOCIATION, RÉDUCTION, CADEAUX
+  // ---------------------------------------------------------------------------
+
+  /// Applique un prix unitaire négocié à une ligne.
+  ///
+  /// `null` (ou un prix égal au catalogue) rétablit le prix normal.
+  /// Renvoie le prix réellement appliqué, catalogue compris.
+  double definirPrixNegocie(String cle, double? prix) {
+    final LignePanier? ligne = _lignes[cle];
+    if (ligne == null) return 0;
+
+    if (prix == null || (prix - ligne.prixUnitaire).abs() <= 0.005) {
+      ligne.prixNegocie = null;
+    } else if (prix > 0 && prix <= ligne.prixUnitaire) {
+      ligne.prixNegocie = ReglesVenteFlexible.arrondi(prix);
+    } else {
+      // Prix invalide : on ne touche à rien.
+      return ligne.prixUnitaireEffectif;
+    }
+    _notifier();
+    return ligne.prixUnitaireEffectif;
+  }
+
+  /// Fixe la réduction globale du panier.
+  void definirRemise(double valeur, {TypeReduction type = TypeReduction.montant}) {
+    _remiseValeur = valeur <= 0 ? 0 : valeur;
+    _remiseType = type;
+    _notifier();
+  }
+
+  /// Supprime la réduction globale.
+  void effacerRemise() {
+    if (_remiseValeur == 0) return;
+    _remiseValeur = 0;
+    _remiseType = TypeReduction.montant;
+    _notifier();
+  }
+
+  /// Ajoute (ou cumule) un produit offert.
+  void ajouterCadeau(CadeauPanier cadeau) {
+    if (cadeau.quantite <= 0) return;
+    final CadeauPanier? existant = _cadeaux[cadeau.cle];
+    if (existant == null) {
+      _cadeaux[cadeau.cle] = cadeau;
+    } else {
+      _cadeaux[cadeau.cle] = CadeauPanier(
+        produitId: existant.produitId,
+        nom: existant.nom,
+        prixCatalogue: existant.prixCatalogue,
+        quantite: existant.quantite + cadeau.quantite,
+        quantiteBase: existant.quantiteBase + cadeau.quantiteBase,
+        conditionnementId: existant.conditionnementId,
+        unite: existant.unite,
+        stockDisponible: existant.stockDisponible,
+      );
+    }
+    _notifier();
+  }
+
+  /// Retire un cadeau du panier.
+  void retirerCadeau(String cle) {
+    if (_cadeaux.remove(cle) != null) _notifier();
+  }
+
+  void effacerCadeaux() {
+    if (_cadeaux.isEmpty) return;
+    _cadeaux.clear();
+    _notifier();
   }
 
   /// Retire une ligne du panier.
@@ -150,8 +305,11 @@ class PanierService {
 
   /// Vide complètement le panier (vente enregistrée, annulation, déconnexion).
   void vider() {
-    if (_lignes.isEmpty) return;
+    if (_lignes.isEmpty && _cadeaux.isEmpty && _remiseValeur == 0) return;
     _lignes.clear();
+    _cadeaux.clear();
+    _remiseValeur = 0;
+    _remiseType = TypeReduction.montant;
     _notifier();
   }
 

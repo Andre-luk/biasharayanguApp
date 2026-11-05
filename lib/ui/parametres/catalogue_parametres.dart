@@ -204,6 +204,20 @@ abstract final class CatalogueParametres {
       route: 'devise',
       priorite: 30,
     ),
+    // 🛒 MODULE 25 — négociation, réductions et cadeaux : le propriétaire
+    // décide de ce que ses collaborateurs peuvent accorder.
+    ParametreApp(
+      id: 'ventes-flexibles',
+      section: SectionParametres.boutique,
+      titre: (AppLocalizations T) => 'Ventes flexibles',
+      sousTitre: (AppLocalizations T) =>
+          'Négociation des prix, réductions sur le panier, cadeaux et rapports',
+      icone: Icons.price_change_rounded,
+      route: 'parametres-vente',
+      page: PageAccess.caisse,
+      action: ActionAccess.modifier,
+      priorite: 20,
+    ),
 
     // --------------------------------------------------------- Distribution
     ParametreApp(

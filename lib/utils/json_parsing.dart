@@ -51,6 +51,24 @@ DateTime? parseDateTimeOrNull(dynamic value) {
   return DateTime.tryParse(value.toString());
 }
 
+/// Convertit [value] en `bool` sans jamais lever d'exception.
+///
+/// PostgreSQL rend `true`/`false`, mais un JSON passé par un `jsonb_build_object`
+/// peut arriver en texte (`"true"`), en entier (`1`) ou être absent.
+bool parseBool(dynamic value, {bool fallback = false}) {
+  if (value == null) return fallback;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final String texte = value.toString().trim().toLowerCase();
+  if (texte == 'true' || texte == 't' || texte == '1' || texte == 'oui') {
+    return true;
+  }
+  if (texte == 'false' || texte == 'f' || texte == '0' || texte == 'non') {
+    return false;
+  }
+  return fallback;
+}
+
 /// Convertit une réponse PostgREST en `List<Map<String, dynamic>>`.
 ///
 /// Toute forme inattendue (null, réponse objet unique) produit une liste vide

@@ -32,6 +32,14 @@ class InvoiceService {
   final DateTime saleDate;
   final int invoiceId;
 
+  // 🛒 MODULE 25 — la facture distingue TOUJOURS : prix catalogue, montant
+  // négocié, réduction du panier, cadeaux offerts, puis total payé.
+  final double? totalInitial;
+  final double negociation;
+  final double remise;
+  final String? remiseLibelle;
+  final List<String> cadeaux;
+
   InvoiceService({
     required this.T,
     required this.userName,
@@ -40,6 +48,11 @@ class InvoiceService {
     required this.items,
     required this.saleDate,
     required this.invoiceId,
+    this.totalInitial,
+    this.negociation = 0,
+    this.remise = 0,
+    this.remiseLibelle,
+    this.cadeaux = const <String>[],
   });
 
   Future<void> generateAndPrintInvoice({bool isTicket = false}) async {
@@ -139,6 +152,28 @@ class InvoiceService {
           ),
         )),
         pw.Divider(thickness: 1),
+        // 🛒 MODULE 25 — le détail commercial, avant le total.
+        if (negociation > 0)
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text('Negociation accordee',
+                  style: pw.TextStyle(fontSize: 8)),
+              pw.Text('- ${formatMontant(negociation)}',
+                  style: pw.TextStyle(fontSize: 8)),
+            ],
+          ),
+        if (remise > 0)
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Text(
+                  'Reduction${remiseLibelle == null ? '' : ' ($remiseLibelle)'}',
+                  style: pw.TextStyle(fontSize: 8)),
+              pw.Text('- ${formatMontant(remise)}',
+                  style: pw.TextStyle(fontSize: 8)),
+            ],
+          ),
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
@@ -149,6 +184,13 @@ class InvoiceService {
                 pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
           ],
         ),
+        if (cadeaux.isNotEmpty) ...[
+          pw.SizedBox(height: 4),
+          pw.Text('CADEAUX OFFERTS',
+              style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+          ...cadeaux.map((String c) =>
+              pw.Text('- $c', style: pw.TextStyle(fontSize: 7))),
+        ],
         pw.SizedBox(height: 10),
         pw.Center(
           child: pw.Text(T.invoiceThankYou(shortDateStr),
@@ -226,14 +268,43 @@ class InvoiceService {
           },
         ),
         pw.SizedBox(height: 20),
-        pw.Align(
-          alignment: pw.Alignment.centerRight,
-          child: pw.Text(
-              '${T.invoiceTotal}: ${totalAmount.toStringAsFixed(2)} ${T.currencyUnit}',
+        if (cadeaux.isNotEmpty) ...[
+          pw.Text('CADEAUX OFFERTS',
               style: pw.TextStyle(
-                  fontSize: 18,
+                  fontSize: 11,
                   fontWeight: pw.FontWeight.bold,
                   color: primaryColor)),
+          ...cadeaux.map((String c) =>
+              pw.Text('- $c', style: pw.TextStyle(fontSize: 10))),
+          pw.SizedBox(height: 14),
+        ],
+        pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.end,
+            children: [
+              if (totalInitial != null && totalInitial! > totalAmount + 0.01)
+                pw.Text('Prix catalogue : ${formatMontant(totalInitial!)}',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.grey700)),
+              if (negociation > 0)
+                pw.Text('Negociation accordee : - ${formatMontant(negociation)}',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.orange800)),
+              if (remise > 0)
+                pw.Text(
+                    'Reduction${remiseLibelle == null ? '' : ' ($remiseLibelle)'} : - ${formatMontant(remise)}',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.orange800)),
+              pw.SizedBox(height: 6),
+              pw.Text(
+                  '${T.invoiceTotal}: ${totalAmount.toStringAsFixed(2)} ${T.currencyUnit}',
+                  style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                      color: primaryColor)),
+            ],
+          ),
         ),
         pw.Spacer(),
         pw.Center(

@@ -16,7 +16,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/activation.dart';
-// 🪙 MODULE 18 — devise de travail et taux de change (équivalences).
+// � MODULE 26 — abonnement par collaborateur (base + supplément).
+import 'package:biashara_yangu/models/abonnement_collaborateurs.dart';
+// �🪙 MODULE 18 — devise de travail et taux de change (équivalences).
 import 'package:biashara_yangu/models/devise.dart';
 import 'package:biashara_yangu/models/etat_installation.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
@@ -37,6 +39,9 @@ class _MonActivationPageState extends State<MonActivationPage> {
   bool _renouvellement = false;
   String? _erreur;
 
+  /// 🧮 MODULE 26 — détail : base + collaborateurs actifs facturés.
+  Map<String, dynamic>? _detailCollaborateurs;
+
   @override
   void initState() {
     super.initState();
@@ -52,9 +57,12 @@ class _MonActivationPageState extends State<MonActivationPage> {
     try {
       final EtatActivation etat =
           await ActivationService.instance.chargerEtat();
+      final Map<String, dynamic>? detail =
+          await AbonnementService.instance.detailCollaborateurs();
       if (!mounted) return;
       setState(() {
         _etat = etat;
+        _detailCollaborateurs = detail;
         _chargement = false;
       });
     } on ActivationServiceException catch (e) {
@@ -145,6 +153,10 @@ class _MonActivationPageState extends State<MonActivationPage> {
         _carteEtape(etat, colorScheme),
         const SizedBox(height: 12),
         _carteMontants(etat, colorScheme),
+        if (_detailCollaborateurs != null) ...<Widget>[
+          const SizedBox(height: 12),
+          _carteCollaborateurs(_detailCollaborateurs!),
+        ],
         // 💳 LE CLIENT PAIE SEUL : soit il reste un solde (y compris une
         // avance), soit l'abonnement est échu et il faut ouvrir le mois
         // suivant. Dans les deux cas c'est ICI, sans passer par un agent.
@@ -493,6 +505,116 @@ class _MonActivationPageState extends State<MonActivationPage> {
   // ---------------------------------------------------------------------------
   // CARTE 3 — DATES & STATUT
   // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // 🧮 MODULE 26 — COMMENT L'ABONNEMENT EST CALCULÉ
+  // ---------------------------------------------------------------------------
+  //  Le propriétaire voit EXACTEMENT ce qui est facturé : prix de base,
+  //  nombre de collaborateurs actifs, prix unitaire, supplément, total.
+  //  Un collaborateur désactivé n'apparaît plus dans le compte.
+
+  Widget _carteCollaborateurs(Map<String, dynamic> detail) {
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
+    final AbonnementCollaborateurs calcul =
+        AbonnementCollaborateurs.fromMap(detail);
+
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainer,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(Icons.groups_rounded, size: 20, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                const Text(
+                  'Prochain abonnement',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const Divider(height: 20),
+            _ligneCalcul('Abonnement de base', formatMontant(calcul.base)),
+            _ligneCalcul('Collaborateurs actifs facturés',
+                '${calcul.nbCollaborateurs}'),
+            _ligneCalcul(
+                'Prix par collaborateur', formatMontant(calcul.prixUnitaire)),
+            _ligneCalcul(
+                'Supplément collaborateurs', formatMontant(calcul.supplement)),
+            const Divider(height: 16),
+            _ligneCalcul(
+              'Total à payer',
+              formatMontant(calcul.totalProchainCycle),
+              gras: true,
+              couleur: colorScheme.primary,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              calcul.nbCollaborateurs == 0
+                  ? 'Aucun collaborateur actif : seul l\'abonnement de base est '
+                      'facturé.'
+                  : 'Le propriétaire n\'est pas compté. Un collaborateur '
+                      'désactivé n\'est plus facturé au prochain '
+                      'renouvellement.',
+              style: TextStyle(
+                fontSize: 11.5,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (calcul.prorata) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                'Prorata activé : un collaborateur ajouté en cours de période '
+                'est facturé sur le cycle en cours.',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ligneCalcul(
+    String libelle,
+    String valeur, {
+    bool gras = false,
+    Color? couleur,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              libelle,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: gras ? FontWeight.w800 : FontWeight.normal,
+              ),
+            ),
+          ),
+          Text(
+            valeur,
+            style: TextStyle(
+              fontSize: gras ? 15 : 13,
+              fontWeight: gras ? FontWeight.w900 : FontWeight.w600,
+              color: couleur,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _carteDates(EtatActivation etat) {
     return Card(

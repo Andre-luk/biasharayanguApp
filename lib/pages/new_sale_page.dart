@@ -414,7 +414,10 @@ class _NewSalePageState extends State<NewSalePage> {
   }
 
   /// Total du panier partagé (lignes scannées ET lignes ajoutées à la main).
-  double get total => _panier.total();
+  ///
+  /// 🛒 MODULE 25 — montant réellement dû : négociations et réduction globale
+  /// comprises (les cadeaux, eux, ne coûtent rien au client).
+  double get total => _panier.totalAPayer();
 
   Future<void> _confirmCancelSale() async {
     final confirm = await showDialog<bool>(
