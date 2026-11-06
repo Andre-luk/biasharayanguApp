@@ -469,7 +469,12 @@ declare
   v_produit_id  bigint;
   v_produit     record;
   v_cond_id     uuid;
+  -- ⚠️ `v_cond` est un `record` : on ne le LIT JAMAIS directement dans une
+  -- expression (plpgsql lie ses champs AVANT d'exécuter l'expression, même
+  -- dans une branche `case` non prise → « record "v_cond" is not assigned
+  -- yet »). On recopie donc son libellé dans un texte, systématiquement.
   v_cond        record;
+  v_cond_libelle text;
   v_qte_base    numeric;
   v_qte_vendue  numeric;
   v_prix_unit   numeric;
@@ -656,6 +661,7 @@ begin
     -- Prix de référence : conditionnement (Module 5) ou unité de base.
     v_cond_id := nullif(v_ligne->>'conditionnement_id', '')::uuid;
     v_prix_unit := v_produit.prix_vente;
+    v_cond_libelle := null;
 
     if v_cond_id is not null then
       select c.id, c.libelle, c.quantite_unites_base, c.prix_vente
@@ -668,6 +674,7 @@ begin
         raise exception 'CONDITIONNEMENT_INVALIDE|Le conditionnement choisi pour % n''existe plus.', v_produit.nom;
       end if;
 
+      v_cond_libelle := v_cond.libelle;
       v_prix_unit := v_cond.prix_vente;
     end if;
 
@@ -762,8 +769,8 @@ begin
     v_lignes_retour := v_lignes_retour || jsonb_build_object(
       'produit_id',      v_produit_id,
       'nom',             v_produit.nom,
-      'conditionnement', case when v_cond_id is null then null else v_cond.libelle end,
-      'unite',           case when v_cond_id is null then v_produit.unite_mesure else v_cond.libelle end,
+      'conditionnement', v_cond_libelle,
+      'unite',           coalesce(v_cond_libelle, v_produit.unite_mesure),
       'quantite_vendue', v_qte_vendue,
       'quantite_base',   v_qte_base,
       'prix_unitaire',   coalesce(v_prix_nego, v_prix_unit),
@@ -846,6 +853,7 @@ begin
       v_cond_id := nullif(v_cadeau->>'conditionnement_id', '')::uuid;
       v_cadeau_base := v_cadeau_qte;
       v_cadeau_prix := coalesce(v_produit.prix_vente, 0);
+      v_cond_libelle := null;
 
       if v_cond_id is not null then
         select c.id, c.libelle, c.quantite_unites_base, c.prix_vente
@@ -855,6 +863,7 @@ begin
         if not found then
           raise exception 'CONDITIONNEMENT_INVALIDE|Le conditionnement offert pour % n''existe plus.', v_produit.nom;
         end if;
+        v_cond_libelle := v_cond.libelle;
         v_cadeau_base := v_cadeau_qte * coalesce(v_cond.quantite_unites_base, 1);
         v_cadeau_prix := coalesce(v_cond.prix_vente, v_cadeau_prix);
       else
@@ -904,7 +913,7 @@ begin
       v_cadeaux_retour := v_cadeaux_retour || jsonb_build_object(
         'produit_id',     v_produit_id,
         'nom',            v_produit.nom,
-        'conditionnement', case when v_cond_id is null then null else v_cond.libelle end,
+        'conditionnement', v_cond_libelle,
         'quantite',       v_cadeau_qte,
         'quantite_base',  v_cadeau_base,
         'valeur',         round(v_cadeau_prix * v_cadeau_qte, 2),
