@@ -114355,7 +114355,7 @@ a=A.t(a0).ok.ax
 if(a==null)a=c
 else{k=A.t(a0).ax
 j=k.rx
-a=a.ap((j==null?k.k3:j).R(0.6))}i.push(A.b7(A.d("Version 3.6.0 (49)",c,c,c,c,a,c,c,c),c,c))
+a=a.ap((j==null?k.k3:j).R(0.6))}i.push(A.b7(A.d("Version 3.6.1 (50)",c,c,c,c,a,c,c,c),c,c))
 o=A.bS(i,c,new A.ab(r,8,o,32),B.cb,c,B.O,!1)
 a=o}return A.bl(p,c,A.d5(a,n.ax.b,90,d.gbDw()),c,c,c)}}
 A.c9N.prototype={
@@ -116626,7 +116626,7 @@ else{o=s.c
 o.toString
 o=A.t(o).ax
 n=o.rx
-p=p.aNb((n==null?o.k3:n).R(0.7),0.3)}q.push(A.d("Version 3.6.0 (49)",r,r,r,r,p,B.a_,r,r))
+p=p.aNb((n==null?o.k3:n).R(0.7),0.3)}q.push(A.d("Version 3.6.1 (50)",r,r,r,r,p,B.a_,r,r))
 return A.A(q,B.r,B.j,B.l,0,B.t)}}
 A.cdk.prototype={
 $0(){return this.a.y=!0},
@@ -131767,7 +131767,7 @@ q=A.b7(new A.f9(e,!1,A.a4V(A.A(A.a([new A.aJ1(m,n),B.wG,r,B.P,A.d("G\xe9rez votr
 s=s.ax
 if(s==null)l=n
 else{r=l.rx
-l=s.aNb((r==null?l.k3:r).R(0.8),0.4)}return A.eu(!1,B.aE,!0,n,A.oW(A.hl(B.da,A.a([h,g,f,q,new A.dk(B.awL,n,n,new A.f9(e,!1,B.c4k,n),n),new A.dk(B.hf,n,n,new A.w(B.Ww,A.d("Biashara Yangu \u2022 v3.6.0 (49)",n,n,n,n,l,n,n,n),n),n)],p),B.v,B.Ri,n),new A.ak(n,n,n,n,n,i,B.H),B.fZ),B.A,j,0,n,n,n,n,n,B.cr)}}
+l=s.aNb((r==null?l.k3:r).R(0.8),0.4)}return A.eu(!1,B.aE,!0,n,A.oW(A.hl(B.da,A.a([h,g,f,q,new A.dk(B.awL,n,n,new A.f9(e,!1,B.c4k,n),n),new A.dk(B.hf,n,n,new A.w(B.Ww,A.d("Biashara Yangu \u2022 v3.6.1 (50)",n,n,n,n,l,n,n,n),n),n)],p),B.v,B.Ri,n),new A.ak(n,n,n,n,n,i,B.H),B.fZ),B.A,j,0,n,n,n,n,n,B.cr)}}
 A.aJ1.prototype={
 D(a){var s=null,r=this.c.ax,q=A.H(36),p=A.a([new A.cZ(0,B.bg,B.bq.R(0.16),B.c5T,40)],t.V),o=r.to
 if(o==null){o=r.C
@@ -138595,7 +138595,7 @@ bzJ(a){var s=0,r=A.j(t.u),q,p,o,n,m,l,k,j,i,h
 var $async$a33=A.e(function(b,c){if(b===1)return A.f(c,r)
 for(;;)switch(s){case 0:i=t.N
 s=3
-return A.c(A.aSG(A.eB("https://world.openfoodfacts.org/api/v2/product/"+a+".json?fields=product_name,product_name_fr,generic_name,generic_name_fr,brands,quantity",0,null),A.M(["User-Agent","BiasharaYangu/3.6.0 (application de gestion)","Accept","application/json"],i,i)).iU(0,B.ud),$async$a33)
+return A.c(A.aSG(A.eB("https://world.openfoodfacts.org/api/v2/product/"+a+".json?fields=product_name,product_name_fr,generic_name,generic_name_fr,brands,quantity",0,null),A.M(["User-Agent","BiasharaYangu/3.6.1 (application de gestion)","Accept","application/json"],i,i)).iU(0,B.ud),$async$a33)
 case 3:h=c
 if(h.b!==200){q=null
 s=1
