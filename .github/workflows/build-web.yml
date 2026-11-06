@@ -161,3 +161,82 @@ jobs:
           publish_dir: ./site
           publish_branch: gh-pages
           commit_message: 'site web — ${{ github.sha }}'
+
+  # ==========================================================================
+  #  ÉTAPE 4 — METTRE NETLIFY À JOUR (facultatif, jamais bloquant).
+  #
+  #  Trois façons de faire, dans cet ordre de priorité :
+  #
+  #   1. DÉPLOIEMENT DIRECT (le plus sûr) — secrets
+  #        NETLIFY_AUTH_TOKEN  (Netlify → User settings → Applications →
+  #                             Personal access tokens)
+  #        NETLIFY_SITE_ID     (Netlify → Site settings → General → Site ID)
+  #      Le site compilé est envoyé tel quel (base « / »), sans passer par
+  #      `gh-pages` : c'est la méthode qui colle au domaine Netlify.
+  #
+  #   2. BUILD HOOK — secret NETLIFY_BUILD_HOOK
+  #      (Netlify → Site settings → Build & deploy → Build hooks → Add).
+  #      Netlify reconstruit depuis le dépôt : ne fonctionne que si le site
+  #      est lié au dépôt.
+  #
+  #   3. RIEN — Netlify lié à la branche `gh-pages` se met à jour tout seul.
+  #
+  #  ⚠️ Sans aucun secret, l'étape explique la situation et RÉUSSIT : elle ne
+  #     casse jamais la publication du site.
+  # ==========================================================================
+  netlify:
+    name: Mettre Netlify à jour (si configuré)
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le site compilé
+        uses: actions/download-artifact@v4
+        with:
+          name: biashara-yangu-web
+          path: site
+
+      - name: Décompresser le site
+        run: cd site && unzip -o biashara-yangu-web.zip && rm biashara-yangu-web.zip
+
+      - name: Déployer sur Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
+        run: |
+          # 1) Déploiement direct du site compilé (méthode recommandée).
+          if [ -n "$NETLIFY_AUTH_TOKEN" ] && [ -n "$NETLIFY_SITE_ID" ]; then
+            echo "→ Déploiement direct sur Netlify (site $NETLIFY_SITE_ID)…"
+            npx --yes netlify-cli@17 deploy \
+              --prod \
+              --dir=site \
+              --site "$NETLIFY_SITE_ID" \
+              --auth "$NETLIFY_AUTH_TOKEN" \
+              --message "Biashara Yangu — $GITHUB_SHA"
+            echo "✅ Site Netlify mis à jour."
+            exit 0
+          fi
+
+          # 2) Build hook : Netlify reconstruit depuis le dépôt.
+          if [ -n "$HOOK" ]; then
+            echo "→ Appel du build hook Netlify…"
+            CODE=$(curl -s -o /tmp/netlify.out -w "%{http_code}" -X POST "$HOOK")
+            echo "Réponse Netlify : HTTP $CODE"
+            cat /tmp/netlify.out 2>/dev/null || true
+            echo ""
+            if [ "$CODE" -ge 400 ]; then
+              echo "❌ Netlify a refusé le redéploiement (hook expiré ou site supprimé)."
+              echo "   Régénérez le build hook puis mettez à jour le secret."
+              exit 1
+            fi
+            echo "✅ Redéploiement Netlify demandé."
+            exit 0
+          fi
+
+          # 3) Rien de configuré : on explique, sans échouer.
+          echo "ℹ️  Aucun secret Netlify configuré : le site n'est pas poussé chez Netlify."
+          echo "    • Si Netlify publie la branche gh-pages : rien à faire, il se met"
+          echo "      à jour tout seul (le site y est déjà, version à jour)."
+          echo "    • Sinon, deux options (voir docs/publication_app.md §10.1) :"
+          echo "      - NETLIFY_AUTH_TOKEN + NETLIFY_SITE_ID (déploiement direct),"
+          echo "      - ou NETLIFY_BUILD_HOOK (redéploiement à distance)."

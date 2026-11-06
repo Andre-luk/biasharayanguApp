@@ -272,3 +272,58 @@ cd biashara-web && python3 -m http.server 8080   # test local : http://localhost
 **Relancer une publication web** : Actions → « Publier le web (Flutter Web) »
 → *Run workflow* (champ `release_tag` = ex. `v2.0.0` pour joindre le zip à un
 release existant), ou simplement pousser sur `main`.
+
+### 10.1 Mettre à jour le site sur Netlify — automatiquement
+
+Le workflow publie déjà le site compilé dans la branche **`gh-pages`** du
+dépôt (c'est ce que sert GitHub Pages, et cette branche contient le fichier
+`version.json` qui indique la version réellement en ligne).
+
+Le workflow contient une étape **« Mettre Netlify à jour »** qui choisit
+automatiquement la meilleure méthode disponible :
+
+#### Méthode 1 (recommandée) — déploiement direct
+
+Deux secrets GitHub suffisent, et le site compilé est envoyé tel quel
+(base `href="/"`, adapté à un domaine Netlify) :
+
+| Secret | Où le trouver |
+|---|---|
+| `NETLIFY_AUTH_TOKEN` | Netlify → **User settings → Applications → Personal access tokens** → *New access token* |
+| `NETLIFY_SITE_ID` | Netlify → votre site → **Site settings → General → Site ID** |
+
+GitHub → **Settings → Secrets and variables → Actions → New repository
+secret** (à créer deux fois).
+
+#### Méthode 2 — build hook
+
+1. Netlify → **Site settings → Build & deploy → Build hooks** →
+   *Add build hook* → copier l'URL ;
+2. GitHub → **Settings → Secrets and variables → Actions** → secret
+   `NETLIFY_BUILD_HOOK` = cette URL.
+
+Netlify reconstruit alors depuis le dépôt (le site doit y être lié).
+
+#### Méthode 3 — rien à faire
+
+Si Netlify publie la branche **`gh-pages`** (Site settings → Build & deploy →
+Continuous deployment → branche `gh-pages`, build command **vide**, publish
+directory `.`), il se met à jour tout seul à chaque passage du workflow.
+
+> ⚠️ Dans ce dernier cas, le workflow adapte le `base href` pour GitHub Pages
+> (`/biasharayanguApp/`). Sur un domaine Netlify servi à la racine, préférez la
+> **méthode 1**, qui déploie le site non modifié.
+
+Sans aucun secret, l'étape s'affiche en vert et explique simplement la
+situation : elle ne fait jamais échouer la publication.
+
+**Vérifier la version en ligne** : ouvrir `https://<votre-site>/version.json`.
+Le fichier doit afficher la version courante, par exemple :
+
+```json
+{"app_name":"biashara_yangu","version":"3.6.1","build_number":"50"}
+```
+
+Si le numéro est plus ancien, le déploiement Netlify n'a pas encore repris :
+relancer le déploiement depuis Netlify (*Deploys → Trigger deploy*).
+
