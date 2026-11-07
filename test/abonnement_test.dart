@@ -255,6 +255,90 @@ void main() {
       expect(etat.bloque, isFalse);
     });
 
+    // -----------------------------------------------------------------------
+    // 🩹 MODULE 27 — PRÉVENIR AVANT LA COUPURE.
+    // -----------------------------------------------------------------------
+    test('échéance proche : accès normal mais alerte affichée', () {
+      final EtatAccesAbonnement etat = AbonnementService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne(
+            statut: 'ACTIF',
+            expiration: t0.add(const Duration(days: 3)),
+            paye: total,
+            solde: 0,
+          ),
+        ],
+        maintenant: t0,
+      );
+
+      expect(etat.accesComplet, isTrue);
+      expect(etat.joursRestants, 3);
+      expect(etat.echeanceProche, isTrue);
+    });
+
+    test('échéance lointaine : aucune alerte', () {
+      final EtatAccesAbonnement etat = AbonnementService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne(
+            statut: 'ACTIF',
+            expiration: t0.add(const Duration(days: 20)),
+            paye: total,
+            solde: 0,
+          ),
+        ],
+        maintenant: t0,
+      );
+
+      expect(etat.joursRestants, 20);
+      expect(etat.echeanceProche, isFalse);
+    });
+
+    test('une entreprise active protège même si une autre est échue', () {
+      final EtatAccesAbonnement etat = AbonnementService.evaluerAcces(
+        <Map<String, dynamic>>[
+          ligne(
+            statut: 'ACTIF',
+            expiration: t0.add(const Duration(days: 10)),
+            paye: total,
+            solde: 0,
+          ),
+          ligne(
+            statut: 'ACTIF',
+            expiration: t0.subtract(const Duration(days: 4)),
+            paye: avance,
+            solde: total - avance,
+          ),
+        ],
+        maintenant: t0,
+      );
+
+      expect(etat.accesComplet, isTrue);
+      expect(etat.lectureSeule, isFalse);
+      expect(etat.joursRestants, 10);
+    });
+
+    test('`echeanceProche` reste faux en lecture seule', () {
+      const EtatAccesAbonnement etat = EtatAccesAbonnement(
+        bloque: false,
+        lectureSeule: true,
+        joursRestants: 2,
+      );
+      expect(etat.echeanceProche, isFalse);
+    });
+
+    test('`echeanceProche` bornes : J-0 et J-5 oui, J-6 non', () {
+      EtatAccesAbonnement avec(int jours) => EtatAccesAbonnement(
+            bloque: false,
+            lectureSeule: false,
+            joursRestants: jours,
+          );
+
+      expect(avec(0).echeanceProche, isTrue);
+      expect(avec(5).echeanceProche, isTrue);
+      expect(avec(6).echeanceProche, isFalse);
+      expect(avec(-1).echeanceProche, isFalse);
+    });
+
     test('essai en cours ou abonnement actif : accès complet', () {
       final EtatAccesAbonnement etat = AbonnementService.evaluerAcces(
         <Map<String, dynamic>>[

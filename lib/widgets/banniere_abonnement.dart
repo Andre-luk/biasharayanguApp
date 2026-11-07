@@ -35,7 +35,14 @@ class BanniereAbonnement extends StatelessWidget {
         // paiement et devait attendre la coupure. Désormais l'essai non payé
         // est signalé, avec un accès direct au paiement.
         final bool essaiNonPaye = etat.statut == StatutAbonnement.essai7j;
-        if (!etat.lectureSeule && !essaiNonPaye) {
+
+        // 🩹 MODULE 27 — ÉCHÉANCE PROCHE : l'accès est encore normal, mais il
+        // ne reste que quelques jours. On prévient AVANT la coupure, avec le
+        // même bouton de paiement, plutôt que de laisser le commerçant
+        // découvrir le blocage le jour où il veut vendre.
+        final bool echeanceProche = etat.echeanceProche;
+
+        if (!etat.lectureSeule && !essaiNonPaye && !echeanceProche) {
           return const SizedBox.shrink();
         }
 
@@ -47,7 +54,9 @@ class BanniereAbonnement extends StatelessWidget {
             ? Colors.indigo.shade600
             : (attente || essaiNonPaye
                 ? Colors.orange.shade800
-                : Colors.red.shade700);
+                : (echeanceProche && !etat.lectureSeule)
+                    ? const Color(0xFFB45309)
+                    : Colors.red.shade700);
 
         return Material(
           color: couleur.withValues(alpha: 0.10),
@@ -70,7 +79,9 @@ class BanniereAbonnement extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      Icons.lock_clock_rounded,
+                      etat.lectureSeule
+                          ? Icons.lock_clock_rounded
+                          : Icons.notifications_active_rounded,
                       size: 16,
                       color: couleur,
                     ),
@@ -83,8 +94,13 @@ class BanniereAbonnement extends StatelessWidget {
                               ? 'Essai en cours : votre abonnement n\'est pas '
                                   'encore payé. Réglez-le pour éviter la '
                                   'coupure à la fin de l\'essai.'
-                              : 'Abonnement échu : accès en lecture seule. '
-                                  'Contactez votre administrateur.'),
+                              : echeanceProche
+                                  ? 'Votre abonnement se termine dans '
+                                      '${etat.joursRestants} jour(s). Payez '
+                                      'maintenant : votre accès sera prolongé '
+                                      'sans perdre un seul jour.'
+                                  : 'Abonnement échu : accès en lecture seule. '
+                                      'Contactez votre administrateur.'),
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.3,
@@ -122,7 +138,11 @@ class BanniereAbonnement extends StatelessWidget {
                     child: Text(
                       etat.enAttenteActivation
                           ? 'En attente'
-                          : (essaiNonPaye ? 'À payer' : 'Lecture seule'),
+                          : (essaiNonPaye
+                              ? 'À payer'
+                              : (echeanceProche && !etat.lectureSeule)
+                                  ? 'J-${etat.joursRestants}'
+                                  : 'Lecture seule'),
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,

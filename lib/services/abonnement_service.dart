@@ -93,6 +93,7 @@ class EtatAccesAbonnement {
     this.enAttenteActivation = false,
     this.message,
     this.statut,
+    this.joursRestants,
   });
 
   /// Accès complet : rien à signaler.
@@ -101,7 +102,8 @@ class EtatAccesAbonnement {
         lectureSeule = false,
         enAttenteActivation = false,
         message = null,
-        statut = null;
+        statut = null,
+        joursRestants = null;
 
   /// Accès totalement refusé (entreprise suspendue par l'administrateur).
   final bool bloque;
@@ -124,6 +126,19 @@ class EtatAccesAbonnement {
 
   /// Statut de l'entreprise à l'origine de la décision, si connue.
   final StatutAbonnement? statut;
+
+  /// 🩹 MODULE 27 — jours restants avant l'échéance du cycle en cours.
+  ///
+  /// Permet d'avertir le client AVANT la coupure (essai de 7 jours comme
+  /// abonnement payé), au lieu de le laisser découvrir l'échéance le jour où
+  /// les ventes se bloquent.
+  final int? joursRestants;
+
+  /// Vrai quand l'accès est encore normal mais que l'échéance approche.
+  bool get echeanceProche {
+    final int? jours = joursRestants;
+    return accesComplet && jours != null && jours >= 0 && jours <= 5;
+  }
 
   bool get accesComplet => !bloque && !lectureSeule && !enAttenteActivation;
 }
@@ -240,6 +255,10 @@ class AbonnementService {
     bool aAttente = false;
     bool aExpire = false;
     bool aActivation = false;
+    bool aOuvert = false;
+    // 🩹 MODULE 27 — le plus petit nombre de jours restants parmi les accès
+    // encore valides : c'est la date à laquelle le client perdra l'usage.
+    int? joursProches;
 
     for (final Map<String, dynamic> ligne in lignes) {
       // 🧾 MODULE 17 — double validation : tant que le gestionnaire n'a pas
@@ -280,7 +299,17 @@ class AbonnementService {
 
       if (effectif == StatutAbonnement.essai7j ||
           effectif == StatutAbonnement.actif) {
-        return const EtatAccesAbonnement.ouvert();
+        final DateTime? expiration = parseDateTimeOrNull(
+          ligne['date_expiration'],
+        );
+        final int? jours = expiration == null
+            ? null
+            : expiration.difference(reference).inDays;
+        if (jours != null && (joursProches == null || jours < joursProches)) {
+          joursProches = jours;
+        }
+        aOuvert = true;
+        continue;
       }
 
       if (effectif == StatutAbonnement.enAttenteComplement) {
@@ -288,6 +317,18 @@ class AbonnementService {
       } else {
         aExpire = true;
       }
+    }
+
+    // ⚠️ Un accès valide l'emporte TOUJOURS sur un autre accès échu : un client
+    // qui possède une entreprise active garde l'application ouverte, même si
+    // une autre de ses boutiques est échue.
+    if (aOuvert) {
+      return EtatAccesAbonnement(
+        bloque: false,
+        lectureSeule: false,
+        statut: StatutAbonnement.actif,
+        joursRestants: joursProches,
+      );
     }
 
     if (aSuspendu) {
@@ -337,7 +378,12 @@ class AbonnementService {
       );
     }
 
-    return const EtatAccesAbonnement.ouvert();
+    // Accès normal : on retient l'échéance pour prévenir avant la coupure.
+    return EtatAccesAbonnement(
+      bloque: false,
+      lectureSeule: false,
+      joursRestants: joursProches,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -923,6 +969,7 @@ class AbonnementService {
           'en_attente_activation': etat.enAttenteActivation,
           'message': etat.message,
           'statut': etat.statut?.code,
+          'jours_restants': etat.joursRestants,
           'le': DateTime.now().toIso8601String(),
         }),
       );
@@ -950,6 +997,9 @@ class AbonnementService {
         message: parseStringOrNull(map['message']),
         statut:
             codeStatut == null ? null : StatutAbonnement.fromCode(codeStatut),
+        joursRestants: map['jours_restants'] == null
+            ? null
+            : parseInt(map['jours_restants']),
       );
     } catch (e) {
       debugPrint('AbonnementService._etatMemorise : $e');
