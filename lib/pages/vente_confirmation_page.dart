@@ -9,18 +9,19 @@
 //   • impression du reçu (ticket 58 mm) ;
 //   • démarrage d'une nouvelle vente (retour au panier, vide).
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:biashara_yangu/db_helper.dart';
-import 'package:biashara_yangu/l10n/app_localizations.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart';
 import 'package:biashara_yangu/services/article_service.dart';
-import 'package:biashara_yangu/services/invoice_service.dart';
+import 'package:biashara_yangu/services/etablissement_service.dart';
+import 'package:biashara_yangu/services/facture_vente_service.dart';
 import 'package:biashara_yangu/services/vente_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
-import 'package:biashara_yangu/utils/session_manager.dart';
+import 'package:biashara_yangu/widgets/actions_facture.dart';
 
 /// Écran « Vente enregistrée » — reçu et démarrage d'une nouvelle vente.
 class VenteConfirmationPage extends StatefulWidget {
@@ -33,7 +34,8 @@ class VenteConfirmationPage extends StatefulWidget {
 }
 
 class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
-  String _nomBoutique = 'Biashara Yangu';
+  /// 🧾 Le PDF a-t-il déjà été proposé après la vente ?
+  bool _factureTelechargee = false;
 
   /// 🚚 MODULE 23 — stock restant APRÈS la vente, relu dans la base.
   /// Clé = produit, valeur = quantité restante (`null` = inconnu).
@@ -43,8 +45,21 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
   @override
   void initState() {
     super.initState();
-    _chargerNomBoutique();
     _chargerStockRestant();
+    // 🧾 MODULE 27 — la facture est générée et proposée AUTOMATIQUEMENT :
+    // l'utilisateur n'a rien à chercher. Si l'appareil refuse, le bouton
+    // « FACTURE » reste disponible juste en dessous.
+    unawaited(_proposerFactureAutomatiquement());
+  }
+
+  Future<void> _proposerFactureAutomatiquement() async {
+    // L'identité de l'établissement est nécessaire à l'en-tête.
+    await EtablissementService.instance.charger();
+    if (!mounted) return;
+    final bool ok =
+        await FactureVenteService.instance.telecharger(_donneesFacture());
+    if (!mounted) return;
+    setState(() => _factureTelechargee = ok);
   }
 
   /// 🔎 TRADABILITÉ (exigence du module 23) : après chaque vente, le vendeur
@@ -65,75 +80,79 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
     }
   }
 
-  /// Nom affiché sur le ticket : celui du patron de la boutique.
-  Future<void> _chargerNomBoutique() async {
-    try {
-      final String? userId = await SessionManager.getUserId();
-      if (userId == null || userId.isEmpty) return;
-
-      final String owner =
-          await DBHelper.instance.resolveEffectiveOwnerId(userId) ?? userId;
-      final utilisateur = await DBHelper.instance.getUtilisateurById(owner);
-      if (!mounted || utilisateur == null || utilisateur.nom.isEmpty) return;
-      setState(() => _nomBoutique = utilisateur.nom);
-    } catch (e) {
-      debugPrint('VenteConfirmationPage : nom de boutique ignoré ($e)');
-    }
-  }
-
-  Future<void> _imprimer() async {
-    final AppLocalizations T = AppLocalizations.of(context)!;
+  /// 🧾 MODULE 27 — LA MÊME FACTURE QUE PARTOUT.
+  ///
+  /// Le ticket 58 mm a été remplacé par une **vraie facture A4** : en-tête de
+  /// l'établissement (logo, adresse, RCCM si renseigné), client, tableau, récap
+  /// négociation/réduction/cadeaux, pied de page « Solution fournie par
+  /// Biashara Group ».
+  DonneesFacture _donneesFacture() {
     final VenteEnregistree vente = widget.vente;
+    final double? paye = vente.montantRecu;
 
-    try {
-      final InvoiceService facture = InvoiceService(
-        T: T,
-        userName: _nomBoutique,
-        paymentMode: VenteService.libelleMode(vente.modePaiement),
-        totalAmount: vente.total,
-        items: vente.lignes
-            .map(
-              (LigneVenteEnregistree ligne) => InvoiceItem(
-                name: ligne.conditionnement == null
-                    ? ligne.nom
-                    : '${ligne.nom} — ${ligne.conditionnement}',
-                quantity: ligne.quantiteVendue,
-                unit: ligne.unite,
-                pricePerUnit: ligne.prixUnitaire,
-                total: ligne.total,
-              ),
-            )
-            .toList(growable: false),
-        saleDate: vente.date ?? DateTime.now(),
-        invoiceId: _numeroTicket(),
-        // 🛒 MODULE 25 — la facture explique le prix payé.
-        totalInitial: vente.totalInitial,
-        negociation: vente.montantNegociation,
-        remise: vente.remise,
-        remiseLibelle: vente.remiseType == 'pourcentage' ? '%' : null,
-        cadeaux: vente.cadeaux
-            .map((CadeauVente c) =>
-                '${_nombreTexte(c.quantite)} × ${c.nom}')
-            .toList(growable: false),
-      );
+    final StatutFacture statut = vente.modePaiement == 'credit'
+        ? StatutFacture.credit
+        : (paye == null || paye >= vente.total - 0.01
+            ? StatutFacture.payee
+            : StatutFacture.partielle);
 
-      await facture.generateAndPrintInvoice(isTicket: true);
-    } catch (e) {
-      debugPrint('VenteConfirmationPage : impression impossible ($e)');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Impression impossible sur cet appareil.'),
-          behavior: SnackBarBehavior.floating,
+    final List<LigneFacture> lignes = <LigneFacture>[
+      ...vente.lignes.map(
+        (LigneVenteEnregistree ligne) => LigneFacture(
+          designation: ligne.conditionnement == null
+              ? ligne.nom
+              : '${ligne.nom} — ${ligne.conditionnement}',
+          quantite: ligne.quantiteVendue,
+          unite: ligne.unite,
+          prixUnitaire: ligne.prixUnitaire,
+          total: ligne.total,
         ),
-      );
-    }
+      ),
+      ...vente.cadeaux.map(
+        (CadeauVente cadeau) => LigneFacture(
+          designation: cadeau.conditionnement == null
+              ? cadeau.nom
+              : '${cadeau.nom} — ${cadeau.conditionnement}',
+          quantite: cadeau.quantite,
+          unite: '',
+          prixUnitaire: 0,
+          total: 0,
+          estCadeau: true,
+        ),
+      ),
+    ];
+
+    return DonneesFacture(
+      numero: vente.numeroVente,
+      date: vente.date ?? DateTime.now(),
+      etablissement: EtablissementService.instance.courant,
+      lignes: lignes,
+      total: vente.total,
+      modePaiement: VenteService.libelleMode(vente.modePaiement),
+      statut: statut,
+      totalCatalogue: vente.totalInitial,
+      negociation: vente.montantNegociation,
+      remise: vente.remise,
+      remiseLibelle: vente.remiseType == 'pourcentage' ? '%' : null,
+      valeurCadeaux: vente.valeurCadeaux,
+      cadeaux: vente.cadeaux
+          .map((CadeauVente c) => '${_nombreTexte(c.quantite)} × ${c.nom}')
+          .toList(growable: false),
+      montantPaye: paye,
+      solde: statut == StatutFacture.credit
+          ? vente.total
+          : (paye == null ? 0 : (vente.total - paye).clamp(0, double.infinity)),
+      devise: EtablissementService.instance.courant.devise,
+    );
   }
 
-  /// « VTE-20260916-0001 » → 1 (numéro de ticket affiché par InvoiceService).
-  int _numeroTicket() {
-    final List<String> morceaux = widget.vente.numeroVente.split('-');
-    return int.tryParse(morceaux.isEmpty ? '' : morceaux.last) ?? 0;
+  /// 🧾 Ouvre la facture professionnelle (télécharger, WhatsApp, imprimer).
+  Future<void> _imprimer() async {
+    await afficherActionsFacture(
+      context,
+      _donneesFacture(),
+      telechargeeAutomatiquement: _factureTelechargee,
+    );
   }
 
   @override

@@ -18,7 +18,8 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/models/vente.dart';
 import 'package:biashara_yangu/services/article_service.dart';
-import 'package:biashara_yangu/services/invoice_service.dart';
+import 'package:biashara_yangu/services/etablissement_service.dart';
+import 'package:biashara_yangu/services/facture_vente_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
@@ -31,6 +32,7 @@ import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
 import 'package:biashara_yangu/widgets/choix_format_vente.dart';
+import 'package:biashara_yangu/widgets/actions_facture.dart';
 import '../ui/widgets/primary_loader.dart';
 
 class NewSalePage extends StatefulWidget {
@@ -565,8 +567,11 @@ class _NewSalePageState extends State<NewSalePage> {
       final now = DateTime.now();
       final String nowIso = now.toIso8601String();
       final ventes = <Vente>[];
-      final invoiceItems = <InvoiceItem>[];
       final double currentTotal = total;
+
+      // 🧾 MODULE 27 — on prépare les lignes de la FACTURE avant de vider le
+      // panier : c'est la même structure que la caisse classique.
+      final List<LigneFacture> lignesFacture = <LigneFacture>[];
 
       // 🔳 MODULE 7 — lignes du panier partagé :
       //   • `quantite` de la vente = unités de BASE retirées du stock
@@ -607,12 +612,12 @@ class _NewSalePageState extends State<NewSalePage> {
           ),
         );
 
-        invoiceItems.add(
-          InvoiceItem(
-            name: ligne.libelle,
-            quantity: ligne.quantite,
-            unit: ligne.vendu.uniteVente,
-            pricePerUnit: ligne.prixUnitaire,
+        lignesFacture.add(
+          LigneFacture(
+            designation: ligne.libelle,
+            quantite: ligne.quantite,
+            unite: ligne.vendu.uniteVente,
+            prixUnitaire: ligne.prixUnitaireEffectif,
             total: totalAmount,
           ),
         );
@@ -645,18 +650,41 @@ class _NewSalePageState extends State<NewSalePage> {
           _loading = false;
         });
 
-        final user = await DBHelper.instance.getUtilisateurById(ownerId);
-        final invoiceService = InvoiceService(
-          T: T,
-          userName: user?.nom ?? T.defaultStoreName,
-          paymentMode: isModeDette ? "Crédit" : modePaiement,
-          totalAmount: currentTotal,
-          items: invoiceItems,
-          saleDate: now,
-          invoiceId: invoiceId,
-        );
+        // 🧾 MODULE 27 — FACTURE PROFESSIONNELLE, GÉNÉRÉE AUTOMATIQUEMENT.
+        //  Même service que la caisse classique : modèle, numérotation,
+        //  calculs et partage WhatsApp identiques.
+        await EtablissementService.instance.charger();
+        if (mounted) {
+          final DonneesFacture facture = DonneesFacture(
+            numero: 'VTE-${invoiceId.toString().padLeft(6, '0')}',
+            date: now,
+            etablissement: EtablissementService.instance.courant,
+            lignes: lignesFacture,
+            total: currentTotal,
+            modePaiement: isModeDette
+                ? 'Crédit'
+                : _libelleModePaiement(modePaiement),
+            statut: isModeDette ? StatutFacture.credit : StatutFacture.payee,
+            clientNom: selectedClient?.nom,
+            clientTelephone: selectedClient?.telephone,
+            clientAdresse: selectedClient?.adresse,
+            montantPaye: isModeDette ? 0 : currentTotal,
+            solde: isModeDette ? currentTotal : 0,
+            venteId: invoiceId,
+            devise: EtablissementService.instance.courant.devise,
+          );
 
-        _showPrintSelectionDialog(invoiceService);
+          final bool telechargee =
+              await FactureVenteService.instance.telecharger(facture);
+
+          if (mounted) {
+            await afficherActionsFacture(
+              context,
+              facture,
+              telechargeeAutomatiquement: telechargee,
+            );
+          }
+        }
       }
 
       _triggerImmediateSync();
@@ -1276,56 +1304,18 @@ class _NewSalePageState extends State<NewSalePage> {
     );
   }
 
-  void _showPrintSelectionDialog(InvoiceService service) {
-    final T = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          T.saleRecordedAndInvoiceGenerated,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check_circle, color: Colors.green, size: 60),
-            SizedBox(height: 16),
-            Text("Prêt pour la facture ?"),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                service.generateAndPrintInvoice(isTicket: true);
-              },
-              icon: const Icon(Icons.receipt_long),
-              label: const Text("Ticket (58mm)"),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                service.generateAndPrintInvoice(isTicket: false);
-              },
-              icon: const Icon(Icons.picture_as_pdf),
-              label: const Text("PDF / A4"),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(T.cancelButton),
-          ),
-        ],
-      ),
-    );
+  /// Libellé lisible d'un mode de paiement de la caisse (`cash`, `carte`…).
+  String _libelleModePaiement(String code) {
+    switch (code) {
+      case 'cash':
+        return 'Espèces';
+      case 'carte':
+        return 'Carte';
+      case 'm-pesa':
+        return 'Mobile Money';
+      default:
+        return code;
+    }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {

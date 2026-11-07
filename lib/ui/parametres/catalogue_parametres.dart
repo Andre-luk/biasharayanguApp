@@ -194,6 +194,20 @@ abstract final class CatalogueParametres {
       module: ModuleCode.produits,
       priorite: 10,
     ),
+    // 🏷️ MODULE 27 — ce qui s'affiche en tête des factures : nom, adresse,
+    // téléphone, logo, RCCM et identifiant national (facultatifs).
+    ParametreApp(
+      id: 'identite-etablissement',
+      section: SectionParametres.boutique,
+      titre: (AppLocalizations T) => 'Identité de l\'établissement',
+      sousTitre: (AppLocalizations T) =>
+          'Nom, adresse, téléphone, RCCM et identifiant national sur les factures',
+      icone: Icons.badge_rounded,
+      route: 'identite-etablissement',
+      page: PageAccess.parametres,
+      action: ActionAccess.modifier,
+      priorite: 15,
+    ),
     ParametreApp(
       id: 'devise',
       section: SectionParametres.boutique,

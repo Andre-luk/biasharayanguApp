@@ -208,6 +208,9 @@ import 'package:biashara_yangu/pages/mes_ventes_page.dart';
 // ========== MODULE 25 : VENTES FLEXIBLES (négociation, réduction, cadeaux) ====
 import 'package:biashara_yangu/pages/parametres_vente_page.dart';
 
+// ========== MODULE 27 : IDENTITÉ DE L'ÉTABLISSEMENT (factures) ================
+import 'package:biashara_yangu/pages/identite_etablissement_page.dart';
+
 // ========== MODULE 9 : GESTION DU STOCK (CONVERSIONS MULTI-UNITÉS) ==========
 //
 // L'écran « Stock » remplace les anciens écrans locaux (SQLite) : le module 9
@@ -1496,6 +1499,15 @@ final GoRouter appRouter = GoRouter(
                   path: 'devise',
                   name: 'devise',
                   builder: (context, state) => const DevisePage(),
+                ),
+
+                // 🏷️ MODULE 27 — identité de l'établissement : elle alimente
+                // l'en-tête des factures (RCCM et ID national facultatifs).
+                GoRoute(
+                  path: 'identite-etablissement',
+                  name: 'identite-etablissement',
+                  builder: (context, state) =>
+                      const IdentiteEtablissementPage(),
                 ),
 
                 // 🛒 MODULE 25 — négociation, réductions et cadeaux :
