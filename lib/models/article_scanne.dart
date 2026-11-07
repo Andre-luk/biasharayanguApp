@@ -115,9 +115,16 @@ class ArticleScanne {
   String get nom => article.nom;
 
   /// Code QR correspondant : `PROD:<id>` ou `COND:<qr_code_id>`.
-  String get code => conditionnement == null
-      ? 'PROD:${article.id}'
-      : 'COND:${conditionnement!.qrCodeId}';
+  ///
+  /// 🧾 MODULE 27 — Si un conditionnement n'a pas encore de `qr_code_id`
+  /// (emballage créé hors ligne), on retombe sur son IDENTIFIANT. Sans cela
+  /// tous ces emballages partageaient la clé `COND:` et se remplaçaient les
+  /// uns les autres dans le panier : le produit ajouté « ne s'affichait pas ».
+  String get code {
+    if (conditionnement == null) return 'PROD:${article.id}';
+    final String qr = conditionnement!.qrCodeId.trim();
+    return 'COND:${qr.isNotEmpty ? qr : conditionnement!.id}';
+  }
 
   /// `true` quand c'est un emballage (farde, carton…) qui est vendu.
   bool get estConditionnement => conditionnement != null;

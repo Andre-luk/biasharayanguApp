@@ -235,4 +235,78 @@ void main() {
       expect(ligne.unite, 'bouteille');
     });
   });
+
+  // =========================================================================
+  // 🧾 MODULE 27 — LA CAISSE VOIT LES FORMATS AU PANIER
+  // =========================================================================
+  group('PanierService — lignes par article, formats compris', () {
+    final PanierService panier = PanierService.instance;
+
+    setUp(panier.vider);
+
+    test('une farde au panier est bien comptée pour son article', () {
+      panier.ajouterArticle(fardeEau, quantite: 2);
+
+      // `quantiteProduit` ne compte QUE la ligne à l'unité : c'est ce qui
+      // faisait croire à la caisse que rien n'était ajouté.
+      expect(panier.quantiteProduit(123), 0);
+      expect(panier.lignesProduit(123), hasLength(1));
+      expect(panier.unitesBaseProduit(123), 24);
+    });
+
+    test('farde + bouteilles : la carte additionne les unités de base', () {
+      panier.ajouterArticle(bouteille, quantite: 3);
+      panier.ajouterArticle(fardeEau, quantite: 2);
+
+      expect(panier.lignesProduit(123), hasLength(2));
+      expect(panier.unitesBaseProduit(123), 27);
+      expect(panier.quantiteProduit(123), 3);
+    });
+
+    test('un autre article n\'est pas compté', () {
+      panier.ajouterArticle(fardeEau, quantite: 1);
+
+      expect(panier.lignesProduit(999), isEmpty);
+      expect(panier.unitesBaseProduit(999), 0);
+    });
+
+    test('changer la quantite d\'une farde conserve son format', () {
+      panier.ajouterArticle(fardeEau, quantite: 1);
+      final LignePanier ligne = panier.lignesProduit(123).first;
+
+      // Stock : 34 bouteilles → 2 fardes complètes seulement.
+      panier.definirQuantite(ligne.vendu, 5);
+
+      final LignePanier apres = panier.lignesProduit(123).first;
+      expect(apres.cle, ligne.cle);
+      expect(apres.quantite, 2);
+      expect(apres.conditionnementId, isNotNull);
+      expect(panier.unitesBaseProduit(123), 24);
+      // Aucune ligne « à l'unité » parasite n'a été créée.
+      expect(panier.quantiteProduit(123), 0);
+    });
+
+    test('un conditionnement sans QR code a quand même une clé unique', () {
+      const Conditionnement sansQr = Conditionnement(
+        id: 'cond-sans-qr',
+        produitId: 123,
+        libelle: 'Carton de 24',
+        quantiteUnitesBase: 24,
+        prixVente: 24000,
+        qrCodeId: '',
+      );
+      const ArticleScanne carton =
+          ArticleScanne(article: eau, conditionnement: sansQr);
+
+      expect(carton.code, 'COND:cond-sans-qr');
+      expect(carton.code, isNot(fardeEau.code));
+
+      panier.ajouterArticle(fardeEau, quantite: 1);
+      panier.ajouterArticle(carton, quantite: 1);
+
+      // Deux emballages distincts : deux lignes, et non un remplacement.
+      expect(panier.lignesProduit(123), hasLength(2));
+      expect(panier.unitesBaseProduit(123), 36);
+    });
+  });
 }

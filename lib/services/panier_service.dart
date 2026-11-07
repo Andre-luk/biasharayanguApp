@@ -162,6 +162,29 @@ class PanierService {
   /// Quantité au panier pour l'UNITÉ DE BASE d'un article (écran de caisse).
   double quantiteProduit(int produitId) => quantiteDe('PROD:$produitId');
 
+  /// 🧾 MODULE 27 — TOUTES LES LIGNES D'UN ARTICLE, FORMATS COMPRIS.
+  ///
+  /// ⚠️ `quantiteProduit()` ne compte QUE la ligne « à l'unité » (`PROD:…`).
+  /// Or une farde est rangée sous `COND:…` : l'écran de caisse croyait donc
+  /// que rien n'était au panier après l'ajout d'un emballage, et le bouton
+  /// « + » créait une seconde ligne à l'unité au lieu d'augmenter la farde.
+  /// Cette méthode rassemble toutes les lignes d'un même article.
+  List<LignePanier> lignesProduit(int produitId) {
+    return _lignes.values
+        .where((LignePanier ligne) => ligne.produitId == produitId)
+        .toList(growable: false);
+  }
+
+  /// Unités de BASE d'un article déjà au panier, tous formats confondus
+  /// (2 fardes de 12 + 3 bouteilles = 27 bouteilles).
+  double unitesBaseProduit(int produitId) {
+    double somme = 0;
+    for (final LignePanier ligne in lignesProduit(produitId)) {
+      somme += ligne.unitesBase;
+    }
+    return somme;
+  }
+
   /// Ligne correspondant à une clé, ou `null`.
   LignePanier? ligne(String cle) => _lignes[cle];
 

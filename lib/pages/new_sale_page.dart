@@ -75,7 +75,6 @@ class _NewSalePageState extends State<NewSalePage> {
 
   final ImagePicker _picker = ImagePicker();
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _quantityController = TextEditingController();
 
   final Map<String, IconData> _paymentModes = {
     'cash': Icons.money,
@@ -106,7 +105,6 @@ class _NewSalePageState extends State<NewSalePage> {
     _antiRebond?.cancel();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _quantityController.dispose();
 
     if (_productsChannel != null) {
       Supabase.instance.client.removeChannel(_productsChannel!);
@@ -321,21 +319,89 @@ class _NewSalePageState extends State<NewSalePage> {
       return;
     }
 
+    // 🧾 MODULE 27 — LA QUANTITÉ S'APPLIQUE À LA BONNE LIGNE.
+    //  Une farde est rangée sous `COND:…`. Si l'article a déjà des lignes au
+    //  panier (farde + bouteilles), la quantité demandée porte sur la
+    //  DERNIÈRE ligne ajoutée : c'est celle que le vendeur vient de toucher.
+    final List<LignePanier> lignes = _panier.lignesProduit(idServeur);
+    final LignePanier? cible = lignes.isEmpty ? null : lignes.last;
+
     // Quantité nulle : la ligne quitte le panier.
     if (qty <= 0) {
-      _panier.retirer('PROD:$idServeur');
+      if (cible != null) {
+        _panier.retirer(cible.cle);
+      } else {
+        _panier.retirer('PROD:$idServeur');
+      }
+      setState(() {});
       return;
     }
 
-    if (qty > p.quantite) {
-      _showSnackBar(AppLocalizations.of(context)!.outOfStock, isError: true);
+    if (cible == null) {
+      // Aucune ligne : on ajoute à l'unité de base (stock en unités de base).
+      if (qty > p.quantite) {
+        _showSnackBar(AppLocalizations.of(context)!.outOfStock, isError: true);
+        return;
+      }
+      _panier.definirQuantite(ArticleScanne.depuisProduit(p), qty);
+      setState(() {});
       return;
     }
 
-    _panier.definirQuantite(ArticleScanne.depuisProduit(p), qty);
+    _modifierQuantiteLigne(p, cible, qty);
   }
 
-  void _setProductQuantity(Produit p, double qty) => _updateQuantity(p, qty);
+  /// 🧾 MODULE 27 — change la quantité d'UNE ligne, en respectant son format.
+  ///
+  /// Le stock est toujours compté en UNITÉS DE BASE : 2 fardes de 12 = 24
+  /// bouteilles, et non 2. Un contrôle faux faisait refuser l'ajout sans
+  /// explication (« rien ne s'affiche »).
+  void _modifierQuantiteLigne(Produit p, LignePanier ligne, double quantite) {
+    if (quantite <= 0) {
+      _panier.retirer(ligne.cle);
+      setState(() {});
+      return;
+    }
+
+    final int? idServeur = p.idServeur;
+    final double dejaAuPanier =
+        idServeur == null ? 0 : _panier.unitesBaseProduit(idServeur);
+    final double nouvelleBase = dejaAuPanier -
+        ligne.unitesBase +
+        ligne.vendu.unitesBasePour(quantite);
+
+    if (nouvelleBase > p.quantite + 0.0001) {
+      final double restant = p.quantite - (dejaAuPanier - ligne.unitesBase);
+      _showSnackBar(
+        'Stock insuffisant pour ${p.nom} : il reste '
+        '${_quantiteTexte(restant > 0 ? restant : 0)} ${p.uniteMesure}.',
+        isError: true,
+      );
+      return;
+    }
+
+    _panier.definirQuantite(ligne.vendu, quantite);
+    setState(() {});
+  }
+
+  /// ➖ Retire une unité du dernier format ajouté (ou la ligne entière).
+  void _decrementerProduit(Produit p) {
+    final int? idServeur = p.idServeur;
+    if (idServeur == null) return;
+    final List<LignePanier> lignes = _panier.lignesProduit(idServeur);
+    if (lignes.isEmpty) return;
+
+    final LignePanier ligne = lignes.last;
+    final double pas = ligne.vendu.pasQuantite;
+    final double nouvelle = ligne.quantite - pas;
+    if (nouvelle <= 0) {
+      _panier.retirer(ligne.cle);
+      setState(() {});
+      return;
+    }
+    _panier.definirQuantite(ligne.vendu, nouvelle);
+    setState(() {});
+  }
 
   /// 🔎 Retrouve l'article du TÉLÉPHONE correspondant à une ligne du panier.
   ///
@@ -490,14 +556,29 @@ class _NewSalePageState extends State<NewSalePage> {
     );
   }
 
+  /// ➕ Augmente la quantité du DERNIER format de l'article déjà au panier.
+  ///
+  /// 🧾 MODULE 27 — Avant, ce bouton créait une ligne « à l'unité » à côté de
+  /// la farde : le vendeur croyait que son « + » ne faisait rien (le compteur
+  /// de la carte ne bougeait pas). Si l'article n'est pas encore au panier, on
+  /// passe par le sélecteur de format normal.
   void _incrementProductQuantity(Produit p, {double step = 1.0}) {
     final int? idServeur = p.idServeur;
     if (idServeur == null) {
       _updateQuantity(p, step);
       return;
     }
-    final double current = _panier.quantiteProduit(idServeur);
-    _updateQuantity(p, current + step);
+
+    final List<LignePanier> lignes = _panier.lignesProduit(idServeur);
+    if (lignes.isEmpty) {
+      // Rien au panier : on ajoute (le format est demandé si nécessaire).
+      _ajouterAuPanier(p);
+      return;
+    }
+
+    final LignePanier ligne = lignes.last;
+    final double pas = ligne.vendu.pasQuantite;
+    _modifierQuantiteLigne(p, ligne, ligne.quantite + (pas * step));
   }
 
   /// Total du panier partagé (lignes scannées ET lignes ajoutées à la main).
@@ -720,76 +801,154 @@ class _NewSalePageState extends State<NewSalePage> {
     await context.push('/scanner');
   }
 
+  /// 🧾 MODULE 27 — RÉGLAGE DE LA QUANTITÉ, FORMAT PAR FORMAT.
+  ///
+  /// Avant, ce dialogue affichait une seule quantité et comparait des
+  /// « fardes » à un stock exprimé en bouteilles : 2 fardes de 12 étaient
+  /// refusées comme « stock insuffisant » alors que 24 bouteilles étaient en
+  /// rayon. Désormais chaque ligne du panier a son propre compteur, et le
+  /// stock est toujours vérifié en UNITÉS DE BASE.
   void _showSetQuantityDialog(Produit p) {
-    final T = AppLocalizations.of(context)!;
     final int? idServeur = p.idServeur;
-    final double enPanier =
-        idServeur == null ? 0 : _panier.quantiteProduit(idServeur);
-    final double currentQty = enPanier > 0 ? enPanier : 1.0;
-    _quantityController.text = currentQty.toStringAsFixed(
-      currentQty.truncateToDouble() == currentQty ? 0 : 2,
-    );
+    if (idServeur == null) {
+      _showSnackBar(
+        '« ${p.nom} » n\'est pas encore enregistré sur le serveur : '
+        'synchronisez (Paramètres → Synchroniser) puis réessayez.',
+        isError: true,
+      );
+      return;
+    }
 
-    showDialog(
+    // Aucun format encore choisi : on ouvre le sélecteur complet.
+    if (_panier.lignesProduit(idServeur).isEmpty) {
+      _ajouterAuPanier(p);
+      return;
+    }
+
+    final List<Conditionnement> formats =
+        _formatsParProduit['$idServeur'] ?? const <Conditionnement>[];
+
+    showDialog<void>(
       context: context,
-      builder: (BuildContext dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          T.addToCartTitle(p.nom),
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Stock actuel : ${p.quantite} ${p.uniteMesure}'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _quantityController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: T.dialogQuantityLabel(p.uniteMesure),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-              ),
-              autofocus: true,
+      builder: (BuildContext dialogContext) => StatefulBuilder(
+        builder: (BuildContext ctx, StateSetter setDialogState) {
+          final List<LignePanier> lignes = _panier.lignesProduit(idServeur);
+          final double total = _panier.unitesBaseProduit(idServeur);
+
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text(
+              p.nom,
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text(T.cancelButton),
-          ),
-          FilledButton(
-            onPressed: () {
-              final qty = double.tryParse(
-                _quantityController.text.replaceAll(',', '.'),
-              );
-
-              if (qty == null || qty <= 0) {
-                _showSnackBar(T.invalidQuantity, isError: true);
-                return;
-              }
-
-              if (qty > p.quantite) {
-                _showSnackBar(
-                  T.insufficientStock(
-                    p.quantite.toStringAsFixed(2),
-                    p.uniteMesure,
-                  ),
-                  isError: true,
-                );
-                return;
-              }
-
-              Navigator.pop(dialogContext);
-              _setProductQuantity(p, qty);
-            },
-            child: Text(T.addButton),
-          ),
-        ],
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  'Stock : ${_quantiteTexte(p.quantite)} ${p.uniteMesure} — '
+                  'au panier : ${_quantiteTexte(total)} ${p.uniteMesure}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 12),
+                if (lignes.isEmpty)
+                  const Text('Ce produit n\'est plus au panier.')
+                else
+                  ...lignes.map((LignePanier ligne) {
+                    final String unite = ligne.vendu.estConditionnement
+                        ? ligne.vendu.libelleConditionnement
+                        : p.uniteMesure;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  unite,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  formatMontant(ligne.total),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle_outline),
+                            onPressed: () {
+                              final double pas = ligne.vendu.pasQuantite;
+                              _modifierQuantiteLigne(
+                                p,
+                                ligne,
+                                ligne.quantite - pas,
+                              );
+                              setDialogState(() {});
+                            },
+                          ),
+                          SizedBox(
+                            width: 44,
+                            child: Text(
+                              _quantiteTexte(ligne.quantite),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle_outline),
+                            onPressed: () {
+                              final double pas = ligne.vendu.pasQuantite;
+                              _modifierQuantiteLigne(
+                                p,
+                                ligne,
+                                ligne.quantite + pas,
+                              );
+                              setDialogState(() {});
+                            },
+                          ),
+                          IconButton(
+                            tooltip: 'Retirer',
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () {
+                              _panier.retirer(ligne.cle);
+                              setState(() {});
+                              setDialogState(() {});
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            ),
+            actions: <Widget>[
+              if (formats.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                    _ajouterAuPanier(p);
+                  },
+                  icon: const Icon(Icons.add_shopping_cart, size: 18),
+                  label: const Text('Autre format'),
+                ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Terminé'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -956,9 +1115,17 @@ class _NewSalePageState extends State<NewSalePage> {
   Widget _buildProductCard(Produit p, AppLocalizations T) {
     final theme = Theme.of(context);
     final int? idServeur = p.idServeur;
-    final double q =
-        idServeur == null ? 0.0 : _panier.quantiteProduit(idServeur);
-    final isSelected = q > 0;
+
+    // 🧾 MODULE 27 — ON COMPTE TOUTES LES LIGNES DE L'ARTICLE.
+    //  Avant, seule la ligne « à l'unité » (`PROD:…`) était comptée : une
+    //  farde ajoutée au panier n'apparaissait donc PAS sur la carte, et le
+    //  bouton « + » créait une ligne à l'unité au lieu d'augmenter la farde.
+    final List<LignePanier> lignes = idServeur == null
+        ? const <LignePanier>[]
+        : _panier.lignesProduit(idServeur);
+    final double unitesBase =
+        idServeur == null ? 0.0 : _panier.unitesBaseProduit(idServeur);
+    final isSelected = lignes.isNotEmpty;
 
     // 🧾 V14 — les formats de CET article (farde, carton…), lus en local.
     final List<Conditionnement> formats = idServeur == null
@@ -1050,6 +1217,7 @@ class _NewSalePageState extends State<NewSalePage> {
               ),
             ),
             Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 if (isSelected)
                   Container(
@@ -1063,22 +1231,27 @@ class _NewSalePageState extends State<NewSalePage> {
                       children: [
                         IconButton(
                           icon: const Icon(Icons.remove, size: 18),
-                          onPressed: () => _updateQuantity(p, q - 1),
+                          tooltip: 'Diminuer',
+                          onPressed: () => _decrementerProduit(p),
                         ),
                         InkWell(
                           onTap: () => _showSetQuantityDialog(p),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
+                            // 🧾 MODULE 27 — la carte affiche les UNITÉS DE
+                            // BASE réellement au panier (farde comprise), et
+                            // non plus « 0 » alors que la farde y était.
                             child: Text(
-                              q.toStringAsFixed(
-                                q == q.truncateToDouble() ? 0 : 2,
+                              _quantiteTexte(unitesBase),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
                               ),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.add, size: 18),
+                          tooltip: 'Augmenter',
                           onPressed: () => _incrementProductQuantity(p),
                         ),
                       ],
@@ -1088,6 +1261,24 @@ class _NewSalePageState extends State<NewSalePage> {
                   FilledButton.tonal(
                     onPressed: () => _ajouterAuPanier(p),
                     child: Text(multiFormats ? 'Choisir' : T.addButton),
+                  ),
+                // Le détail par format : « 2 × Farde de 12 · 3 bouteilles ».
+                if (isSelected && lignes.length > 1)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      lignes
+                          .map(
+                            (LignePanier l) =>
+                                '${_quantiteTexte(l.quantite)} × '
+                                '${l.vendu.estConditionnement ? l.vendu.libelleConditionnement : p.uniteMesure}',
+                          )
+                          .join(' · '),
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
                   ),
               ],
             ),
