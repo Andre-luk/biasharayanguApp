@@ -156,6 +156,28 @@ class FactureVenteService {
   static const PdfColor _marine = PdfColor.fromInt(0xFF1F3864);
   static const PdfColor _orange = PdfColor.fromInt(0xFFF08A4B);
 
+  /// 🧾 MODULE 27 — UNE SEULE NUMÉROTATION POUR TOUTES LES VENTES.
+  ///
+  /// Format identique à celui du serveur (`VTE-AAAAMMJJ-NNNN`, migration 000009) :
+  ///   • la caisse en ligne reçoit son numéro de `rpc_vente_valider` ;
+  ///   • la vente hors ligne (téléphone) construit le sien ICI, avec le même
+  ///     préfixe, pour qu'un client ne voie jamais deux formats différents.
+  ///
+  /// [sequence] est l'identifiant local de la vente : il est unique et
+  /// strictement croissant, ce qui garantit qu'un même numéro ne peut pas être
+  /// réutilisé — même hors connexion.
+  static String numeroVente({
+    required int sequence,
+    DateTime? date,
+    String prefixe = 'VTE',
+  }) {
+    final DateTime jour = date ?? DateTime.now();
+    final String mois = jour.month.toString().padLeft(2, '0');
+    final String j = jour.day.toString().padLeft(2, '0');
+    final String suite = sequence < 0 ? '0' : sequence.toString();
+    return '$prefixe-${jour.year}$mois$j-${suite.padLeft(4, '0')}';
+  }
+
   // ---------------------------------------------------------------------------
   // CONSTRUCTION DU DOCUMENT
   // ---------------------------------------------------------------------------

@@ -656,7 +656,12 @@ class _NewSalePageState extends State<NewSalePage> {
         await EtablissementService.instance.charger();
         if (mounted) {
           final DonneesFacture facture = DonneesFacture(
-            numero: 'VTE-${invoiceId.toString().padLeft(6, '0')}',
+            // 🧾 MODULE 27 — même numérotation que la caisse en ligne
+            //  (`VTE-AAAAMMJJ-NNNN`), construite par le service de facture.
+            numero: FactureVenteService.numeroVente(
+              sequence: invoiceId,
+              date: now,
+            ),
             date: now,
             etablissement: EtablissementService.instance.courant,
             lignes: lignesFacture,
