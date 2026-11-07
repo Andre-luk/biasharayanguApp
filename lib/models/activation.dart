@@ -240,6 +240,76 @@ class EtatActivation {
   /// C'est exactement le cas qui bloquait le renouvellement en autonomie.
   bool get doitRenouveler => abonnementEchu && estSolde;
 
+  /// `true` si AUCUN franc n'a encore été encaissé sur ce compte.
+  ///
+  /// C'est le cas d'un compte en essai de 7 jours : il utilise l'application
+  /// sans avoir payé. Il doit donc voir un bouton de paiement, même si son
+  /// `solde_restant` vaut 0 (le prix du cycle n'est pas encore réclamé).
+  bool get jamaisPaye => montantDejaPaye <= 0.009;
+
+  /// `true` si le compte est encore dans son essai de 7 jours (non échu).
+  bool get enEssai =>
+      statut == StatutAbonnement.essai7j && !abonnementEchu;
+
+  /// Le compte est-il « à payer » ?
+  ///
+  /// Règle unique utilisée par les écrans pour décider d'afficher le bouton
+  /// de paiement. Elle couvre **tous** les cas demandés :
+  ///   • essai de 7 jours jamais payé   → [jamaisPaye] ;
+  ///   • solde partiel ou avance        → `soldeRestant > 0` ;
+  ///   • abonnement échu                → [abonnementEchu] ;
+  ///   • renouvellement anticipé        → jamais payé / essai en cours.
+  /// C'est le drapeau des ALERTES (bandeaux, badges rouges) : il ne vaut
+  /// `true` que si quelque chose cloche vraiment (impayé, partiel, échu).
+  bool get aPayer {
+    if (!aUnDossier) return false;
+    if (soldeRestant > 0.009) return true;
+    if (jamaisPaye) return true;
+    if (abonnementEchu) return true;
+    return enEssai;
+  }
+
+  /// Un compte à jour peut malgré tout régler le mois suivant : le bouton
+  /// reste donc accessible, mais sans alerte (« payer par anticipation »).
+  bool get peutPayerAnticipe => aUnDossier && !aPayer;
+
+  /// Libellé du bouton de paiement, adapté à la situation réelle.
+  String get libellePaiement {
+    if (soldeRestant > 0.009) return 'Payer le solde de mon abonnement';
+    if (abonnementEchu) return 'Renouveler mon abonnement';
+    if (enEssai) return 'Payer mon abonnement';
+    return 'Payer mon prochain mois';
+  }
+
+  /// Phrase d'explication affichée au-dessus du bouton.
+  String get explicationPaiement {
+    final String jours = joursRestants == null
+        ? ''
+        : ' (${joursRestants!} jour${joursRestants == 1 ? '' : 's'} restant'
+            '${joursRestants == 1 ? '' : 's'})';
+
+    if (soldeRestant > 0.009) {
+      return 'Il reste un montant à régler pour que votre compte soit à jour. '
+          'Vous pouvez payer maintenant par Mobile Money ou carte.';
+    }
+    if (abonnementEchu) {
+      return 'Votre abonnement est arrivé à échéance. Réglez le mois suivant '
+          'pour réactiver immédiatement toutes les fonctions.';
+    }
+    if (enEssai) {
+      return 'Vous êtes en période d\'essai$jours et vous n\'avez pas encore '
+          'payé. Vous pouvez régler votre abonnement dès maintenant : les '
+          'jours déjà acquis ne sont pas perdus.';
+    }
+    if (jamaisPaye) {
+      return 'Aucun paiement n\'a encore été enregistré sur ce compte. '
+          'Réglez votre abonnement dès maintenant.';
+    }
+    return 'Votre compte est à jour. Vous pouvez régler le mois suivant par '
+        'anticipation : la nouvelle période s\'ajoute à votre échéance '
+        'actuelle$jours.';
+  }
+
   /// Taux de règlement (0 → 1), pour la barre de progression.
   double get tauxPaiement {
     if (montantTotalDu <= 0) return 0;

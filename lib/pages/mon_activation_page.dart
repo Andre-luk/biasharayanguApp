@@ -37,6 +37,9 @@ class _MonActivationPageState extends State<MonActivationPage> {
   EtatActivation? _etat;
   bool _chargement = true;
   bool _renouvellement = false;
+
+  /// 🩹 Correctif 112 — ouverture d'un cycle anticipé (essai / avant échéance).
+  bool _avance = false;
   String? _erreur;
 
   /// 🧮 MODULE 26 — détail : base + collaborateurs actifs facturés.
@@ -157,15 +160,15 @@ class _MonActivationPageState extends State<MonActivationPage> {
           const SizedBox(height: 12),
           _carteCollaborateurs(_detailCollaborateurs!),
         ],
-        // 💳 LE CLIENT PAIE SEUL : soit il reste un solde (y compris une
-        // avance), soit l'abonnement est échu et il faut ouvrir le mois
-        // suivant. Dans les deux cas c'est ICI, sans passer par un agent.
-        if (etat.soldeRestant > 0) ...<Widget>[
+        // 💳 LE CLIENT PAIE SEUL — Y COMPRIS PENDANT L'ESSAI.
+        // Trois situations, un seul bouton visible :
+        //   • un solde est dû            → paiement direct ;
+        //   • l'abonnement est échu      → ouverture du mois suivant ;
+        //   • essai en cours / à jour    → paiement par anticipation
+        //     (le serveur ouvre le cycle, le statut n'est pas touché).
+        if (etat.aPayer || etat.peutPayerAnticipe) ...<Widget>[
           const SizedBox(height: 12),
-          _boutonPaiement(),
-        ] else if (etat.doitRenouveler) ...<Widget>[
-          const SizedBox(height: 12),
-          _boutonRenouvellement(),
+          _blocPaiement(etat),
         ],
         const SizedBox(height: 12),
         _carteDates(etat),
@@ -232,28 +235,126 @@ class _MonActivationPageState extends State<MonActivationPage> {
     );
   }
 
-  Widget _boutonRenouvellement() {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: _renouvellement ? null : _renouveler,
-        icon: const Icon(Icons.autorenew_rounded),
-        label: Text(
-          _renouvellement
-              ? 'Ouverture du nouveau mois…'
-              : 'Renouveler maintenant',
-        ),
-      ),
-    );
+  // ---------------------------------------------------------------------------
+  // 🩹 CORRECTIF 112 — PAYER MÊME PENDANT L'ESSAI DE 7 JOURS.
+  // ---------------------------------------------------------------------------
+
+  /// Ouvre le cycle suivant (base + collaborateurs) sans toucher au statut ni
+  /// aux dates, puis lance le paiement Mobile Money.
+  ///
+  /// Sans cela, un compte en essai n'a aucun solde dû : la passerelle refusait
+  /// le paiement et le client devait attendre l'échéance.
+  Future<void> _payerAvance() async {
+    setState(() => _avance = true);
+    try {
+      final AvanceCycle avance =
+          await AbonnementService.instance.ouvrirAvance();
+      if (!mounted) return;
+
+      if (!avance.aPayer) {
+        _afficher('Aucun montant à régler pour le moment.');
+        await _charger();
+        return;
+      }
+
+      _afficher(
+        'Montant à régler : ${formatMontant(avance.montant)} ${avance.devise}.',
+      );
+      // Le solde est désormais ouvert en base : l'écran de paiement le lit
+      // lui-même, on ne transmet aucun montant depuis le client.
+      await _ouvrirPaiement();
+    } on AbonnementServiceException catch (e) {
+      if (!mounted) return;
+      _afficher(e.message, erreur: true);
+    } finally {
+      if (mounted) setState(() => _avance = false);
+    }
   }
 
-  Widget _boutonPaiement() {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: _ouvrirPaiement,
-        icon: const Icon(Icons.credit_card_rounded),
-        label: const Text('Payer maintenant (Mobile Money / carte)'),
+  /// Bloc de paiement unique : explication + montant + bouton.
+  ///
+  /// Visible pour TOUS les comptes non soldés, essai de 7 jours compris.
+  Widget _blocPaiement(EtatActivation etat) {
+    final bool soldeDu = etat.soldeRestant > 0.009;
+    final bool echu = etat.abonnementEchu;
+    final Color accent =
+        soldeDu || echu ? Colors.red.shade700 : Colors.orange.shade800;
+    final bool enCours = _avance || _renouvellement;
+
+    VoidCallback? action;
+    IconData icone;
+    String libelle = etat.libellePaiement;
+
+    if (soldeDu) {
+      action = _ouvrirPaiement;
+      icone = Icons.credit_card_rounded;
+    } else if (echu && etat.estSolde) {
+      action = _renouvellement ? null : _renouveler;
+      icone = Icons.autorenew_rounded;
+      if (_renouvellement) libelle = 'Ouverture du nouveau mois…';
+    } else {
+      action = _avance ? null : _payerAvance;
+      icone = Icons.account_balance_wallet_rounded;
+      if (_avance) libelle = 'Préparation du paiement…';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(icone, color: accent, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  soldeDu
+                      ? 'Paiement en attente'
+                      : echu
+                          ? 'Abonnement échu'
+                          : etat.enEssai
+                              ? 'Vous n\'avez pas encore payé'
+                              : 'Payer par anticipation',
+                  style: TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              if (soldeDu)
+                Text(
+                  formatMontant(etat.soldeRestant),
+                  style: TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            etat.explicationPaiement,
+            style: TextStyle(color: Colors.grey.shade800, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: enCours ? null : action,
+              style: FilledButton.styleFrom(backgroundColor: accent),
+              icon: Icon(icone),
+              label: Text(libelle),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -553,6 +553,38 @@ class AbonnementService {
     }
   }
 
+  /// 🩹 CORRECTIF 112 — PAYER MÊME PENDANT L'ESSAI.
+  ///
+  /// Un compte en essai (ou actif, et pas encore échu) a `solde_restant = 0`.
+  /// La passerelle Mobile Money refuse alors le paiement : elle n'encaisse
+  /// qu'un montant **dû**. Cette méthode ouvre le cycle suivant au prix réel
+  /// (base + collaborateurs actifs) **sans toucher au statut ni aux dates**,
+  /// puis l'écran lance le paiement SerdiPay normalement.
+  ///
+  /// Le serveur reste seul juge du montant : si un solde est déjà dû, il ne
+  /// rouvre rien (`motif = DEJA_DU`) et renvoie le montant existant.
+  Future<AvanceCycle> ouvrirAvance({String? entrepriseId}) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'abonnement_ouvrir_avance',
+        params: <String, dynamic>{'p_entreprise': entrepriseId},
+      );
+      final Map<String, dynamic>? json = parseMap(reponse);
+      if (json == null) return AvanceCycle.aucune;
+      return AvanceCycle.depuisJson(json);
+    } on PostgrestException catch (e) {
+      final String brut = e.message;
+      final int barre = brut.indexOf('|');
+      final String message = barre >= 0 ? brut.substring(barre + 1) : brut;
+      throw AbonnementServiceException(message);
+    } catch (e) {
+      debugPrint('AbonnementService.ouvrirAvance : $e');
+      throw const AbonnementServiceException(
+        'Impossible de préparer le paiement : vérifiez votre connexion.',
+      );
+    }
+  }
+
   /// « L'avance intelligente » : combien de jours ce montant achète-t-il ?
   ///
   /// Le serveur reste la référence (`rpc_abonnement_simulation_avance`), mais

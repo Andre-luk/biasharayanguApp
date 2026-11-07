@@ -28,7 +28,16 @@ class BanniereAbonnement extends StatelessWidget {
     return ValueListenableBuilder<EtatAccesAbonnement>(
       valueListenable: AbonnementService.instance.acces,
       builder: (BuildContext context, EtatAccesAbonnement etat, Widget? child) {
-        if (!etat.lectureSeule) return const SizedBox.shrink();
+        // 🩹 CORRECTIF 112 — ON DÉTECTE AUSSI CELUI QUI N'A PAS ENCORE PAYÉ.
+        //
+        // Avant, la bannière n'apparaissait qu'en lecture seule (abonnement
+        // échu) : un client en essai de 7 jours ne voyait AUCUN bouton de
+        // paiement et devait attendre la coupure. Désormais l'essai non payé
+        // est signalé, avec un accès direct au paiement.
+        final bool essaiNonPaye = etat.statut == StatutAbonnement.essai7j;
+        if (!etat.lectureSeule && !essaiNonPaye) {
+          return const SizedBox.shrink();
+        }
 
         // 🧾 MODULE 17 — trois situations : complément attendu (orange),
         // dossier pas encore activé (indigo) et abonnement échu (rouge).
@@ -36,7 +45,9 @@ class BanniereAbonnement extends StatelessWidget {
             etat.statut == StatutAbonnement.enAttenteComplement;
         final Color couleur = etat.enAttenteActivation
             ? Colors.indigo.shade600
-            : (attente ? Colors.orange.shade800 : Colors.red.shade700);
+            : (attente || essaiNonPaye
+                ? Colors.orange.shade800
+                : Colors.red.shade700);
 
         return Material(
           color: couleur.withValues(alpha: 0.10),
@@ -68,8 +79,12 @@ class BanniereAbonnement extends StatelessWidget {
                   Expanded(
                     child: Text(
                       etat.message ??
-                          'Abonnement échu : accès en lecture seule. '
-                              'Contactez votre administrateur.',
+                          (essaiNonPaye
+                              ? 'Essai en cours : votre abonnement n\'est pas '
+                                  'encore payé. Réglez-le pour éviter la '
+                                  'coupure à la fin de l\'essai.'
+                              : 'Abonnement échu : accès en lecture seule. '
+                                  'Contactez votre administrateur.'),
                       style: TextStyle(
                         fontSize: 12,
                         height: 1.3,
@@ -78,7 +93,23 @@ class BanniereAbonnement extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
+                  // 🩹 CORRECTIF 112 — LE BOUTON DE PAIEMENT, TOUJOURS VISIBLE.
+                  TextButton(
+                    onPressed: () => context.go('/main/mon-activation'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: couleur,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    child: const Text('PAYER'),
+                  ),
+                  const SizedBox(width: 4),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -91,7 +122,7 @@ class BanniereAbonnement extends StatelessWidget {
                     child: Text(
                       etat.enAttenteActivation
                           ? 'En attente'
-                          : 'Lecture seule',
+                          : (essaiNonPaye ? 'À payer' : 'Lecture seule'),
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,

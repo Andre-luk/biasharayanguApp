@@ -173,6 +173,75 @@ class PreparationRenouvellement {
   }
 }
 
+/// Résultat de `abonnement_ouvrir_avance` — **correctif 112**.
+///
+/// Pendant l'essai de 7 jours (ou avant l'échéance), le compte n'a **aucun
+/// solde dû** : la passerelle Mobile Money refusait donc le paiement
+/// (« rien à payer »). Cette fonction ouvre le cycle suivant au prix réel
+/// (base + collaborateurs) **sans toucher au statut ni aux dates**, pour que
+/// le client puisse payer immédiatement, essai compris.
+///
+/// Rien n'est perdu : au paiement, le moteur prolonge l'abonnement à partir
+/// de la date d'expiration existante.
+class AvanceCycle {
+  const AvanceCycle({
+    this.ouvert = false,
+    this.motif = '',
+    this.montant = 0,
+    this.base = 0,
+    this.supplementCollaborateurs = 0,
+    this.joursRestants,
+    this.devise = 'CDF',
+    this.echeance,
+  });
+
+  /// `true` si cet appel vient d'ouvrir le cycle anticipé.
+  final bool ouvert;
+
+  /// `CYCLE_ANTICIPE` (cycle ouvert) ou `DEJA_DU` (un solde était déjà dû).
+  final String motif;
+
+  /// Montant à encaisser (prix de base + supplément collaborateurs).
+  final double montant;
+
+  /// Part « prix de base » de [montant].
+  final double base;
+
+  /// Part « collaborateurs actifs » de [montant].
+  final double supplementCollaborateurs;
+
+  /// Jours restants sur l'accès en cours (essai ou abonnement).
+  final int? joursRestants;
+
+  final String devise;
+
+  /// Échéance actuelle — conservée telle quelle par le serveur.
+  final DateTime? echeance;
+
+  static const AvanceCycle aucune = AvanceCycle();
+
+  bool get aPayer => montant > 0.0001;
+
+  /// Vrai si l'accès en cours n'est pas encore terminé (essai ou abonnement
+  /// actif) : le client paie alors « par anticipation ».
+  bool get anticipe => motif == 'CYCLE_ANTICIPE';
+
+  factory AvanceCycle.depuisJson(Map<String, dynamic> json) {
+    return AvanceCycle(
+      ouvert: json['ouvert'] == true,
+      motif: parseString(json['motif']),
+      montant: parseDouble(json['montant']),
+      base: parseDouble(json['base']),
+      supplementCollaborateurs: parseDouble(json['supplement_collaborateurs']),
+      joursRestants: json['jours_restants'] == null
+          ? null
+          : parseInt(json['jours_restants']),
+      devise: parseString(json['devise'], fallback: 'CDF'),
+      echeance: parseDateTimeOrNull(json['echeance']),
+    );
+  }
+}
+
 /// Résultat de `rpc_abonnement_simulation_avance` — « l'avance intelligente ».
 ///
 /// Question du client : « je verse 5 000 maintenant, ça me donne quoi ? »
