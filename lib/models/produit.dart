@@ -13,6 +13,12 @@ class Produit {
   String? supabaseId;
   int? isSynced;
 
+  /// 🏷️ MODULE 28 — code-barres FABRICANT de l'article (EAN/UPC).
+  ///
+  /// Recopié du serveur pour que le LECTEUR USB reconnaisse l'article même
+  /// sans réseau : c'est le code imprimé sur l'emballage du fournisseur.
+  String? codeBarre;
+
   Produit({
     this.id,
     required this.nom,
@@ -27,6 +33,7 @@ class Produit {
     this.ownerId,
     this.supabaseId,
     this.isSynced = 0,
+    this.codeBarre,
   });
 
   DateTime? get updatedAtDate => updatedAt == null ? null : DateTime.tryParse(updatedAt!);
@@ -66,6 +73,7 @@ class Produit {
       'owner_id': ownerId,
       'supabase_id': supabaseId,
       'is_synced': isSynced ?? 0,
+      'code_barre': codeBarre,
     };
   }
 
@@ -84,6 +92,7 @@ class Produit {
       ownerId: _asString(map['owner_id']),
       supabaseId: _asString(map['supabase_id']),
       isSynced: _asBoolInt(map['is_synced']),
+      codeBarre: _asString(map['code_barre']),
     );
   }
 }
@@ -103,6 +112,7 @@ extension ProduitCopy on Produit {
     String? ownerId,
     String? supabaseId,
     int? isSynced,
+    String? codeBarre,
   }) {
     return Produit(
       id: id ?? this.id,
@@ -118,6 +128,7 @@ extension ProduitCopy on Produit {
       ownerId: ownerId ?? this.ownerId,
       supabaseId: supabaseId ?? this.supabaseId,
       isSynced: isSynced ?? this.isSynced,
+      codeBarre: codeBarre ?? this.codeBarre,
     );
   }
 }

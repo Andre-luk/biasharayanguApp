@@ -39,7 +39,7 @@ class DBHelper {
   // 🔌 V13 — 100 % HORS LIGNE : cache de lecture + conflits de synchronisation.
   // 🧾 V14 — CONDITIONNEMENTS LOCAUX : la caisse sait, SANS RÉSEAU, qu'un
   //          article se vend à l'unité, en farde ou en carton (et à quel prix).
-  static const int _dbVersion = 14;
+  static const int _dbVersion = 15;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -104,13 +104,20 @@ class DBHelper {
   owner_id TEXT,
   supabase_id TEXT,
   updated_at TEXT,
-  is_synced INTEGER DEFAULT 0
+  is_synced INTEGER DEFAULT 0,
+  code_barre TEXT
       )
     ''');
 
     await db.execute('''
       CREATE UNIQUE INDEX IF NOT EXISTS idx_produits_supabase_id 
       ON produits(supabase_id);
+    ''');
+
+    // 🏷️ MODULE 28 — un lecteur USB cherche l'article par son code-barres.
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_produits_code_barre
+      ON produits(code_barre);
     ''');
 
     await db.execute('''
@@ -173,7 +180,6 @@ CREATE TABLE ajustements (
   CREATE INDEX IF NOT EXISTS idx_conditionnements_produit
   ON conditionnements(produit_supabase_id)
 ''');
-    // Dans votre méthode onCreate ou lors de la création de la table :
     await db.execute('''
   CREATE TABLE utilisateurs (
   id TEXT PRIMARY KEY NOT NULL,
@@ -374,6 +380,20 @@ CREATE TABLE approvisionnements (
   ON conditionnements(produit_supabase_id)
 ''');
       debugPrint('✅ Migration V14 terminée.');
+    }
+
+    if (oldVersion < 15) {
+      // 🔌 V15 — LE CODE-BARRES FABRICANT, EN LOCAL.
+      //  Un lecteur USB lit le code imprimé sur l'emballage du fournisseur.
+      //  Sans cette colonne, la caisse devait interroger le réseau pour le
+      //  reconnaître : elle ne pouvait donc pas vendre au scanner hors ligne.
+      debugPrint('🚀 Migration V15 : code-barres des articles...');
+      await _safeAddColumn(db, 'produits', 'code_barre', 'TEXT');
+      await db.execute('''
+  CREATE INDEX IF NOT EXISTS idx_produits_code_barre
+  ON produits(code_barre)
+''');
+      debugPrint('✅ Migration V15 terminée.');
     }
   }
 

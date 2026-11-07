@@ -15,13 +15,16 @@ import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/dette.dart';
 import 'package:biashara_yangu/models/ligne_panier.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/models/pesee.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/models/vente.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/etablissement_service.dart';
 import 'package:biashara_yangu/services/facture_vente_service.dart';
+import 'package:biashara_yangu/services/lecteur_code_barre_usb.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/donnees_service.dart';
@@ -198,6 +201,10 @@ class _NewSalePageState extends State<NewSalePage> {
                       ownerId: a.ownerId,
                       supabaseId: '${a.id}',
                       isSynced: 1,
+                      // 🏷️ MODULE 28 — le code-barres fabricant descend sur
+                      // le téléphone : le lecteur USB reconnaît l'article
+                      // même sans réseau.
+                      codeBarre: a.codeBarre,
                     ),
                   );
 
@@ -526,6 +533,183 @@ class _NewSalePageState extends State<NewSalePage> {
     _showSnackBar('${p.nom} — $libelle ajouté au panier.');
   }
 
+  // ---------------------------------------------------------------------------
+  // 🔌 MODULE 28 — LECTEUR DE CODES-BARRES USB / BLUETOOTH EXTERNE
+  // ---------------------------------------------------------------------------
+
+  /// Retrouve un article du téléphone par son identifiant SERVEUR.
+  Produit? _produitParIdServeur(int idServeur) {
+    for (final Produit p in produits) {
+      if (p.idServeur == idServeur) return p;
+    }
+    return null;
+  }
+
+  /// Retrouve un article du téléphone par son code-barres fabricant.
+  Produit? _produitParCodeBarre(String code) {
+    final String recherche = code.trim().toLowerCase();
+    if (recherche.isEmpty) return null;
+    for (final Produit p in produits) {
+      final String codeProduit = (p.codeBarre ?? '').trim().toLowerCase();
+      if (codeProduit.isNotEmpty && codeProduit == recherche) return p;
+    }
+    return null;
+  }
+
+  /// Retrouve un emballage (farde, carton…) vendu par son QR ou son code-barres.
+  ({Produit produit, Conditionnement format})? _formatParCode(String code) {
+    final String recherche = code.trim().toLowerCase();
+    if (recherche.isEmpty) return null;
+
+    for (final MapEntry<String, List<Conditionnement>> entree
+        in _formatsParProduit.entries) {
+      final int? idServeur = int.tryParse(entree.key);
+      if (idServeur == null) continue;
+
+      for (final Conditionnement c in entree.value) {
+        final String qr = c.qrCodeId.trim().toLowerCase();
+        final String id = c.id.trim().toLowerCase();
+        final String barre = (c.codeBarreTexte ?? '').trim().toLowerCase();
+
+        final bool correspond = (qr.isNotEmpty && qr == recherche) ||
+            (id.isNotEmpty && id == recherche) ||
+            (barre.isNotEmpty && barre == recherche);
+        if (!correspond) continue;
+
+        final Produit? p = _produitParIdServeur(idServeur);
+        if (p != null) return (produit: p, format: c);
+      }
+    }
+    return null;
+  }
+
+  /// 🔌 MODULE 28 — UN CODE LU PAR UN LECTEUR EXTERNE ENTRE DANS LA VENTE.
+  ///
+  /// Ordre de reconnaissance (tout en LOCAL d'abord : un lecteur USB doit
+  /// fonctionner même sans réseau) :
+  ///   1. étiquette de balance `BAL:<produit>:<grammes>` ;
+  ///   2. étiquette de l'application `PROD:<id>` / `COND:<uuid>` ;
+  ///   3. code-barres fabricant d'un emballage (farde, carton…), puis d'un
+  ///      article — les deux sont recopiés sur le téléphone ;
+  ///   4. en dernier recours, le serveur (article jamais synchronisé ici).
+  Future<void> _traiterCodeScan(String codeBrut) async {
+    final String code = codeBrut.trim();
+    if (code.isEmpty || !mounted) return;
+
+    // Un code scanné ne doit pas rester dans la recherche.
+    if (_searchController.text.isNotEmpty) _searchController.clear();
+
+    // 1. ÉTIQUETTE DE BALANCE ------------------------------------------------
+    final ({int produitId, double poids})? balance =
+        PeseeCalculs.decoderCodeBalance(code);
+    if (balance != null) {
+      final Produit? p = _produitParIdServeur(balance.produitId);
+      if (p == null) {
+        _scanInconnu(code);
+        return;
+      }
+      final ArticleScanne scanne =
+          ArticleScanne.depuisProduit(p).avecPoids(balance.poids);
+      final double ajoutee =
+          _panier.ajouterArticle(scanne, quantite: balance.poids);
+      setState(() {});
+      if (ajoutee <= 0) {
+        _showSnackBar(
+          'Stock insuffisant pour ${p.nom}.',
+          isError: true,
+        );
+        return;
+      }
+      _showSnackBar('${p.nom} — ${_quantiteTexte(balance.poids)} kg ajouté.');
+      return;
+    }
+
+    // 2. ÉTIQUETTE DE L'APPLICATION -----------------------------------------
+    final RegExpMatch? article =
+        RegExp(r'^PROD:(\d+)$', caseSensitive: false).firstMatch(code);
+    if (article != null) {
+      final int? idServeur = int.tryParse(article.group(1)!);
+      final Produit? p = idServeur == null ? null : _produitParIdServeur(idServeur);
+      if (p == null) {
+        _scanInconnu(code);
+        return;
+      }
+      await _ajouterAuPanier(p);
+      return;
+    }
+
+    final RegExpMatch? emballage =
+        RegExp(r'^COND:(.+)$', caseSensitive: false).firstMatch(code);
+    if (emballage != null) {
+      final ({Produit produit, Conditionnement format})? trouve =
+          _formatParCode(emballage.group(1)!);
+      if (trouve == null) {
+        _scanInconnu(code);
+        return;
+      }
+      _ajouterFormatScanne(trouve.produit, trouve.format);
+      return;
+    }
+
+    // 3. CODE-BARRES FABRICANT ----------------------------------------------
+    final ({Produit produit, Conditionnement format})? format =
+        _formatParCode(code);
+    if (format != null) {
+      _ajouterFormatScanne(format.produit, format.format);
+      return;
+    }
+
+    final Produit? parCode = _produitParCodeBarre(code);
+    if (parCode != null) {
+      await _ajouterAuPanier(parCode);
+      return;
+    }
+
+    // 4. LE SERVEUR, EN DERNIER RECOURS -------------------------------------
+    try {
+      final ArticleScanne scanne = await ScannerService.instance.resoudre(code);
+      if (!mounted) return;
+      final double ajoutee = _panier.ajouterArticle(scanne, quantite: 1);
+      setState(() {});
+      if (ajoutee <= 0) {
+        _showSnackBar(
+          '« ${scanne.nom} » n\'a plus de stock.',
+          isError: true,
+        );
+        return;
+      }
+      _showSnackBar('${scanne.libelleComplet} ajouté au panier.');
+    } catch (e) {
+      debugPrint('Caisse : scan réseau ignoré ($e)');
+      _scanInconnu(code);
+    }
+  }
+
+  /// Ajoute 1 exemplaire d'un emballage scanné (farde, carton…).
+  void _ajouterFormatScanne(Produit p, Conditionnement format) {
+    final int? idServeur = p.idServeur;
+    if (idServeur == null) {
+      _updateQuantity(p, 0);
+      return;
+    }
+    final List<Conditionnement> formats =
+        _formatsParProduit['$idServeur'] ?? const <Conditionnement>[];
+    _ajouterLigneFormat(
+      p,
+      _articleDepuisProduit(p, formats),
+      ChoixFormatVente(format, quantite: 1),
+    );
+  }
+
+  /// Message clair quand un code lu n'est pas (encore) connu de la boutique.
+  void _scanInconnu(String code) {
+    _showSnackBar(
+      'Code « $code » non reconnu. Enregistrez d\'abord son code-barres sur '
+      'la fiche de l\'article (Paramètres → Articles).',
+      isError: true,
+    );
+  }
+
   /// « 12 » pour une quantité entière, « 1,5 » sinon.
   String _quantiteTexte(double valeur) {
     if (valeur == valeur.roundToDouble()) return valeur.toStringAsFixed(0);
@@ -535,7 +719,6 @@ class _NewSalePageState extends State<NewSalePage> {
         .replaceAll(RegExp(r'\.$'), '')
         .replaceAll('.', ',');
   }
-
   /// Construit l'[Article] attendu par le sélecteur à partir du produit local.
   ///
   /// Le prix de vente et l'unité sont ceux du téléphone : le serveur les
@@ -1004,7 +1187,10 @@ class _NewSalePageState extends State<NewSalePage> {
       );
     }
 
-    return Scaffold(
+    return ZoneScannerUsb(
+      onCode: _traiterCodeScan,
+      actif: !_loading,
+      child: Scaffold(
       appBar: AppBar(
         title: Text(T.newSaleTitle),
         elevation: 0,
@@ -1032,6 +1218,16 @@ class _NewSalePageState extends State<NewSalePage> {
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
+              // 🔌 MODULE 28 — SI LE LECTEUR USB A LE FOCUS ICI.
+              //  Le lecteur est un clavier : le code arrive dans ce champ.
+              //  Entrée, reconnue comme un code, l'ajoute à la vente au lieu
+              //  de lancer une recherche stérile.
+              textInputAction: TextInputAction.done,
+              onSubmitted: (String valeur) {
+                if (ressembleACodeBarre(valeur)) {
+                  _traiterCodeScan(valeur);
+                }
+              },
               decoration: InputDecoration(
                 hintText: T.searchProductLabel,
                 prefixIcon: const Icon(Icons.search),
@@ -1108,6 +1304,7 @@ class _NewSalePageState extends State<NewSalePage> {
           ),
           _buildCheckoutPanel(T),
         ],
+      ),
       ),
     );
   }
