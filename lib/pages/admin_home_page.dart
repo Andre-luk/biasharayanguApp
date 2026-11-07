@@ -664,6 +664,26 @@ class AdminSettingsPage extends StatelessWidget {
             ),
           ),
 
+          // 💰 MODULE 27 — FINANCES DES ABONNEMENTS : facturé vs encaissé vs
+          // dû, situation de chaque boutique et rapprochement SerdiPay.
+          PermissionGate(
+            page: PageAccess.facturesAbonnement,
+            action: ActionAccess.voir,
+            fallback: const SizedBox.shrink(),
+            child: _buildSettingsTile(
+              context: context,
+              icon: Icons.account_balance_wallet_rounded,
+              color: Colors.teal.shade700,
+              title: 'Finances des abonnements',
+              subtitle:
+                  'Ce qui a été facturé, réellement encaissé et ce qui reste '
+                  'dû — par boutique, avec le rapprochement des paiements '
+                  'Mobile Money.',
+              onTap: () =>
+                  GoRouter.of(context).push('/admin/finance-abonnements'),
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           // 🛡️ Section Maintenance

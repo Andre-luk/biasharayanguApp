@@ -171,6 +171,7 @@ import 'package:biashara_yangu/pages/politique_confidentialite_page.dart';
 
 // ========== MODULE 14 : ACTIVATION À DOUBLE VALIDATION ==========
 import 'package:biashara_yangu/pages/activations_finance_page.dart';
+import 'package:biashara_yangu/pages/finance_abonnements_page.dart';
 // 🛡️ MODULE 20 — administration plateforme (audit final) : parc des boutiques
 // et modération du catalogue public.
 import 'package:biashara_yangu/pages/admin_boutiques_page.dart';
@@ -401,6 +402,14 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/activations-finance',
       name: 'admin-activations-finance',
       builder: (context, state) => const ActivationsFinancePage(),
+    ),
+
+    // 💰 MODULE 27 — finance des abonnements : facturé / encaissé / dû,
+    //  dossier par entreprise et rapprochement des paiements Mobile Money.
+    GoRoute(
+      path: '/admin/finance-abonnements',
+      name: 'admin-finance-abonnements',
+      builder: (context, state) => const FinanceAbonnementsPage(),
     ),
 
     // 🛡️ MODULE 20 — ADMINISTRATION PLATEFORME (audit final) : parc des
