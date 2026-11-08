@@ -13,6 +13,7 @@
 // reste consultable.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/activation.dart';
@@ -23,7 +24,9 @@ import 'package:biashara_yangu/models/devise.dart';
 import 'package:biashara_yangu/models/etat_installation.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/activation_service.dart';
+import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/devise_service.dart';
+import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 class MonActivationPage extends StatefulWidget {
@@ -170,6 +173,25 @@ class _MonActivationPageState extends State<MonActivationPage> {
           const SizedBox(height: 12),
           _blocPaiement(etat),
         ],
+        // 🧾 MODULE 33 — changement de forfait au prorata, réservé à la
+        //  plateforme / Finance (c'est un prix commercial).
+        if (PermissionService.instance
+            .peut(PageAccess.abonnements, ActionAccess.modifier)) ...<Widget>[
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: ListTile(
+              leading: const Icon(Icons.swap_horiz_rounded),
+              title: const Text('Changer le forfait'),
+              subtitle: const Text(
+                'Complément calculé au prorata des jours restants',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: _changerForfait,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         _carteDates(etat),
         const SizedBox(height: 12),
@@ -244,6 +266,119 @@ class _MonActivationPageState extends State<MonActivationPage> {
   ///
   /// Sans cela, un compte en essai n'a aucun solde dû : la passerelle refusait
   /// le paiement et le client devait attendre l'échéance.
+  /// 🧾 MODULE 33 — CHANGEMENT DE FORFAIT AU PRORATA.
+  ///
+  /// Visible seulement pour la plateforme / Finance : c'est un prix
+  /// commercial. Le serveur calcule le complément dû sur les jours restants
+  /// (ou le crédit offert en cas de baisse) ; les dates ne bougent pas.
+  Future<void> _changerForfait() async {
+    final TextEditingController prix = TextEditingController();
+    final TextEditingController motif = TextEditingController();
+    final GlobalKey<FormState> cle = GlobalKey<FormState>();
+
+    final bool? valide = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Changer le forfait'),
+        content: SizedBox(
+          width: 400,
+          child: Form(
+            key: cle,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Le complément est calculé au prorata des jours restants. '
+                  'Les jours déjà payés ne sont jamais refacturés.',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: prix,
+                  autofocus: true,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: <TextInputFormatter>[
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Nouveau prix mensuel',
+                    suffixText: DeviseService.instance.symbole,
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (String? v) {
+                    final double? d =
+                        double.tryParse((v ?? '').replaceAll(',', '.'));
+                    if (d == null || d <= 0) return 'Prix invalide.';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: motif,
+                  decoration: const InputDecoration(
+                    labelText: 'Motif (facultatif)',
+                    hintText: 'Passage au forfait supérieur…',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (cle.currentState?.validate() == true) {
+                Navigator.of(ctx).pop(true);
+              }
+            },
+            child: const Text('Appliquer'),
+          ),
+        ],
+      ),
+    );
+
+    final String prixTexte = prix.text;
+    final String motifTexte = motif.text.trim();
+    prix.dispose();
+    motif.dispose();
+
+    if (valide != true) return;
+
+    final double? valeur =
+        double.tryParse(prixTexte.replaceAll(',', '.'));
+    if (valeur == null || valeur <= 0) return;
+
+    try {
+      final ChangementForfait resultat =
+          await AbonnementService.instance.changerForfait(
+        nouveauPrix: valeur,
+        motif: motifTexte.isEmpty ? null : motifTexte,
+      );
+      if (!mounted) return;
+
+      _afficher(
+        resultat.rienAPayer
+            ? 'Forfait changé. Crédit offert sur les jours restants : '
+                '${formatMontant(resultat.creditOffert)} ${resultat.devise}.'
+            : 'Forfait changé. Complément à régler : '
+                '${formatMontant(resultat.complementDu)} ${resultat.devise} '
+                '(${resultat.joursRestants} jour(s) restants).',
+      );
+      await _charger();
+    } on AbonnementServiceException catch (e) {
+      if (!mounted) return;
+      _afficher(e.message, erreur: true);
+    }
+  }
+
   /// 🗓️ MODULE 30 — COMBIEN DE MOIS LE CLIENT VEUT-IL RÉGLER ?
   ///
   /// Le montant n'est jamais calculé ici : on demande simplement la durée,

@@ -570,6 +570,40 @@ class AbonnementService {
     }
   }
 
+  /// 🧾 MODULE 33 — CHANGE LE FORFAIT AU PRORATA DES JOURS RESTANTS.
+  ///
+  /// Le serveur seul calcule : complément à payer en cas de hausse, crédit
+  /// journalisé en cas de baisse. Les dates d'échéance ne bougent pas.
+  Future<ChangementForfait> changerForfait({
+    required double nouveauPrix,
+    String? motif,
+    String? entrepriseId,
+  }) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'abonnement_changer_forfait',
+        params: <String, dynamic>{
+          'p_entreprise': entrepriseId,
+          'p_prix_mensuel': nouveauPrix,
+          'p_motif': motif,
+        },
+      );
+      final Map<String, dynamic>? json = parseMap(reponse);
+      if (json == null) return ChangementForfait.aucun;
+      return ChangementForfait.depuisJson(json);
+    } on PostgrestException catch (e) {
+      final String brut = e.message;
+      final int barre = brut.indexOf('|');
+      final String message = barre >= 0 ? brut.substring(barre + 1) : brut;
+      throw AbonnementServiceException(message);
+    } catch (e) {
+      debugPrint('AbonnementService.changerForfait : $e');
+      throw const AbonnementServiceException(
+        'Impossible de changer le forfait : vérifiez votre connexion.',
+      );
+    }
+  }
+
   /// Ouvre le cycle suivant au prix mensuel négocié, si l'abonnement est échu.
   ///
   /// ⚠️ Contrairement à [etatInstallation], cette méthode LÈVE une erreur :

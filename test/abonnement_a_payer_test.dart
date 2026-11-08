@@ -241,4 +241,67 @@ void main() {
       expect(a.montant, 15000);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 🧾 MODULE 33 — CHANGEMENT DE FORFAIT AU PRORATA.
+  // ---------------------------------------------------------------------------
+  group('ChangementForfait', () {
+    test('une hausse laisse un complément à payer', () {
+      final ChangementForfait c =
+          ChangementForfait.depuisJson(<String, dynamic>{
+        'ancien_prix': 30000,
+        'nouveau_prix': 45000,
+        'devise': 'CDF',
+        'jours_restants': 15,
+        'valeur_jours_ancien': 15000,
+        'valeur_jours_nouveau': 22500,
+        'complement_du': 7500,
+        'credit_offert': 0,
+        'montant_du_cycle': 7500,
+      });
+
+      expect(c.estHausse, isTrue);
+      expect(c.rienAPayer, isFalse);
+      expect(c.complementDu, 7500);
+      expect(c.creditOffert, 0);
+      expect(c.ecart, 7500);
+      expect(c.joursRestants, 15);
+    });
+
+    test('une baisse ne fait rien payer et note le crédit offert', () {
+      final ChangementForfait c =
+          ChangementForfait.depuisJson(<String, dynamic>{
+        'ancien_prix': 45000,
+        'nouveau_prix': 30000,
+        'jours_restants': 10,
+        'complement_du': 0,
+        'credit_offert': 5000,
+        'montant_du_cycle': 0,
+      });
+
+      expect(c.estHausse, isFalse);
+      expect(c.rienAPayer, isTrue);
+      expect(c.creditOffert, 5000);
+      expect(c.ecart, -5000);
+    });
+
+    test('échéance passée : aucun prorata, rien à payer', () {
+      final ChangementForfait c =
+          ChangementForfait.depuisJson(<String, dynamic>{
+        'ancien_prix': 30000,
+        'nouveau_prix': 40000,
+        'jours_restants': 0,
+        'complement_du': 0,
+        'credit_offert': 0,
+      });
+
+      expect(c.joursRestants, 0);
+      expect(c.rienAPayer, isTrue);
+    });
+
+    test('réponse vide : aucun changement', () {
+      expect(ChangementForfait.aucun.rienAPayer, isTrue);
+      expect(ChangementForfait.aucun.estHausse, isFalse);
+    });
+  });
 }

@@ -376,3 +376,64 @@ class SimulationAvance {
     );
   }
 }
+
+/// 🧾 MODULE 33 — RÉSULTAT D'UN CHANGEMENT DE FORFAIT.
+///
+/// Le serveur calcule tout au prorata des jours restants : le téléphone ne
+/// fait qu'afficher. Les DATES ne bougent jamais (on change la valeur du
+/// cycle en cours, pas sa durée).
+class ChangementForfait {
+  const ChangementForfait({
+    this.ancienPrix = 0,
+    this.nouveauPrix = 0,
+    this.devise = 'CDF',
+    this.joursRestants = 0,
+    this.complementDu = 0,
+    this.creditOffert = 0,
+    this.montantDuCycle = 0,
+    this.echeance,
+  });
+
+  final double ancienPrix;
+  final double nouveauPrix;
+  final String devise;
+
+  /// Jours restants au moment du changement (0 si échéance passée).
+  final int joursRestants;
+
+  /// Complément à payer pour les jours restants (0 si baisse de forfait).
+  final double complementDu;
+
+  /// Crédit offert au client en cas de baisse (jamais remboursé d'office).
+  final double creditOffert;
+
+  /// Nouveau montant dû pour le cycle en cours (complément + collaborateurs).
+  final double montantDuCycle;
+
+  final DateTime? echeance;
+
+  static const ChangementForfait aucun = ChangementForfait();
+
+  bool get estHausse => nouveauPrix > ancienPrix;
+
+  /// Rien à encaisser : la baisse de forfait est offerte sur les jours
+  /// restants, sans remboursement en espèces.
+  bool get rienAPayer => complementDu <= 0.009;
+
+  /// Écart appliqué sur les jours restants (positif = à payer).
+  double get ecart => complementDu - creditOffert;
+
+  factory ChangementForfait.depuisJson(Map<String, dynamic> json) {
+    return ChangementForfait(
+      ancienPrix: parseDouble(json['ancien_prix']),
+      nouveauPrix: parseDouble(json['nouveau_prix']),
+      devise: parseString(json['devise'], fallback: 'CDF'),
+      joursRestants: parseInt(json['jours_restants']),
+      complementDu: parseDouble(json['complement_du']),
+      creditOffert: parseDouble(json['credit_offert']),
+      montantDuCycle: parseDouble(json['montant_du_cycle']),
+      echeance: parseDateTimeOrNull(json['echeance']),
+    );
+  }
+}
+
