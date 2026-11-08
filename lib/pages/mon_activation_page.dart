@@ -244,11 +244,61 @@ class _MonActivationPageState extends State<MonActivationPage> {
   ///
   /// Sans cela, un compte en essai n'a aucun solde dû : la passerelle refusait
   /// le paiement et le client devait attendre l'échéance.
+  /// 🗓️ MODULE 30 — COMBIEN DE MOIS LE CLIENT VEUT-IL RÉGLER ?
+  ///
+  /// Le montant n'est jamais calculé ici : on demande simplement la durée,
+  /// puis le SERVEUR ouvre le cycle et renvoie le prix exact.
+  Future<int?> _choisirDuree() async {
+    final int? choix = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                'Payer combien de mois ?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text(
+                'Un paiement de plusieurs mois prolonge votre accès d\'autant, '
+                'sans perdre les jours qui vous restent.',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+            for (final int mois in <int>[1, 3, 6, 12])
+              ListTile(
+                leading: Icon(
+                  mois == 1
+                      ? Icons.looks_one_rounded
+                      : Icons.calendar_month_rounded,
+                ),
+                title: Text(mois == 1 ? '1 mois' : '$mois mois'),
+                subtitle: Text(mois == 1 ? 'Le prochain cycle' : 'Paiement unique'),
+                onTap: () => Navigator.of(ctx).pop(mois),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    return choix;
+  }
+
   Future<void> _payerAvance() async {
+    // 🗓️ MODULE 30 — la durée d'abord (1, 3, 6 ou 12 mois).
+    final int? mois = await _choisirDuree();
+    if (mois == null || !mounted) return;
+
     setState(() => _avance = true);
     try {
       final AvanceCycle avance =
-          await AbonnementService.instance.ouvrirAvance();
+          await AbonnementService.instance.ouvrirAvance(mois: mois);
       if (!mounted) return;
 
       if (!avance.aPayer) {
@@ -258,7 +308,8 @@ class _MonActivationPageState extends State<MonActivationPage> {
       }
 
       _afficher(
-        'Montant à régler : ${formatMontant(avance.montant)} ${avance.devise}.',
+        '${avance.libelleDuree} : '
+        '${formatMontant(avance.montant)} ${avance.devise} à régler.',
       );
       // Le solde est désormais ouvert en base : l'écran de paiement le lit
       // lui-même, on ne transmet aucun montant depuis le client.

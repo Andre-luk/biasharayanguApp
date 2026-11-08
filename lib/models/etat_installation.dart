@@ -193,6 +193,8 @@ class AvanceCycle {
     this.joursRestants,
     this.devise = 'CDF',
     this.echeance,
+    this.mois = 1,
+    this.prixCycle = 0,
   });
 
   /// `true` si cet appel vient d'ouvrir le cycle anticipé.
@@ -218,7 +220,30 @@ class AvanceCycle {
   /// Échéance actuelle — conservée telle quelle par le serveur.
   final DateTime? echeance;
 
+  /// 🗓️ MODULE 30 — nombre de mois réglés d'un coup (1 par défaut).
+  final int mois;
+
+  /// Prix d'UN cycle (base + collaborateurs), pour afficher le détail.
+  final double prixCycle;
+
   static const AvanceCycle aucune = AvanceCycle();
+
+  /// « 3 mois » — libellé de la durée choisie.
+  String get libelleDuree => mois <= 1 ? '1 mois' : '$mois mois';
+
+  /// 🗓️ Combien de jours ce paiement va-t-il ajouter ?
+  int get joursAjoutes => 30 * (mois <= 0 ? 1 : mois);
+
+  /// Échéance qui résultera du paiement (estimation locale).
+  ///
+  /// On part de l'échéance actuelle si elle est future (aucun jour payé n'est
+  /// perdu), sinon de maintenant — exactement la règle du serveur.
+  DateTime get echeanceEstimee {
+    final DateTime base = (echeance != null && echeance!.isAfter(DateTime.now()))
+        ? echeance!
+        : DateTime.now();
+    return base.add(Duration(days: joursAjoutes));
+  }
 
   bool get aPayer => montant > 0.0001;
 
@@ -238,6 +263,8 @@ class AvanceCycle {
           : parseInt(json['jours_restants']),
       devise: parseString(json['devise'], fallback: 'CDF'),
       echeance: parseDateTimeOrNull(json['echeance']),
+      mois: json['mois'] == null ? 1 : parseInt(json['mois'], fallback: 1),
+      prixCycle: parseDouble(json['prix_cycle']),
     );
   }
 }

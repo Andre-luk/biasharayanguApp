@@ -162,4 +162,83 @@ void main() {
       expect(AvanceCycle.depuisJson(<String, dynamic>{}).aPayer, isFalse);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 🗓️ MODULE 30 — PAYER PLUSIEURS MOIS D'UN COUP.
+  // ---------------------------------------------------------------------------
+  group('AvanceCycle — paiement de plusieurs mois', () {
+    test('un seul mois : comportement d\'avant', () {
+      final AvanceCycle a = AvanceCycle.depuisJson(<String, dynamic>{
+        'ouvert': true,
+        'motif': 'CYCLE_ANTICIPE',
+        'montant': 30000,
+        'devise': 'CDF',
+      });
+
+      expect(a.mois, 1);
+      expect(a.libelleDuree, '1 mois');
+      expect(a.joursAjoutes, 30);
+    });
+
+    test('6 mois : 180 jours ajoutés et un libellé lisible', () {
+      final AvanceCycle a = AvanceCycle.depuisJson(<String, dynamic>{
+        'ouvert': true,
+        'motif': 'CYCLE_ANTICIPE',
+        'mois': 6,
+        'montant': 180000,
+        'prix_cycle': 30000,
+        'devise': 'CDF',
+      });
+
+      expect(a.mois, 6);
+      expect(a.libelleDuree, '6 mois');
+      expect(a.joursAjoutes, 180);
+      expect(a.prixCycle, 30000);
+      // Le serveur a bien facturé 6 cycles.
+      expect(a.montant, a.prixCycle * a.mois);
+    });
+
+    test('l\'échéance estimée part de la date future (aucun jour perdu)', () {
+      final DateTime future = DateTime.now().add(const Duration(days: 10));
+      final AvanceCycle a = AvanceCycle(
+        ouvert: true,
+        motif: 'CYCLE_ANTICIPE',
+        mois: 3,
+        montant: 90000,
+        echeance: future,
+      );
+
+      final int ecart =
+          a.echeanceEstimee.difference(future).inDays;
+      expect(ecart, 90);
+    });
+
+    test('une échéance dépassée repart de maintenant', () {
+      final DateTime passe = DateTime.now().subtract(const Duration(days: 5));
+      final AvanceCycle a = AvanceCycle(
+        ouvert: true,
+        motif: 'CYCLE_ANTICIPE',
+        mois: 1,
+        echeance: passe,
+      );
+
+      expect(a.echeanceEstimee.isAfter(DateTime.now()), isTrue);
+      final int jours = a.echeanceEstimee.difference(DateTime.now()).inDays;
+      expect(jours, inInclusiveRange(29, 30));
+    });
+
+    test('un solde déjà dû ne rouvre rien et garde le mois en cours', () {
+      final AvanceCycle a = AvanceCycle.depuisJson(<String, dynamic>{
+        'ok': true,
+        'ouvert': false,
+        'motif': 'DEJA_DU',
+        'mois': 1,
+        'montant': 15000,
+      });
+
+      expect(a.ouvert, isFalse);
+      expect(a.anticipe, isFalse);
+      expect(a.montant, 15000);
+    });
+  });
 }

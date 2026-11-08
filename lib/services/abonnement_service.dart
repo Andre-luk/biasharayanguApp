@@ -609,11 +609,27 @@ class AbonnementService {
   ///
   /// Le serveur reste seul juge du montant : si un solde est déjà dû, il ne
   /// rouvre rien (`motif = DEJA_DU`) et renvoie le montant existant.
-  Future<AvanceCycle> ouvrirAvance({String? entrepriseId}) async {
+  /// 🗓️ MODULE 30 — [mois] permet de régler plusieurs mois d'un coup
+  /// (3, 6, 12). Le montant est TOUJOURS calculé par le serveur
+  /// (`prix du cycle × mois`) : le téléphone ne propose jamais un prix.
+  Future<AvanceCycle> ouvrirAvance({
+    String? entrepriseId,
+    int mois = 1,
+  }) async {
+    final int duree = mois < 1 ? 1 : (mois > 12 ? 12 : mois);
     try {
       final dynamic reponse = await _client.rpc(
-        'abonnement_ouvrir_avance',
-        params: <String, dynamic>{'p_entreprise': entrepriseId},
+        // Un seul mois garde la fonction d'origine : la caisse fonctionne
+        // même si la migration 0115 n'a pas encore été exécutée.
+        duree == 1
+            ? 'abonnement_ouvrir_avance'
+            : 'abonnement_ouvrir_avance_multi',
+        params: duree == 1
+            ? <String, dynamic>{'p_entreprise': entrepriseId}
+            : <String, dynamic>{
+                'p_entreprise': entrepriseId,
+                'p_mois': duree,
+              },
       );
       final Map<String, dynamic>? json = parseMap(reponse);
       if (json == null) return AvanceCycle.aucune;
