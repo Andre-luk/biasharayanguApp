@@ -107,6 +107,46 @@ class TamponScannerUsb {
   }
 }
 
+/// 🔊 MODULE 28 — LE PIÈGE AZERTY / QWERTY.
+///
+/// Un lecteur de codes-barres envoie des **codes de touches américains**. Sur
+/// un poste dont le clavier est en AZERTY (France, Belgique, RDC), la touche
+/// « 1 » du clavier US produit « & », la touche « 2 » produit « é », etc.
+///
+/// Résultat : un code `6001234567890` arrive sous la forme
+/// `-àà&é"'(è_çà`. Le commerçant croit que le lecteur ne fonctionne pas alors
+/// qu'il suffit de **réécrire** le code.
+///
+/// Cette fonction rend le code tel qu'il aurait dû être lu. Elle n'est
+/// appliquée qu'en SECOND recours : un code correct n'est jamais modifié.
+String corrigerCodeClavier(String texte) {
+  const Map<String, String> azertyVersQwerty = <String, String>{
+    '&': '1',
+    'é': '2',
+    '"': '3',
+    "'": '4',
+    '(': '5',
+    '-': '6',
+    'è': '7',
+    '_': '8',
+    'ç': '9',
+    'à': '0',
+    ')': '0', // certains lecteurs envoient « ) » pour le zéro
+    '=': '0',
+    // Ponctuation des étiquettes maison (« PROD:123 »).
+    '.': ':',
+    '/': ':',
+    ';': 'm',
+  };
+
+  final StringBuffer sortie = StringBuffer();
+  for (int i = 0; i < texte.length; i++) {
+    final String c = texte[i];
+    sortie.write(azertyVersQwerty[c] ?? c);
+  }
+  return sortie.toString();
+}
+
 /// Un code ressemble-t-il à un code-barres / QR ?
 ///
 /// Sert au champ de recherche de la caisse : si le commerçant scanne pendant

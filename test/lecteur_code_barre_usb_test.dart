@@ -208,4 +208,29 @@ void main() {
       expect(ressembleACodeBarre('PARA-5000'), isTrue);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 🔊 PIÈGE AZERTY : un lecteur réglé en QWERTY sur un poste français.
+  // ---------------------------------------------------------------------------
+  group('corrigerCodeClavier', () {
+    test('les chiffres decales redeviennent des chiffres', () {
+      // « 6001234567890 » lu par un lecteur QWERTY sur un clavier AZERTY :
+      // 6 -> -, 0 -> a accent grave, 1 -> &, 2 -> e accent aigu, etc.
+      final String lu = "-àà&é\"'(-è_çà";
+      expect(corrigerCodeClavier(lu), '6001234567890');
+    });
+
+    test('un code déjà correct n\'est pas modifié', () {
+      expect(corrigerCodeClavier('6001234567890'), '6001234567890');
+      expect(corrigerCodeClavier('PROD:123'), 'PROD:123');
+    });
+
+    test('une étiquette maison mal lue est réparée', () {
+      expect(corrigerCodeClavier('PROD.&é"'), 'PROD:123');
+    });
+
+    test('un code vide reste vide', () {
+      expect(corrigerCodeClavier(''), '');
+    });
+  });
 }

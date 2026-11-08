@@ -592,6 +592,10 @@ class _NewSalePageState extends State<NewSalePage> {
   ///   3. code-barres fabricant d'un emballage (farde, carton…), puis d'un
   ///      article — les deux sont recopiés sur le téléphone ;
   ///   4. en dernier recours, le serveur (article jamais synchronisé ici).
+  ///
+  /// 🩹 Si le poste est en clavier AZERTY et le lecteur réglé en QWERTY, le
+  /// code arrive décalé (« &&&é » au lieu de « 1112 »). On réessaie donc avec
+  /// le code réécrit avant de déclarer l'article inconnu.
   Future<void> _traiterCodeScan(String codeBrut) async {
     final String code = codeBrut.trim();
     if (code.isEmpty || !mounted) return;
@@ -599,29 +603,54 @@ class _NewSalePageState extends State<NewSalePage> {
     // Un code scanné ne doit pas rester dans la recherche.
     if (_searchController.text.isNotEmpty) _searchController.clear();
 
+    if (await _resoudreCodeLocal(code)) return;
+
+    final String corrige = corrigerCodeClavier(code);
+    if (corrige != code && await _resoudreCodeLocal(corrige)) return;
+
+    // 4. LE SERVEUR, EN DERNIER RECOURS -------------------------------------
+    for (final String candidat in <String>{code, corrige}) {
+      try {
+        final ArticleScanne scanne =
+            await ScannerService.instance.resoudre(candidat);
+        if (!mounted) return;
+        final double ajoutee = _panier.ajouterArticle(scanne, quantite: 1);
+        setState(() {});
+        if (ajoutee <= 0) {
+          _showSnackBar('« ${scanne.nom} » n\'a plus de stock.', isError: true);
+          return;
+        }
+        _showSnackBar('${scanne.libelleComplet} ajouté au panier.');
+        return;
+      } catch (e) {
+        debugPrint('Caisse : scan réseau ignoré ($candidat) — $e');
+      }
+    }
+
+    _scanInconnu(code);
+  }
+
+  /// Reconnaît un code SANS réseau. Renvoie `true` dès qu'il a été traité
+  /// (ajouté au panier ou refusé pour cause de stock), `false` si le code
+  /// n'appartient pas à cette boutique.
+  Future<bool> _resoudreCodeLocal(String code) async {
     // 1. ÉTIQUETTE DE BALANCE ------------------------------------------------
     final ({int produitId, double poids})? balance =
         PeseeCalculs.decoderCodeBalance(code);
     if (balance != null) {
       final Produit? p = _produitParIdServeur(balance.produitId);
-      if (p == null) {
-        _scanInconnu(code);
-        return;
-      }
+      if (p == null) return false;
       final ArticleScanne scanne =
           ArticleScanne.depuisProduit(p).avecPoids(balance.poids);
       final double ajoutee =
           _panier.ajouterArticle(scanne, quantite: balance.poids);
       setState(() {});
       if (ajoutee <= 0) {
-        _showSnackBar(
-          'Stock insuffisant pour ${p.nom}.',
-          isError: true,
-        );
-        return;
+        _showSnackBar('Stock insuffisant pour ${p.nom}.', isError: true);
+        return true;
       }
       _showSnackBar('${p.nom} — ${_quantiteTexte(balance.poids)} kg ajouté.');
-      return;
+      return true;
     }
 
     // 2. ÉTIQUETTE DE L'APPLICATION -----------------------------------------
@@ -629,13 +658,11 @@ class _NewSalePageState extends State<NewSalePage> {
         RegExp(r'^PROD:(\d+)$', caseSensitive: false).firstMatch(code);
     if (article != null) {
       final int? idServeur = int.tryParse(article.group(1)!);
-      final Produit? p = idServeur == null ? null : _produitParIdServeur(idServeur);
-      if (p == null) {
-        _scanInconnu(code);
-        return;
-      }
+      final Produit? p =
+          idServeur == null ? null : _produitParIdServeur(idServeur);
+      if (p == null) return false;
       await _ajouterAuPanier(p);
-      return;
+      return true;
     }
 
     final RegExpMatch? emballage =
@@ -643,12 +670,9 @@ class _NewSalePageState extends State<NewSalePage> {
     if (emballage != null) {
       final ({Produit produit, Conditionnement format})? trouve =
           _formatParCode(emballage.group(1)!);
-      if (trouve == null) {
-        _scanInconnu(code);
-        return;
-      }
+      if (trouve == null) return false;
       _ajouterFormatScanne(trouve.produit, trouve.format);
-      return;
+      return true;
     }
 
     // 3. CODE-BARRES FABRICANT ----------------------------------------------
@@ -656,33 +680,16 @@ class _NewSalePageState extends State<NewSalePage> {
         _formatParCode(code);
     if (format != null) {
       _ajouterFormatScanne(format.produit, format.format);
-      return;
+      return true;
     }
 
     final Produit? parCode = _produitParCodeBarre(code);
     if (parCode != null) {
       await _ajouterAuPanier(parCode);
-      return;
+      return true;
     }
 
-    // 4. LE SERVEUR, EN DERNIER RECOURS -------------------------------------
-    try {
-      final ArticleScanne scanne = await ScannerService.instance.resoudre(code);
-      if (!mounted) return;
-      final double ajoutee = _panier.ajouterArticle(scanne, quantite: 1);
-      setState(() {});
-      if (ajoutee <= 0) {
-        _showSnackBar(
-          '« ${scanne.nom} » n\'a plus de stock.',
-          isError: true,
-        );
-        return;
-      }
-      _showSnackBar('${scanne.libelleComplet} ajouté au panier.');
-    } catch (e) {
-      debugPrint('Caisse : scan réseau ignoré ($e)');
-      _scanInconnu(code);
-    }
+    return false;
   }
 
   /// Ajoute 1 exemplaire d'un emballage scanné (farde, carton…).
