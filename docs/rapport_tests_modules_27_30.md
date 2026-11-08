@@ -3,7 +3,7 @@
 **Date :** 8 novembre 2026
 **Périmètre :** abonnements, paiements, caisse, factures, identités, finance,
 lecteur de codes-barres USB, devise par article, paiement multi-mois.
-**Exécution :** `flutter test` — **1286 tests, 0 échec** · `dart analyze lib` —
+**Exécution :** `flutter test` — **1305 tests, 0 échec** · `dart analyze lib` —
 **0 erreur**.
 
 ---
@@ -73,6 +73,27 @@ lecteur de codes-barres USB, devise par article, paiement multi-mois.
 
 ---
 
+## 4 bis. Module 31 — vente sans suivi de stock
+
+`vente_sans_stock_test.dart` — **8 tests** :
+
+- un produit non comptable se vend **même avec un stock nul** ;
+- la quantité **n'est jamais plafonnée** (500 unités refusées à 4 en stock
+  pour un article normal, acceptées pour un article non comptable) ;
+- un format (farde) d'un tel article reste vendable ;
+- le drapeau survit à `toMap` / `fromMap` / `copyWith`.
+
+## 4 ter. Module 32 — avoirs / notes de crédit
+
+`note_credit_test.dart` — **7 tests** : types (AVOIR / REMBOURSEMENT),
+statuts (ÉMIS / ANNULÉ), lecture complète, motif d'annulation conservé,
+réponse incomplète tolérée, montant entier ou texte.
+
+## 4 quater. Module 33 — changement de forfait
+
+`abonnement_a_payer_test.dart` — **4 tests dédiés** : hausse avec complément,
+baisse sans rien à payer (crédit noté), échéance passée, réponse vide.
+
 ## 5. Migrations SQL validées
 
 Analyse syntaxique PostgreSQL (`pgsql-parser` + `plpgsql-parser`) :
@@ -87,6 +108,9 @@ Analyse syntaxique PostgreSQL (`pgsql-parser` + `plpgsql-parser`) :
 | 0113 — finance & rapprochement | 2 |
 | 0114 — devise par produit | (DDL seule) |
 | 0115 — paiement plusieurs mois | 3 |
+| 0116 — vente sans stock | 1 (`rpc_vente_valider`) |
+| 0117 — avoirs | 4 |
+| 0118 — changement de forfait | 1 |
 
 ---
 
@@ -94,9 +118,11 @@ Analyse syntaxique PostgreSQL (`pgsql-parser` + `plpgsql-parser`) :
 
 | # | Sujet | État |
 |---|---|---|
-| 1 | **Avoir / note de crédit** sur une facture déjà émise | à faire |
-| 2 | **Changement de forfait** (hausse/baisse) en cours de cycle | à faire |
+| — | Avoir / note de crédit (Module 32) | ✅ livré |
+| — | Changement de forfait au prorata (Module 33) | ✅ livré |
+| — | Vente sans suivi de stock (Module 31) | ✅ livré |
+| 1 | **Impression / PDF de l'avoir** (aujourd'hui : liste + fiche à l'écran) | à faire |
+| 2 | **Retour de marchandise** : réintégrer le stock depuis un avoir | à faire |
 
-Ces deux points touchent l'argent réel et demandent chacun un script SQL
-dédié (table + transaction + journal d'audit) : ils seront traités au tour
-suivant, dans cet ordre.
+Les avoirs existent et sont numérotés ; il reste à produire le **document
+imprimable** et à traiter le retour physique de la marchandise.
