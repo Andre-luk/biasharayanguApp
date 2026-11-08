@@ -39,7 +39,7 @@ class DBHelper {
   // 🔌 V13 — 100 % HORS LIGNE : cache de lecture + conflits de synchronisation.
   // 🧾 V14 — CONDITIONNEMENTS LOCAUX : la caisse sait, SANS RÉSEAU, qu'un
   //          article se vend à l'unité, en farde ou en carton (et à quel prix).
-  static const int _dbVersion = 15;
+  static const int _dbVersion = 16;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -148,7 +148,9 @@ CREATE TABLE ajustements (
   supabase_id TEXT,
   is_synced INTEGER DEFAULT 0,
   tentatives INTEGER DEFAULT 0,
-  sync_erreur TEXT
+  sync_erreur TEXT,
+  conditionnement_id TEXT,
+  quantite_vendue REAL
   )
 ''');
 
@@ -394,6 +396,17 @@ CREATE TABLE approvisionnements (
   ON produits(code_barre)
 ''');
       debugPrint('✅ Migration V15 terminée.');
+    }
+
+    if (oldVersion < 16) {
+      // 🧾 V16 — LE FORMAT VENDU, JUSQU'AU SERVEUR.
+      //  Une farde vendue 12 000 doit être rejouée au serveur AVEC son
+      //  conditionnement ; sinon le serveur recalcule au prix de l'unité et
+      //  les rapports affichent un montant faux.
+      debugPrint('🚀 Migration V16 : conditionnement des ventes...');
+      await _safeAddColumn(db, 'ventes', 'conditionnement_id', 'TEXT');
+      await _safeAddColumn(db, 'ventes', 'quantite_vendue', 'REAL');
+      debugPrint('✅ Migration V16 terminée.');
     }
   }
 

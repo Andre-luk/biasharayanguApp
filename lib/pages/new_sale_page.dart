@@ -880,6 +880,10 @@ class _NewSalePageState extends State<NewSalePage> {
             ownerId: ownerId,
             sellerId: _currentUserId,
             clientId: selectedClient?.id,
+            // 🧾 MODULE 28 — LE FORMAT PART AVEC LA VENTE. Sans lui, la
+            // synchronisation rejouait la farde au prix de l'unité × 12.
+            conditionnementId: ligne.conditionnementId,
+            quantiteVendue: ligne.quantite,
           ),
         );
 

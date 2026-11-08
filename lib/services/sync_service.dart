@@ -512,8 +512,16 @@ class SyncService {
         final List<Map<String, dynamic>> lignes = <Map<String, dynamic>>[
           <String, dynamic>{
             'produit_id': produitId,
+            // `quantite` = unités de BASE sorties du stock (12 par farde).
             'quantite': v.quantite,
-            'quantite_vendue': v.quantite,
+            // `quantite_vendue` = unités réellement vendues (1 farde).
+            'quantite_vendue': v.quantiteVendue ?? v.quantite,
+            // 🧾 MODULE 28 — le FORMAT suit la vente jusqu'au serveur.
+            //  Sans cette ligne, une farde vendue 12 000 était recalculée
+            //  au prix de l'unité (1 200 × 12 = 14 400) : montant faux dans
+            //  les rapports et sur la facture du serveur.
+            if ((v.conditionnementId ?? '').isNotEmpty)
+              'conditionnement_id': v.conditionnementId,
           },
         ];
 

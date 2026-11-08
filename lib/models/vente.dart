@@ -13,6 +13,21 @@ class Vente {
   String? supabaseId;
   int? isSynced;
 
+  /// 🧾 MODULE 28 — FORMAT VENDU (farde, carton…).
+  ///
+  /// L'identifiant du conditionnement va jusqu'au serveur : sans lui, une
+  /// farde vendue 12 000 était renvoyée au PRIX DE L'UNITÉ × 12 (14 400 par
+  /// exemple) et le rapport d'activité ne voyait pas le bon montant.
+  String? conditionnementId;
+
+  /// Nombre d'UNITÉS VENDUES (1 pour une farde, 2 pour deux cartons).
+  ///
+  /// ⚠️ [quantite] reste en UNITÉS DE BASE (12 pour une farde de 12) : c'est
+  /// ce que le stock consomme. Le serveur, lui, a besoin des DEUX : les unités
+  /// de base pour le stock et les unités vendues pour le prix
+  /// (prix du conditionnement × 1, et non × 12).
+  double? quantiteVendue;
+
   Vente({
     this.id,
     required this.produitId,
@@ -25,6 +40,8 @@ class Vente {
     this.clientId,
     this.supabaseId,
     this.isSynced = 0,
+    this.conditionnementId,
+    this.quantiteVendue,
   });
 
   DateTime? get createdAtDate => DateTime.tryParse(createdAt);
@@ -42,6 +59,8 @@ class Vente {
       'client_id': clientId,
       'supabase_id': supabaseId,
       'is_synced': isSynced ?? 0,
+      'conditionnement_id': conditionnementId,
+      'quantite_vendue': quantiteVendue,
     };
   }
 
@@ -60,6 +79,10 @@ class Vente {
       clientId: _asInt(map['client_id']),
       supabaseId: _asString(map['supabase_id']),
       isSynced: _asInt(map['is_synced']) ?? 0,
+      conditionnementId: _asString(map['conditionnement_id']),
+      quantiteVendue: map['quantite_vendue'] == null
+          ? null
+          : _asDouble(map['quantite_vendue']),
     );
   }
 }
