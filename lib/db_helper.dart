@@ -39,7 +39,7 @@ class DBHelper {
   // 🔌 V13 — 100 % HORS LIGNE : cache de lecture + conflits de synchronisation.
   // 🧾 V14 — CONDITIONNEMENTS LOCAUX : la caisse sait, SANS RÉSEAU, qu'un
   //          article se vend à l'unité, en farde ou en carton (et à quel prix).
-  static const int _dbVersion = 17;
+  static const int _dbVersion = 18;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -106,7 +106,8 @@ class DBHelper {
   updated_at TEXT,
   is_synced INTEGER DEFAULT 0,
   code_barre TEXT,
-  devise TEXT
+  devise TEXT,
+  stock_illimite INTEGER DEFAULT 0
       )
     ''');
 
@@ -418,6 +419,15 @@ CREATE TABLE approvisionnements (
       debugPrint('🚀 Migration V17 : devise par article...');
       await _safeAddColumn(db, 'produits', 'devise', 'TEXT');
       debugPrint('✅ Migration V17 terminée.');
+    }
+
+    if (oldVersion < 18) {
+      // ♾️ V18 — ARTICLES VENDUS SANS SUIVI DE STOCK.
+      //  Certains produits ne peuvent pas être comptés : le stock n'est ni
+      //  contrôlé ni décrémenté, et la caisse continue de vendre.
+      debugPrint('🚀 Migration V18 : stock non suivi...');
+      await _safeAddColumn(db, 'produits', 'stock_illimite', 'INTEGER DEFAULT 0');
+      debugPrint('✅ Migration V18 terminée.');
     }
   }
 
@@ -1532,7 +1542,7 @@ CREATE TABLE approvisionnements (
 
         final List<Map<String, dynamic>> prod = await txn.query(
           'produits',
-          columns: ['quantite', 'nom'],
+          columns: ['quantite', 'nom', 'stock_illimite'],
           where: 'id = ?',
           whereArgs: [vente.produitId],
           limit: 1,
@@ -1540,8 +1550,14 @@ CREATE TABLE approvisionnements (
 
         if (prod.isEmpty) throw Exception('Produit ID ${vente.produitId} introuvable');
 
+        // ♾️ MODULE 31 — un article vendu SANS suivi de stock n'est jamais
+        //  bloqué et son stock n'est pas décrémenté : il ne peut pas être
+        //  compté (eau au robinet, service, fabrication à la demande…).
+        final bool sansStock =
+            (prod.first['stock_illimite'] as num?)?.toInt() == 1;
+
         final currentQty = (prod.first['quantite'] as num?)?.toDouble() ?? 0.0;
-        if (currentQty < vente.quantite) {
+        if (!sansStock && currentQty < vente.quantite) {
           throw Exception('Stock insuffisant pour ${prod.first['nom']}');
         }
 
@@ -1558,12 +1574,14 @@ CREATE TABLE approvisionnements (
         );
         if (firstSaleId == 0) firstSaleId = newVenteId;
 
-        await txn.update(
-          'produits',
-          {'quantite': currentQty - vente.quantite},
-          where: 'id = ?',
-          whereArgs: [vente.produitId],
-        );
+        if (!sansStock) {
+          await txn.update(
+            'produits',
+            {'quantite': currentQty - vente.quantite},
+            where: 'id = ?',
+            whereArgs: [vente.produitId],
+          );
+        }
       }
 
       return firstSaleId;

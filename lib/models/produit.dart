@@ -13,6 +13,13 @@ class Produit {
   String? supabaseId;
   int? isSynced;
 
+  /// ♾️ MODULE 31 — ARTICLE VENDU SANS SUIVI DE STOCK.
+  ///
+  /// Certains produits ne peuvent pas être comptés (eau au robinet, service,
+  /// article vendu au poids approximatif, produit fabriqué à la demande). Le
+  /// stock n'est alors ni contrôlé ni décrémenté, et l'écran affiche « ∞ ».
+  bool stockIllimite;
+
   /// 💵 MODULE 29 — DEVISE DU PRIX de cet article (`CDF`, `USD`).
   ///
   /// `null` = devise de l'entreprise. Le prix est conservé tel que saisi :
@@ -41,6 +48,7 @@ class Produit {
     this.isSynced = 0,
     this.codeBarre,
     this.devise,
+    this.stockIllimite = false,
   });
 
   DateTime? get updatedAtDate => updatedAt == null ? null : DateTime.tryParse(updatedAt!);
@@ -82,6 +90,7 @@ class Produit {
       'is_synced': isSynced ?? 0,
       'code_barre': codeBarre,
       'devise': devise,
+      'stock_illimite': stockIllimite ? 1 : 0,
     };
   }
 
@@ -102,6 +111,7 @@ class Produit {
       isSynced: _asBoolInt(map['is_synced']),
       codeBarre: _asString(map['code_barre']),
       devise: _asString(map['devise']),
+      stockIllimite: _asBoolInt(map['stock_illimite']) == 1,
     );
   }
 }
@@ -123,6 +133,7 @@ extension ProduitCopy on Produit {
     int? isSynced,
     String? codeBarre,
     String? devise,
+    bool? stockIllimite,
   }) {
     return Produit(
       id: id ?? this.id,
@@ -140,6 +151,7 @@ extension ProduitCopy on Produit {
       isSynced: isSynced ?? this.isSynced,
       codeBarre: codeBarre ?? this.codeBarre,
       devise: devise ?? this.devise,
+      stockIllimite: stockIllimite ?? this.stockIllimite,
     );
   }
 }

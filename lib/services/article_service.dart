@@ -357,6 +357,7 @@ class ArticleService {
     Map<String, String> attributs = const <String, String>{},
     String? codeBarre,
     String? devise,
+    bool? stockIllimite,
   }) {
     return _executer(
       () async {
@@ -392,6 +393,8 @@ class ArticleService {
               'code_barre': _texteOuNull(codeBarre),
               // 💵 MODULE 29 — devise du prix (vidée = devise entreprise).
               'devise': _texteOuNull(devise),
+              // ♾️ MODULE 31 — article non comptable.
+              if (stockIllimite != null) 'stock_illimite': stockIllimite,
             })
             .eq('id', id)
             .select()

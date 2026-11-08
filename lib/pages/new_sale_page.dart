@@ -209,6 +209,8 @@ class _NewSalePageState extends State<NewSalePage> {
                       codeBarre: a.codeBarre,
                       // 💵 MODULE 29 — la devise du prix de l'article.
                       devise: a.devise,
+                      // ♾️ MODULE 31 — article non comptable.
+                      stockIllimite: a.stockIllimite,
                     ),
                   );
 
@@ -350,7 +352,7 @@ class _NewSalePageState extends State<NewSalePage> {
 
     if (cible == null) {
       // Aucune ligne : on ajoute à l'unité de base (stock en unités de base).
-      if (qty > p.quantite) {
+      if (!p.stockIllimite && qty > p.quantite) {
         _showSnackBar(AppLocalizations.of(context)!.outOfStock, isError: true);
         return;
       }
@@ -381,7 +383,7 @@ class _NewSalePageState extends State<NewSalePage> {
         ligne.unitesBase +
         ligne.vendu.unitesBasePour(quantite);
 
-    if (nouvelleBase > p.quantite + 0.0001) {
+    if (!p.stockIllimite && nouvelleBase > p.quantite + 0.0001) {
       final double restant = p.quantite - (dejaAuPanier - ligne.unitesBase);
       _showSnackBar(
         'Stock insuffisant pour ${p.nom} : il reste '
@@ -505,7 +507,8 @@ class _NewSalePageState extends State<NewSalePage> {
     }
     final double baseDemandee = scanne.unitesBasePour(choix.quantite);
 
-    if (baseAuPanier + baseDemandee > p.quantite + 0.0001) {
+    // ♾️ MODULE 31 — un article SANS suivi de stock n'est jamais refusé.
+    if (!p.stockIllimite && baseAuPanier + baseDemandee > p.quantite + 0.0001) {
       final double restant = p.quantite - baseAuPanier;
       _showSnackBar(
         'Stock insuffisant pour ${p.nom} : '
@@ -749,6 +752,8 @@ class _NewSalePageState extends State<NewSalePage> {
       conditionnements: formats,
       // 💵 MODULE 29 — la devise du produit accompagne son prix.
       devise: p.devise,
+      // ♾️ MODULE 31 — stock non suivi : la vente n'est jamais plafonnée.
+      stockIllimite: p.stockIllimite,
     );
   }
 
@@ -1407,10 +1412,15 @@ class _NewSalePageState extends State<NewSalePage> {
                     ),
                   ),
                   Text(
-                    'Stock: ${p.quantite.toStringAsFixed(1)}',
+                    // ♾️ MODULE 31 — un article non comptable affiche « ∞ ».
+                    p.stockIllimite
+                        ? 'Stock : non suivi (∞)'
+                        : 'Stock: ${p.quantite.toStringAsFixed(1)}',
                     style: TextStyle(
                       fontSize: 11,
-                      color: p.quantite <= 5 ? Colors.red : Colors.grey,
+                      color: p.stockIllimite
+                          ? theme.colorScheme.primary
+                          : (p.quantite <= 5 ? Colors.red : Colors.grey),
                     ),
                   ),
                   // 🧾 V14 — le vendeur voit AVANT de cliquer que l'article

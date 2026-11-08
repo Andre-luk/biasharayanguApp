@@ -383,8 +383,21 @@ class SyncService {
           'unite_mesure': m['unite_mesure'],
           'photo': m['photo'],
           'owner_id': ownerId,
+          // ♾️ MODULE 31 — stock non suivi : le serveur doit le savoir, sinon
+          //  il refuserait la vente rejouée (« stock insuffisant »).
+          'stock_illimite': m['stock_illimite'] == 1,
           // 🛡️ ON NE MET PAS 'quantite' ICI
         };
+
+        // 🏷️ MODULE 28 / 💵 MODULE 29 — champs optionnels : on ne les envoie
+        //  que s'ils sont renseignés, pour ne jamais écraser une valeur du
+        //  serveur avec un `null` local.
+        if ((m['code_barre'] ?? '').toString().trim().isNotEmpty) {
+          dataMap['code_barre'] = m['code_barre'];
+        }
+        if ((m['devise'] ?? '').toString().trim().isNotEmpty) {
+          dataMap['devise'] = m['devise'];
+        }
 
         if (isExistingOnSupabase) {
           await _withRetry(() => _sup.updateProduit(p.supabaseId!, dataMap));

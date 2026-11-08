@@ -65,6 +65,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   /// l'entreprise). Un article peut être prixé en dollars dans une boutique
   /// qui tient ses comptes en francs.
   Devise? _deviseChoisie;
+
+  /// ♾️ MODULE 31 — l'article se vend sans suivi de stock.
+  bool _sansStock = false;
   final TextEditingController _quantiteController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -183,6 +186,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
     _deviseChoisie = (article.devise ?? '').trim().isEmpty
         ? null
         : Devise.fromCode(article.devise);
+    _sansStock = article.stockIllimite;
         _quantiteController.text = _champNombre(article.quantite);
         _descriptionController.text = article.description ?? '';
         _codeBarreController.text = article.codeBarre ?? '';
@@ -926,6 +930,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           attributs: attributs,
           codeBarre: codeBarre,
           devise: _deviseChoisie?.code,
+          stockIllimite: _sansStock,
         );
         if (!mounted) return;
         _afficherMessage('Modifications enregistrées.');
@@ -946,6 +951,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           attributs: attributs,
           codeBarre: codeBarre,
           devise: _deviseChoisie?.code,
+          stockIllimite: _sansStock,
         );
         if (!mounted) return;
         context.pop(true);
@@ -1220,6 +1226,28 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                         ],
                         onChanged: (Devise? v) =>
                             setState(() => _deviseChoisie = v),
+                      ),
+                      // ♾️ MODULE 31 — PRODUIT NON COMPTABLE.
+                      Card(
+                        elevation: 0,
+                        margin: const EdgeInsets.only(top: 12),
+                        color: _sansStock
+                            ? Theme.of(context)
+                                .colorScheme
+                                .primaryContainer
+                                .withValues(alpha: 0.35)
+                            : null,
+                        child: SwitchListTile(
+                          value: _sansStock,
+                          onChanged: (bool v) =>
+                              setState(() => _sansStock = v),
+                          title: const Text('Vendre sans suivre le stock'),
+                          subtitle: const Text(
+                            'Produit qui ne peut pas être compté : la caisse '
+                            'vendra toujours, sans contrôle ni décompte.',
+                          ),
+                          secondary: const Icon(Icons.all_inclusive_rounded),
+                        ),
                       ),
                       if (_deviseChoisie != null &&
                           _deviseChoisie !=

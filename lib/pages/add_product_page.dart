@@ -67,6 +67,9 @@ class _AddProductPageState extends State<AddProductPage> {
   /// peut ainsi être prixé en dollars dans une boutique qui tient ses
   /// comptes en francs, et inversement.
   Devise? _deviseChoisie;
+
+  /// ♾️ MODULE 31 — l'article se vend SANS suivi de stock.
+  bool _sansStock = false;
   Future<List<String>> _categoriesFuture = Future.value([]);
   List<String> _categories = []; // Liste remplie par le FutureBuilder
   List<String> _unitOptions = [];
@@ -94,6 +97,7 @@ class _AddProductPageState extends State<AddProductPage> {
         _deviseChoisie = (p.devise ?? '').trim().isEmpty
             ? null
             : Devise.fromCode(p.devise);
+        _sansStock = p.stockIllimite;
         _quantiteController.text = p.quantite.toString();
 
         _selectedCategory = (p.categorie != null && p.categorie!.isNotEmpty)
@@ -387,6 +391,8 @@ class _AddProductPageState extends State<AddProductPage> {
         //  l'article suit alors la devise de la boutique (comportement
         //  historique, aucun changement pour les articles existants).
         devise: _deviseChoisie?.code,
+        // ♾️ MODULE 31 — produit non comptable.
+        stockIllimite: _sansStock,
         createdAt:
             widget.produitToEdit?.createdAt ?? DateTime.now().toIso8601String(),
         ownerId: ownerId,
@@ -879,6 +885,27 @@ class _AddProductPageState extends State<AddProductPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              // ♾️ MODULE 31 — PRODUIT QUI NE SE COMPTE PAS.
+              //  Eau au robinet, service, article fabriqué à la demande :
+              //  le stock ne sera ni contrôlé ni décrémenté.
+              Card(
+                elevation: 0,
+                margin: const EdgeInsets.only(top: 12),
+                color: _sansStock
+                    ? Theme.of(context).colorScheme.primaryContainer
+                        .withValues(alpha: 0.35)
+                    : null,
+                child: SwitchListTile(
+                  value: _sansStock,
+                  onChanged: (bool v) => setState(() => _sansStock = v),
+                  title: const Text('Vendre sans suivre le stock'),
+                  subtitle: const Text(
+                    'Pour les produits qui ne peuvent pas être comptés : la '
+                    'caisse vendra toujours, sans contrôle ni décompte.',
+                  ),
+                  secondary: const Icon(Icons.all_inclusive_rounded),
                 ),
               ),
               if (_deviseChoisie != null &&

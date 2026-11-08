@@ -195,10 +195,19 @@ class ArticleScanne {
   ///
   /// Pour un conditionnement, seuls des emballages COMPLETS sont vendus :
   /// 34 bouteilles et une farde de 12 → 2 fardes vendables.
+  ///
+  /// ♾️ MODULE 31 — un article SANS suivi de stock n'est jamais plafonné :
+  /// il n'est pas comptable (eau au robinet, service, fabrication à la
+  /// demande). On renvoie une valeur très grande plutôt que zéro, sinon la
+  /// ligne serait retirée du panier au lieu d'être vendue.
   double get quantiteMaxVendable {
+    if (article.stockIllimite) return 999999999;
     if (conditionnement == null) return article.quantite;
     return conditionnement!.exemplairesContenusDans(article.quantite).toDouble();
   }
+
+  /// ♾️ MODULE 31 — le stock de cet article n'est pas suivi.
+  bool get sansSuiviDeStock => article.stockIllimite;
 
   /// `true` quand plus rien ne peut être vendu (stock nul ou emballage
   /// incomplet).
