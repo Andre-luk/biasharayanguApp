@@ -13,6 +13,12 @@ class Produit {
   String? supabaseId;
   int? isSynced;
 
+  /// 💵 MODULE 29 — DEVISE DU PRIX de cet article (`CDF`, `USD`).
+  ///
+  /// `null` = devise de l'entreprise. Le prix est conservé tel que saisi :
+  /// la conversion se fait au moment de la vente, au taux du jour.
+  String? devise;
+
   /// 🏷️ MODULE 28 — code-barres FABRICANT de l'article (EAN/UPC).
   ///
   /// Recopié du serveur pour que le LECTEUR USB reconnaisse l'article même
@@ -34,6 +40,7 @@ class Produit {
     this.supabaseId,
     this.isSynced = 0,
     this.codeBarre,
+    this.devise,
   });
 
   DateTime? get updatedAtDate => updatedAt == null ? null : DateTime.tryParse(updatedAt!);
@@ -74,6 +81,7 @@ class Produit {
       'supabase_id': supabaseId,
       'is_synced': isSynced ?? 0,
       'code_barre': codeBarre,
+      'devise': devise,
     };
   }
 
@@ -93,6 +101,7 @@ class Produit {
       supabaseId: _asString(map['supabase_id']),
       isSynced: _asBoolInt(map['is_synced']),
       codeBarre: _asString(map['code_barre']),
+      devise: _asString(map['devise']),
     );
   }
 }
@@ -113,6 +122,7 @@ extension ProduitCopy on Produit {
     String? supabaseId,
     int? isSynced,
     String? codeBarre,
+    String? devise,
   }) {
     return Produit(
       id: id ?? this.id,
@@ -129,6 +139,7 @@ extension ProduitCopy on Produit {
       supabaseId: supabaseId ?? this.supabaseId,
       isSynced: isSynced ?? this.isSynced,
       codeBarre: codeBarre ?? this.codeBarre,
+      devise: devise ?? this.devise,
     );
   }
 }

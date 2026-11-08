@@ -57,6 +57,13 @@ class Article {
   /// marque…} (objet JSON libre, vide si aucune).
   final Map<String, String> attributs;
 
+  /// 💵 MODULE 29 — DEVISE DU PRIX DE CET ARTICLE (`CDF`, `USD`).
+  ///
+  /// `null` = la devise de l'entreprise. Dans une même boutique, un article
+  /// peut être affiché en dollars et l'autre en francs : c'est le prix SAISI
+  /// qui est conservé, la conversion se fait à la vente (taux du jour).
+  final String? devise;
+
   final String? ownerId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -82,6 +89,7 @@ class Article {
     this.vendableAuPoids = false,
     this.stockIllimite = false,
     this.attributs = const <String, String>{},
+    this.devise,
     this.ownerId,
     this.createdAt,
     this.updatedAt,
@@ -109,6 +117,7 @@ class Article {
       vendableAuPoids: map['vendable_au_poids'] == true,
       stockIllimite: map['stock_illimite'] == true,
       attributs: _attributsDepuisJson(map['attributs']),
+      devise: parseStringOrNull(map['devise']),
       ownerId: parseStringOrNull(map['owner_id']),
       createdAt: parseDateTimeOrNull(map['created_at']),
       updatedAt: parseDateTimeOrNull(map['updated_at']),
@@ -140,6 +149,10 @@ class Article {
       if (stockIllimite) 'stock_illimite': true,
       // 👕 MODULE 16 C8 — variantes (mode).
       'attributs': attributs,
+      // 💵 MODULE 29 — devise du prix, si elle diffère de celle de
+      //  l'entreprise. Envoyée uniquement si renseignée : une base non
+      //  migrée continue de fonctionner.
+      if ((devise ?? '').trim().isNotEmpty) 'devise': devise!.trim(),
     };
   }
 
@@ -167,6 +180,7 @@ class Article {
     bool? vendableAuPoids,
     bool? stockIllimite,
     Map<String, String>? attributs,
+    String? devise,
     String? ownerId,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -189,6 +203,7 @@ class Article {
       vendableAuPoids: vendableAuPoids ?? this.vendableAuPoids,
       stockIllimite: stockIllimite ?? this.stockIllimite,
       attributs: attributs ?? this.attributs,
+      devise: devise ?? this.devise,
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

@@ -30,6 +30,8 @@ import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+// 💵 MODULE 29 — prix d'un article affiché dans SA devise.
+import 'package:biashara_yangu/utils/devise_produit.dart';
 // 🪙 MODULE 18 — montants formatés dans la devise de l'entreprise.
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -205,6 +207,8 @@ class _NewSalePageState extends State<NewSalePage> {
                       // le téléphone : le lecteur USB reconnaît l'article
                       // même sans réseau.
                       codeBarre: a.codeBarre,
+                      // 💵 MODULE 29 — la devise du prix de l'article.
+                      devise: a.devise,
                     ),
                   );
 
@@ -743,6 +747,8 @@ class _NewSalePageState extends State<NewSalePage> {
       photo: p.photo,
       ownerId: p.ownerId,
       conditionnements: formats,
+      // 💵 MODULE 29 — la devise du produit accompagne son prix.
+      devise: p.devise,
     );
   }
 
@@ -1392,7 +1398,9 @@ class _NewSalePageState extends State<NewSalePage> {
                     maxLines: 1,
                   ),
                   Text(
-                    '${formatMontant(p.prixVente)} / ${p.uniteMesure}',
+                    // 💵 MODULE 29 — prix dans la devise de l'article,
+                    //  avec l'équivalent dans celle de la boutique.
+                    '${prixArticle(p.prixVente.toDouble(), p.devise)} / ${p.uniteMesure}',
                     style: TextStyle(
                       color: theme.colorScheme.secondary,
                       fontSize: 13,

@@ -14,6 +14,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/article.dart';
+import 'package:biashara_yangu/models/devise.dart';
+import 'package:biashara_yangu/services/devise_service.dart';
+import 'package:biashara_yangu/utils/devise_produit.dart';
 import 'package:biashara_yangu/models/categorie.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/module_activite.dart';
@@ -57,6 +60,11 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
   final TextEditingController _uniteController = TextEditingController();
   final TextEditingController _prixAchatController = TextEditingController();
   final TextEditingController _prixVenteController = TextEditingController();
+
+  /// 💵 MODULE 29 — devise du prix de l'article (`null` = celle de
+  /// l'entreprise). Un article peut être prixé en dollars dans une boutique
+  /// qui tient ses comptes en francs.
+  Devise? _deviseChoisie;
   final TextEditingController _quantiteController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
@@ -172,6 +180,9 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
         _uniteController.text = article.uniteMesure;
         _prixAchatController.text = _champNombre(article.prixAchat);
         _prixVenteController.text = _champNombre(article.prixVente);
+    _deviseChoisie = (article.devise ?? '').trim().isEmpty
+        ? null
+        : Devise.fromCode(article.devise);
         _quantiteController.text = _champNombre(article.quantite);
         _descriptionController.text = article.description ?? '';
         _codeBarreController.text = article.codeBarre ?? '';
@@ -914,6 +925,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           vendableAuPoids: _vendableAuPoids,
           attributs: attributs,
           codeBarre: codeBarre,
+          devise: _deviseChoisie?.code,
         );
         if (!mounted) return;
         _afficherMessage('Modifications enregistrées.');
@@ -933,6 +945,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
           vendableAuPoids: _vendableAuPoids,
           attributs: attributs,
           codeBarre: codeBarre,
+          devise: _deviseChoisie?.code,
         );
         if (!mounted) return;
         context.pop(true);
@@ -1178,6 +1191,50 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                           ),
                         ],
                       ),
+
+                      // 💵 MODULE 29 — DANS QUELLE DEVISE EST CE PRIX ?
+                      //  Un article peut être en dollars et l'autre en
+                      //  francs, dans la même boutique. Le prix est conservé
+                      //  tel quel ; la conversion se fait à la vente.
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<Devise>(
+                        initialValue: _deviseChoisie,
+                        decoration: _decoration('Devise du prix').copyWith(
+                          prefixIcon: const Icon(Icons.currency_exchange),
+                        ),
+                        items: <DropdownMenuItem<Devise>>[
+                          DropdownMenuItem<Devise>(
+                            value: null,
+                            child: Text(
+                              'Devise de la boutique '
+                              '(${DeviseService.instance.symbole})',
+                            ),
+                          ),
+                          ...DeviseService.instance.configuration.devises
+                              .map(
+                            (Devise d) => DropdownMenuItem<Devise>(
+                              value: d,
+                              child: Text('${d.code} — ${d.libelle}'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (Devise? v) =>
+                            setState(() => _deviseChoisie = v),
+                      ),
+                      if (_deviseChoisie != null &&
+                          _deviseChoisie !=
+                              DeviseService.instance.configuration.devise)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            'Prix converti au taux du jour à la vente '
+                            '(1 \$ = ${tauxDuJour.toStringAsFixed(0)} CDF).',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 16),
 
                       // -------------------------------------------- stock

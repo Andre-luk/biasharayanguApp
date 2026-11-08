@@ -39,7 +39,7 @@ class DBHelper {
   // 🔌 V13 — 100 % HORS LIGNE : cache de lecture + conflits de synchronisation.
   // 🧾 V14 — CONDITIONNEMENTS LOCAUX : la caisse sait, SANS RÉSEAU, qu'un
   //          article se vend à l'unité, en farde ou en carton (et à quel prix).
-  static const int _dbVersion = 16;
+  static const int _dbVersion = 17;
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -105,7 +105,8 @@ class DBHelper {
   supabase_id TEXT,
   updated_at TEXT,
   is_synced INTEGER DEFAULT 0,
-  code_barre TEXT
+  code_barre TEXT,
+  devise TEXT
       )
     ''');
 
@@ -407,6 +408,16 @@ CREATE TABLE approvisionnements (
       await _safeAddColumn(db, 'ventes', 'conditionnement_id', 'TEXT');
       await _safeAddColumn(db, 'ventes', 'quantite_vendue', 'REAL');
       debugPrint('✅ Migration V16 terminée.');
+    }
+
+    if (oldVersion < 17) {
+      // 💵 V17 — LA DEVISE DE CHAQUE ARTICLE.
+      //  Un produit peut être prixé en dollars et l'autre en francs, dans la
+      //  MÊME boutique. La colonne est vide pour les articles existants : ils
+      //  gardent la devise de l'entreprise.
+      debugPrint('🚀 Migration V17 : devise par article...');
+      await _safeAddColumn(db, 'produits', 'devise', 'TEXT');
+      debugPrint('✅ Migration V17 terminée.');
     }
   }
 

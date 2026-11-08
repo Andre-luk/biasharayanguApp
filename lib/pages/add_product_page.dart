@@ -13,6 +13,8 @@ import 'package:biashara_yangu/services/image_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 // 🪙 MODULE 18 — devise de travail (suffixes des champs de prix).
+import 'package:biashara_yangu/models/devise.dart';
+import 'package:biashara_yangu/utils/devise_produit.dart';
 import 'package:biashara_yangu/services/devise_service.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -58,6 +60,13 @@ class _AddProductPageState extends State<AddProductPage> {
   // --- Catégories et Unités ---
   String? _selectedCategory; // peut être null = aucune catégorie
   String? _selectedUnit;
+
+  /// 💵 MODULE 29 — DEVISE DU PRIX de cet article.
+  ///
+  /// `null` = devise de l'entreprise (comportement historique). Un article
+  /// peut ainsi être prixé en dollars dans une boutique qui tient ses
+  /// comptes en francs, et inversement.
+  Devise? _deviseChoisie;
   Future<List<String>> _categoriesFuture = Future.value([]);
   List<String> _categories = []; // Liste remplie par le FutureBuilder
   List<String> _unitOptions = [];
@@ -82,6 +91,9 @@ class _AddProductPageState extends State<AddProductPage> {
         _nomController.text = p.nom;
         _prixAchatController.text = p.prixAchat?.toString() ?? '';
         _prixVenteController.text = p.prixVente.toString();
+        _deviseChoisie = (p.devise ?? '').trim().isEmpty
+            ? null
+            : Devise.fromCode(p.devise);
         _quantiteController.text = p.quantite.toString();
 
         _selectedCategory = (p.categorie != null && p.categorie!.isNotEmpty)
@@ -371,6 +383,10 @@ class _AddProductPageState extends State<AddProductPage> {
         quantite: quantite,
         uniteMesure: _selectedUnit ?? T.unitUnity,
         photo: _photoPath,
+        // 💵 MODULE 29 — devise du prix. `null` = celle de l'entreprise :
+        //  l'article suit alors la devise de la boutique (comportement
+        //  historique, aucun changement pour les articles existants).
+        devise: _deviseChoisie?.code,
         createdAt:
             widget.produitToEdit?.createdAt ?? DateTime.now().toIso8601String(),
         ownerId: ownerId,
@@ -822,6 +838,63 @@ class _AddProductPageState extends State<AddProductPage> {
                   ),
                 ],
               ),
+
+              // 💵 MODULE 29 — DANS QUELLE DEVISE EST CE PRIX ?
+              //  Une boutique peut tenir ses comptes en francs et vendre un
+              //  article en dollars (ou l'inverse). Le prix saisi reste tel
+              //  quel ; la conversion se fait à la vente, au taux du jour.
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: DropdownButtonFormField<Devise>(
+                        // `null` = la devise de l'entreprise.
+                        initialValue: _deviseChoisie,
+                        decoration: InputDecoration(
+                          labelText: 'Devise du prix',
+                          prefixIcon: const Icon(Icons.currency_exchange),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: <DropdownMenuItem<Devise>>[
+                          DropdownMenuItem<Devise>(
+                            value: null,
+                            child: Text(
+                              'Devise de la boutique '
+                              '(${DeviseService.instance.symbole})',
+                            ),
+                          ),
+                          ...DeviseService.instance.configuration.devises
+                              .map(
+                            (Devise d) => DropdownMenuItem<Devise>(
+                              value: d,
+                              child: Text('${d.code} — ${d.libelle}'),
+                            ),
+                          ),
+                        ],
+                        onChanged: (Devise? v) =>
+                            setState(() => _deviseChoisie = v),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_deviseChoisie != null &&
+                  _deviseChoisie !=
+                      DeviseService.instance.configuration.devise)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Ce prix sera converti au taux du jour à la vente '
+                    '(1 \$ = ${tauxDuJour.toStringAsFixed(0)} CDF).',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
 
               // 5. Quantité et Unité de Mesure

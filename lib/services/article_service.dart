@@ -255,6 +255,7 @@ class ArticleService {
     bool stockIllimite = false,
     Map<String, String> attributs = const <String, String>{},
     String? codeBarre,
+    String? devise,
   }) {
     return _executer(
       () async {
@@ -290,6 +291,9 @@ class ArticleService {
               'attributs': attributs,
               // 🏷️ CORRECTIF 59 — code-barres fabricant du produit.
               'code_barre': _texteOuNull(codeBarre),
+              // 💵 MODULE 29 — devise du prix (`null` = celle de
+              //  l'entreprise : colonne laissée vide, comportement d'avant).
+              'devise': _texteOuNull(devise),
               'owner_id': proprietaire,
             })
             .select()
@@ -352,6 +356,7 @@ class ArticleService {
     bool vendableAuPoids = false,
     Map<String, String> attributs = const <String, String>{},
     String? codeBarre,
+    String? devise,
   }) {
     return _executer(
       () async {
@@ -385,6 +390,8 @@ class ArticleService {
               // 🏷️ CORRECTIF 59 — code-barres fabricant du produit
               //  (vidé ici si le champ a été effacé dans le formulaire).
               'code_barre': _texteOuNull(codeBarre),
+              // 💵 MODULE 29 — devise du prix (vidée = devise entreprise).
+              'devise': _texteOuNull(devise),
             })
             .eq('id', id)
             .select()

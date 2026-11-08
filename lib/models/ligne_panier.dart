@@ -63,7 +63,17 @@ class LignePanier {
   String get nom => vendu.nom;
 
   /// Prix d'une unité vendue (relu dans la base au moment du scan).
-  double get prixUnitaire => vendu.prixUnitaire;
+  ///
+  /// 💵 MODULE 29 — TOUJOURS dans la devise de l'ENTREPRISE : un article
+  /// prixé en dollars est converti au taux du jour. Les totaux du panier,
+  /// de la facture et de la caisse restent ainsi dans une seule monnaie.
+  double get prixUnitaire => vendu.prixUnitaireEntreprise;
+
+  /// Prix dans la devise de l'ARTICLE (affichage seulement).
+  double get prixUnitaireDevise => vendu.prixUnitaire;
+
+  /// Devise du prix de l'article (`null` = celle de l'entreprise).
+  String? get devise => vendu.devise;
 
   /// Prix unitaire RÉELLEMENT appliqué (négocié s'il existe).
   double get prixUnitaireEffectif => estCadeau ? 0 : (prixNegocie ?? prixUnitaire);

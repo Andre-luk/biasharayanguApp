@@ -18,6 +18,7 @@
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/produit.dart';
+import 'package:biashara_yangu/utils/devise_produit.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 /// Article (et éventuel conditionnement) identifié par un scan.
@@ -101,6 +102,8 @@ class ArticleScanne {
         uniteMesure: produit.uniteMesure,
         photo: produit.photo,
         ownerId: produit.ownerId,
+        // 💵 MODULE 29 — la devise suit l'article jusqu'au panier.
+        devise: produit.devise,
       ),
       conditionnement: conditionnement,
       idServeurEnAttente: idServeur == null,
@@ -140,7 +143,24 @@ class ArticleScanne {
 
   /// Prix de vente d'UNE unité vendue (unité de base ou un exemplaire
   /// d'emballage) — lu dans la base au moment du scan.
+  ///
+  /// 💵 MODULE 29 — ce prix est exprimé dans la devise de l'ARTICLE
+  /// (`article.devise`), celle que le commerçant a saisie.
   double get prixUnitaire => conditionnement?.prixVente ?? article.prixVente;
+
+  /// 💵 MODULE 29 — le même prix, converti dans la devise de l'ENTREPRISE.
+  ///
+  /// C'est cette valeur qui alimente le panier, la facture et la caisse : on
+  /// n'additionne jamais deux devises. Le taux est celui du jour.
+  double get prixUnitaireEntreprise =>
+      versDeviseEntreprise(prixUnitaire, article.devise);
+
+  /// Devise du prix de cet article (`null` = celle de l'entreprise).
+  String? get devise => article.devise;
+
+  /// Le prix est-il dans une autre devise que celle de l'entreprise ?
+  bool get deviseDifferenteDeEntreprise =>
+      deviseDifferente(article.devise);
 
   /// Unité vendue : le libellé du conditionnement, ou l'unité de base.
   String get uniteVente =>
