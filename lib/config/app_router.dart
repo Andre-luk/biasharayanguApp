@@ -172,6 +172,7 @@ import 'package:biashara_yangu/pages/politique_confidentialite_page.dart';
 // ========== MODULE 14 : ACTIVATION À DOUBLE VALIDATION ==========
 import 'package:biashara_yangu/pages/activations_finance_page.dart';
 import 'package:biashara_yangu/pages/finance_abonnements_page.dart';
+import 'package:biashara_yangu/pages/notes_credit_page.dart';
 // 🛡️ MODULE 20 — administration plateforme (audit final) : parc des boutiques
 // et modération du catalogue public.
 import 'package:biashara_yangu/pages/admin_boutiques_page.dart';
@@ -410,6 +411,14 @@ final GoRouter appRouter = GoRouter(
       path: '/admin/finance-abonnements',
       name: 'admin-finance-abonnements',
       builder: (context, state) => const FinanceAbonnementsPage(),
+    ),
+
+    // 🧾 MODULE 32 — AVOIRS / NOTES DE CRÉDIT : rendre de l'argent sans
+    //  annuler la vente d'origine.
+    GoRoute(
+      path: '/notes-credit',
+      name: 'notes-credit',
+      builder: (context, state) => const NotesCreditPage(),
     ),
 
     // 🛡️ MODULE 20 — ADMINISTRATION PLATEFORME (audit final) : parc des

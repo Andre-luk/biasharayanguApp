@@ -208,6 +208,19 @@ abstract final class CatalogueParametres {
       action: ActionAccess.modifier,
       priorite: 15,
     ),
+    // 🧾 MODULE 32 — avoirs : rendre de l'argent sans annuler la vente.
+    ParametreApp(
+      id: 'notes-credit',
+      section: SectionParametres.boutique,
+      titre: (AppLocalizations T) => 'Avoirs & notes de crédit',
+      sousTitre: (AppLocalizations T) =>
+          'Rembourser un retour ou une erreur de prix, sans supprimer la vente',
+      icone: Icons.receipt_long_rounded,
+      route: 'notes-credit',
+      page: PageAccess.caisse,
+      action: ActionAccess.creer,
+      priorite: 16,
+    ),
     ParametreApp(
       id: 'devise',
       section: SectionParametres.boutique,
