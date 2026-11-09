@@ -425,14 +425,28 @@ class EntrepriseService {
   }) {
     return _executer(
       () async {
+        // 🩹 CORRECTIF — UNE CHAÎNE VIDE N'EST PAS UN UUID.
+        //
+        // Les listes déroulantes renvoient '' quand rien n'est choisi. Envoyé
+        // tel quel à une fonction qui attend un `uuid`, PostgreSQL répondait
+        //   42883/22P02 « la valeur transmise n'est pas valide pour la base »
+        // et la création du compte échouait sans explication utile.
+        String? uuidOuNull(String? valeur) {
+          final String texte = (valeur ?? '').trim();
+          if (texte.isEmpty || texte.toLowerCase() == 'null') return null;
+          return texte;
+        }
+
         final dynamic reponse = await _client.rpc(
           'rpc_admin_entreprise_creer',
           params: <String, dynamic>{
             'p_nom': nom.trim(),
-            'p_ville_id': villeId,
-            'p_activite_id': activiteId,
-            'p_groupe_tarifaire_id': groupeTarifaireId,
-            'p_type_espace': typeEspace,
+            'p_ville_id': uuidOuNull(villeId),
+            'p_activite_id': uuidOuNull(activiteId),
+            'p_groupe_tarifaire_id': uuidOuNull(groupeTarifaireId),
+            'p_type_espace': (typeEspace ?? '').trim().isEmpty
+                ? 'boutique'
+                : typeEspace.trim(),
             'p_proprietaire_nom': proprietaireNom.trim(),
             'p_proprietaire_prenom': (proprietairePrenom ?? '').trim().isEmpty
                 ? null

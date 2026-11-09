@@ -229,10 +229,11 @@ class _ApprovisionnementFormPageState extends State<ApprovisionnementFormPage> {
       setState(() => _erreur = 'Saisissez une quantité supérieure à zéro.');
       return;
     }
-    if (prixBase == null) {
-      setState(() => _erreur = "Saisissez un prix d'achat valide (0 accepté).");
-      return;
-    }
+    // 💰 MODULE 34 — LE PRIX D'ACHAT EST FACULTATIF.
+    //  Un commerçant qui rentre une marchandise reçue en cadeau, un retour
+    //  client ou un stock initial ne connaît pas toujours le prix. Vider le
+    //  champ enregistre 0 au lieu de bloquer l'entrée de stock.
+    final double prixEffectif = prixBase ?? 0;
 
     setState(() {
       _enregistrement = true;
@@ -243,7 +244,7 @@ class _ApprovisionnementFormPageState extends State<ApprovisionnementFormPage> {
       final ResultatApprovisionnement resultat = await _service.approvisionner(
         produitId: article.id,
         quantiteUnitesBase: quantiteBase,
-        prixAchatUnitaire: prixBase,
+        prixAchatUnitaire: prixEffectif,
         fournisseur: _fournisseurController.text,
         dateApprovisionnement: _date,
       );
@@ -467,11 +468,14 @@ class _ApprovisionnementFormPageState extends State<ApprovisionnementFormPage> {
               controller: _prixController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
-                labelText: "Prix d'achat (par ${unite.libelle})",
+                // 💰 MODULE 34 — facultatif : laissez vide si vous ne
+                //  connaissez pas le prix d'achat (cadeau, retour, stock
+                //  initial). 0 est alors enregistré.
+                labelText: "Prix d'achat (par ${unite.libelle}) — facultatif",
                 prefixIcon: const Icon(Icons.payments_outlined),
                 helperText: (prixBase != null && !unite.estBase)
                     ? '= ${formatMontant(prixBase)} par ${article.uniteMesure}'
-                    : null,
+                    : 'Laissez vide si le prix est inconnu',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 isDense: true,
               ),

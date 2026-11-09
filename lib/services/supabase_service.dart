@@ -131,6 +131,33 @@ class SupabaseService {
   // AUTHENTICATION
   // ---------------------------------------------------------------------------
 
+  /// Traduit une erreur d'authentification en message clair (français).
+  ///
+  /// Sans cela, le commerçant voyait « invalid_credentials » ou une exception
+  /// brute du SDK au lieu de « mot de passe trop court ».
+  String _messageAuth(AuthException e) {
+    final String code = (e.code ?? '').toLowerCase();
+    switch (code) {
+      case 'user_already_exists':
+        return 'Un compte existe déjà avec cet e-mail.';
+      case 'weak_password':
+        return 'Mot de passe trop court : utilisez au moins 6 caractères.';
+      case 'validation_failed':
+        return 'E-mail invalide : vérifiez l\'adresse saisie.';
+      case 'email_address_invalid':
+        return 'Cette adresse e-mail n\'est pas valide.';
+      case 'signup_disabled':
+        return 'La création de compte est désactivée : contactez la plateforme.';
+      case 'over_email_send_rate_limit':
+        return 'Trop de tentatives : patientez une minute avant de réessayer.';
+      default:
+        final String texte = e.message.trim();
+        return texte.isEmpty
+            ? 'La création du compte a échoué : réessayez.'
+            : texte;
+    }
+  }
+
   Future<Utilisateur> signUpUser({
     required String email,
     required String password,
@@ -150,33 +177,24 @@ class SupabaseService {
         if (avatar != null && avatar.isNotEmpty) 'avatar': avatar,
       };
 
-      // Call signUp in a way that tolerates different SDK signatures
-      final authDynamic = _client.auth as dynamic;
-      dynamic res;
+      // 🔴 CORRECTIF — `signUp` s'appelle avec des PARAMÈTRES NOMMÉS.
+      //
+      // L'ancienne version essayait plusieurs formes en `dynamic`, dont
+      // `signUp(email, password)` (positionnel) : sur le SDK actuel, cet
+      // appel n'existe pas et provoquait
+      //   « NoSuchMethodError: class 'GotrueClient' has no instance method
+      //     "signup" »
+      // — un message d'autant plus trompeur que dart2js minifie le nom de la
+      // méthode sur le web. On appelle donc la seule forme valide, une fois.
+      final dynamic res;
       try {
-        // Try newer/older SDK signatures with metadata where supported
-        // 1) try data parameter (Supabase SDK v2+)
-        try {
-          res = await authDynamic.signUp(
-              email: email, password: password, data: metadata);
-        } catch (_) {
-          // 2) try userMetadata param (older versions)
-          try {
-            res = await authDynamic.signUp(
-                email: email, password: password, userMetadata: metadata);
-          } catch (_) {
-            // 3) fallback: plain signUp without metadata (trigger won't get metadata)
-            res = await authDynamic.signUp(email: email, password: password);
-          }
-        }
-      } catch (e) {
-        // As a last attempt, call signUp without named args (some sdk older)
-        try {
-          res = await authDynamic.signUp(email, password);
-        } catch (e2) {
-          debugPrint('signUp invocation failed: $e / $e2');
-          rethrow;
-        }
+        res = await _client.auth.signUp(
+          email: email,
+          password: password,
+          data: metadata,
+        );
+      } on AuthException catch (e) {
+        throw Exception(_messageAuth(e));
       }
 
       // Normalize user object from response (various sdk shapes)

@@ -131,6 +131,40 @@ class NoteCreditService {
     }
   }
 
+  /// 🧾 MODULE 34 — REMET EN STOCK la marchandise rendue.
+  ///
+  /// [lignes] = `[{'produit_id': 12, 'quantite': 3, 'prix_achat': 800}]`
+  /// — la quantité est en UNITÉS DE BASE, le prix d'achat est FACULTATIF.
+  Future<void> retourStock(
+    String noteId,
+    List<Map<String, dynamic>> lignes,
+  ) async {
+    if (noteId.trim().isEmpty) {
+      throw const NoteCreditException('Avoir inconnu.');
+    }
+    if (lignes.isEmpty) {
+      throw const NoteCreditException(
+        'Indiquez au moins un article à remettre en stock.',
+      );
+    }
+    try {
+      await _client.rpc(
+        'avoir_retour_stock',
+        params: <String, dynamic>{
+          'p_note_id': noteId,
+          'p_lignes': lignes,
+        },
+      );
+    } on PostgrestException catch (e) {
+      throw NoteCreditException(_message(e.message));
+    } catch (e) {
+      debugPrint('NoteCreditService.retourStock : $e');
+      throw const NoteCreditException(
+        'Impossible de remettre en stock : vérifiez votre réseau.',
+      );
+    }
+  }
+
   // ---------------------------------------------------------------------------
 
   String? _date(DateTime? valeur) {

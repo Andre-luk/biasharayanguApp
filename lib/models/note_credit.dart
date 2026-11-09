@@ -62,6 +62,7 @@ class NoteCredit {
     this.annuleLe,
     this.motifAnnulation,
     this.auteur,
+    this.retourStockLe,
   });
 
   final String id;
@@ -88,7 +89,15 @@ class NoteCredit {
   /// Qui a émis l'avoir.
   final String? auteur;
 
+  /// 📦 MODULE 34 — date de la remise en stock de la marchandise rendue.
+  ///
+  /// `null` = la marchandise n'est pas (encore) revenue en boutique.
+  final DateTime? retourStockLe;
+
   bool get estAnnule => statut == StatutAvoir.annule;
+
+  /// La marchandise de cet avoir peut-elle encore être remise en stock ?
+  bool get peutRentrerEnStock => !estAnnule && retourStockLe == null;
 
   bool get estRemboursement => type == TypeAvoir.remboursement;
 
@@ -115,6 +124,7 @@ class NoteCredit {
       annuleLe: parseDateTimeOrNull(map['annule_le']),
       motifAnnulation: parseStringOrNull(map['motif_annulation']),
       auteur: parseStringOrNull(map['auteur']),
+      retourStockLe: parseDateTimeOrNull(map['retour_stock_le']),
     );
   }
 }

@@ -94,6 +94,22 @@ réponse incomplète tolérée, montant entier ou texte.
 `abonnement_a_payer_test.dart` — **4 tests dédiés** : hausse avec complément,
 baisse sans rien à payer (crédit noté), échéance passée, réponse vide.
 
+## 4 quinquies. Module 34 — document d'avoir & retour de marchandise
+
+`avoir_pdf_test.dart` — **19 tests** :
+- nom du fichier PDF sûr (`avoir-AV-….pdf`, ni espace ni caractère interdit) ;
+- message WhatsApp correct pour un AVOIR et pour un REMBOURSEMENT, poli quand
+  le client n'est pas nommé, sans motif inventé ;
+- normalisation des numéros pour `wa.me` (`+243`, `0…`, `00…`, déjà propre) ;
+- le document A4 se construit réellement (avoir simple, avec marchandise
+  rendue, avoir annulé) : les octets produits commencent par `%PDF` ;
+- règles du retour : possible sur un avoir ÉMIS, refusé si l'avoir est ANNULÉ
+  ou si la marchandise est déjà revenue (`retour_stock_le`).
+
+Côté serveur, `avoir_retour_stock` refuse un second retour
+(`RETOUR_DEJA_FAIT`) et remonte le stock par la fonction officielle
+`rpc_stock_approvisionner`, avec **prix d'achat facultatif** (0 si inconnu).
+
 ## 5. Migrations SQL validées
 
 Analyse syntaxique PostgreSQL (`pgsql-parser` + `plpgsql-parser`) :
@@ -111,6 +127,7 @@ Analyse syntaxique PostgreSQL (`pgsql-parser` + `plpgsql-parser`) :
 | 0116 — vente sans stock | 1 (`rpc_vente_valider`) |
 | 0117 — avoirs | 4 |
 | 0118 — changement de forfait | 1 |
+| 0119 — retour de marchandise | 2 (`avoir_retour_stock`, `note_credit_lister`) |
 
 ---
 

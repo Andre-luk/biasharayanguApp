@@ -199,18 +199,24 @@ begin
      where vente_id = p_vente_id
        and statut = 'EMIS';
 
-    v_total := coalesce(v_vente.prix, 0)
-             + coalesce((
-                 select sum(v2.prix)
-                   from public.ventes v2
-                  where v2.vente_uuid = v_vente.vente_uuid
-               ), 0);
+    -- 🧾 « ventes » contient UNE LIGNE PAR ARTICLE : le montant de la vente
+    --  est la somme de toutes les lignes qui partagent le même `vente_uuid`.
+    --  Certaines ventes anciennes n'ont pas de `vente_uuid` : on retombe
+    --  alors sur la seule ligne concernée.
+    select coalesce(sum(v2.prix), 0)
+      into v_total
+      from public.ventes v2
+     where (v_vente.vente_uuid is not null and v2.vente_uuid = v_vente.vente_uuid)
+        or (v_vente.vente_uuid is null and v2.id = v_vente.id);
 
-    -- Le contrôle porte sur la ligne de vente concernée : on ne peut pas
-    -- rembourser plus que ce qui a été encaissé.
-    if v_deja + p_montant > coalesce(v_vente.prix, 0) + 0.01 then
+    if v_total <= 0 then
+      v_total := coalesce(v_vente.prix, 0);
+    end if;
+
+    -- On ne peut pas rendre plus que ce qui a été encaissé.
+    if v_deja + p_montant > v_total + 0.01 then
       raise exception 'AVOIR_SUPERIEUR|Le total des avoirs dépasse le montant de la vente (% restant).',
-        round(coalesce(v_vente.prix, 0) - v_deja, 2);
+        round(greatest(v_total - v_deja, 0), 2);
     end if;
   end if;
 
@@ -266,7 +272,7 @@ comment on function public.note_credit_creer(numeric, text, text, uuid, text, uu
 
 revoke all on function public.note_credit_creer(numeric, text, text, uuid, text, uuid, text, text, text, uuid)
   from public, anon;
-grant execute on function public.note_credit_creer(numeric, text, text, uuid, text, text, uuid, text, text, text, uuid)
+grant execute on function public.note_credit_creer(numeric, text, text, uuid, text, uuid, text, text, text, uuid)
   to authenticated;
 
 
