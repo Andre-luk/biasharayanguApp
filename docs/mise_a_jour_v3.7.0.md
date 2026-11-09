@@ -52,6 +52,96 @@ WhatsApp ou en impression.
 > **À faire une fois :** Paramètres → Boutique → **Identité de l'établissement**
 > pour renseigner vos mentions légales.
 
+### 1.4 Vos fardes et vos sachets se vendent enfin correctement
+
+Un article vendu en **conditionnement** (farde de 12, sachet de 500 g, carton
+de 24) apparaissait comme invisible : on l'ajoutait au panier, rien ne
+s'affichait dans le tableau de bord, et rien n'était enregistré avant le clic
+sur « Valider la vente ».
+
+Désormais :
+
+- chaque **format** a sa propre ligne dans le panier, avec son nom, son prix et
+  un compteur `+` / `−` ;
+- le compteur de la fiche article compte les **unités de base** réellement
+  disponibles (« 3 fardes = 36 unités ») ;
+- la quantité en farde est enregistrée **avec son conditionnement** : la vente
+  est relue correctement sur le serveur, le soir comme le lendemain.
+
+### 1.5 💵 Le prix d'un article peut être en dollars
+
+À la création ou à la modification d'un article, un champ **« Devise du prix »**
+permet de choisir la devise de la boutique (franc congolais) ou le **dollar**.
+L'écran affiche en dessous le **taux du jour** et l'équivalent, pour éviter les
+surprises. Le prix est conservé tel que saisi ; la conversion se fait au moment
+de la vente, et la facture indique les deux montants.
+
+### 1.6 ♾️ Vendre un article sans suivre son stock
+
+Certains articles ne se comptent pas (eau au robinet, service, article fabriqué
+à la demande, produit vendu au poids approximatif). Un interrupteur
+**« Vendre sans suivre le stock »** dans la fiche article suffit : le stock
+n'est alors ni contrôlé ni décroché, la fiche affiche **∞** et l'article ne
+bloque plus jamais une vente.
+
+### 1.7 Payer plusieurs mois d'avance
+
+« Payer mon abonnement » propose maintenant la durée : **1, 3, 6 ou 12 mois**.
+L'écran annonce le montant exact et la nouvelle échéance estimée avant le
+paiement. Les mois achetés s'ajoutent aux jours restants — aucun jour payé
+n'est perdu.
+
+### 1.8 🔌 Un vrai lecteur de codes-barres USB
+
+Le lecteur laser (type *Moss 650 nm*, prise USB) fonctionne maintenant comme
+un clavier : on scanne, l'article est ajouté au panier, sans toucher l'écran.
+
+- le code-barres **fabricant** (EAN/UPC), le **QR de la boutique** et le code
+  de chaque **conditionnement** sont reconnus ;
+- la saisie normale au clavier n'est **jamais** interceptée ;
+- un lecteur réglé en **QWERTY** sur un clavier **AZERTY** est corrigé
+  automatiquement ;
+- sans réseau, les articles déjà connus de l'appareil sont reconnus quand
+  même.
+
+### 1.9 🧾 Avoirs et notes de crédit
+
+Rendre de l'argent à un client ne doit **jamais** annuler la vente d'origine.
+L'écran **« Avoirs & notes de crédit »** émet un document séparé, numéroté
+`AV-AAAAMMJJ-NNNN` :
+
+- type **Avoir** (somme à valoir) ou **Remboursement** (argent rendu) ;
+- montant, motif, client, facture d'origine ;
+- **plafond vérifié par le serveur** : impossible de rendre plus que ce qui a
+  été encaissé ;
+- **jamais de suppression** : un avoir se marque « ANNULÉ » avec son motif.
+
+Chaque avoir produit un **PDF A4 imprimable** (impression, téléchargement,
+partage, WhatsApp) portant le nom, l'adresse et les mentions légales de
+l'établissement, la référence de la facture d'origine et la mention
+« Solution fournie par Biashara Group ».
+
+### 1.10 📦 Le retour de marchandise revient en stock
+
+Quand le client rapporte la marchandise, l'avoir propose
+**« Remettre la marchandise en stock »** : on choisit l'article et la quantité,
+et le stock remonte immédiatement, avec un mouvement d'approvisionnement au nom
+de l'avoir.
+
+Le **prix d'achat est facultatif** — on ne le connaît pas toujours. Laissez le
+champ vide : le mouvement est enregistré sans prix, aucun montant n'est
+inventé. Un même avoir ne peut pas servir deux fois : le serveur refuse le
+deuxième retour.
+
+### 1.11 Changer de forfait sans perdre d'argent
+
+Depuis « Mon abonnement », le propriétaire peut passer à un autre forfait. Le
+prix est calculé **au prorata des jours restants** :
+
+- **hausse** : l'écran indique le **complément à payer** ;
+- **baisse** : rien à payer, le **crédit** des jours restants est noté ;
+- les dates d'échéance ne bougent pas et l'opération est journalisée.
+
 ---
 
 ## 2. Ce qui change pour la Finance et le Super Admin
@@ -87,14 +177,30 @@ Quand SerdiPay ne communique pas une information (frais, nom du payeur), l'écra
 
 Dans l'éditeur SQL de Supabase :
 
-1. `supabase/migrations/20260916000110_fix_vente_conditionnement.sql`
+1. `20260916000110_fix_vente_conditionnement.sql`
    → débloque la vente avec remise / négociation.
-2. `supabase/migrations/20260916000111_identite_etablissement_et_finance.sql`
+2. `20260916000111_identite_etablissement_et_finance.sql`
    → identité de l'établissement, en-tête de facture, RPC Finance.
-3. `supabase/migrations/20260916000112_payer_meme_en_essai.sql`
+3. `20260916000112_payer_meme_en_essai.sql`
    → paiement pendant l'essai + prolongation sans perte de jours.
-4. `supabase/migrations/20260916000113_finance_rapprochement.sql`
+4. `20260916000113_finance_rapprochement.sql`
    → dossier financier par boutique et rapprochement SerdiPay.
+5. `20260916000114_devise_par_produit.sql`
+   → prix d'un article en dollars ou en francs.
+6. `20260916000115_paiement_plusieurs_mois.sql`
+   → paiement de 1, 3, 6 ou 12 mois en une fois.
+7. `20260916000116_vente_sans_stock.sql`
+   → article vendu sans suivi de stock.
+8. `20260916000117_avoirs_notes_credit.sql`
+   → avoirs et notes de crédit. **À rejouer** si la première tentative s'est
+   arrêtée sur `42883 : function note_credit_creer(...) does not exist`.
+9. `20260916000118_changement_forfait.sql`
+   → changement de forfait au prorata.
+10. `20260916000119_avoir_retour_stock.sql`
+    → remise en stock de la marchandise rendue (prix d'achat facultatif) et
+    liste des avoirs enrichie.
+
+Chaque script est **idempotent** : on peut le rejouer sans risque.
 
 ---
 
@@ -103,15 +209,22 @@ Dans l'éditeur SQL de Supabase :
 | Contrôle | Résultat |
 |---|---|
 | `dart analyze lib` | 0 erreur |
-| `flutter test` | **1240 tests** réussis |
-| Migrations 0108 → 0113 | Analyse syntaxique PostgreSQL OK |
+| `flutter test` | **1324 tests** réussis |
+| Migrations 0108 → 0119 | Analyse syntaxique PostgreSQL OK (60 fonctions) |
+| Document d'avoir | 19 tests dédiés (nom de fichier, WhatsApp, PDF, retour) |
 
 ---
 
 ## 5. Ce qui n'est pas encore fait
 
-- **Paiement de plusieurs mois à l'avance** : le client peut payer son prochain
-  cycle par anticipation, mais pas encore 3 ou 6 mois en une seule transaction
-  (le moteur de prolongation raisonne en cycles de 30 jours).
-- **Avoir / note de crédit** sur une facture déjà émise.
-- **Changement de forfait** à la hausse ou à la baisse en cours de cycle.
+- **Impression d'un avoir depuis l'écran de vente** : l'avoir s'émet depuis
+  l'écran « Avoirs & notes de crédit », pas encore d'un simple appui sur une
+  ligne de l'historique des ventes.
+- **Devises dans les rapports** : une vente payée en dollars est convertie
+  pour les totaux, mais les rapports n'affichent pas encore le détail par
+  devise d'origine.
+- **Paiement par carte** : le moteur et l'écran sont prêts, l'ouverture du
+  canal auprès du prestataire reste à faire.
+- **Publication sur les stores** (Play Store / App Store) : les paquets sont
+  signés en debug ; voir `docs/publication_app.md` (§ keystore) avant toute
+  mise en ligne publique.
