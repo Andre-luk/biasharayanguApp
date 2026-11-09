@@ -994,6 +994,34 @@ class _NewSalePageState extends State<NewSalePage> {
   void _triggerImmediateSync() {
     SyncService.instance.syncAll().then((_) async {
       debugPrint("🚀 Sync OK");
+
+      // ⚠️ DÉFAUT RÉEL CORRIGÉ — « la facture sort mais le tableau de bord ne
+      //    bouge pas ».
+      //    L'accueil lit ses chiffres sur le SERVEUR (`rpc_accueil_stats`) à
+      //    travers un cache de 10 minutes. Une vente passée par la caisse est
+      //    d'abord écrite en LOCAL puis envoyée ici : si l'écran relisait les
+      //    statistiques avant la fin de cet envoi, il mémorisait pour dix
+      //    minutes une réponse SANS la vente. C'est pour cela que la vente
+      //    « n'apparaissait » que lorsqu'elle était validée autrement (panier,
+      //    qui passe directement par le serveur).
+      //    ⇒ On prévient maintenant les écrans APRÈS la synchronisation :
+      //      `signale()` jette la réponse d'accueil périmée (DonneesService).
+      DonneesService.instance.signale('vente-caisse-synchronisee');
+
+      if (mounted) {
+        // Une vente peut légitimement rester en attente (produit pas encore
+        // envoyé, stock serveur, réseau). Mieux vaut le DIRE que laisser
+        // croire à une vente perdue.
+        final int attente = SyncService.instance.ventesEnAttente;
+        if (attente > 0) {
+          _showSnackBar(
+            'Vente enregistrée sur ce téléphone. Envoi en attente : '
+            '${SyncService.instance.dernierMotifVenteBloquee ?? 'réseau indisponible'}',
+          );
+        }
+      }
+
+      if (!mounted) return;
       await _reloadData(showLoading: false, syncBeforeLoad: false);
     }).catchError((e) {
       debugPrint("⚠️ Sync Fail: $e");

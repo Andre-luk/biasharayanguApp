@@ -16,7 +16,11 @@
 // stock ajusté) prévient ici, et les écrans qui affichent des totaux
 // s'abonnent. Un seul point d'écoute, aucune dépendance croisée entre pages.
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+
+import 'package:biashara_yangu/services/tableau_bord_stats_service.dart';
 
 /// Canal d'annonce des écritures de données.
 ///
@@ -42,6 +46,14 @@ class DonneesService {
   void signale([String motif = '']) {
     dernierMotif = motif;
     revision.value = revision.value + 1;
+
+    // 🧹 Une écriture qui change les totaux rend PÉRIMÉE la réponse
+    // d'accueil gardée en cache : on la jette pour que le prochain
+    // affichage interroge réellement le serveur (sinon l'écran peut rester
+    // dix minutes sur les chiffres d'avant la vente). Best-effort : cette
+    // invalidation ne bloque jamais l'appelant.
+    unawaited(TableauBordStatsService.instance.invalider());
+
     if (kDebugMode) {
       debugPrint('DonneesService : rafraichissement ($motif)');
     }

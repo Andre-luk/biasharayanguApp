@@ -12,10 +12,8 @@
 // collaborateurs voient donc exactement la même chose).
 
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/services/cache_lecture.dart';
-import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// Chiffres du tableau de bord.
@@ -55,6 +53,22 @@ class TableauBordStatsService {
   TableauBordStatsService._();
 
   static final TableauBordStatsService instance = TableauBordStatsService._();
+
+  /// 🧹 JETTE LA RÉPONSE MISE EN CACHE.
+  ///
+  /// ⚠️ Défaut réel corrigé ici : l'accueil lit `rpc_accueil_stats` **via le
+  /// cache de lecture** (validité 10 minutes). Après une vente, l'écran
+  /// pouvait donc réafficher pendant dix minutes des chiffres d'AVANT la
+  /// vente — « la facture est donnée mais le tableau de bord ne bouge pas ».
+  /// Toute écriture qui change les totaux doit donc invalider cette clé.
+  Future<void> invalider() async {
+    try {
+      await CacheLecture.instance
+          .oublier(CacheLecture.cleRpc('rpc_accueil_stats'));
+    } catch (e) {
+      debugPrint('TableauBordStatsService.invalider (ignoré) : $e');
+    }
+  }
 
   /// `null` si le serveur ne répond pas (l'appelant garde alors ses chiffres
   /// locaux — jamais un écran vide).
