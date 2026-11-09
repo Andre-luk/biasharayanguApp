@@ -567,6 +567,8 @@ class PermissionService {
     // 🧺 MODULE 35 — PRESSING : dépôts et commandes (atelier et retraits
     // auront leurs propres règles).
     _RegleRoute('/main/pressing/depots', PageAccess.pressingDepots),
+    _RegleRoute('/main/pressing/atelier', PageAccess.pressingAtelier),
+    _RegleRoute('/main/pressing/retraits', PageAccess.pressingRetraits),
     // 🏨 MODULE 16 C2 — HÔTEL : chambres, planning et réception (le module
     // de l'activité masque déjà les écrans hors hôtel).
     _RegleRoute('/main/hotel/chambres', PageAccess.chambres),

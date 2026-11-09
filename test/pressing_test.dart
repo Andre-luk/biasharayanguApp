@@ -458,6 +458,59 @@ void main() {
     });
   });
 
+  group('PressingLigneAtelier — la file de travail', () {
+    Map<String, dynamic> brut() => <String, dynamic>{
+          'ligne_id': 'l1',
+          'commande_id': 'cmd-1',
+          'numero': 'PR-2026-000001',
+          'position': 3,
+          'designation': 'Chemise blanche',
+          'categorie_nom': 'Chemise',
+          'prestation_nom': 'Lavage et repassage',
+          'client_nom': 'Mama Sarah',
+          'marque': 'Zara',
+          'couleur': 'Blanc',
+          'taille': 'L',
+          'defauts': 'tache au col',
+          'etape_code': 'REPASSAGE',
+          'etape_libelle': 'Repassage',
+          'est_prete': false,
+          'urgence': true,
+          'en_retard': true,
+        };
+
+    test('se lit complètement avec son dossier', () {
+      final PressingLigneAtelier l = PressingLigneAtelier.fromMap(brut());
+      expect(l.ligneId, 'l1');
+      expect(l.commandeId, 'cmd-1');
+      expect(l.numero, 'PR-2026-000001');
+      expect(l.position, 3);
+      expect(l.etapeCode, 'REPASSAGE');
+      expect(l.etapeLibelle, 'Repassage');
+      expect(l.estPrete, isFalse);
+      expect(l.urgence, isTrue);
+      expect(l.enRetard, isTrue);
+      expect(l.clientNom, 'Mama Sarah');
+    });
+
+    test('titre et détails lisibles par l’agent', () {
+      final PressingLigneAtelier l = PressingLigneAtelier.fromMap(brut());
+      expect(l.titre, 'Chemise blanche');
+      expect(l.details, 'Chemise · Zara · Blanc · taille L');
+      expect(l.aDefauts, isTrue);
+    });
+
+    test('retombe sur le type de vêtement à défaut de désignation', () {
+      final Map<String, dynamic> map = brut()..['designation'] = null;
+      expect(PressingLigneAtelier.fromMap(map).titre, 'Chemise');
+    });
+
+    test('un vêtement prêt est reconnu par le serveur', () {
+      final Map<String, dynamic> map = brut()..['est_prete'] = true;
+      expect(PressingLigneAtelier.fromMap(map).estPrete, isTrue);
+    });
+  });
+
   group('PressingEtape', () {
     test('l’étape finale est reconnue (elle seule rend un vêtement remis­able)', () {
       final PressingEtape finale = PressingEtape.fromMap(<String, dynamic>{

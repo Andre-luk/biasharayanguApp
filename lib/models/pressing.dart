@@ -893,6 +893,110 @@ class PressingTableauBord {
   }
 }
 
+/// Un vêtement vu par l'ATELIER : la file de travail, pas le dossier.
+///
+/// Le tableau de bord raisonne en commandes ; l'atelier raisonne en
+/// vêtements. Un agent traite « cette chemise », pas « la commande 12 ».
+class PressingLigneAtelier {
+  const PressingLigneAtelier({
+    required this.ligneId,
+    required this.commandeId,
+    this.numero = '',
+    this.position = 1,
+    this.designation,
+    this.categorieNom,
+    this.prestationNom,
+    this.clientNom,
+    this.clientTelephone,
+    this.marque,
+    this.couleur,
+    this.taille,
+    this.defauts,
+    this.etatDepot,
+    this.etapeCode = 'DEPOSE',
+    this.etapeLibelle,
+    this.estPrete = false,
+    this.agentId,
+    this.controleOk,
+    this.controleNote,
+    this.urgence = false,
+    this.enRetard = false,
+    this.dateDepot,
+    this.datePrevue,
+  });
+
+  final String ligneId;
+  final String commandeId;
+  final String numero;
+  final int position;
+  final String? designation;
+  final String? categorieNom;
+  final String? prestationNom;
+  final String? clientNom;
+  final String? clientTelephone;
+  final String? marque;
+  final String? couleur;
+  final String? taille;
+  final String? defauts;
+  final String? etatDepot;
+  final String etapeCode;
+  final String? etapeLibelle;
+  final bool estPrete;
+  final String? agentId;
+  final bool? controleOk;
+  final String? controleNote;
+  final bool urgence;
+  final bool enRetard;
+  final DateTime? dateDepot;
+  final DateTime? datePrevue;
+
+  /// « Chemise blanche » (ou le type de vêtement à défaut).
+  String get titre => (designation ?? categorieNom ?? 'Vêtement').trim();
+
+  /// « Costume · Bleu · taille L ».
+  String get details {
+    final List<String> morceaux = <String>[
+      if ((categorieNom ?? '').trim().isNotEmpty) categorieNom!.trim(),
+      if ((marque ?? '').trim().isNotEmpty) marque!.trim(),
+      if ((couleur ?? '').trim().isNotEmpty) couleur!.trim(),
+      if ((taille ?? '').trim().isNotEmpty) 'taille ${taille!.trim()}',
+    ];
+    return morceaux.join(' · ');
+  }
+
+  bool get aDefauts => (defauts ?? '').trim().isNotEmpty;
+
+  factory PressingLigneAtelier.fromMap(Map<String, dynamic> map) {
+    return PressingLigneAtelier(
+      ligneId: parseString(map['ligne_id']),
+      commandeId: parseString(map['commande_id']),
+      numero: parseString(map['numero']),
+      position: parseInt(map['position'], fallback: 1),
+      designation: parseStringOrNull(map['designation']),
+      categorieNom: parseStringOrNull(map['categorie_nom']),
+      prestationNom: parseStringOrNull(map['prestation_nom']),
+      clientNom: parseStringOrNull(map['client_nom']),
+      clientTelephone: parseStringOrNull(map['client_telephone']),
+      marque: parseStringOrNull(map['marque']),
+      couleur: parseStringOrNull(map['couleur']),
+      taille: parseStringOrNull(map['taille']),
+      defauts: parseStringOrNull(map['defauts']),
+      etatDepot: parseStringOrNull(map['etat_depot']),
+      etapeCode: parseString(map['etape_code'], fallback: 'DEPOSE'),
+      etapeLibelle: parseStringOrNull(map['etape_libelle']),
+      estPrete: parseBool(map['est_prete']),
+      agentId: parseStringOrNull(map['agent_id']),
+      controleOk:
+          map['controle_ok'] is bool ? map['controle_ok'] as bool : null,
+      controleNote: parseStringOrNull(map['controle_note']),
+      urgence: parseBool(map['urgence']),
+      enRetard: parseBool(map['en_retard']),
+      dateDepot: parseDateTimeOrNull(map['date_depot']),
+      datePrevue: parseDateTimeOrNull(map['date_prevue']),
+    );
+  }
+}
+
 /// Ce que l'agent saisit pour un vêtement lors du dépôt.
 class LigneDepot {
   const LigneDepot({

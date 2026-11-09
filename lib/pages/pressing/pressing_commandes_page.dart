@@ -11,6 +11,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/models/pressing.dart';
@@ -147,6 +148,16 @@ class _PressingCommandesPageState extends State<PressingCommandesPage> {
       appBar: AppBar(
         title: const Text('Dépôts & commandes'),
         actions: <Widget>[
+          IconButton(
+            tooltip: 'Atelier & qualité',
+            onPressed: () => context.pushNamed('pressing-atelier'),
+            icon: const Icon(Icons.iron_rounded),
+          ),
+          IconButton(
+            tooltip: 'Retraits & scan',
+            onPressed: () => context.pushNamed('pressing-retraits'),
+            icon: const Icon(Icons.qr_code_scanner_rounded),
+          ),
           IconButton(
             tooltip: 'Actualiser',
             onPressed: _charger,

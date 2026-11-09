@@ -533,6 +533,35 @@ class PressingService {
     }
   }
 
+  /// 🧺 La FILE DE TRAVAIL de l'atelier : chaque vêtement non remis, avec son
+  /// dossier, son étape et son agent. `etape` filtre sur une étape précise.
+  Future<List<PressingLigneAtelier>> atelier({
+    String? etape,
+    bool miennes = false,
+    int limite = 500,
+  }) async {
+    try {
+      final dynamic r = await _client.rpc(
+        'pressing_atelier_lister',
+        params: <String, dynamic>{
+          'p_etape': (etape ?? '').trim().isEmpty ? null : etape,
+          'p_miennes': miennes,
+          'p_limite': limite,
+        },
+      );
+      return parseMapList(r)
+          .map(PressingLigneAtelier.fromMap)
+          .toList(growable: false);
+    } on PostgrestException catch (e) {
+      throw PressingException(_message(e.message));
+    } catch (e) {
+      debugPrint('PressingService.atelier : $e');
+      throw const PressingException(
+        'Impossible de charger la file de l\'atelier : vérifiez le réseau.',
+      );
+    }
+  }
+
   /// Contrôle qualité : `ok = true` ⇒ prêt ; sinon ⇒ à retraiter.
   Future<void> controleQualite(
     String ligneId,

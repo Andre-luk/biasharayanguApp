@@ -104,8 +104,10 @@ import 'package:biashara_yangu/pages/conditions_utilisation_page.dart';
 import 'package:biashara_yangu/models/chambre.dart';
 import 'package:biashara_yangu/models/reservation.dart';
 import 'package:biashara_yangu/pages/chambre_form_page.dart';
+import 'package:biashara_yangu/pages/pressing/pressing_atelier_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_commandes_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_depot_page.dart';
+import 'package:biashara_yangu/pages/pressing/pressing_retraits_page.dart';
 import 'package:biashara_yangu/pages/chambres_page.dart';
 import 'package:biashara_yangu/pages/facture_sejour_page.dart';
 import 'package:biashara_yangu/pages/reception_page.dart';
@@ -1016,6 +1018,17 @@ final GoRouter appRouter = GoRouter(
                       builder: (context, state) => const PressingDepotPage(),
                     ),
                   ],
+                ),
+
+                GoRoute(
+                  path: 'pressing/atelier',
+                  name: 'pressing-atelier',
+                  builder: (context, state) => const PressingAtelierPage(),
+                ),
+                GoRoute(
+                  path: 'pressing/retraits',
+                  name: 'pressing-retraits',
+                  builder: (context, state) => const PressingRetraitsPage(),
                 ),
 
                 // 🏨 MODULE 16 C2 — HÔTEL : chambres & occupation, planning
