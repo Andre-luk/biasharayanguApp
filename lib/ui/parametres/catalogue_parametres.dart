@@ -194,6 +194,20 @@ abstract final class CatalogueParametres {
       module: ModuleCode.produits,
       priorite: 10,
     ),
+    // 🧺 MODULE 35 — l'accès au module quand on n'est pas sur l'accueil.
+    ParametreApp(
+      id: 'pressing',
+      section: SectionParametres.boutique,
+      titre: (AppLocalizations T) => 'Pressing & blanchisserie',
+      sousTitre: (AppLocalizations T) =>
+          'Dépôts, vêtements confiés, retraits et reçus',
+      icone: Icons.local_laundry_service_rounded,
+      route: 'pressing-depots',
+      module: ModuleCode.pressDepots,
+      page: PageAccess.pressingDepots,
+      action: ActionAccess.voir,
+      priorite: 16,
+    ),
     // 🏷️ MODULE 27 — ce qui s'affiche en tête des factures : nom, adresse,
     // téléphone, logo, RCCM et identifiant national (facultatifs).
     ParametreApp(

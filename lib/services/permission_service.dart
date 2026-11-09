@@ -564,6 +564,9 @@ class PermissionService {
     // aux rôles qui pilotent la boutique (le serveur limite la CRÉATION au
     // propriétaire et au pack).
     _RegleRoute('/main/mes-entreprises', PageAccess.dashboard),
+    // 🧺 MODULE 35 — PRESSING : dépôts et commandes (atelier et retraits
+    // auront leurs propres règles).
+    _RegleRoute('/main/pressing/depots', PageAccess.pressingDepots),
     // 🏨 MODULE 16 C2 — HÔTEL : chambres, planning et réception (le module
     // de l'activité masque déjà les écrans hors hôtel).
     _RegleRoute('/main/hotel/chambres', PageAccess.chambres),
@@ -965,6 +968,8 @@ class PermissionService {
     PageAccess.caisse: '/main/caisse',
     PageAccess.stock: '/main/stock',
     PageAccess.clients: '/main/clients',
+    // 🧺 MODULE 35 — pressing : la page d'accueil du module.
+    PageAccess.pressingDepots: '/main/pressing/depots',
     PageAccess.depenses: '/main/depenses',
     PageAccess.articles: '/main/stock',
     // 📊 MODULE 11 — l'écran Rapports & exports (l'ancien `/reports` reste

@@ -111,7 +111,8 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 27);
+      // 🧺 MODULE 35 — la carte du pressing porte le total à 28.
+      expect(cartes.length, 28);
       expect(idsDe(cartes).first, 'produits');
       expect(idsDe(cartes), contains('expirations'));
       // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
@@ -137,6 +138,8 @@ void main() {
       expect(idsDe(cartes), contains('ma-tournee'));
       // 🚚 MODULE 24 — tableau de bord Distribution complet.
       expect(idsDe(cartes), contains('distribution-pro'));
+      // 🧺 MODULE 35 — la carte pressing est désormais codée.
+      expect(idsDe(cartes), contains('pressing'));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {
@@ -146,7 +149,7 @@ void main() {
         autorise: autorisationPour(toutesPages),
       );
 
-      expect(cartes.length, 27);
+      expect(cartes.length, 28);
     });
   });
 

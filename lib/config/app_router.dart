@@ -104,6 +104,8 @@ import 'package:biashara_yangu/pages/conditions_utilisation_page.dart';
 import 'package:biashara_yangu/models/chambre.dart';
 import 'package:biashara_yangu/models/reservation.dart';
 import 'package:biashara_yangu/pages/chambre_form_page.dart';
+import 'package:biashara_yangu/pages/pressing/pressing_commandes_page.dart';
+import 'package:biashara_yangu/pages/pressing/pressing_depot_page.dart';
 import 'package:biashara_yangu/pages/chambres_page.dart';
 import 'package:biashara_yangu/pages/facture_sejour_page.dart';
 import 'package:biashara_yangu/pages/reception_page.dart';
@@ -999,6 +1001,21 @@ final GoRouter appRouter = GoRouter(
                   path: 'mes-entreprises',
                   name: 'mes-entreprises',
                   builder: (context, state) => const MesEntreprisesPage(),
+                ),
+
+                // 🧺 MODULE 35 — PRESSING & BLANCHISSERIE : dépôts, suivi
+                // des vêtements confiés, atelier, remise et reçu.
+                GoRoute(
+                  path: 'pressing/depots',
+                  name: 'pressing-depots',
+                  builder: (context, state) => const PressingCommandesPage(),
+                  routes: <RouteBase>[
+                    GoRoute(
+                      path: 'new',
+                      name: 'pressing-depot-new',
+                      builder: (context, state) => const PressingDepotPage(),
+                    ),
+                  ],
                 ),
 
                 // 🏨 MODULE 16 C2 — HÔTEL : chambres & occupation, planning

@@ -319,6 +319,20 @@ class CarteAccueil {
       alerte: (DonneesAccueil d) =>
           d.arriveesJour > 0 || d.departsJour > 0,
     ),
+    // 🧺 MODULE 35 — pressing : dépôts, vêtements confiés et retraits.
+    //    (Le détail chiffré vit dans l'écran du module : pas de compteur
+    //     inventé sur l'accueil.)
+    CarteAccueil(
+      id: 'pressing',
+      module: ModuleCode.pressDepots,
+      page: PageAccess.pressingDepots,
+      priorite: 13,
+      titre: (AppLocalizations T) => 'Pressing',
+      valeur: (DonneesAccueil d, AppLocalizations T) => 'Dépôts & retraits',
+      icone: Icons.local_laundry_service_rounded,
+      couleur: const Color(0xFF2563EB),
+      route: '/main/pressing/depots',
+    ),
     // 🍽️ MODULE 16 C3 — restaurant : occupation des tables.
     CarteAccueil(
       id: 'tables',
