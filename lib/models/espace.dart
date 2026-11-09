@@ -32,6 +32,9 @@ enum TypeEspace {
   boucherie('boucherie', 'Boucherie'),
   mode('mode', 'Mode & vêtements'),
   salon('salon_de_coiffure', 'Salon de coiffure'),
+  // 🧺 MODULE 35 — un pressing ne vend pas des marchandises : il garde des
+  // vêtements appartenant à ses clients. C'est une activité à part entière.
+  pressing('pressing', 'Pressing & Blanchisserie'),
   autre('autre', 'Autre activité');
 
   const TypeEspace(this.code, this.libelle);

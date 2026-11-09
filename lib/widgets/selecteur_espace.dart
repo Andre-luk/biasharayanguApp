@@ -42,6 +42,8 @@ IconData iconePourTypeEspace(TypeEspace type) {
       return Icons.checkroom_rounded;
     case TypeEspace.salon:
       return Icons.content_cut_rounded;
+    case TypeEspace.pressing:
+      return Icons.local_laundry_service_rounded;
     case TypeEspace.autre:
       return Icons.business_rounded;
   }

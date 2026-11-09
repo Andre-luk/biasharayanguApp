@@ -57,6 +57,16 @@ abstract final class ModuleCode {
   /// principale — voir [ReglesActivite.distribution] et `TypeActiviteService`.
   static const String distribution = 'distribution';
 
+  // 🧺 MODULE 35 — PRESSING & BLANCHISSERIE.
+  /// Dépôts, commandes et vêtements confiés par les clients.
+  static const String pressDepots = 'press_depots';
+
+  /// Atelier : étapes de traitement, contrôle qualité, production.
+  static const String pressAtelier = 'press_atelier';
+
+  /// Retraits : scan du QR code et remise des vêtements.
+  static const String pressRetraits = 'press_retraits';
+
   /// Module « par défaut » de repli (profil boutique).
   static const String profilDefaut = 'boutique';
 }
@@ -202,7 +212,8 @@ enum ModuleCategorie {
   sejour('Hôtel & séjour'),
   restauration('Restauration'),
   evenementiel('Événementiel'),
-  commerceSpecialise('Commerces spécialisés');
+  commerceSpecialise('Commerces spécialisés'),
+  blanchisserie('Pressing & blanchisserie');
 
   const ModuleCategorie(this.libelle);
 
@@ -331,6 +342,31 @@ class ModuleActivite {
       description: 'Arrivées, départs et facturation des séjours.',
       icone: Icons.how_to_reg,
       categorie: ModuleCategorie.sejour,
+    ),
+    // -------------------------------------------- pressing (module 35)
+    ModuleActivite(
+      code: ModuleCode.pressDepots,
+      libelle: 'Dépôts & commandes',
+      description:
+          'Réception des vêtements, fiches clients, commandes et soldes.',
+      icone: Icons.local_laundry_service_rounded,
+      categorie: ModuleCategorie.blanchisserie,
+    ),
+    ModuleActivite(
+      code: ModuleCode.pressAtelier,
+      libelle: 'Atelier & contrôle qualité',
+      description:
+          'Suivi des vêtements en traitement, étapes, contrôle avant remise.',
+      icone: Icons.iron_rounded,
+      categorie: ModuleCategorie.blanchisserie,
+    ),
+    ModuleActivite(
+      code: ModuleCode.pressRetraits,
+      libelle: 'Retraits & scan QR',
+      description:
+          'Scan du reçu, remise partielle ou totale des vêtements.',
+      icone: Icons.qr_code_scanner_rounded,
+      categorie: ModuleCategorie.blanchisserie,
     ),
     // --------------------------------------------- restaurant (phase C3)
     ModuleActivite(

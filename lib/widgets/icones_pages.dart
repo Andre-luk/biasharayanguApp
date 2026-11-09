@@ -115,6 +115,13 @@ IconData iconePourPage(PageAccess page) {
       return Icons.local_shipping_rounded;
     case PageAccess.maTournee:
       return Icons.delivery_dining_rounded;
+    // 🧺 MODULE 35 — pressing & blanchisserie.
+    case PageAccess.pressingDepots:
+      return Icons.local_laundry_service_rounded;
+    case PageAccess.pressingAtelier:
+      return Icons.iron_rounded;
+    case PageAccess.pressingRetraits:
+      return Icons.qr_code_scanner_rounded;
   }
 }
 

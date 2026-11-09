@@ -295,6 +295,18 @@ enum PageAccess {
   // 🥖 MODULE 16 C5 — BOULANGERIE : matières premières et productions.
   production('production', 'Production', [EspaceApplication.entreprise],
       alias: ['boulangerie', 'atelier', 'fabrication']),
+  // 🧺 MODULE 35 — PRESSING & BLANCHISSERIE. Un pressing ne vend pas : il
+  // reçoit, traite et restitue des biens confiés. Trois pages distinctes
+  // parce que trois métiers distincts (accueil, atelier, remise).
+  pressingDepots('pressing_depots', 'Dépôts & commandes',
+      [EspaceApplication.entreprise],
+      alias: ['pressing', 'depots', 'commandes_pressing']),
+  pressingAtelier('pressing_atelier', 'Atelier & qualité',
+      [EspaceApplication.entreprise],
+      alias: ['atelier', 'traitement', 'qualite']),
+  pressingRetraits('pressing_retraits', 'Retraits & scan',
+      [EspaceApplication.entreprise],
+      alias: ['retraits', 'remise', 'scan_pressing']),
   // 🚚 MODULE 23 — DISTRIBUTION TERRAIN : le patron prépare les tournées et
   // consulte le rapport par agent ; l'agent voit SA dotation.
   distribution('distribution', 'Tournées & distribution',
