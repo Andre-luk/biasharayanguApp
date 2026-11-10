@@ -28,6 +28,7 @@ import 'package:biashara_yangu/models/groupe_tarifaire.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/ville.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
+import 'package:biashara_yangu/services/paiement_platforme_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -339,6 +340,27 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
                 "d'être opérationnel.",
                 style: TextStyle(fontSize: 12.5),
               ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppCouleurs.succes.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppCouleurs.succes.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: const Text(
+                  "💳 PAIEMENT PAR MOBILE MONEY (SERDIPAY)\n"
+                  "Les frais d'installation et l'abonnement se paient "
+                  "UNIQUEMENT par Mobile Money : le client règle depuis son "
+                  "téléphone. Dès la confirmation, le compte est ACTIF avec son "
+                  "mois d'abonnement — les 7 jours d'essai en cours restent "
+                  "acquis (30 + 7 jours). Aucun encaissement en espèces n'est "
+                  "accepté.",
+                  style: TextStyle(fontSize: 12, height: 1.3),
+                ),
+              ),
               if (r.compteReutilise) ...<Widget>[
                 const SizedBox(height: 10),
                 const Text(
@@ -352,13 +374,54 @@ class _EntrepriseCreationPageState extends State<EntrepriseCreationPage> {
           ),
         ),
         actions: <Widget>[
-          FilledButton(
+          TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Terminer'),
+            child: const Text('Plus tard'),
+          ),
+          // 💳 CORRECTIF 134 — LE PAIEMENT SE FAIT ICI, PAR SERDIPAY.
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _payerParMobileMoney(r);
+            },
+            icon: const Icon(Icons.smartphone_rounded, size: 18),
+            label: const Text('Payer par Mobile Money'),
           ),
         ],
       ),
     );
+  }
+
+  /// Ouvre le parcours SerdiPay pour l'entreprise qui vient d'être créée.
+  ///
+  /// Le montant n'est PAS saisi ici : il est calculé en base pour cette
+  /// entreprise (installation — premier mois inclus — puis abonnement
+  /// mensuel). Le paiement est confirmé par le webhook SerdiPay, et le compte
+  /// devient ACTIF avec ses 7 jours d'essai conservés.
+  Future<void> _payerParMobileMoney(ResultatCreationEntreprise r) async {
+    if (!mounted) return;
+    try {
+      final bool paye = await PaiementPlatformeService.payerParMobileMoney(
+        context,
+        entrepriseId: r.entrepriseId,
+        libelleEntreprise: r.nom,
+      );
+      if (!mounted) return;
+      if (paye) {
+        _message('Paiement confirmé : le compte « ${r.nom} » est activé avec '
+            'son mois d\'abonnement (jours d\'essai conservés).');
+      } else {
+        _message(
+          'Paiement non confirmé : le compte reste en attente. Vous pourrez '
+          'le régler depuis « Finance » → « Activations ».',
+          estErreur: true,
+        );
+      }
+    } catch (e) {
+      debugPrint('EntrepriseCreationPage._payerParMobileMoney : $e');
+      if (!mounted) return;
+      _message('Impossible d\'ouvrir le paiement Mobile Money.', estErreur: true);
+    }
   }
 
   Widget _ligne(String libelle, String valeur) {

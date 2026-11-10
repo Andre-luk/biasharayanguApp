@@ -26,6 +26,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/inventaire_ligne.dart';
 import 'package:biashara_yangu/models/mouvement_article.dart';
+import 'package:biashara_yangu/models/sortie_stock.dart';
 import 'package:biashara_yangu/models/vente_enregistree.dart' show reponseRpcEnMap;
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/notification_service.dart';
@@ -363,6 +364,110 @@ class StockService {
   }
 
   // ---------------------------------------------------------------------------
+  // SORTIES DE STOCK NON COMMERCIALES (perte, casse, offert, consommation…)
+  // ---------------------------------------------------------------------------
+
+  /// Enregistre une sortie de stock qui n'est PAS une vente.
+  ///
+  /// Le serveur retire [quantite] du stock et n'écrit RIEN dans la caisse :
+  /// une consommation du patron, un article offert ou une bouteille cassée
+  /// font baisser la marchandise sans faire entrer d'argent.
+  ///
+  /// [quantite] est exprimée en UNITÉS DE BASE (l'appelant convertit les
+  /// conditionnements, comme pour une vente). [valeurUnitaire], si elle est
+  /// fournie, fige le coût de la sortie ; sinon le serveur reprend le prix
+  /// d'achat de l'article.
+  Future<ResultatSortieStock> enregistrerSortie({
+    required int produitId,
+    required double quantite,
+    required MotifSortieStock motif,
+    String? note,
+    double? valeurUnitaire,
+    DateTime? date,
+  }) async {
+    if (quantite <= 0) {
+      throw const StockServiceException(
+        'La quantité sortie doit être supérieure à zéro.',
+        type: TypeErreurStock.validation,
+      );
+    }
+    if (motif == MotifSortieStock.autre &&
+        (note ?? '').trim().length < 3) {
+      throw const StockServiceException(
+        'Précisez le motif de la sortie (3 caractères minimum).',
+        type: TypeErreurStock.validation,
+      );
+    }
+
+    final Map<String, dynamic>? map = await _appelerRpc(
+      'rpc_stock_sortie',
+      params: <String, dynamic>{
+        'p_produit_id': produitId,
+        'p_quantite': quantite,
+        'p_motif': motif.code,
+        'p_note': _texteOuNull(note),
+        'p_valeur_unitaire': valeurUnitaire,
+        'p_date': date?.toUtc().toIso8601String(),
+      },
+      actionLibelle: "l'enregistrement de la sortie de stock",
+    );
+
+    if (map == null) {
+      throw const StockServiceException(
+        "Réponse inattendue du serveur : la sortie de stock n'est pas confirmée.",
+      );
+    }
+
+    final ResultatSortieStock resultat = ResultatSortieStock.fromRpc(map);
+
+    // Comme après une vente ou un ajustement : si la sortie fait franchir le
+    // seuil d'alerte, le commerçant doit le savoir.
+    if (resultat.stockApres < resultat.stockAvant) {
+      unawaited(
+        _alerterStockFaibleApresBaisse(
+          <({int produitId, double avant, double apres})>[
+            (
+              produitId: resultat.produitId,
+              avant: resultat.stockAvant,
+              apres: resultat.stockApres,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return resultat;
+  }
+
+  /// Historique des sorties de stock sur une période (source du rapport).
+  ///
+  /// Sans dates, le serveur renvoie le MOIS COURANT.
+  Future<ResumeSortiesStock> sortiesStock({
+    DateTime? debut,
+    DateTime? fin,
+    int? produitId,
+    MotifSortieStock? motif,
+  }) async {
+    final Map<String, dynamic>? map = await _appelerRpc(
+      'rpc_stock_sorties_liste',
+      params: <String, dynamic>{
+        'p_debut': debut == null ? null : _dateSeule(debut),
+        'p_fin': fin == null ? null : _dateSeule(fin),
+        'p_produit_id': produitId,
+        'p_motif': motif?.code,
+      },
+      actionLibelle: 'la lecture des sorties de stock',
+    );
+
+    if (map == null) {
+      throw const StockServiceException(
+        'Réponse inattendue du serveur : les sorties de stock sont illisibles.',
+      );
+    }
+    return ResumeSortiesStock.fromRpc(map);
+  }
+
+  // ---------------------------------------------------------------------------
   // CLÔTURE DE L'INVENTAIRE QUOTIDIEN
   // ---------------------------------------------------------------------------
 
@@ -532,6 +637,8 @@ class StockService {
       case 'AUCUN_ECART':
       case 'LIGNE_INVALIDE':
       case 'PRODUIT_INTROUVABLE':
+      case 'MOTIF_INVALIDE':
+      case 'STOCK_INSUFFISANT':
         return TypeErreurStock.validation;
       default:
         return TypeErreurStock.inconnu;

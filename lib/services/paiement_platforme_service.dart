@@ -109,6 +109,17 @@ class PaiementPlatformeService {
           'bouton « Payer par Mobile Money ».';
     }
     return 'Ce moyen de paiement n\'est pas encore disponible. '
-        'Utilisez les espèces ou Mobile Money (SerdiPay).';
+        'Utilisez Mobile Money (SerdiPay).';
   }
+
+  /// Message unique des paiements de plateforme (abonnement, installation).
+  ///
+  /// 🔒 CORRECTIF 134 — Plus aucune exception : ni espèces, ni virement, ni
+  /// carte. Le client paie depuis son téléphone et la confirmation vient du
+  /// webhook de SerdiPay.
+  static String get messageSerdipayUniquement =>
+      'Les abonnements et les frais d\'installation se paient uniquement par '
+      'Mobile Money via SerdiPay : le client règle depuis son téléphone, et '
+      'le compte est crédité dès la confirmation. Aucun encaissement en '
+      'espèces n\'est accepté.';
 }

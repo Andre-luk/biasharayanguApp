@@ -29,7 +29,6 @@ import 'package:biashara_yangu/services/paiement_platforme_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/codes_validation_finance.dart';
-import 'package:biashara_yangu/widgets/envoi_facture_automatique.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 /// Filtres proposés (valeurs d'étape SQL — `null` = tous).
@@ -144,96 +143,57 @@ class _ActivationsFinancePageState extends State<ActivationsFinancePage> {
         );
       }
 
-      // 💳 AUDIT DES PAIEMENTS — MOBILE MONEY = SERDIPAY, MÊME POUR LE SUPER
-      //  ADMIN. Aucun rôle ne peut transformer un paiement Mobile Money en
-      //  encaissement immédiat : on ouvre la passerelle, et le crédit n'arrive
-      //  qu'après confirmation réelle (le serveur le revérifie via un trigger).
-      if (PaiementPlatformeService.estMobileMoney(paiement.modePaiement)) {
-        if (!mounted) return;
-        final bool paye = await PaiementPlatformeService.payerParMobileMoney(
-          context,
-          entrepriseId: dossier.id,
-          libelleEntreprise: dossier.nom,
-        );
+      // 💳 CORRECTIF 134 — SERDIPAY UNIQUEMENT, MÊME POUR LE SUPER ADMIN.
+      //
+      //  Aucun rôle (finance, super administrateur, agent) ne peut plus
+      //  encaisser un abonnement ou des frais d'installation en espèces : le
+      //  client paie depuis SON téléphone, et l'abonnement n'est crédité
+      //  qu'après confirmation réelle de la transaction.
+      if (!PaiementPlatformeService.estMobileMoney(paiement.modePaiement)) {
         if (!mounted) return;
         setState(() => _enCours = null);
-        if (paye) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Paiement Mobile Money confirmé par SerdiPay : abonnement '
-                'crédité.',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Paiement Mobile Money non confirmé : aucun abonnement n\'a '
-                'été crédité.',
-              ),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        await _charger();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text(PaiementPlatformeService.messageSerdipayUniquement),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 6),
+          ),
+        );
         return;
       }
 
-      final Map<String, dynamic> reponse =
-          await ActivationService.instance.validerFinance(
-        entrepriseId: dossier.id,
-        approuver: true,
-        montant: paiement.montant,
-        modePaiement: paiement.modePaiement,
-        referenceTransaction: paiement.reference,
-        note: paiement.note,
-      );
-
       if (!mounted) return;
-
-      final String scenario = (reponse['scenario'] ?? '').toString();
-      final DateTime? expiration =
-          DateTime.tryParse('${reponse['date_expiration']}');
-      final double solde = (reponse['solde_restant'] is num)
-          ? (reponse['solde_restant'] as num).toDouble()
-          : 0;
-
-      final String message;
-      if (scenario == 'total') {
-        message = 'Paiement TOTAL validé — compte « ${dossier.nom} » ACTIVÉ'
-            '${expiration == null ? '' : ' jusqu\'au ${_date(expiration)}'}.';
-      } else {
-        message = 'Paiement partiel enregistré — essai accordé à '
-            '« ${dossier.nom} »'
-            '${expiration == null ? '' : ' jusqu\'au ${_date(expiration)}'}'
-            '  •  Solde restant : ${solde.toStringAsFixed(0)} CDF.';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.green.shade700,
-          duration: const Duration(seconds: 5),
-        ),
-      );
-
-      // 🧾 CORRECTIF 67 — LA FACTURE PART TOUTE SEULE.
-      //  Le déclencheur en base l'a déjà écrite (à chaque encaissement, quel
-      //  que soit le rôle). Ici on la TRANSMET au client sur son WhatsApp,
-      //  sans rien demander : c'est la contrepartie de l'argent reçu, et
-      //  c'est aussi ce qui rend vérifiable « ce que le client paie et ce que
-      //  l'agent demande ». L'appel est protégé : il ne peut pas faire croire
-      //  que le paiement a échoué.
-      await envoyerFactureAbonnementAutomatique(
+      final bool paye = await PaiementPlatformeService.payerParMobileMoney(
         context,
         entrepriseId: dossier.id,
-        nomEtablissement: dossier.nom,
+        libelleEntreprise: dossier.nom,
       );
-
+      if (!mounted) return;
+      setState(() => _enCours = null);
+      if (paye) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Paiement Mobile Money confirmé par SerdiPay : abonnement '
+              'crédité.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Paiement Mobile Money non confirmé : aucun abonnement n\'a '
+              'été crédité.',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
       await _charger();
+      return;
     } on ActivationServiceException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

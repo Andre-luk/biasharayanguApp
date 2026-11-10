@@ -224,6 +224,7 @@ import 'package:biashara_yangu/pages/identite_etablissement_page.dart';
 // mouvements : ventes, approvisionnements, ajustements).
 import 'package:biashara_yangu/pages/stock_gestion_page.dart';
 import 'package:biashara_yangu/pages/stock_detail_page.dart';
+import 'package:biashara_yangu/pages/sorties_stock_page.dart';
 import 'package:biashara_yangu/pages/approvisionnement_form_page.dart';
 import 'package:biashara_yangu/pages/ajustement_form_page.dart';
 import 'package:biashara_yangu/pages/inventaire_cloture_page.dart';
@@ -845,6 +846,18 @@ final GoRouter appRouter = GoRouter(
                       path: 'ajustement',
                       name: 'stock-ajustement',
                       builder: (context, state) => AjustementFormPage(
+                        article: state.extra is Article
+                            ? state.extra as Article
+                            : null,
+                      ),
+                    ),
+                    // 📦 SORTIES DE STOCK NON COMMERCIALES : consommation du
+                    // propriétaire, article offert, perte, casse, péremption,
+                    // retour fournisseur. Le stock diminue, la caisse NON.
+                    GoRoute(
+                      path: 'sorties',
+                      name: 'stock-sorties',
+                      builder: (context, state) => SortiesStockPage(
                         article: state.extra is Article
                             ? state.extra as Article
                             : null,

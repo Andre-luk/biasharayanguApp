@@ -12,7 +12,6 @@ import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/article_scanne.dart';
 import 'package:biashara_yangu/models/client.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
-import 'package:biashara_yangu/models/dette.dart';
 import 'package:biashara_yangu/models/ligne_panier.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/pesee.dart';
@@ -916,17 +915,18 @@ class _NewSalePageState extends State<NewSalePage> {
       final invoiceId =
       await DBHelper.instance.insertMultipleVentesWithStockUpdate(ventes);
 
-      if (isModeDette && selectedClient != null) {
-        await DBHelper.instance.insertDette(
-          Dette(
-            ownerId: ownerId,
-            clientId: selectedClient!.id!,
-            venteId: invoiceId,
-            montantTotal: currentTotal,
-            dateCreation: nowIso,
-          ),
-        );
-      }
+      // 🧾 CORRECTIF 133 — LA DETTE EST CRÉÉE PAR LE SERVEUR.
+      //
+      //  Avant, l'application créait une dette LOCALE (SQLite) à chaque vente
+      //  à crédit. Elle n'apparaissait nulle part : l'écran « Dettes clients »
+      //  lit le serveur (`rpc_dettes_liste`), qui ne recevait jamais de dette —
+      //  et la vente à crédit, elle, était comptée en caisse comme si l'argent
+      //  avait été encaissé.
+      //
+      //  Désormais le serveur crée la dette en même temps que la vente
+      //  (trigger `trg_caisse_vente_credit`) et n'encaisse RIEN : le client
+      //  apparaît dans « Dettes clients » avec le bouton « Encaisser », et le
+      //  règlement fait entrer l'argent dans la caisse.
 
       // 🚀 CORRECTIF — « la vente de la caisse n'arrive pas au tableau de bord ».
       //  Le tableau de bord lit le SERVEUR (`rpc_accueil_stats`) ; cette vente

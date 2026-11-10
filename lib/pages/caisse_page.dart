@@ -129,6 +129,14 @@ class _CaissePageState extends State<CaissePage> {
     await _charger();
   }
 
+  /// 🔁 CORRECTIF 133 — ouvrir l'écran des dettes clients pour encaisser un
+  /// règlement. Le montant réglé entre dans la caisse (`paiements_dette`).
+  Future<void> _ouvrirDettes() async {
+    await context.push('/main/dettes');
+    if (!mounted) return;
+    await _charger();
+  }
+
   // ---------------------------------------------------------------------------
   // RENDU
   // ---------------------------------------------------------------------------
@@ -318,6 +326,19 @@ class _CaissePageState extends State<CaissePage> {
                 ),
               ),
             ],
+          ),
+          // 🔁 CORRECTIF 133 — ENCAISSER UNE DETTE DEPUIS LA CAISSE.
+          //  Le client qui vient régulariser son crédit doit trouver l'action
+          //  ici, au même endroit que le décaissement : c'est un mouvement de
+          //  caisse comme un autre, et l'argent compté entre bien dans le solde.
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _ouvrirDettes,
+              icon: const Icon(Icons.handshake_rounded, size: 18),
+              label: const Text('Encaisser une dette'),
+            ),
           ),
           const SizedBox(height: 8),
           Text(

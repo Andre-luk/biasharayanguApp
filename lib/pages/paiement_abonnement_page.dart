@@ -56,7 +56,10 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
   String _modePaiement = modesPaiementDisponibles.first;
 
   bool _chargement = true;
-  bool _enregistrement = false;
+
+  /// Conservé `false` : l'enregistrement en espèces a disparu (SerdiPay
+  /// uniquement), c'est l'écran SerdiPay qui porte son propre indicateur.
+  final bool _enregistrement = false;
   String? _erreurChargement;
 
   @override
@@ -263,60 +266,28 @@ class _PaiementAbonnementPageState extends State<PaiementAbonnementPage> {
     final Entreprise? entreprise = _entreprise;
     if (entreprise == null) return;
 
-    // 💳 AUDIT DES PAIEMENTS — MOBILE MONEY = SERDIPAY, JAMAIS LA CAISSE.
-    //  Avant ce correctif, choisir « Mobile Money » appelait directement le
-    //  moteur d'abonnement : l'abonnement était activé sans transaction.
-    //  Désormais le seul chemin est l'écran SerdiPay (montant calculé en base,
-    //  crédit après confirmation du webhook).
-    if (PaiementPlatformeService.estMobileMoney(_modePaiement)) {
-      final bool paye = await PaiementPlatformeService.payerParMobileMoney(
-        context,
-        entrepriseId: entreprise.id,
-        libelleEntreprise: entreprise.nom,
-      );
-      if (!mounted) return;
-      if (paye) Navigator.of(context).pop(true);
-      return;
-    }
-
-    // Aucun contrat d'acquisition carte : on ne fait pas semblant d'encaisser.
-    if (!PaiementPlatformeService.estEspeces(_modePaiement) &&
-        _modePaiement.toLowerCase().contains('carte')) {
+    // 💳 CORRECTIF 134 — SERDIPAY UNIQUEMENT, POUR TOUS LES RÔLES.
+    //
+    //  Aucun abonnement ne s'encaisse plus à la main : ni espèces, ni
+    //  virement, ni carte. Le client paie depuis SON téléphone via SerdiPay et
+    //  l'abonnement n'est crédité qu'après confirmation réelle de la
+    //  transaction (montant calculé en base, webhook vérifié).
+    if (!PaiementPlatformeService.estMobileMoney(_modePaiement)) {
       _afficherMessage(
-        PaiementPlatformeService.messageModeIndisponible(_modePaiement),
+        PaiementPlatformeService.messageSerdipayUniquement,
         estErreur: true,
       );
       return;
     }
 
-    setState(() => _enregistrement = true);
-
-    String? messageErreur;
-    try {
-      await _service.enregistrerPaiement(
-        entrepriseId: entreprise.id,
-        montant: _montantSaisi,
-        type: _type,
-        modePaiement: _modePaiement,
-        note: _noteController.text,
-      );
-    } on AbonnementServiceException catch (e) {
-      messageErreur = e.message;
-    } catch (e, st) {
-      debugPrint('PaiementAbonnementPage._enregistrer: $e\n$st');
-      messageErreur =
-          "Une erreur inattendue est survenue lors de l'enregistrement.";
-    }
-
+    final bool paye = await PaiementPlatformeService.payerParMobileMoney(
+      context,
+      entrepriseId: entreprise.id,
+      libelleEntreprise: entreprise.nom,
+    );
     if (!mounted) return;
-
-    if (messageErreur != null) {
-      setState(() => _enregistrement = false);
-      _afficherMessage(messageErreur, estErreur: true);
-      return;
-    }
-
-    Navigator.of(context).pop(true);
+    if (paye) Navigator.of(context).pop(true);
+    return;
   }
 
   // ---------------------------------------------------------------------------

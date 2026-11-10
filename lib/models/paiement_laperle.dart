@@ -40,14 +40,17 @@ enum TypePaiement {
 
 /// Modes de paiement proposés dans le formulaire.
 ///
-/// La colonne est un texte libre côté base : cette liste couvre les cas
-/// courants, le champ restant modifiable si un autre mode est nécessaire.
+/// ⚠️ CORRECTIF 134 — LES ESPÈCES NE SONT PLUS ACCEPTÉES.
+///
+/// Un abonnement (ou des frais d'installation) ne s'encaissent plus à la
+/// main : TOUT paiement de plateforme passe par **SerdiPay** (Mobile Money),
+/// quel que soit le rôle qui l'enregistre — super administrateur, finance ou
+/// agent. Le montant est calculé en base, le client paie depuis son propre
+/// téléphone, et l'abonnement n'est crédité qu'après confirmation réelle de la
+/// transaction. Le serveur refuse de son côté tout paiement sans trace
+/// SerdiPay (`paiement_mm_exige_serdipay`, migration 0134).
 const List<String> modesPaiementDisponibles = <String>[
-  'Espèces',
   'Mobile Money',
-  'Virement bancaire',
-  'Carte bancaire',
-  'Autre',
 ];
 
 /// Encaissement enregistré par le moteur d'abonnement.

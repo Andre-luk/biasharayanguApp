@@ -279,6 +279,14 @@ class _StockGestionPageState extends State<StockGestionPage> {
     await _charger(silencieux: true);
   }
 
+  /// 📦 SORTIES DE STOCK SPÉCIALES — consommation du propriétaire, article
+  /// offert, perte, casse, retour fournisseur… Le stock diminue, la caisse NON.
+  Future<void> _ouvrirSorties(Article? article) async {
+    await context.push<bool>('/main/stock/sorties', extra: article);
+    if (!mounted) return;
+    await _charger(silencieux: true);
+  }
+
   Future<void> _ouvrirAlertes() async {
     final List<Article> alertes = StockCalculs.enAlerte(_articles);
     if (alertes.isEmpty) return;
@@ -581,6 +589,8 @@ class _StockGestionPageState extends State<StockGestionPage> {
                     _ouvrirApprovisionnement(article);
                   } else if (action == 'ajust') {
                     _ouvrirAjustement(article);
+                  } else if (action == 'sortie') {
+                    _ouvrirSorties(article);
                   }
                 },
                 itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -602,6 +612,17 @@ class _StockGestionPageState extends State<StockGestionPage> {
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(Icons.tune_rounded),
                         title: Text('Ajuster le stock'),
+                      ),
+                    ),
+                  if (peutAjuster)
+                    const PopupMenuItem<String>(
+                      value: 'sortie',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.outbox_rounded),
+                        title: Text('Sortie de stock'),
+                        subtitle: Text('Perte, casse, offert, consommation…'),
                       ),
                     ),
                 ],
@@ -672,6 +693,15 @@ class _StockGestionPageState extends State<StockGestionPage> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: <Widget>[
+          PermissionGate(
+            page: PageAccess.stock,
+            action: ActionAccess.modifier,
+            child: IconButton(
+              onPressed: () => _ouvrirSorties(null),
+              icon: const Icon(Icons.outbox_rounded),
+              tooltip: 'Sorties de stock (perte, casse, offert…)',
+            ),
+          ),
           PermissionGate(
             page: PageAccess.stock,
             action: ActionAccess.modifier,
