@@ -261,8 +261,13 @@ begin
     from public.utilisateurs u
    where coalesce(u.valide, 1) <> 0
      -- Jamais un patron : son compte porte l'identifiant d'une entreprise.
+     -- ⚠️ Les colonnes de `utilisateurs` sont HISTORIQUES : `id`,
+     --    `entreprise_id` et `parent_id` peuvent être en `text` alors que
+     --    `entreprises.id` est un `uuid`. Toute comparaison est donc faite
+     --    en TEXTE des deux côtés — sans quoi PostgreSQL répond
+     --    « operator does not exist: uuid = text ».
      and not exists (
-       select 1 from public.entreprises e where e.id = u.id
+       select 1 from public.entreprises e where e.id::text = u.id::text
      )
      and coalesce(upper(btrim(u.new_role::text)), '') not in (
            'PROPRIETAIRE', 'SUPER_ADMIN', 'GESTIONNAIRE_COMPTES',
@@ -270,8 +275,8 @@ begin
          )
      and lower(coalesce(u.role::text, '')) not in ('super_admin', 'plateforme')
      and (
-       u.entreprise_id = p_entreprise
-       or u.parent_id = p_entreprise::text
+       u.entreprise_id::text = p_entreprise::text
+       or u.parent_id::text = p_entreprise::text
      );
 
   return coalesce(v_n, 0);
@@ -442,6 +447,16 @@ select table_name, column_name, data_type
                       'agent_ia_achats',
                       'paiements_serdipay')
  order by table_name;
+
+-- V2 bis. Types réels des colonnes HISTORIQUES de `utilisateurs`.
+--         C'est ici qu'on voit pourquoi les comparaisons doivent être en texte.
+select column_name, data_type
+  from information_schema.columns
+ where table_schema = 'public'
+   and table_name = 'utilisateurs'
+   and column_name in ('id', 'entreprise_id', 'parent_id',
+                       'role', 'new_role', 'valide')
+ order by column_name;
 
 -- V3. Collaborateurs facturés, supplément et ÉTAT DU DOSSIER, pour les 20
 --     dernières boutiques. Vérifiez qu'aucun patron n'apparaît avec
