@@ -96,7 +96,10 @@ begin
 
   v_base  := public.abonnement_prix_base(v_id);
   v_supp  := public.abonnement_supplement_collaborateurs(v_id);
-  v_total := round(v_cycle * v_mois, 2);
+  -- 🔧 Le supplément collaborateurs fait partie du cycle (2 500 par
+  --    collaborateur actif) : il est inclus dans le montant réclamé, sinon le
+  --    moteur attend plus que ce que le client a payé.
+  v_total := round((v_cycle + v_supp) * v_mois, 2);
 
   -- 🔧 CORRECTIF 127 : le dossier est-il échu ? Si oui, le moteur recalcule
   -- un seul cycle et refuserait le paiement multiple. On fige donc l'état
@@ -167,9 +170,10 @@ end;
 $$;
 
 comment on function public.abonnement_ouvrir_avance_multi(uuid, integer) is
-  'Module 30 / correctif 127 — ouvre N cycles à encaisser (prix du cycle × mois). '
-  'Passe un dossier échu en EN_ATTENTE_COMPLEMENT pour que le moteur crédite '
-  'le montant figé et prolonge de durée × N jours. Ne lève jamais une suspension.';
+  'Module 30 / correctifs 127-128 — ouvre N cycles à encaisser '
+  '((prix du cycle + supplément collaborateurs) × mois). Passe un dossier échu '
+  'en EN_ATTENTE_COMPLEMENT pour que le moteur crédite le montant figé et '
+  'prolonge de durée × N jours. Ne lève jamais une suspension.';
 
 revoke all on function public.abonnement_ouvrir_avance_multi(uuid, integer)
   from public, anon;
