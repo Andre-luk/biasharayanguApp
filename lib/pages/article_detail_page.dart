@@ -19,6 +19,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/qr_code_service.dart';
+import 'package:biashara_yangu/utils/devise_produit.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
@@ -397,8 +398,10 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                     .titleMedium
                     ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            _ligneInfo("Prix d'achat (unité)", formatMontant(article.prixAchat)),
-            _ligneInfo('Prix de vente (unité)', formatMontant(article.prixVente)),
+            _ligneInfo("Prix d'achat (unité)",
+                prixArticle(article.prixAchat, article.devise)),
+            _ligneInfo('Prix de vente (unité)',
+                prixArticle(article.prixVente, article.devise)),
             _ligneInfo('Unité de base', article.uniteMesure),
             _ligneInfo(
               'Stock (unités de base)',
@@ -517,7 +520,7 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
                   Text(
                     '= ${_formatQuantite(c.quantiteUnitesBase)} '
                     '${Conditionnement.pluriel(article.uniteMesure, c.quantiteUnitesBase)} '
-                    'pour ${formatMontant(c.prixVente)}',
+                    'pour ${prixArticle(c.prixVente, article.devise)}',
                     style: theme.textTheme.bodyMedium,
                   ),
                   if ((c.codeBarreTexte ?? '').isNotEmpty) ...[

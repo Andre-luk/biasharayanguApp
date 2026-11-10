@@ -842,7 +842,7 @@ class _ArticleFormPageState extends State<ArticleFormPage> {
                   subtitle: Text(
                     '= ${_champNombre(conditionnement.quantiteUnitesBase)} '
                     '${conditionnement.quantiteUnitesBase > 1 ? Conditionnement.pluriel(article.uniteMesure, conditionnement.quantiteUnitesBase) : article.uniteMesure}'
-                    ' · ${formatMontant(conditionnement.prixVente)}',
+                    ' · ${prixArticle(conditionnement.prixVente, article.devise)}',
                   ),
                   trailing: const Icon(Icons.edit_outlined, size: 20),
                   onTap: () => _modifierConditionnement(conditionnement),

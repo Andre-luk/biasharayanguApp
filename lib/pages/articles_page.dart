@@ -20,6 +20,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
+import 'package:biashara_yangu/utils/devise_produit.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
@@ -385,7 +386,9 @@ class _ArticlesPageState extends State<ArticlesPage> {
             children: <Widget>[
               Text(
                 '${article.categorie.trim().isEmpty ? 'Sans catégorie' : article.categorie}'
-                ' · ${formatMontant(article.prixVente)}'
+                // 💵 CORRECTIF — le prix s'affiche dans la devise de l'ARTICLE
+                //  (« 10,00 $ »), et non plus toujours en CDF.
+                ' · ${prixArticle(article.prixVente, article.devise)}'
                 // 🥩 MODULE 16 C6 — boucherie : prix au kg bien visible.
                 '${article.vendableAuPoids ? ' / kg 🥩' : ''}',
                 maxLines: 1,

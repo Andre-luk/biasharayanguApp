@@ -339,31 +339,57 @@ class SyncService {
 
   // ------------------ Synchronisation montante (Local -> Cloud) ------------------
 
+  /// Synchronisation en cours, s'il y en a une.
+  ///
+  /// ⚠️ CORRECTIF — « la vente de la caisse n'arrive pas au tableau de bord ».
+  ///   Avant, un second appel pendant une synchro faisait simplement `return`
+  ///   (silencieusement) : l'appelant croyait que TOUT avait été envoyé, alors
+  ///   que sa vente, écrite une seconde plus tôt, n'avait jamais été poussée.
+  ///   Désormais on ATTEND la synchro en cours, puis on refait un passage :
+  ///   la vente créée entre-temps part bien au serveur.
+  Future<void>? _syncEnCours;
+
   Future<void> syncAll({String? ownerId}) async {
+    final Future<void>? enCours = _syncEnCours;
+    if (enCours != null) {
+      // On ne double pas le travail… mais on ne ment pas non plus : on attend.
+      await enCours;
+      // Un second passage est nécessaire : la vente a pu être écrite pendant
+      // la synchro qui vient de se terminer.
+    }
+
     if (_isSyncing) return;
     _isSyncing = true;
 
+    final Future<void> passage = _syncAllInterne(ownerId: ownerId);
+    _syncEnCours = passage;
+
     try {
-      final userId = _sup.currentUserId;
-      if (userId == null) return;
-
-      final resolvedOwnerId =
-          ownerId ?? await _db.resolveEffectiveOwnerId(userId) ?? userId;
-
-      currentOwnerId = resolvedOwnerId;
-
-      await _syncClients(ownerId: resolvedOwnerId);
-      await _syncProduits(ownerId: resolvedOwnerId);
-      await _syncVentes(ownerId: resolvedOwnerId);
-      await _syncApprovisionnements(ownerId: resolvedOwnerId);
-      await _syncAjustements(ownerId: resolvedOwnerId);
-      await _syncDepenses(ownerId: resolvedOwnerId);
-      await _syncDettes(ownerId: resolvedOwnerId);
-      await _syncInventaires(ownerId: resolvedOwnerId);
-      await syncPaiementsDette();
+      await passage;
     } finally {
       _isSyncing = false;
+      _syncEnCours = null;
     }
+  }
+
+  Future<void> _syncAllInterne({String? ownerId}) async {
+    final userId = _sup.currentUserId;
+    if (userId == null) return;
+
+    final resolvedOwnerId =
+        ownerId ?? await _db.resolveEffectiveOwnerId(userId) ?? userId;
+
+    currentOwnerId = resolvedOwnerId;
+
+    await _syncClients(ownerId: resolvedOwnerId);
+    await _syncProduits(ownerId: resolvedOwnerId);
+    await _syncVentes(ownerId: resolvedOwnerId);
+    await _syncApprovisionnements(ownerId: resolvedOwnerId);
+    await _syncAjustements(ownerId: resolvedOwnerId);
+    await _syncDepenses(ownerId: resolvedOwnerId);
+    await _syncDettes(ownerId: resolvedOwnerId);
+    await _syncInventaires(ownerId: resolvedOwnerId);
+    await syncPaiementsDette();
   }
 
   Future<void> _syncProduits({required String ownerId}) async {

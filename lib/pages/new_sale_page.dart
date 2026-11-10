@@ -928,6 +928,15 @@ class _NewSalePageState extends State<NewSalePage> {
         );
       }
 
+      // 🚀 CORRECTIF — « la vente de la caisse n'arrive pas au tableau de bord ».
+      //  Le tableau de bord lit le SERVEUR (`rpc_accueil_stats`) ; cette vente
+      //  est d'abord écrite en LOCAL. L'envoi était déclenché APRÈS la feuille
+      //  de facture : tant qu'elle restait ouverte (impression, WhatsApp), et
+      //  définitivement si l'application était fermée, le serveur ne recevait
+      //  jamais la vente — la facture existait, le tableau de bord non.
+      //  ⇒ On pousse MAINTENANT, la facture s'affiche pendant l'envoi.
+      _triggerImmediateSync();
+
       if (mounted) {
         _panier.vider();
         setState(() {
@@ -978,10 +987,10 @@ class _NewSalePageState extends State<NewSalePage> {
         }
       }
 
-      _triggerImmediateSync();
-
       // 🔔 CORRECTIF 78 — la vente est enregistrée : le tableau de bord se
       // remet à jour tout seul (totaux, ventes du jour, stock faible).
+      // (Le signal définitif est émis par `_triggerImmediateSync` une fois
+      //  la vente réellement arrivée au serveur.)
       DonneesService.instance.signale('vente-caisse');
     } catch (e) {
       if (mounted) {
