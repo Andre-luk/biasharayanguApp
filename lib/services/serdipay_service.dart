@@ -78,6 +78,16 @@ class SerdipayService {
   static const Duration intervalleSondage = Duration(seconds: 3);
   static const Duration delaiMaxSondage = Duration(minutes: 3);
 
+  /// Délai maximal d'un appel à la passerelle.
+  ///
+  /// ⚠️ SANS CE GARDE-FOU, un appel qui ne répond jamais bloquait l'écran
+  ///    indéfiniment : « Vérifier maintenant » tournait sans fin, l'utilisateur
+  ///    n'avait aucun retour et ne pouvait plus réessayer.
+  static const Duration delaiAppelMax = Duration(seconds: 45);
+
+  /// Délai d'une simple lecture de statut : elle doit être rapide.
+  static const Duration delaiStatutMax = Duration(seconds: 15);
+
   // -------------------------------------------------------------------------
   // 1. INITIER UN PAIEMENT
   // -------------------------------------------------------------------------
@@ -151,6 +161,7 @@ class SerdipayService {
     final dynamic donnees = await _invoquer(
       '/statut',
       <String, dynamic>{'reference': reference},
+      delai: delaiStatutMax,
     );
 
     final Map<String, dynamic>? map = parseMap(donnees);
@@ -227,12 +238,15 @@ class SerdipayService {
   // 5. APPEL DE L'EDGE FUNCTION
   // -------------------------------------------------------------------------
 
-  Future<dynamic> _invoquer(String route, Map<String, dynamic> corps) async {
+  Future<dynamic> _invoquer(
+    String route,
+    Map<String, dynamic> corps, {
+    Duration delai = delaiAppelMax,
+  }) async {
     try {
-      final FunctionResponse reponse = await _client.functions.invoke(
-        '$fonction$route',
-        body: corps,
-      );
+      final FunctionResponse reponse = await _client.functions
+          .invoke('$fonction$route', body: corps)
+          .timeout(delai);
 
       return reponse.data;
     } on FunctionException catch (e) {
@@ -280,6 +294,15 @@ class SerdipayService {
       );
     } catch (e) {
       if (e is SerdipayException) rethrow;
+
+      if (e is TimeoutException) {
+        throw const SerdipayException(
+          'Le serveur de paiement ne répond pas. Vérifiez votre connexion '
+          'internet puis réessayez.',
+          code: 'DELAI_DEPASSE',
+          type: TypeErreurSerdipay.reseau,
+        );
+      }
 
       throw SerdipayException(
         'Impossible de joindre le serveur de paiement. Vérifiez votre '

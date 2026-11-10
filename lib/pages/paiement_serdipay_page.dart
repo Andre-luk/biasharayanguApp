@@ -67,6 +67,9 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   bool _chargement = true;
   bool _enCours = false;
   bool _sondage = false;
+
+  /// Vérification manuelle en cours (une seule interrogation).
+  bool _verification = false;
   String? _erreur;
 
   OperateurSerdipay _operateur = OperateurSerdipay.orange;
@@ -310,24 +313,69 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   }
 
   Future<void> _sonder({PaiementSerdipay? depart}) async {
-    final PaiementSerdipay paiement = depart ?? _paiement!;
-    if (_sondage) return;
+    final PaiementSerdipay? paiement = depart ?? _paiement;
+    if (paiement == null || _sondage) return;
 
     setState(() => _sondage = true);
 
-    final PaiementSerdipay resultat =
-        await SerdipayService.instance.attendreConfirmation(
-      paiement,
-      onChangement: (PaiementSerdipay p) {
-        if (mounted) setState(() => _paiement = p);
-      },
-    );
+    // ⚠️ `try/finally` obligatoire : sans lui, la moindre erreur laissait
+    //    `_sondage` à `true` et l'écran tournait indéfiniment.
+    try {
+      final PaiementSerdipay resultat =
+          await SerdipayService.instance.attendreConfirmation(
+        paiement,
+        onChangement: (PaiementSerdipay p) {
+          if (mounted) setState(() => _paiement = p);
+        },
+      );
+
+      if (!mounted) return;
+      setState(() => _paiement = resultat);
+    } catch (e) {
+      debugPrint('PaiementSerdipayPage._sonder : $e');
+    } finally {
+      if (mounted) setState(() => _sondage = false);
+    }
+  }
+
+  /// 🔄 « Vérifier maintenant »
+  ///
+  /// Une SEULE interrogation de la passerelle, tout de suite.
+  ///
+  /// Avant, ce bouton lançait la boucle de sondage de 3 minutes : il affichait
+  /// « Vérification automatique… » et tournait sans fin, sans jamais rendre
+  /// la main ni indiquer ce qui se passait. Désormais l'utilisateur obtient
+  /// une réponse en quelques secondes : confirmé, toujours en attente, ou
+  /// erreur réseau — et le bouton redevient toujours actif.
+  Future<void> _verifierMaintenant() async {
+    final PaiementSerdipay? paiement = _paiement;
+    if (paiement == null || _verification) return;
+
+    setState(() => _verification = true);
+
+    String message;
+    try {
+      final PaiementSerdipay relu =
+          await SerdipayService.instance.statut(paiement.reference);
+      if (mounted) setState(() => _paiement = relu);
+      message = relu.estPaye
+          ? 'Paiement confirmé : votre abonnement est crédité.'
+          : 'Toujours en attente. Validez la demande reçue sur votre téléphone, '
+              'puis vérifiez de nouveau.';
+    } on SerdipayException catch (e) {
+      message = e.message;
+    } catch (e) {
+      debugPrint('PaiementSerdipayPage._verifierMaintenant : $e');
+      message = 'Vérification impossible pour le moment. '
+          'Vérifiez votre connexion internet puis réessayez.';
+    } finally {
+      if (mounted) setState(() => _verification = false);
+    }
 
     if (!mounted) return;
-    setState(() {
-      _paiement = resultat;
-      _sondage = false;
-    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
+    );
   }
 
   // -------------------------------------------------------------------------
@@ -708,8 +756,8 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: _sondage ? null : () => _sonder(),
-                  icon: _sondage
+                  onPressed: _verification ? null : _verifierMaintenant,
+                  icon: _verification
                       ? const SizedBox(
                           width: 16,
                           height: 16,
@@ -717,12 +765,33 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                         )
                       : const Icon(Icons.refresh_rounded),
                   label: Text(
-                    _sondage
-                        ? 'Vérification automatique…'
-                        : 'Vérifier maintenant',
+                    _verification ? 'Vérification…' : 'Vérifier maintenant',
                   ),
                 ),
               ),
+              if (_sondage) ...<Widget>[
+                const SizedBox(height: 8),
+                Row(
+                  children: <Widget>[
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Vérification automatique en cours (toutes les 3 s, '
+                        '3 minutes maximum)…',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: couleurs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
                 "Validez la demande reçue sur votre téléphone. Cet écran se "
