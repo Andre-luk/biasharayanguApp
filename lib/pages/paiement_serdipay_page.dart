@@ -56,7 +56,8 @@ class PaiementSerdipayPage extends StatefulWidget {
   State<PaiementSerdipayPage> createState() => _PaiementSerdipayPageState();
 }
 
-class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
+class _PaiementSerdipayPageState extends State<PaiementSerdipayPage>
+    with WidgetsBindingObserver {
   final TextEditingController _telephone = TextEditingController();
 
   /// Montant réellement payé : la totalité par défaut, ou une AVANCE que le
@@ -85,11 +86,30 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   @override
   void initState() {
     super.initState();
+    // 👀 Le CLIENT paie depuis SON téléphone : il quitte l'application pour
+    //    valider la demande (USSD, application de son opérateur), puis il y
+    //    revient. On surveille donc le retour au premier plan pour vérifier
+    //    immédiatement, au lieu de le laisser attendre une minute devant un
+    //    écran qui « tourne ».
+    WidgetsBinding.instance.addObserver(this);
     _charger();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState etat) {
+    super.didChangeAppLifecycleState(etat);
+    if (etat != AppLifecycleState.resumed) return;
+
+    final PaiementSerdipay? paiement = _paiement;
+    if (paiement == null || !paiement.estEnAttente) return;
+
+    // Vérification silencieuse : un seul appel, résultat affiché par l'état.
+    _verifierMaintenant(silencieux: true);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _telephone.dispose();
     _montant.dispose();
     super.dispose();
@@ -366,7 +386,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
   /// la main ni indiquer ce qui se passait. Désormais l'utilisateur obtient
   /// une réponse en quelques secondes : confirmé, toujours en attente, ou
   /// erreur réseau — et le bouton redevient toujours actif.
-  Future<void> _verifierMaintenant() async {
+  Future<void> _verifierMaintenant({bool silencieux = false}) async {
     final PaiementSerdipay? paiement = _paiement;
     if (paiement == null || _verification) return;
 
@@ -391,7 +411,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
       if (mounted) setState(() => _verification = false);
     }
 
-    if (!mounted) return;
+    if (!mounted || silencieux) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
     );
