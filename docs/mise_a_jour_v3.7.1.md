@@ -25,6 +25,37 @@ Elle avait **trois** origines, toutes corrigées côté base :
 Conséquence concrète : un abonné échu peut de nouveau ouvrir son dossier et
 payer par Mobile Money depuis son téléphone.
 
+### 1.1 bis Le webhook peut enfin créditer (`ACCES_REFUSE`)
+
+Le client saisissait son code PIN, la demande était validée sur son téléphone…
+et rien ne se passait : l'abonnement n'était jamais crédité, la transaction
+restait `en_attente`.
+
+`rpc_serdipay_confirmer` (appelée par le webhook) n'a pas de session : elle
+**emprunte** l'identité d'un compte pour appeler le moteur. Elle choisissait le
+premier compte `new_role = 'FINANCE_LAPERLE'` **sans regarder son ancien rôle**,
+alors que le moteur exige `role = 'admin'` :
+
+```sql
+if not exists (select 1 from utilisateurs u
+                where u.id = auth.uid() and u.role = 'admin')
+  then raise 'ACCES_REFUSE';
+```
+
+Résultat : refus, transaction annulée, ligne de nouveau `en_attente` à chaque
+rejeu, **en silence**. L'acteur emprunté est désormais choisi pour satisfaire le
+moteur (FINANCE puis SUPER_ADMIN, avec l'ancien rôle `admin`) ; sans compte
+valide, l'erreur devient explicite.
+
+### 1.1 ter « Vérifier maintenant » répond en quelques secondes
+
+Sur le paiement en attente, ce bouton lançait la boucle complète (3 minutes) et
+tournait sans fin. Il fait maintenant **une seule** interrogation (15 s
+maximum) et rend toujours la main ; la fenêtre automatique passe à 1 minute ;
+une vérification part **immédiatement au retour dans l'application** (le temps
+de valider le PIN chez son opérateur) ; si rien n'est confirmé, la **référence**
+du paiement est affichée pour le support.
+
 ### 1.2 Le bouton « Réactiver l'abonnement » ne donne plus de mois gratuit
 
 Un clic sur « Réactiver l'abonnement » repoussait l'échéance de **30 jours sans
@@ -115,6 +146,7 @@ et active.
 4. `20260916000127_abonnement_multi_mois_echu.sql`
 5. `20260916000128_prix_tolerant_et_supplement_collaborateur.sql`
 6. `20260916000129_solde_restant_coherent.sql`
+7. `20260916000130_webhook_serdipay_acteur_admin.sql`
 
 Toutes sont **idempotentes** : elles peuvent être rejouées sans risque.
 Aucune publication d'application n'est nécessaire pour que la base soit
