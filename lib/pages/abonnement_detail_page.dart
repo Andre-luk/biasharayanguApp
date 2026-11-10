@@ -7,7 +7,12 @@
 // paiements du moteur (table `paiements_abonnements_laperle`).
 //
 // Actions : enregistrer un paiement (avance / solde / renouvellement) et
-// réactiver l'abonnement lorsqu'il est intégralement réglé.
+// encaisser le nouveau cycle par Mobile Money (SerdiPay).
+//
+// 🚫 MIGRATION 126 — PLUS DE RÉACTIVATION GRATUITE : ouvrir un nouveau cycle
+// se PAIE. L'ancien bouton « Réactiver l'abonnement » repoussait la date de
+// 30 jours sans encaisser un franc ; il est remplacé par un encaissement
+// SerdiPay réel. Le serveur refuse même un appel direct.
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +21,7 @@ import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/etat_installation.dart';
 import 'package:biashara_yangu/models/paiement_laperle.dart';
 import 'package:biashara_yangu/models/statut_abonnement.dart';
+import 'package:biashara_yangu/pages/paiement_serdipay_page.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/statut_abonnement_chip.dart';
@@ -46,7 +52,6 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
   EtatInstallation _installation = EtatInstallation.inconnu;
 
   bool _chargement = true;
-  bool _actionEnCours = false;
   String? _erreur;
 
   @override
@@ -159,72 +164,34 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
     await _charger(silencieux: true);
   }
 
-  /// Réactive un abonnement intégralement réglé (statut Échu / Attente de
-  /// complément) en recalculant sa date d'expiration.
-  Future<void> _reactiver() async {
+  /// 💳 MIGRATION 126 — ENCAISSEMENT DU NOUVEAU CYCLE PAR MOBILE MONEY.
+  ///
+  /// Remplace l'ancien « Réactiver l'abonnement » (30 jours offerts sans
+  /// paiement). On ouvre la passerelle SerdiPay : le serveur ouvre le cycle au
+  /// prix mensuel négocié, le client valide sur son téléphone, et le webhook
+  /// crédite puis active l'abonnement. Aucun jour n'est accordé sans argent.
+  Future<void> _encaisserMobileMoney() async {
     final Entreprise? entreprise = _entreprise;
     if (entreprise == null) return;
 
-    final bool confirme = await _confirmerReactivation(entreprise);
-    if (!mounted || !confirme) return;
-
-    setState(() => _actionEnCours = true);
-
-    String? messageErreur;
-    try {
-      await _service.reactiverApresPaiement(entreprise.id);
-    } on AbonnementServiceException catch (e) {
-      messageErreur = e.message;
-    } catch (e, st) {
-      debugPrint('AbonnementDetailPage._reactiver: $e\n$st');
-      messageErreur =
-          "Une erreur inattendue est survenue lors de la réactivation.";
-    }
+    final bool? paye = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => PaiementSerdipayPage(
+          objet: 'abonnement',
+          entrepriseId: entreprise.id,
+          libelleEntreprise: entreprise.nom,
+        ),
+      ),
+    );
 
     if (!mounted) return;
 
-    setState(() => _actionEnCours = false);
-
-    if (messageErreur != null) {
-      _afficherMessage(messageErreur, estErreur: true);
-      return;
+    if (paye == true) {
+      _afficherMessage('Paiement Mobile Money confirmé par SerdiPay.');
     }
-
-    _afficherMessage(
-      "Abonnement réactivé : l'entreprise repasse au statut Actif.",
-    );
+    // Même sans confirmation immédiate, l'état a pu changer côté serveur
+    // (webhook reçu entre-temps) : on relit toujours la fiche.
     await _charger(silencieux: true);
-  }
-
-  Future<bool> _confirmerReactivation(Entreprise entreprise) async {
-    final int jours = _dureeAbonnementJours;
-
-    final bool? confirme = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return AlertDialog(
-          title: const Text("Réactiver l'abonnement ?"),
-          content: Text(
-            "L'abonnement de « ${entreprise.nom} » est intégralement réglé.\n\n"
-            'La réactivation fixera une nouvelle date d\'expiration dans '
-            "$jours jour${jours > 1 ? 's' : ''} "
-            "(à partir d'aujourd'hui si l'abonnement est échu).",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Réactiver'),
-            ),
-          ],
-        );
-      },
-    );
-
-    return confirme ?? false;
   }
 
   void _afficherMessage(String message, {bool estErreur = false}) {
@@ -692,7 +659,10 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
   }
 
   Widget _barreActions(SoldeAbonnement solde) {
-    final bool peutReactiver = solde.estSolde &&
+    // 🚫 MIGRATION 126 : plus de réactivation gratuite. Un abonnement échu et
+    // soldé ne repart qu'après un ENCAISSEMENT réel (Mobile Money / SerdiPay
+    // ici, ou « Enregistrer un paiement » pour les espèces).
+    final bool peutEncaisserMm = solde.estSolde &&
         (solde.statut == StatutAbonnement.expire ||
             solde.statut == StatutAbonnement.enAttenteComplement);
 
@@ -703,7 +673,7 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             FilledButton.icon(
-              onPressed: _actionEnCours ? null : _ouvrirPaiement,
+              onPressed: _ouvrirPaiement,
               icon: const Icon(Icons.payments_rounded),
               label: Text(
                 solde.estSolde
@@ -717,12 +687,12 @@ class _AbonnementDetailPageState extends State<AbonnementDetailPage> {
                 ),
               ),
             ),
-            if (peutReactiver) ...[
+            if (peutEncaisserMm) ...[
               const SizedBox(height: 10),
               OutlinedButton.icon(
-                onPressed: _actionEnCours ? null : _reactiver,
-                icon: const Icon(Icons.play_circle_outline_rounded),
-                label: const Text('Réactiver l\'abonnement'),
+                onPressed: _encaisserMobileMoney,
+                icon: const Icon(Icons.smartphone_rounded),
+                label: const Text('Encaisser par Mobile Money'),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(

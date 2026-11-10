@@ -891,6 +891,12 @@ class AbonnementService {
   /// Réactive un abonnement intégralement réglé et calcule sa nouvelle date
   /// d'expiration (`base + duree_abonnement_jours`, base = max(now, expiration
   /// encore future)).
+  ///
+  /// ⚠️ MIGRATION 126 : le serveur REFUSE désormais cette réactivation tant
+  /// qu'aucun paiement réel (SerdiPay / versement postérieur à l'échéance)
+  /// n'est enregistré — plus aucun mois gratuit. Conservée pour compatibilité :
+  /// les écrans passent par la passerelle Mobile Money ou par « Enregistrer un
+  /// paiement ».
   Future<Entreprise> reactiverApresPaiement(String entrepriseId) {
     return _executer(
       () async {
@@ -1195,6 +1201,16 @@ class AbonnementService {
     if (brut.contains('SOLDE_RESTANT')) {
       return "L'abonnement n'est pas intégralement réglé : la réactivation "
           'est impossible.';
+    }
+    // 🚫 MIGRATION 126 — la réactivation n'offre plus de jours gratuits.
+    if (brut.contains('REACTIVATION_PAYANTE')) {
+      return 'Ouvrir un nouveau cycle se paie : aucun paiement Mobile Money '
+          "(SerdiPay) postérieur à l'échéance n'a été trouvé. Encaisssez par "
+          'Mobile Money, ou enregistrez un paiement en espèces.';
+    }
+    if (brut.contains('MOTIF_REQUIS')) {
+      return 'Indiquez le motif du geste commercial : il est inscrit au '
+          "journal d'audit.";
     }
 
     return "Le moteur d'abonnement a refusé l'opération. Réessayez ou "
