@@ -324,6 +324,10 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
       final PaiementSerdipay resultat =
           await SerdipayService.instance.attendreConfirmation(
         paiement,
+        // 🕐 60 secondes au lieu de 3 minutes : après avoir saisi son code PIN,
+        //    le client doit obtenir une réponse vite, pas attendre trois
+        //    minutes devant un écran figé.
+        delaiMax: const Duration(seconds: 60),
         onChangement: (PaiementSerdipay p) {
           if (mounted) setState(() => _paiement = p);
         },
@@ -331,6 +335,21 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
 
       if (!mounted) return;
       setState(() => _paiement = resultat);
+
+      // 🔎 Toujours en attente au bout d'une minute : on le DIT, avec la
+      //    référence — c'est elle qu'il faut donner au support.
+      if (resultat.estEnAttente) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Paiement pas encore confirmé. Référence ${resultat.reference} : '
+              'si vous avez validé sur votre téléphone, appuyez sur '
+              '« Vérifier maintenant » dans quelques instants.',
+            ),
+            duration: const Duration(seconds: 8),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('PaiementSerdipayPage._sonder : $e');
     } finally {
@@ -782,7 +801,7 @@ class _PaiementSerdipayPageState extends State<PaiementSerdipayPage> {
                     Expanded(
                       child: Text(
                         'Vérification automatique en cours (toutes les 3 s, '
-                        '3 minutes maximum)…',
+                        '1 minute maximum)…',
                         style: TextStyle(
                           fontSize: 11.5,
                           color: couleurs.onSurfaceVariant,

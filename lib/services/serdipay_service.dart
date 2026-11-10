@@ -195,8 +195,9 @@ class SerdipayService {
     final DateTime limite = DateTime.now().add(delaiMax);
 
     while (courant.estEnAttente && DateTime.now().isBefore(limite)) {
-      await Future<void>.delayed(intervalle);
-
+      // ⚡ On interroge TOUT DE SUITE, puis on attend : après avoir saisi son
+      //    code PIN, le client doit voir une réponse immédiate et non un
+      //    premier silence de 3 secondes.
       try {
         final PaiementSerdipay relu = await statut(courant.reference);
         if (relu.statut != courant.statut ||
@@ -209,6 +210,12 @@ class SerdipayService {
       } catch (e) {
         debugPrint('SerdipayService.attendreConfirmation (ignoré) : $e');
       }
+
+      if (!courant.estEnAttente || !DateTime.now().isBefore(limite)) {
+        break;
+      }
+
+      await Future<void>.delayed(intervalle);
     }
 
     return courant;
