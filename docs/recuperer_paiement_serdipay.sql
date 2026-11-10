@@ -16,10 +16,8 @@
 --  Tout est exécuté dans UN SEUL bloc : l'identité « FINANCE » est empruntée
 --  le temps de la transaction (comme le fait le webhook), puis rendue.
 --
---  ⚠️ PRÉREQUIS : migrations 0124, 0125 et 0127 exécutées.
---     Sans la 0127, ouvrir plusieurs cycles sur un dossier ÉCHU laisse le
---     statut à `EXPIRE` et le moteur répond `MONTANT_SUPERIEUR` (il recalcule
---     un seul cycle) : l'argent reste bloqué.
+--  ⚠️ PRÉREQUIS : migrations 0124 à 0131 exécutées (surtout 0127, 0128, 0129
+--     0130 et 0131).
 -- ============================================================================
 
 select set_config('search_path', 'public, extensions', true);
@@ -60,89 +58,21 @@ select s.reference,
 
 
 -- ============================================================================
---  3. CONFIRMER LE PAIEMENT ET CRÉDITER L'ABONNEMENT
+--  3. CRÉDITER LE PAIEMENT DÉJÀ ENCAISSÉ
 -- ============================================================================
---  Le bloc :
---    1. emprunte l'identité du compte FINANCE de la plateforme ;
---    2. ouvre autant de cycles que le montant en couvre (30 000 ÷ 10 000 = 3) ;
---    3. confirme la transaction SerdiPay → le moteur crédite, active et
---       prolonge de 30 jours × nombre de cycles.
---  Idempotent : si la transaction est déjà `paye`, la fonction répond
---  « déjà » et ne crédite rien une seconde fois.
+--  UN SEUL APPEL. La fonction (migration 0131) :
+--    • refuse une transaction sans référence SerdiPay (rien n'a pu être
+--      encaissé), un compte suspendu, une transaction déjà payée ;
+--    • FIGE le montant réellement payé (aucun centime inventé) ;
+--    • en déduit le nombre de périodes au prix de base
+--      (30 000 ÷ 10 000 = 3 → 90 jours) ;
+--    • crédite via le moteur habituel (dates, journal, facture).
+--
+--  Idempotent : relancer ne crédite jamais deux fois.
+--
+--  Remplacez la référence, décommentez, exécutez :
 
--- do $$
--- declare
---   v_ref      text := 'SER-20261103-E217C61D';   -- ← référence interne
---   v_provider text;
---   v_acteur   uuid;
---   v_s        public.paiements_serdipay%rowtype;
---   v_prix     numeric := 0;
---   v_mois     integer;
---   v_prep     jsonb;
--- begin
---   select * into v_s
---     from public.paiements_serdipay
---    where reference = v_ref
---      for update;
---
---   if v_s.id is null then
---     raise exception 'Référence % inconnue.', v_ref;
---   end if;
---
---   if v_s.statut = 'paye' then
---     raise notice 'Cette transaction est DÉJÀ payée : rien à faire.';
---     return;
---   end if;
---
---   v_prix := public.rpc_abonnement_prix_du_cycle(v_s.entreprise_id);
---   if v_prix is null or v_prix <= 0 then
---     raise exception 'Aucun prix de cycle pour cette entreprise : arbitrez à la main.';
---   end if;
---
---   v_mois := round(v_s.montant / v_prix);
---   if v_mois < 1 or abs(v_mois * v_prix - v_s.montant) > 0.01 then
---     raise exception
---       'Le montant reçu (% %) ne correspond pas à un nombre entier de cycles de % % : traitez ce dossier manuellement.',
---       v_s.montant, v_s.devise, v_prix, v_s.devise;
---   end if;
---
---   -- Identité de confiance : la même que celle utilisée par le webhook.
---   select u.id into v_acteur
---     from public.utilisateurs u
---    where u.new_role = 'FINANCE_LAPERLE'
---    order by u.id limit 1;
---
---   if v_acteur is null then
---     raise exception 'Aucun compte FINANCE_LAPERLE : impossible de créditer.';
---   end if;
---
---   perform set_config('request.jwt.claim.sub', v_acteur::text, true);
---   perform set_config(
---     'request.jwt.claims',
---     jsonb_build_object('sub', v_acteur::text, 'role', 'authenticated')::text,
---     true
---   );
---
---   -- Ouvre N cycles à encaisser (montant_total_du = prix × N).
---   -- Sur un dossier échu, la migration 127 le place en EN_ATTENTE_COMPLEMENT
---   -- pour que le moteur crédite le montant figé au lieu de le recalculer.
---   v_prep := public.abonnement_ouvrir_avance_multi(v_s.entreprise_id, v_mois);
---   raise notice 'Cycles ouverts : % → montant réclamé % %',
---     v_prep ->> 'mois', v_prep ->> 'montant', v_prep ->> 'devise';
---
---   -- Confirme SerdiPay : vérifie le montant, puis crédite via le moteur.
---   v_provider := v_s.provider_reference;
---
---   perform public.rpc_serdipay_confirmer(
---     p_reference          => v_s.reference,
---     p_statut             => 'paye',
---     p_provider_reference => v_provider,
---     p_montant_recu       => v_s.montant,
---     p_payload            => jsonb_build_object('source', 'recuperation_operateur')
---   );
---
---   raise notice 'Paiement confirmé : abonnement crédité et prolongé.';
--- end $$;
+-- select public.abonnement_crediter_paiement_serdipay('SER-20261103-E217C61D');
 
 
 -- ============================================================================
