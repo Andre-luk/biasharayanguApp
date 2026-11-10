@@ -13,10 +13,10 @@ class AppVersion {
   AppVersion._();
 
   /// Version commerciale (sans le « +build »).
-  static const String numero = '3.7.1';
+  static const String numero = '3.8.0';
 
   /// Numéro de build Android / iOS.
-  static const String build = '52';
+  static const String build = '53';
 
   /// « 3.4.0 » — usage courant dans les textes.
   static const String court = numero;
