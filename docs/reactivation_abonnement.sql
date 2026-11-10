@@ -112,14 +112,48 @@ select s.reference,
 --  À utiliser pour un dédommagement réel — jamais pour « réactiver » un
 --  client qui n'a pas payé.
 --
---  Remplacez l'identifiant et le motif, puis exécutez :
+--  ⚠️ Depuis l'éditeur SQL il n'y a pas de session : la fonction refuserait
+--     (elle vérifie `est_super_admin()`). Ce bloc emprunte donc l'identité du
+--     compte SUPER_ADMIN le temps de la transaction, puis la rend.
 
--- select (public.abonnement_geste_commercial(
---           p_entreprise_id => (select e.id from public.entreprises e
---                                where e.nom ilike '%urembo%' limit 1),
---           p_jours         => 7,
---           p_motif         => 'Dédommagement coupure réseau du 08/11'
---         )).*;
+-- do $$
+-- declare
+--   v_acteur uuid;
+--   v_ent    uuid;
+-- begin
+--   select e.id into v_ent
+--     from public.entreprises e
+--    where e.nom ilike '%portes ouvertes%'
+--    limit 1;
+--
+--   if v_ent is null then
+--     raise exception 'Entreprise introuvable : modifiez le filtre.';
+--   end if;
+--
+--   select u.id into v_acteur
+--     from public.utilisateurs u
+--    where u.new_role = 'SUPER_ADMIN'
+--    order by u.id limit 1;
+--
+--   if v_acteur is null then
+--     raise exception 'Aucun compte SUPER_ADMIN.';
+--   end if;
+--
+--   perform set_config('request.jwt.claim.sub', v_acteur::text, true);
+--   perform set_config(
+--     'request.jwt.claims',
+--     jsonb_build_object('sub', v_acteur::text, 'role', 'authenticated')::text,
+--     true
+--   );
+--
+--   perform public.abonnement_geste_commercial(
+--     p_entreprise_id => v_ent,
+--     p_jours         => 30,
+--     p_motif         => 'Mois offert à l''ouverture de la boutique'
+--   );
+--
+--   raise notice 'Geste commercial enregistré : +30 jours.';
+-- end $$;
 
 
 -- ============================================================================
