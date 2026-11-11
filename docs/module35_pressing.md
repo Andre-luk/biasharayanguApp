@@ -25,7 +25,7 @@ de stock de boutique. Ce sont des vêtements **confiés**, tracés un par un.
 | Étape | Écran | Ce qui se passe |
 |---|---|---|
 | 1. Dépôt | **Dépôts & commandes → Nouveau dépôt** | On choisit le client (ou on le crée sur place), on ajoute chaque vêtement avec sa prestation. Le numéro `PR-AAAA-NNNNNN` est attribué, le **prix est figé**, un **QR** est généré et le **reçu** est imprimable / partageable. |
-| 2. Atelier | **Atelier & qualité** | La file de travail affiche des **vêtements**, pas des dossiers. On fait avancer un vêtement (ou plusieurs d'un coup), puis on passe le **contrôle qualité** : conforme ⇒ prêt, sinon ⇒ à retraiter. |
+| 2. Atelier | **Atelier & qualité** | La file de travail affiche des **vêtements**, pas des dossiers. On fait avancer un vêtement (ou plusieurs d'un coup), puis on passe le **contrôle qualité** : conforme ⇒ prêt, sinon ⇒ à retraiter. Quand un vêtement devient prêt, l'application **propose** aussitôt de prévenir le client (si le réglage est actif). |
 | 3. Retrait | **Retraits & scan** | On scanne le QR du client (ou on cherche le numéro), on vérifie le **contrôle qualité**, on encaisse, et le vêtement est remis. |
 
 Depuis la fiche d'une commande, deux boutons complètent le parcours :
@@ -137,8 +137,8 @@ revérifie à chaque écriture.
 
 - **Publication** : le module n'est pas activé dans la version publiée ; il le
   sera quand le parcours complet aura été validé sur un vrai pressing.
-- **Envoi automatique** des messages : aujourd'hui c'est l'agent qui déclenche
-  (bouton « Prévenir le client »). L'envoi automatique à l'étape finale (sans
-  intervention) reste à brancher — les réglages sont déjà enregistrés.
-- **Impression d'un bordereau d'atelier** (liste des vêtements par étape) : non
+- **Envoi sans relecture** : le message est toujours préparé dans WhatsApp et
+  envoyé par l'agent (il le relit). Rien ne part silencieusement au nom du
+  pressing.
+- **Bordereau d'atelier imprimable** (liste des vêtements par étape) : non
   prévu dans cette version.

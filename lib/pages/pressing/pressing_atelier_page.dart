@@ -18,9 +18,12 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/pressing.dart';
+import 'package:biashara_yangu/services/etablissement_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/pressing_notification_service.dart';
 import 'package:biashara_yangu/services/pressing_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
@@ -43,6 +46,10 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
 
   String? _filtreEtape;
   bool _mesVetements = false;
+
+  /// Réglages du pressing : sert à savoir si le propriétaire veut que ses
+  /// clients soient prévenus quand un vêtement devient prêt.
+  PressingConfig _config = PressingConfig.defaut;
 
   bool get _peutModifier =>
       PermissionService.instance.peut(
@@ -73,10 +80,19 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
       final List<PressingLigneAtelier> lignes =
           await PressingService.instance.atelier(miennes: _mesVetements);
 
+      PressingConfig config = _config;
+      try {
+        config = await PressingService.instance.config();
+      } on PressingException {
+        // Sans réglages, on garde les valeurs par défaut : l'atelier ne doit
+        // jamais devenir inutilisable parce qu'une lecture a échoué.
+      }
+
       if (!mounted) return;
       setState(() {
         _etapes = etapes;
         _lignes = lignes;
+        _config = config;
         _chargement = false;
         _selection.removeWhere(
           (String id) => !lignes.any((PressingLigneAtelier l) => l.ligneId == id),
@@ -269,11 +285,73 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
       setState(() => _envoi = false);
       _message(ok ? 'Vêtement déclaré prêt.' : 'Vêtement à retraiter.');
       await _charger();
+      // 📣 C'EST LE MOMENT : le vêtement vient de devenir remisable. Si le
+      // propriétaire a activé « Prévenir quand c'est prêt », on propose
+      // immédiatement d'envoyer le message au client — sans attendre qu'il
+      // pense à rouvrir la fiche.
+      if (ok && mounted) await _proposerPrevenir(ligne.commandeId);
     } on PressingException catch (e) {
       if (!mounted) return;
       setState(() => _envoi = false);
       _message(e.message, erreur: true);
     }
+  }
+
+  /// Propose d'envoyer le message « votre commande est prête ».
+  ///
+  /// Rien n'est envoyé automatiquement : le message part dans WhatsApp, l'agent
+  /// le relit et l'envoie. Un envoi silencieux au nom du pressing, sans
+  /// relecture, serait une erreur commerciale.
+  Future<void> _proposerPrevenir(String commandeId) async {
+    if (!_config.notifyPret || commandeId.isEmpty) return;
+
+    PressingCommande commande;
+    try {
+      commande = await PressingService.instance.commande(commandeId);
+    } on PressingException {
+      return; // best-effort : le vêtement est déjà enregistré comme prêt
+    }
+    if (!mounted) return;
+    if (commande.estAnnulee || commande.nbRemis >= commande.nbLignes) return;
+
+    final int total =
+        commande.lignes.where((PressingLigne l) => !l.estRemis).length;
+    final bool partiel = commande.nbPrets > 0 && commande.nbPrets < total;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(partiel
+            ? 'Une partie de la commande ${commande.numero} est prête : '
+                'prévenir le client ?'
+            : 'La commande ${commande.numero} est prête : prévenir le client ?'),
+        duration: const Duration(seconds: 8),
+        action: SnackBarAction(
+          label: 'Prévenir',
+          onPressed: () => _prevenir(commande, partiel),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _prevenir(PressingCommande commande, bool partiel) async {
+    Etablissement etab = EtablissementService.instance.courant;
+    try {
+      etab = await EtablissementService.instance.charger();
+    } catch (_) {
+      // Nom d'établissement : confort, jamais bloquant.
+    }
+    final bool ok = await PressingNotificationService.instance.envoyer(
+      commande: commande,
+      etablissement: etab,
+      partiel: partiel,
+    );
+    if (!mounted) return;
+    _message(
+      ok
+          ? 'Message préparé dans WhatsApp : vérifiez puis envoyez.'
+          : 'Impossible d\'ouvrir WhatsApp sur cet appareil.',
+      erreur: !ok,
+    );
   }
 
   // ---------------------------------------------------------------------------
