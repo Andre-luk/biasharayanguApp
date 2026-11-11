@@ -515,6 +515,18 @@ class _FicheCommandeState extends State<_FicheCommande> {
   late PressingCommande _commande = widget.commande;
   bool _envoi = false;
 
+  /// Annuler une commande est un acte d'accueil ou de responsable.
+  bool get _peutAnnuler => PermissionService.instance.peut(
+        PageAccess.pressingDepots,
+        ActionAccess.modifier,
+      );
+
+  /// Annuler un encaissement est réservé à la validation finance (patron).
+  bool get _peutAnnulerPaiement => PermissionService.instance.peut(
+        PageAccess.finance,
+        ActionAccess.valider,
+      );
+
   void _message(String texte, {bool erreur = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -580,6 +592,141 @@ class _FicheCommandeState extends State<_FicheCommande> {
           : 'Impossible d\'ouvrir WhatsApp sur cet appareil.',
       erreur: !ok,
     );
+  }
+
+  /// Demande un motif (obligatoire) avant un acte irréversible.
+  Future<String?> _demanderMotif(String titre, String libelle) async {
+    final TextEditingController ctrl = TextEditingController();
+    final String? motif = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: Text(titre),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(libelle, style: const TextStyle(fontSize: 12.5)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              maxLines: 2,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Motif (obligatoire)',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(ctrl.text.trim()),
+            child: const Text('Confirmer'),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (motif == null || motif.length < 3) return null;
+    return motif;
+  }
+
+  /// Un reçu perdu ou abîmé : on réédite un QR, l'ancien cesse de fonctionner.
+  Future<void> _regenererQr() async {
+    final bool? ok = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Rééditer le QR code ?'),
+        content: const Text(
+          'L\'ancien QR cessera de fonctionner : le client devra présenter le '
+          'nouveau reçu. À faire quand le reçu est perdu ou abîmé.',
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Rééditer'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _envoi = true);
+    try {
+      await PressingService.instance.regenererQr(_commande.id);
+      final PressingCommande maj =
+          await PressingService.instance.commande(_commande.id);
+      if (!mounted) return;
+      setState(() {
+        _commande = maj;
+        _envoi = false;
+      });
+      _message('QR réédité : réimprimez le reçu pour le client.');
+    } on PressingException catch (e) {
+      if (!mounted) return;
+      setState(() => _envoi = false);
+      _message(e.message, erreur: true);
+    }
+  }
+
+  /// Annule une commande (motif tracé). Le stock de vêtements n'est pas
+  /// concerné : ce sont les biens du client, pas une marchandise.
+  Future<void> _annulerCommande() async {
+    final String? motif = await _demanderMotif(
+      'Annuler la commande ${_commande.numero}',
+      'La commande restera dans l\'historique, marquée « Annulée » avec son '
+          'motif. Rien n\'est supprimé.',
+    );
+    if (motif == null) return;
+
+    setState(() => _envoi = true);
+    try {
+      await PressingService.instance.annulerCommande(_commande.id, motif);
+      if (!mounted) return;
+      widget.onModifiee(_commande);
+    } on PressingException catch (e) {
+      if (!mounted) return;
+      setState(() => _envoi = false);
+      _message(e.message, erreur: true);
+    }
+  }
+
+  /// Annule un encaissement saisi par erreur (réservé à la validation finance).
+  Future<void> _annulerPaiement(PressingPaiement p) async {
+    final String? motif = await _demanderMotif(
+      'Annuler cet encaissement',
+      'Le paiement de ${formatMontant(p.montant, devise: _commande.devise)} '
+          'restera dans l\'historique, marqué annulé, avec son motif.',
+    );
+    if (motif == null) return;
+
+    setState(() => _envoi = true);
+    try {
+      await PressingService.instance.paiementAnnuler(p.id, motif);
+      final PressingCommande maj =
+          await PressingService.instance.commande(_commande.id);
+      if (!mounted) return;
+      setState(() {
+        _commande = maj;
+        _envoi = false;
+      });
+      _message('Encaissement annulé.');
+    } on PressingException catch (e) {
+      if (!mounted) return;
+      setState(() => _envoi = false);
+      _message(e.message, erreur: true);
+    }
   }
 
   Future<void> _encaisser() async {
@@ -724,6 +871,39 @@ class _FicheCommandeState extends State<_FicheCommande> {
                   ),
                 ),
               ),
+              if (!c.estAnnulee && _peutAnnuler)
+                PopupMenuButton<String>(
+                  tooltip: 'Autres actions',
+                  enabled: !_envoi,
+                  onSelected: (String choix) {
+                    if (choix == 'qr') {
+                      _regenererQr();
+                    } else if (choix == 'annuler') {
+                      _annulerCommande();
+                    }
+                  },
+                  itemBuilder: (BuildContext _) =>
+                      const <PopupMenuEntry<String>>[
+                    PopupMenuItem<String>(
+                      value: 'qr',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.qr_code_2_rounded),
+                        title: Text('Rééditer le QR code'),
+                      ),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'annuler',
+                      child: ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.cancel_outlined),
+                        title: Text('Annuler la commande'),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 10),
@@ -817,6 +997,14 @@ class _FicheCommandeState extends State<_FicheCommande> {
                   ].join(' · '),
                   style: const TextStyle(fontSize: 11),
                 ),
+                trailing: (p.estAnnule || !_peutAnnulerPaiement || _envoi)
+                    ? null
+                    : IconButton(
+                        tooltip: 'Annuler cet encaissement',
+                        onPressed: () => _annulerPaiement(p),
+                        icon: Icon(Icons.undo_rounded,
+                            size: 20, color: AppCouleurs.danger),
+                      ),
               ),
             ),
           ],

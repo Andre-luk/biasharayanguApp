@@ -167,8 +167,23 @@ begin
       v_ok := (v_op = 'insert') or (v_role = 'responsable');
       v_qui := 'les réglages du pressing';
 
-    -- 🧾 LE DÉPÔT : accueil (et responsable).
-    when 'pressing_commandes', 'pressing_lignes' then
+    -- 🧾 LE DÉPÔT (et l'ANNULATION d'une commande) : accueil et responsable.
+    when 'pressing_commandes' then
+      if v_op = 'update' then
+        -- Seule l'ANNULATION est contrôlée : les recalculs internes (totaux,
+        -- solde) doivent rester possibles pour tous les métiers.
+        if new.annule_le is not null and old.annule_le is null then
+          v_ok := v_role in ('accueil', 'responsable');
+          v_qui := 'l''annulation d''une commande';
+        else
+          v_ok := true;
+        end if;
+      else
+        v_ok := v_role in ('accueil', 'responsable');
+        v_qui := 'le dépôt d''un vêtement';
+      end if;
+
+    when 'pressing_lignes' then
       v_ok := v_role in ('accueil', 'responsable');
       v_qui := 'le dépôt d''un vêtement';
 
@@ -186,8 +201,21 @@ begin
       end if;
 
     -- 💵 L'ARGENT : caisse et accueil.
-    when 'pressing_paiements', 'pressing_retraits',
-         'pressing_retrait_lignes' then
+    when 'pressing_paiements' then
+      if v_op = 'update' then
+        -- L'annulation d'un encaissement est un acte de responsable.
+        if new.annule_le is not null and old.annule_le is null then
+          v_ok := v_role = 'responsable';
+          v_qui := 'l''annulation d''un encaissement';
+        else
+          v_ok := true;
+        end if;
+      else
+        v_ok := v_role in ('caisse', 'accueil', 'responsable');
+        v_qui := 'l''encaissement';
+      end if;
+
+    when 'pressing_retraits', 'pressing_retrait_lignes' then
       v_ok := v_role in ('caisse', 'accueil', 'responsable');
       v_qui := 'l''encaissement et la remise';
 
@@ -213,8 +241,8 @@ do $$
 declare
   v_t text;
   v_tables text[] := array[
-    'pressing_commandes', 'pressing_lignes', 'pressing_ligne_etapes',
-    'pressing_paiements', 'pressing_retraits', 'pressing_retrait_lignes'
+    'pressing_lignes', 'pressing_ligne_etapes',
+    'pressing_retraits', 'pressing_retrait_lignes'
   ];
 begin
   foreach v_t in array v_tables loop
@@ -227,6 +255,14 @@ begin
   -- Catalogue et réglages : insertion ET modification.
   foreach v_t in array array['pressing_tarifs', 'pressing_prestations',
                              'pressing_categories', 'pressing_config'] loop
+    execute format('drop trigger if exists trg_press_metier on public.%I', v_t);
+    execute format(
+      'create trigger trg_press_metier before insert or update on public.%I
+         for each row execute function public.pressing_garde_metier()', v_t);
+  end loop;
+
+  -- Commandes et paiements : l'ANNULATION y est contrôlée aussi.
+  foreach v_t in array array['pressing_commandes', 'pressing_paiements'] loop
     execute format('drop trigger if exists trg_press_metier on public.%I', v_t);
     execute format(
       'create trigger trg_press_metier before insert or update on public.%I

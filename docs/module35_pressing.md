@@ -30,7 +30,6 @@ de stock de boutique. Ce sont des vêtements **confiés**, tracés un par un.
 | 3. Retrait | **Retraits & scan** | On scanne le QR du client (ou on cherche le numéro), on vérifie le **contrôle qualité**, on encaisse, et le vêtement est remis. |
 
 Depuis la fiche d'une commande, deux boutons complètent le parcours :
-
 - **Reçu** : le PDF du dépôt (impression, partage, WhatsApp) ;
 - **Prévenir le client** : prépare le message WhatsApp « votre commande est
   prête » (numéro, date de retrait, solde restant). Pour une commande
@@ -38,6 +37,18 @@ Depuis la fiche d'une commande, deux boutons complètent le parcours :
   prête » ; pour une commande en retard, il s'excuse et rappelle la date
   promise. Ce bouton n'apparaît que si le réglage **« Prévenir quand c'est
   prêt »** est actif.
+
+Un menu **« Autres actions »** (en haut de la fiche) permet en plus :
+
+- **Rééditer le QR code** — le reçu est perdu ou abîmé : l'ancien QR cesse de
+  fonctionner, un nouveau est émis (`qr_version`), et le client doit présenter
+  le nouveau reçu ;
+- **Annuler la commande** — avec un **motif obligatoire**. Rien n'est supprimé :
+  le dossier reste dans l'historique, marqué « Annulée ».
+
+Et sur chaque encaissement, une flèche de retour permet d'**annuler un
+paiement** saisi par erreur (motif obligatoire) — réservé à qui a le droit de
+valider la finance, c'est-à-dire au patron.
 
 Ce qui est affiché en permanence : ce qui est **en cours**, ce qui est **prêt**,
 ce qui est **en retard**, et ce qui **reste à encaisser**.
@@ -101,6 +112,8 @@ permet de prévenir le client que sa commande est prête.
 | Statut | Calculé depuis les lignes : « 3 prêts / 2 en traitement » n'est jamais « terminé ». |
 | Remise | Refusée si le vêtement n'est pas prêt, s'il est déjà remis, ou si le solde est dû (selon la politique). |
 | Paiement | Jamais au-delà du facturé ; une annulation **trace** (motif + auteur) au lieu de supprimer. |
+| Annulation de commande | Motif **obligatoire** ; le dossier reste dans l'historique. |
+| Annulation d'encaissement | Réservée au patron (droit `finance/valider`) ; motif **obligatoire**. |
 | Hors ligne | Le dépôt est idempotent : une demande rejouée ne crée pas deux dossiers. |
 
 ---
