@@ -165,6 +165,11 @@ class _PressingCommandesPageState extends State<PressingCommandesPage> {
             icon: const Icon(Icons.tune_rounded),
           ),
           IconButton(
+            tooltip: 'Équipe du pressing',
+            onPressed: () => context.pushNamed('pressing-equipe'),
+            icon: const Icon(Icons.groups_rounded),
+          ),
+          IconButton(
             tooltip: 'Actualiser',
             onPressed: _charger,
             icon: const Icon(Icons.refresh_rounded),

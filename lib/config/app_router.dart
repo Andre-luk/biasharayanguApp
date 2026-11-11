@@ -107,6 +107,7 @@ import 'package:biashara_yangu/pages/chambre_form_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_atelier_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_commandes_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_depot_page.dart';
+import 'package:biashara_yangu/pages/pressing/pressing_equipe_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_reglages_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_retraits_page.dart';
 import 'package:biashara_yangu/pages/chambres_page.dart';
@@ -1051,6 +1052,14 @@ final GoRouter appRouter = GoRouter(
                   path: 'pressing/reglages',
                   name: 'pressing-reglages',
                   builder: (context, state) => const PressingReglagesPage(),
+                ),
+                // 👥 L'ÉQUIPE : chaque collaborateur a un métier du pressing
+                // (responsable, accueil, atelier, caisse), pas un rôle de
+                // boutique.
+                GoRoute(
+                  path: 'pressing/equipe',
+                  name: 'pressing-equipe',
+                  builder: (context, state) => const PressingEquipePage(),
                 ),
 
                 // 🏨 MODULE 16 C2 — HÔTEL : chambres & occupation, planning

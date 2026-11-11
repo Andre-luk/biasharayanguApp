@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/pressing.dart';
+import 'package:biashara_yangu/models/pressing_equipe.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -805,6 +806,111 @@ class PressingService {
       debugPrint('PressingService.regenererQr : $e');
       throw const PressingException(
         'Impossible de rééditer le QR code : vérifiez le réseau.',
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ÉQUIPE (métiers du pressing)
+  // ---------------------------------------------------------------------------
+
+  /// Métier du compte connecté dans son pressing.
+  ///
+  /// `null` = patron (ou compte sans métier) : tous les droits du pressing.
+  /// Sert uniquement à ADAPTER l'interface ; le serveur revérifie tout.
+  Future<RolePressing?> rolePressing() async {
+    try {
+      final dynamic r = await _client.rpc('pressing_role');
+      final String? code = r is String
+          ? r
+          : parseStringOrNull((parseMap(r) ?? <String, dynamic>{})['role']);
+      return RolePressing.depuisCode(code);
+    } catch (e) {
+      debugPrint('PressingService.rolePressing : $e');
+      // En cas d'échec on n'enferme personne : les pages gardent leurs droits.
+      return null;
+    }
+  }
+
+  /// L'équipe du pressing + le métier du compte connecté.
+  Future<EquipePressing> equipe() async {
+    try {
+      final dynamic r = await _client.rpc('press_collaborateurs_lister');
+      final Map<String, dynamic>? map = parseMap(r);
+      if (map == null) return const EquipePressing();
+      return EquipePressing.fromRpc(map);
+    } on PostgrestException catch (e) {
+      throw PressingException(_message(e.message));
+    } catch (e) {
+      debugPrint('PressingService.equipe : $e');
+      throw const PressingException(
+        'Impossible de charger l\'équipe du pressing.',
+      );
+    }
+  }
+
+  /// Crée le compte d'un collaborateur (le serveur crée le vrai compte Auth).
+  Future<String> creerCollaborateur({
+    required String nom,
+    String prenom = '',
+    required String email,
+    String telephone = '',
+    required String motDePasse,
+    required RolePressing role,
+  }) async {
+    try {
+      final dynamic r = await _client.rpc(
+        'press_collaborateur_creer',
+        params: <String, dynamic>{
+          'p_nom': nom,
+          'p_prenom': prenom,
+          'p_email': email,
+          'p_telephone': telephone,
+          'p_mot_de_passe': motDePasse,
+          'p_role': role.code,
+        },
+      );
+      return parseString((parseMap(r) ?? <String, dynamic>{})['id']);
+    } on PostgrestException catch (e) {
+      throw PressingException(_message(e.message));
+    } catch (e) {
+      debugPrint('PressingService.creerCollaborateur : $e');
+      throw const PressingException(
+        'Impossible de créer ce collaborateur : vérifiez le réseau.',
+      );
+    }
+  }
+
+  /// Change le métier, l'état (actif/inactif) ou le mot de passe.
+  Future<void> majCollaborateur({
+    required String id,
+    required String nom,
+    String prenom = '',
+    String telephone = '',
+    required RolePressing role,
+    bool actif = true,
+    String? motDePasse,
+  }) async {
+    try {
+      await _client.rpc(
+        'press_collaborateur_maj',
+        params: <String, dynamic>{
+          'p_id': id,
+          'p_nom': nom,
+          'p_prenom': prenom,
+          'p_telephone': telephone,
+          'p_role': role.code,
+          'p_actif': actif,
+          'p_mot_de_passe':
+              (motDePasse ?? '').trim().isEmpty ? null : motDePasse!.trim(),
+        },
+      );
+    } on PostgrestException catch (e) {
+      throw PressingException(_message(e.message));
+    } catch (e) {
+      debugPrint('PressingService.majCollaborateur : $e');
+      throw const PressingException(
+        'Impossible d\'enregistrer ce collaborateur.',
       );
     }
   }

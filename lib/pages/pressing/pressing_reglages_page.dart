@@ -24,6 +24,7 @@ import 'package:flutter/services.dart';
 
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/pressing.dart';
+import 'package:biashara_yangu/models/pressing_equipe.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/pressing_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -64,15 +65,23 @@ class _PressingReglagesPageState extends State<PressingReglagesPage> {
   /// Prestation sélectionnée dans l'onglet Tarifs.
   String? _prestationChoisie;
 
-  bool get _peutModifier =>
-      PermissionService.instance.peut(
-        PageAccess.pressingDepots,
-        ActionAccess.modifier,
-      ) ||
-      PermissionService.instance.peut(
-        PageAccess.pressingDepots,
-        ActionAccess.creer,
-      );
+  /// Métier du collaborateur connecté (`null` = patron).
+  RolePressing? _role;
+
+  bool get _peutModifier {
+    // ⚠️ Le métier d'abord : un agent d'accueil ou d'atelier a bien la page
+    // `pressing_depots/modifier`, mais il ne doit pas toucher aux tarifs. Le
+    // serveur le refuse de toute fa¸on (trigger `trg_press_metier`).
+    if (_role != null && !_role!.peutRegler) return false;
+    return PermissionService.instance.peut(
+          PageAccess.pressingDepots,
+          ActionAccess.modifier,
+        ) ||
+        PermissionService.instance.peut(
+          PageAccess.pressingDepots,
+          ActionAccess.creer,
+        );
+  }
 
   @override
   void initState() {
@@ -106,12 +115,14 @@ class _PressingReglagesPageState extends State<PressingReglagesPage> {
           await PressingService.instance.catalogue();
       final List<PressingEtape> etapes =
           await PressingService.instance.etapes();
+      final RolePressing? role = await PressingService.instance.rolePressing();
 
       if (!mounted) return;
       setState(() {
         _config = config;
         _catalogue = catalogue;
         _etapes = etapes;
+        _role = role;
         _prestationChoisie = catalogue.prestations.isEmpty
             ? null
             : (catalogue.prestations
@@ -717,7 +728,7 @@ class _PressingReglagesPageState extends State<PressingReglagesPage> {
           )
         else
           const Text(
-            'Seul le responsable du pressing peut modifier ces réglages.',
+            'Seul le responsable du pressing peut modifier ces règlages.',
             style: TextStyle(fontSize: 12.5, color: Colors.grey),
           ),
       ],

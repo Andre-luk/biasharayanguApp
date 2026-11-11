@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/pressing.dart';
+import 'package:biashara_yangu/models/pressing_equipe.dart';
 import 'package:biashara_yangu/services/etablissement_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/pressing_notification_service.dart';
@@ -51,15 +52,19 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
   /// clients soient prévenus quand un vêtement devient prêt.
   PressingConfig _config = PressingConfig.defaut;
 
+  /// Métier du collaborateur connecté (`null` = patron).
+  RolePressing? _role;
+
   bool get _peutModifier =>
-      PermissionService.instance.peut(
-        PageAccess.pressingAtelier,
-        ActionAccess.modifier,
-      ) ||
-      PermissionService.instance.peut(
-        PageAccess.pressingDepots,
-        ActionAccess.modifier,
-      );
+      (_role == null || _role!.peutAtelier) &&
+      (PermissionService.instance.peut(
+            PageAccess.pressingAtelier,
+            ActionAccess.modifier,
+          ) ||
+          PermissionService.instance.peut(
+            PageAccess.pressingDepots,
+            ActionAccess.modifier,
+          ));
 
   @override
   void initState() {
@@ -87,12 +92,14 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
         // Sans réglages, on garde les valeurs par défaut : l'atelier ne doit
         // jamais devenir inutilisable parce qu'une lecture a échoué.
       }
+      final RolePressing? role = await PressingService.instance.rolePressing();
 
       if (!mounted) return;
       setState(() {
         _etapes = etapes;
         _lignes = lignes;
         _config = config;
+        _role = role;
         _chargement = false;
         _selection.removeWhere(
           (String id) => !lignes.any((PressingLigneAtelier l) => l.ligneId == id),

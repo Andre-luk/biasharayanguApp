@@ -1,7 +1,8 @@
 # Module 35 — Pressing & Blanchisserie
 
 **État :** terminé côté application, **non encore publié**.
-**Migrations :** `20260916000120` → `20260916000123`.
+**Migrations :** `20260916000120` → `20260916000123`, puis `20260916000136`
+(l'équipe et les métiers).
 
 ---
 
@@ -104,23 +105,52 @@ permet de prévenir le client que sa commande est prête.
 
 ---
 
-## 5. Qui peut faire quoi
+## 5. Qui peut faire quoi — les métiers du pressing
 
-- **Responsable / propriétaire** : tout, y compris les **réglages**, le
-  catalogue, les tarifs et les étapes.
-- **Agent de dépôt** : prendre un dépôt, encaisser, imprimer un reçu.
-- **Agent d'atelier** : faire avancer les vêtements et passer le contrôle
-  qualité.
-- **Caisse / retrait** : remettre un vêtement, scanner, encaisser.
+Un patron de pressing ne dit pas « tu es magasinier » : il dit « tu es à
+l'atelier » ou « tu es à l'accueil ». Le module a donc **ses propres métiers**
+(écran **Équipe du pressing**, icône 👥 du hub) :
 
-Le droit requis pour les réglages est `pressing_depots/modifier` ; le serveur le
-revérifie à chaque écriture.
+| Métier | Ce qu'il peut faire | Ce qu'il ne peut pas |
+|---|---|---|
+| **Responsable** | tout, y compris les **réglages, le catalogue et les tarifs** | — |
+| **Accueil & dépôt** | recevoir un vêtement, créer un client, imprimer le reçu, encaisser | modifier un tarif, faire avancer un vêtement à l'atelier |
+| **Atelier** | traiter les vêtements, passer le contrôle qualité | toucher au prix, encaisser, remettre un vêtement |
+| **Caisse & retrait** | encaisser, scanner le QR, remettre les vêtements | modifier un tarif, faire avancer un vêtement |
+
+Le **patron** (propriétaire de l'entreprise) n'a pas de métier : il peut tout.
+
+### Créer un collaborateur
+
+**Dépôts & commandes → 👥 Équipe du pressing → Nouveau collaborateur** :
+
+- nom, prénom, e-mail (identifiant de connexion), téléphone ;
+- **métier** dans le pressing ;
+- mot de passe (8 caractères minimum) — le collaborateur se connecte ensuite
+  avec son propre e-mail et **son** mot de passe.
+
+Un compte peut être **désactivé** d'un geste (il ne peut plus se connecter sans
+que l'on supprime rien : l'historique reste intact), et son **métier changé** à
+tout moment.
+
+### Où la règle est réellement appliquée
+
+Dans la **base**, pas seulement dans l'écran : des garde-fous par table
+(`trg_press_metier`) refusent l'écriture hors métier avec le message
+« Votre métier dans le pressing (atelier) ne permet pas les tarifs et le
+catalogue ». Un collaborateur qui contournerait l'interface est donc arrêté
+quand même.
+
+> Un compte créé **avant** cette version n'a pas de métier : il conserve
+exactement les droits de ses pages (aucune régression). Il suffit de lui
+attribuer un métier pour qu'il entre dans le cadre.
 
 ---
 
 ## 6. Mise en route d'un nouveau pressing
 
-1. Exécuter les migrations `0120` → `0123` dans le SQL Editor.
+1. Exécuter les migrations `0120` → `0123`, puis `0136` (équipe et métiers)
+   dans le SQL Editor.
 2. Créer l'entreprise avec le type d'espace **« Pressing & Blanchisserie »**.
 3. Ouvrir **Dépôts & commandes → ⚙️ Réglages** :
    - onglet **Vêtements** → « Créer le catalogue de départ » ;
@@ -128,7 +158,8 @@ revérifie à chaque écriture.
    - onglet **Tarifs** → fixer les prix (par défaut, puis par vêtement) ;
    - onglet **Étapes** → vérifier le circuit et l'étape finale ;
    - onglet **Réglages** → devise, délai, politique de remise.
-4. Prendre un premier dépôt de test, imprimer le reçu, scanner le QR au
+4. **👥 Équipe** → créer les comptes des agents avec leur métier.
+5. Prendre un premier dépôt de test, imprimer le reçu, scanner le QR au
    retrait.
 
 ---
