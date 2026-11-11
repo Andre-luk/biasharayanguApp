@@ -137,6 +137,7 @@ declare
   v_role    text;
   v_parent  uuid;
   v_avatar  text;
+  v_new_role public.role_utilisateur_enum;
 begin
   -- 2.1 Métadonnées lues SANS rien supposer -------------------------------
   v_nom    := nullif(btrim(coalesce(v_meta->>'nom', '')), '');
@@ -159,6 +160,16 @@ begin
   --  ⚠️ `new_role` passe par `role_herite` : 'vendor', 'collaborator',
   --     'caissier'… sont convertis au lieu d'être castés à l'aveugle dans
   --     l'énumération (c'était la cause du rejet de l'inscription).
+  --  🔐 Une inscription QUI PORTE UN PARENT est un collaborateur : elle ne doit
+  --     JAMAIS ressortir « PROPRIETAIRE » (l'ancien « vendor » y menait).
+  v_new_role := coalesce(
+    public.role_enum(public.role_herite(coalesce(v_role, 'vendor'))),
+    public.role_enum('PROPRIETAIRE')
+  );
+  if v_parent is not null and v_new_role = public.role_enum('PROPRIETAIRE') then
+    v_new_role := public.role_enum('VENDEUR');
+  end if;
+
   insert into public.utilisateurs (
     id, nom, prenom, email, role, new_role, valide,
     parent_id, espace_actif_id, avatar, created_at
@@ -168,10 +179,7 @@ begin
     v_prenom,
     v_email,
     coalesce(v_role, 'vendor'),
-    coalesce(
-      public.role_enum(public.role_herite(coalesce(v_role, 'vendor'))),
-      public.role_enum('PROPRIETAIRE')
-    ),
+    v_new_role,
     1,
     v_parent,
     v_parent,
@@ -236,6 +244,8 @@ declare
   v_restant integer := 0;
   u         record;
   v_nom     text;
+  v_parent  uuid;
+  v_new_role public.role_utilisateur_enum;
 begin
   for u in
     select a.id, a.email, coalesce(a.raw_user_meta_data, '{}'::jsonb) as meta
@@ -251,20 +261,34 @@ begin
     end if;
 
     begin
+      v_parent := nullif(btrim(coalesce(u.meta->>'parent_id', '')), '')::uuid;
+    exception
+      when others then v_parent := null;
+    end;
+
+    v_new_role := coalesce(
+      public.role_enum(public.role_herite(u.meta->>'role')),
+      public.role_enum('PROPRIETAIRE')
+    );
+    if v_parent is not null and v_new_role = public.role_enum('PROPRIETAIRE') then
+      v_new_role := public.role_enum('VENDEUR');
+    end if;
+
+    begin
       insert into public.utilisateurs (
-        id, nom, prenom, email, role, new_role, valide, avatar, created_at
+        id, nom, prenom, email, role, new_role, valide, avatar,
+        parent_id, espace_actif_id, created_at
       ) values (
         u.id,
         v_nom,
         nullif(btrim(coalesce(u.meta->>'prenom', '')), ''),
         lower(coalesce(u.email, '')),
         coalesce(nullif(btrim(coalesce(u.meta->>'role', '')), ''), 'vendor'),
-        coalesce(
-          public.role_enum(public.role_herite(u.meta->>'role')),
-          public.role_enum('PROPRIETAIRE')
-        ),
+        v_new_role,
         1,
         nullif(btrim(coalesce(u.meta->>'avatar', '')), ''),
+        v_parent,
+        v_parent,
         now()
       )
       on conflict (id) do nothing;
