@@ -3,6 +3,7 @@
 // route `/main/rapports`. Fichier conservé pour référence uniquement.
 
 import 'package:flutter/material.dart';
+import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
@@ -29,6 +30,9 @@ class _ReportsPageState extends State<ReportsPage> {
   Utilisateur? currentUser;
   bool loading = true;
   String? _userId;
+
+  /// 🧩 MODULE 15 — identifiant des DONNÉES (boutique affichée).
+  String? _ownerId;
 
   DateTime _startDate = DateTime.now().subtract(const Duration(days: 6));
   DateTime _endDate = DateTime.now();
@@ -67,6 +71,9 @@ class _ReportsPageState extends State<ReportsPage> {
       return;
     }
     _userId = userId;
+    // 🧩 MODULE 15 — les chiffres du rapport sont ceux de la BOUTIQUE
+    //    affichée (`_userId` reste l'identité du profil, pour le nom).
+    _ownerId = await DBHelper.instance.ownerDonneesDe(userId) ?? userId;
 
     try {
       currentUser = await _supabaseService.getUtilisateurData(userId);
@@ -97,7 +104,7 @@ class _ReportsPageState extends State<ReportsPage> {
       _endDate = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
 
       final data = await _supabaseService.getSalesSeries(
-          ownerId: userId,
+          ownerId: _ownerId ?? userId,
           from: _startDate,
           to: _endDate,
           period: period
@@ -113,7 +120,7 @@ class _ReportsPageState extends State<ReportsPage> {
       salesSeries = data;
 
       topProducts = await _supabaseService.getTopProducts(
-          ownerId: userId,
+          ownerId: _ownerId ?? userId,
           from: _startDate,
           to: _endDate,
           limit: 10
@@ -151,7 +158,7 @@ class _ReportsPageState extends State<ReportsPage> {
         builder: (context) => DailyReportPage(
           date: date,
           userName: currentUser?.nom ?? 'Boutique',
-          ownerId: _userId!,
+          ownerId: _ownerId ?? _userId!,
         ),
       ),
     );

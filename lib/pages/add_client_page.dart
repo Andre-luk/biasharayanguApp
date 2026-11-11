@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart'; // Ajouté pour une meilleure navigat
 import 'package:supabase_flutter/supabase_flutter.dart'; // Import pour la gestion des exceptions
 // 🔑 Remplacement de DBHelper par SupabaseService
 import 'package:biashara_yangu/services/supabase_service.dart';
+// 🧩 MODULE 15 — le client appartient à la boutique affichée (résolveur commun).
+import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/client.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart'; // Pour l'internationalisation
@@ -39,7 +41,11 @@ class _AddClientPageState extends State<AddClientPage> {
     final T = AppLocalizations.of(context)!;
 
     // 🔑 L'ID utilisateur est un String (UUID)
-    final ownerId = await SessionManager.getUserId();
+    final String? uid = await SessionManager.getUserId();
+    // 🧩 MODULE 15 — un client créé appartient à la boutique affichée.
+    final ownerId = uid == null
+        ? null
+        : await DBHelper.instance.ownerDonneesDe(uid) ?? uid;
 
     if (ownerId == null) {
       if (mounted) {

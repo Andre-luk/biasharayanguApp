@@ -11,8 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/collaborateur_entreprise.dart';
+import 'package:biashara_yangu/models/espace.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/equipe_service.dart';
+import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -26,14 +28,31 @@ class ManageUsersPage extends StatefulWidget {
 }
 
 class _ManageUsersPageState extends State<ManageUsersPage> {
-  List<CollaborateurEntreprise> _collaborateurs = const <CollaborateurEntreprise>[];
+  List<CollaborateurEntreprise> _collaborateurs =
+      const <CollaborateurEntreprise>[];
   bool _loading = true;
   String? _erreur;
+
+  /// 🧩 MODULE 15 — boutiques du compte (sélecteur de la fiche collaborateur).
+  List<Espace> _espaces = const <Espace>[];
 
   @override
   void initState() {
     super.initState();
+    _chargerEspaces();
     _loadCollaborateurs();
+  }
+
+  /// Les boutiques servent seulement à AFFECTER un collaborateur : si la
+  /// liste ne charge pas, l'écran reste utilisable (boutique par défaut).
+  Future<void> _chargerEspaces() async {
+    try {
+      final EtatEspaces etat = await EspaceService.instance.charger();
+      if (!mounted) return;
+      setState(() => _espaces = etat.espaces);
+    } catch (e) {
+      debugPrint('ManageUsersPage: boutiques indisponibles ($e)');
+    }
   }
 
   /// Source de vérité = le serveur (le propriétaire et ses collaborateurs).
@@ -81,7 +100,10 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     final _FormulaireCollaborateur? saisie =
         await showDialog<_FormulaireCollaborateur>(
       context: context,
-      builder: (BuildContext ctx) => const _DialogueCollaborateur(),
+      builder: (BuildContext ctx) => _DialogueCollaborateur(
+        espaces: _espaces,
+        espaceInitial: EspaceService.instance.actif?.id,
+      ),
     );
     if (saisie == null) return;
 
@@ -93,6 +115,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
         telephone: saisie.telephone,
         motDePasse: saisie.motDePasse,
         role: saisie.role,
+        espaceId: saisie.espaceId,
       );
       _snack(
         'Compte de ${saisie.nom} créé : il peut se connecter dès maintenant.',
@@ -113,7 +136,11 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     final _FormulaireCollaborateur? saisie =
         await showDialog<_FormulaireCollaborateur>(
       context: context,
-      builder: (BuildContext ctx) => _DialogueCollaborateur(existant: c),
+      builder: (BuildContext ctx) => _DialogueCollaborateur(
+        existant: c,
+        espaces: _espaces,
+        espaceInitial: c.espaceId,
+      ),
     );
     if (saisie == null) return;
 
@@ -126,6 +153,7 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
         role: saisie.role,
         actif: saisie.actif,
         motDePasse: saisie.motDePasse,
+        espaceId: saisie.espaceId,
       );
       _snack('${c.nomComplet} mis à jour.');
       await _loadCollaborateurs();
@@ -203,15 +231,15 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _erreur != null
-            ? _buildErreur()
-            : _collaborateurs.isEmpty
-            ? _buildEmptyState()
-            : ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                itemCount: _collaborateurs.length,
-                itemBuilder: (BuildContext context, int index) =>
-                    _buildUserCard(_collaborateurs[index], theme),
-              ),
+                ? _buildErreur()
+                : _collaborateurs.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        itemCount: _collaborateurs.length,
+                        itemBuilder: (BuildContext context, int index) =>
+                            _buildUserCard(_collaborateurs[index], theme),
+                      ),
       ),
       // 🔐 Créer un compte = permission « créer » sur les collaborateurs.
       floatingActionButton: PermissionGate(
@@ -327,6 +355,9 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
               runSpacing: 4,
               children: [
                 _etiquette(user.libelleRoleCourt, AppCouleurs.info),
+                // 🧩 MODULE 15 — la boutique où il travaille (si plusieurs).
+                if (user.espaceNom.trim().isNotEmpty)
+                  _etiquette(user.espaceNom, AppCouleurs.succes),
                 if (!user.actif) _etiquette('Désactivé', AppCouleurs.danger),
                 if (user.telephone.isNotEmpty)
                   _etiquette(user.telephone, Colors.grey.shade600),
@@ -404,6 +435,9 @@ class _FormulaireCollaborateur {
   final String role;
   final bool actif;
 
+  /// 🧩 MODULE 15 — boutique d'affectation (`null` = boutique par défaut).
+  final String? espaceId;
+
   const _FormulaireCollaborateur({
     required this.nom,
     required this.prenom,
@@ -412,13 +446,24 @@ class _FormulaireCollaborateur {
     required this.motDePasse,
     required this.role,
     this.actif = true,
+    this.espaceId,
   });
 }
 
 class _DialogueCollaborateur extends StatefulWidget {
   final CollaborateurEntreprise? existant;
 
-  const _DialogueCollaborateur({this.existant});
+  /// Boutiques du compte : le sélecteur n'apparaît qu'à partir de deux.
+  final List<Espace> espaces;
+
+  /// Boutique proposée par défaut.
+  final String? espaceInitial;
+
+  const _DialogueCollaborateur({
+    this.existant,
+    this.espaces = const <Espace>[],
+    this.espaceInitial,
+  });
 
   @override
   State<_DialogueCollaborateur> createState() => _DialogueCollaborateurState();
@@ -434,9 +479,11 @@ class _DialogueCollaborateurState extends State<_DialogueCollaborateur> {
 
   late String _role;
   late bool _actif;
+  String? _espaceId;
   bool _voirMotDePasse = false;
 
   bool get _edition => widget.existant != null;
+  bool get _choixBoutique => widget.espaces.length > 1;
 
   @override
   void initState() {
@@ -447,6 +494,7 @@ class _DialogueCollaborateurState extends State<_DialogueCollaborateur> {
     _email = TextEditingController(text: c?.email ?? '');
     _telephone = TextEditingController(text: c?.telephone ?? '');
     _actif = c?.actif ?? true;
+    _espaceId = c != null ? c.espaceId : widget.espaceInitial;
     final String role = c?.role ?? 'VENDEUR';
     _role = kRolesCollaborateur.any(
       (({String code, String libelle}) r) => r.code == role,
@@ -477,6 +525,7 @@ class _DialogueCollaborateurState extends State<_DialogueCollaborateur> {
         motDePasse: _motDePasse.text.trim(),
         role: _role,
         actif: _actif,
+        espaceId: _espaceId,
       ),
     );
   }
@@ -552,15 +601,43 @@ class _DialogueCollaborateurState extends State<_DialogueCollaborateur> {
                       .map(
                         (({String code, String libelle}) r) =>
                             DropdownMenuItem<String>(
-                              value: r.code,
-                              child: Text(r.libelle),
-                            ),
+                          value: r.code,
+                          child: Text(r.libelle),
+                        ),
                       )
                       .toList(growable: false),
                   onChanged: (String? v) {
                     if (v != null) setState(() => _role = v);
                   },
                 ),
+                // 🧩 MODULE 15 — À QUELLE BOUTIQUE ? Le choix n'apparaît
+                //    qu'à partir de deux boutiques : sans multi-boutiques, il
+                //    n'y aurait qu'une option et donc aucun choix à faire.
+                if (_choixBoutique) ...[
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String?>(
+                    initialValue: _espaceId,
+                    decoration: const InputDecoration(
+                      labelText: 'Boutique',
+                      prefixIcon: Icon(Icons.storefront_outlined),
+                      helperText:
+                          'Le collaborateur ne verra que les données de cette boutique.',
+                    ),
+                    items: <DropdownMenuItem<String?>>[
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Boutique principale'),
+                      ),
+                      ...widget.espaces.map(
+                        (Espace e) => DropdownMenuItem<String?>(
+                          value: e.id,
+                          child: Text(e.nom),
+                        ),
+                      ),
+                    ],
+                    onChanged: (String? v) => setState(() => _espaceId = v),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _motDePasse,

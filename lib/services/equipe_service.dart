@@ -64,7 +64,8 @@ class EquipeService {
           'Cette adresse e-mail est déjà utilisée. Choisissez-en une autre.',
       'COLLABORATEUR_INTROUVABLE':
           'Ce collaborateur n\'appartient pas à votre entreprise.',
-      'ACTION_INTERDITE': 'Vous ne pouvez pas modifier votre propre compte ici.',
+      'ACTION_INTERDITE':
+          'Vous ne pouvez pas modifier votre propre compte ici.',
     };
 
     for (final MapEntry<String, String> e in complements.entries) {
@@ -107,6 +108,8 @@ class EquipeService {
   }
 
   /// Crée le compte d'un collaborateur rattaché à l'entreprise.
+  ///
+  /// [espaceId] = boutique où il travaillera (`null` = boutique par défaut).
   Future<CollaborateurEntreprise> creer({
     required String nom,
     String prenom = '',
@@ -114,6 +117,7 @@ class EquipeService {
     String telephone = '',
     required String motDePasse,
     required String role,
+    String? espaceId,
   }) async {
     final dynamic reponse = await _appel('rpc_collaborateur_creer', {
       'p_nom': nom,
@@ -122,6 +126,7 @@ class EquipeService {
       'p_telephone': telephone,
       'p_mot_de_passe': motDePasse,
       'p_role': role,
+      'p_espace_id': espaceId,
     });
 
     final Map<String, dynamic> res =
@@ -138,10 +143,13 @@ class EquipeService {
           ? role.toUpperCase()
           : parseString(res['role']),
       actif: true,
+      espaceId: parseStringOrNull(res['espace_id']) ?? espaceId,
     );
   }
 
   /// Change le rôle, l'état (actif) ou le mot de passe d'un collaborateur.
+  ///
+  /// [espaceId] non nul = déplace le collaborateur vers cette boutique.
   Future<void> maj({
     required String id,
     required String nom,
@@ -150,6 +158,7 @@ class EquipeService {
     required String role,
     bool actif = true,
     String? motDePasse,
+    String? espaceId,
   }) async {
     await _appel('rpc_collaborateur_maj', {
       'p_id': id,
@@ -161,6 +170,7 @@ class EquipeService {
       'p_mot_de_passe': (motDePasse == null || motDePasse.trim().length < 8)
           ? null
           : motDePasse.trim(),
+      'p_espace_id': espaceId,
     });
   }
 }

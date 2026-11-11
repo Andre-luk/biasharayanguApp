@@ -63,7 +63,8 @@ class _StockManagementPageState extends State<StockManagementPage> {
       return;
     }
 
-    _currentOwnerId = userId;
+    // 🧩 MODULE 15 — le stock géré est celui de la boutique affichée.
+    _currentOwnerId = await DBHelper.instance.ownerDonneesDe(userId) ?? userId;
 
     try {
       await SyncService.instance.syncAll();
@@ -90,7 +91,7 @@ class _StockManagementPageState extends State<StockManagementPage> {
       return;
     }
 
-    final data = await DBHelper.instance.getProduits(ownerId: userIdString);
+    final data = await DBHelper.instance.getProduits(ownerId: _currentOwnerId);
 
     if (!mounted) return;
 

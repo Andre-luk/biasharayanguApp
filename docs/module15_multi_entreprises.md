@@ -195,3 +195,54 @@ utilise la **valeur** de l'espace actif au lieu du patron.
 - finance/rapports consolidés ou par boutique (décision produit) ;
 - vitrine marketplace par boutique (déjà `espace_id` côté tables) ;
 - affectation d'un collaborateur à une boutique précise depuis **Mon Équipe**.
+
+---
+
+## 8. Livré : équipe, rapports et stock par boutique (lot 2)
+
+### 8.1 Affecter un collaborateur à une boutique
+
+**Migration** : `20260916000143_collaborateur_boutique.sql`
+
+| Objet | Changement |
+|---|---|
+| `espace_collaborateur_valide(patron, espace)` | valide qu'un espace appartient bien à l'entreprise du patron ; sinon repli sur l'espace par défaut |
+| `rpc_collaborateur_creer(..., p_espace_id)` | crée le compte **directement dans la boutique choisie** |
+| `rpc_collaborateur_maj(..., p_espace_id)` | déplace un collaborateur d'une boutique à l'autre |
+| `rpc_collaborateurs_lister()` | renvoie `espace_id` et `espace_nom` |
+
+**Écran** : *Mon Équipe → Nouveau collaborateur / Modifier*. Dès que le compte
+a **plus d'une** boutique, un sélecteur « **Boutique** » apparaît (avec
+« Boutique principale » = espace par défaut). La boutique de chacun s'affiche
+ensuite comme une étiquette verte sur sa fiche.
+
+> Un collaborateur affecté à une boutique ne voit QUE ses données : produits,
+> stock, ventes, caisse, clients, dettes, dépenses et inventaires de cette
+> boutique. La validation serveur interdit de le placer dans la boutique d'un
+> autre compte.
+
+### 8.2 Rapports, gestion de stock et clients
+
+Alignés sur la boutique affichée :
+
+- `reports_page.dart` : séries de ventes, meilleurs articles et rapport
+  journalier utilisent l'**identifiant de la boutique** (`_ownerId`), tandis
+  que le **nom affiché** reste celui du profil (`_userId`) ;
+- `stock_management_page.dart` : la liste et la synchronisation portent sur le
+  stock de la boutique ;
+- `add_client_page.dart` : un client créé appartient à la boutique affichée ;
+- `add_product_page.dart`, `stock_page.dart`, `clients`, `dettes`, `dépenses`,
+  `inventaires`, `catégories` : déjà alignés au lot 1.
+
+**Tests** : `test/scope_donnees_test.dart` (8) et
+`test/equipe_entreprise_test.dart` (6) — parsing tolérant, boutique absente,
+rôle inconnu, compte désactivé.
+
+### 8.3 Ce qui reste ouvert (décision produit)
+
+1. **Rapports consolidés** (toutes les boutiques du compte) : aujourd'hui les
+   rapports sont **par boutique**. Un total consolidé demanderait un écran
+   dédié (RPC d'agrégation multi-espaces).
+2. **Marketplace** : les tables portent déjà `espace_id` ; publier une vitrine
+   par boutique est possible mais l'écran de publication reste à adapter.
+3. **Quotas IA** : pool par compte ou par boutique — non tranché.

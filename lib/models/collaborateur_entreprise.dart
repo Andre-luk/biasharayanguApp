@@ -20,6 +20,12 @@ class CollaborateurEntreprise {
 
   final bool actif;
 
+  /// 🧩 MODULE 15 — boutique où travaille le collaborateur (`espace`).
+  /// `null` = espace par défaut (l'UUID du patron), donc comportement
+  /// historique : le collaborateur suit la boutique active du patron.
+  final String? espaceId;
+  final String espaceNom;
+
   const CollaborateurEntreprise({
     required this.id,
     required this.nom,
@@ -28,6 +34,8 @@ class CollaborateurEntreprise {
     required this.telephone,
     required this.role,
     required this.actif,
+    this.espaceId,
+    this.espaceNom = '',
   });
 
   factory CollaborateurEntreprise.depuisJson(Map<String, dynamic> json) {
@@ -39,6 +47,8 @@ class CollaborateurEntreprise {
       telephone: parseString(json['telephone']),
       role: parseString(json['role']).toUpperCase(),
       actif: parseBool(json['actif'], fallback: true),
+      espaceId: parseStringOrNull(json['espace_id']),
+      espaceNom: parseString(json['espace_nom']),
     );
   }
 
