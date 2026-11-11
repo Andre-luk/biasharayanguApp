@@ -146,3 +146,52 @@ Le multi-entreprise est **réservé à un groupe tarifaire dédié** :
 
 > ⚠️ Tant que ce module n'est pas validé, **rien n'est exécuté** :
 > le multi-entreprise n'existe pas et la demande reste ouverte.
+
+---
+
+## 7. Livré : cloisonnement des données par boutique (lot 1)
+
+**Problème constaté** : le sélecteur changeait bien `mon_proprietaire()` côté
+serveur, mais l'application continuait de lire et d'écrire avec **l'UUID du
+patron** (`owner_id = parent_id ?? id`). Résultat : deux boutiques du même
+compte partageaient **le même catalogue, le même stock et la même caisse**.
+
+**Correctif (aucune migration nécessaire)**
+
+L'espace par défaut porte déjà l'UUID du patron : toutes les lignes existantes
+sont donc déjà « dans l'espace par défaut ». Il suffisait que l'application
+utilise la **valeur** de l'espace actif au lieu du patron.
+
+| Fichier | Rôle |
+|---|---|
+| `lib/services/scope_donnees.dart` (nouveau) | porte la valeur « espace de données », sans aucun import (fichier feuille) |
+| `lib/services/espace_service.dart` | publie l'espace après `charger()` et `basculer()`, le remet à zéro à la déconnexion |
+| `lib/db_helper.dart` | `resolveEffectiveOwnerId()` renvoie l'espace actif en premier ; nouveau `ownerDonneesDe(userId)` |
+| `lib/services/article_service.dart` | `proprietaireCourant()` renvoie l'espace actif en premier |
+| `home_page.dart` | statistiques du jour par boutique + téléchargement de la boutique après bascule |
+| `clients_page`, `dettes_page`, `depenses_page`, `inventaires_page`, `manage_categories_page`, `stock_page`, `add_product_page` | lisent/écrivent sur la boutique affichée |
+
+**Comportement**
+
+- **Compte à une seule boutique** : identique à avant (l'espace actif = UUID du
+  patron). Aucune migration, aucun risque.
+- **Après une bascule** : produits, stock, ventes, caisse, clients, dettes,
+  dépenses et inventaires sont ceux de la boutique choisie ; les données de
+  l'autre boutique ne sont ni visibles ni modifiables.
+- **Déconnexion** : l'espace est oublié (aucune fuite entre deux comptes).
+- **Hors ligne / démarrage à froid** : repli sur le comportement historique
+  tant que la liste des boutiques n'est pas chargée.
+
+**Pré-requis côté plateforme**
+
+1. Le groupe tarifaire de l'entreprise doit autoriser plusieurs espaces
+   (`groupes_tarifaires.max_espaces >= 2`), sinon `rpc_espace_creer` renvoie
+   `QUOTA_ESPACES`.
+2. Créer les boutiques depuis **Mes entreprises** (une entreprise = un
+   abonnement ; chaque boutique est un *espace* de cette entreprise).
+
+**Reste à faire (lot 2)**
+
+- finance/rapports consolidés ou par boutique (décision produit) ;
+- vitrine marketplace par boutique (déjà `espace_id` côté tables) ;
+- affectation d'un collaborateur à une boutique précise depuis **Mon Équipe**.

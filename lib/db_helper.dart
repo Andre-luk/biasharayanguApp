@@ -21,6 +21,7 @@ import 'models/utilisateur.dart';
 import 'models/client.dart';
 import 'models/category.dart';
 import 'models/approvisionnement.dart';
+import 'services/scope_donnees.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'models/collaborateur_stats.dart';
@@ -2312,7 +2313,28 @@ CREATE TABLE approvisionnements (
     return null;
   }
 
+  /// 🧩 MODULE 15 — identifiant du propriétaire des données de la BOUTIQUE
+  /// affichée : l'espace actif s'il est connu, sinon le patron du compte.
+  ///
+  /// À utiliser par tous les écrans qui lisent/écrivent des données métier
+  /// (produits, ventes, caisse, clients, dettes, dépenses, inventaires…) :
+  /// c'est ce qui fait qu'une boutique ne voit pas le catalogue de l'autre.
+  Future<String?> ownerDonneesDe(String userId) async {
+    final String? espace = ScopeDonnees.espaceActif;
+    if (espace != null) return espace;
+    return resolveEffectiveOwnerId(userId);
+  }
+
   Future<String?> resolveEffectiveOwnerId(String userId) async {
+    // 🧩 MODULE 15 — LA BOUTIQUE AFFICHÉE PORTE SES PROPRES DONNÉES.
+    //    `ScopeDonnees` est renseigné par `EspaceService` (liste des espaces,
+    //    bascule, déconnexion). Tant qu'il est vide (démarrage à froid, hors
+    //    ligne), on garde exactement le comportement historique ci-dessous :
+    //    l'espace par défaut porte l'UUID du patron, donc rien ne change pour
+    //    un compte à une seule boutique.
+    final String? espace = ScopeDonnees.espaceActif;
+    if (espace != null) return espace;
+
     final db = await database;
 
     final result = await db.query(

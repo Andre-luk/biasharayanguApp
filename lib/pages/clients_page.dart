@@ -44,6 +44,9 @@ class _ClientsPageState extends State<ClientsPage> {
       if (mounted) context.go('/login');
       return;
     }
+    // 🧩 MODULE 15 — les clients sont ceux de la boutique affichée.
+    _currentUserId =
+        await _db.ownerDonneesDe(_currentUserId!) ?? _currentUserId;
     await _reloadClients();
   }
 

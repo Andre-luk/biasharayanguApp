@@ -46,7 +46,8 @@ import 'package:biashara_yangu/models/production_tableau_bord.dart';
 import 'package:biashara_yangu/services/production_service.dart';
 // 🏢 MODULE 15 — sélecteur d'entreprise (pack multi-entreprises).
 import 'package:biashara_yangu/services/espace_service.dart';
-// 🧩 MODULE 16 — modules de l'activité (socle multi-activités).
+import 'package:biashara_yangu/services/scope_donnees.dart';
+import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 // ⚙️ REFONTE ABONNEMENTS & DISTRIBUTION — type d'activité (boutique /
 // distribution) : filtre les cartes réservées à un métier.
@@ -143,6 +144,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   String _displayName = 'Utilisateur';
   String _parentBusinessName = '';
 
+  /// 🧩 MODULE 15 — dernier espace dont les données sont affichées. Sert à
+  /// distinguer le premier chargement (rien à télécharger) d'une vraie
+  /// bascule de boutique (il faut alors récupérer ses articles et ses ventes).
+  String? _dernierEspaceCharge;
+
   // Canal pour le temps réel
   RealtimeChannel? _dashboardChannel;
   Timer? _minuteurRealtime;
@@ -235,8 +241,38 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// 🏢 MODULE 15 — bascule d'entreprise depuis le sélecteur.
   void _onEspaceChange() {
     if (!mounted) return;
-    _loadUserContext();
-    _loadStats(force: true);
+    // L'ordre compte : on d'abord recalculer l'identifiant de données
+    // (espace actif), PUIS recharger les chiffres de CETTE boutique.
+    unawaited(_rechargerApresBascule());
+  }
+
+  Future<void> _rechargerApresBascule() async {
+    final String? espace = ScopeDonnees.espaceActif;
+    final bool premiereNotification = _dernierEspaceCharge == null;
+    final bool changement =
+        !premiereNotification && espace != _dernierEspaceCharge;
+    _dernierEspaceCharge = espace;
+
+    await _loadUserContext();
+    if (!mounted) return;
+
+    // 🧩 MODULE 15 — après une VRAIE bascule, le téléphone ne connaît pas
+    //    encore les articles ni les ventes de l'autre boutique : on les
+    //    télécharge avant de rafraîchir les chiffres. Au premier affichage
+    //    (chargement initial), rien à faire : la connexion s'en est chargée.
+    if (changement) {
+      final String? uid = _userId;
+      if (uid != null) {
+        try {
+          await SyncService.instance.initialDownload(uid);
+        } catch (e) {
+          debugPrint('HomePage: téléchargement après bascule — $e');
+        }
+      }
+    }
+
+    if (!mounted) return;
+    await _loadStats(force: true);
   }
 
   /// 🧩 MODULE 16 — le profil de modules de l'activité a été (re)chargé :
@@ -382,7 +418,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     setState(() {
       utilisateur = u;
       _isCollaborator = u.parentId != null && u.parentId!.isNotEmpty;
-      _effectiveOwnerId = _isCollaborator ? u.parentId : u.id;
+      // 🧩 MODULE 15 — la boutique affichée porte ses propres chiffres.
+      //    (`ScopeDonnees` est rempli par EspaceService ; à défaut on garde
+      //     le comportement historique : patron du compte.)
+      _effectiveOwnerId = ScopeDonnees.espaceActif ??
+          (_isCollaborator ? u.parentId : u.id);
       _displayName = u.nom.isNotEmpty
           ? u.nom
           : (u.email.isNotEmpty ? u.email : 'Utilisateur');

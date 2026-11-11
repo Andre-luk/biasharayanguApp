@@ -55,8 +55,13 @@ class _DepensesPageState extends State<DepensesPage> {
   }
 
   Future<void> _init() async {
-    _ownerId = await SessionManager.getUserId();
+    final String? uid = await SessionManager.getUserId();
     if (!mounted) return;
+
+    // 🧩 MODULE 15 — les dépenses sont celles de la boutique affichée.
+    _ownerId = uid == null
+        ? null
+        : await DBHelper.instance.ownerDonneesDe(uid) ?? uid;
 
     if (_ownerId == null) {
       setState(() => _loading = false);

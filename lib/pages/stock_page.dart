@@ -14,6 +14,7 @@ import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/produit.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
+import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 
 class StockPage extends StatefulWidget {
@@ -106,10 +107,12 @@ class _StockPageState extends State<StockPage> {
 
     final localUser = await DBHelper.instance.getUtilisateurById(sessionUserId);
 
-    final effectiveOwnerId =
-    (localUser?.parentId != null && localUser!.parentId!.isNotEmpty)
-        ? localUser.parentId!
-        : sessionUserId;
+    // 🧩 MODULE 15 — le stock affiché est celui de la boutique active.
+    final String? espace = ScopeDonnees.espaceActif;
+    final effectiveOwnerId = espace ??
+        ((localUser?.parentId != null && localUser!.parentId!.isNotEmpty)
+            ? localUser.parentId!
+            : sessionUserId);
 
     setState(() {
       _currentOwnerId = effectiveOwnerId;

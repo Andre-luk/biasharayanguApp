@@ -24,6 +24,7 @@ import 'package:biashara_yangu/models/mouvement_article.dart';
 import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
+import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
@@ -72,6 +73,11 @@ class ArticleService {
   /// 2. `public.utilisateurs.parent_id` → le patron, pour un collaborateur ;
   /// 3. à défaut (hors ligne), la copie locale de l'utilisateur (SQLite).
   Future<String?> proprietaireCourant() async {
+    // 🧩 MODULE 15 — les articles affichés sont ceux de la BOUTIQUE active
+    //    (et non plus de toutes les boutiques du compte).
+    final String? espace = ScopeDonnees.espaceActif;
+    if (espace != null) return espace;
+
     final String? utilisateurId = await _utilisateurCourantId();
     if (utilisateurId == null || utilisateurId.isEmpty) return null;
 

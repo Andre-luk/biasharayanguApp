@@ -27,7 +27,11 @@ class _ManageCategoriesPageState extends State<ManageCategoriesPage> {
 
   Future<void> _initializeData() async {
     // 🔑 CORRECTION 2: Assigner l'ID String?
-    _currentOwnerId = await SessionManager.getUserId();
+    final String? uid = await SessionManager.getUserId();
+    // 🧩 MODULE 15 — les catégories sont celles de la boutique affichée.
+    _currentOwnerId = uid == null
+        ? null
+        : await DBHelper.instance.ownerDonneesDe(uid) ?? uid;
 
     if (!mounted) return;
 

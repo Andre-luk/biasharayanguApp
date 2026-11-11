@@ -58,8 +58,13 @@ class _InventairesPageState extends State<InventairesPage> {
     final userId = await SessionManager.getUserId();
     if (!mounted) return;
 
+    // 🧩 MODULE 15 — l'inventaire porte sur la boutique affichée.
+    final String? proprietaire = userId == null
+        ? null
+        : await _db.ownerDonneesDe(userId);
+
     setState(() {
-      _ownerId = userId;
+      _ownerId = proprietaire ?? userId;
     });
 
     if (_ownerId != null) {

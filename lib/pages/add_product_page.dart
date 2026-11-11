@@ -84,7 +84,11 @@ class _AddProductPageState extends State<AddProductPage> {
   Future<void> _initializeData() async {
     try {
       // 1. Charger l'ID de l'utilisateur
-      _currentOwnerId = await SessionManager.getUserId();
+      final String? uid = await SessionManager.getUserId();
+      // 🧩 MODULE 15 — un article créé appartient à la boutique affichée.
+      _currentOwnerId = uid == null
+          ? null
+          : await DBHelper.instance.ownerDonneesDe(uid) ?? uid;
 
       // 2. Initialiser les contrôleurs en mode édition
       if (widget.produitToEdit != null) {

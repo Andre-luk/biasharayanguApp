@@ -24,6 +24,7 @@ import 'package:biashara_yangu/models/pressing.dart';
 import 'package:biashara_yangu/models/pressing_equipe.dart';
 import 'package:biashara_yangu/services/etablissement_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/pressing_atelier_pdf_service.dart';
 import 'package:biashara_yangu/services/pressing_notification_service.dart';
 import 'package:biashara_yangu/services/pressing_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -102,7 +103,8 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
         _role = role;
         _chargement = false;
         _selection.removeWhere(
-          (String id) => !lignes.any((PressingLigneAtelier l) => l.ligneId == id),
+          (String id) =>
+              !lignes.any((PressingLigneAtelier l) => l.ligneId == id),
         );
       });
     } on PressingException catch (e) {
@@ -140,10 +142,10 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
 
   /// Étape suivante logique : celle qui vient APRÈS l'étape courante.
   PressingEtape? _etapeSuivante(String codeActuel) {
-    final List<PressingEtape> actives =
-        _etapes.where((PressingEtape e) => e.actif).toList()
-          ..sort((PressingEtape a, PressingEtape b) =>
-              a.ordre.compareTo(b.ordre));
+    final List<PressingEtape> actives = _etapes
+        .where((PressingEtape e) => e.actif)
+        .toList()
+      ..sort((PressingEtape a, PressingEtape b) => a.ordre.compareTo(b.ordre));
     for (int i = 0; i < actives.length; i++) {
       if (actives[i].code == codeActuel) {
         return i + 1 < actives.length ? actives[i + 1] : null;
@@ -365,6 +367,95 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
   // INTERFACE
   // ---------------------------------------------------------------------------
 
+  /// BORDEREAU D'ATELIER : la feuille que l'on punaise au mur.
+  /// Il reprend EXACTEMENT ce qui est affiché (filtre d'étape et « mes
+  /// vêtements » compris) : ce que l'agent voit est ce qu'il imprime.
+  Future<void> _imprimerBordereau() async {
+    final List<PressingLigneAtelier> lignes = _visibles;
+    if (lignes.isEmpty) {
+      _message('Aucun vêtement à imprimer avec ce filtre.');
+      return;
+    }
+
+    Etablissement etab = EtablissementService.instance.courant;
+    try {
+      etab = await EtablissementService.instance.charger();
+    } catch (_) {
+      // Les coordonnées sont un confort : jamais bloquant pour l'atelier.
+    }
+
+    String? libelleEtape;
+    if (_filtreEtape != null) {
+      for (final PressingEtape e in _etapes) {
+        if (e.code == _filtreEtape) {
+          libelleEtape = e.libelle;
+          break;
+        }
+      }
+      libelleEtape ??= _filtreEtape;
+    }
+
+    final DonneesBordereauAtelier donnees = DonneesBordereauAtelier(
+      etablissement: etab,
+      lignes: lignes,
+      filtreLibelle: libelleEtape,
+      mesVetementsSeulement: _mesVetements,
+    );
+
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Bordereau d\'atelier'),
+              subtitle: Text(
+                '${donnees.nbVetements} vêtement(s) · '
+                '${donnees.nbDossiers} dossier(s)',
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.print_rounded),
+              title: const Text('Imprimer'),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                try {
+                  await PressingAtelierPdfService.instance
+                      .imprimer(donnees, _etapes);
+                } catch (e) {
+                  debugPrint('Bordereau atelier impression : $e');
+                  _message('Impression impossible sur cet appareil.',
+                      erreur: true);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_rounded),
+              title: const Text('Télécharger / partager le PDF'),
+              onTap: () async {
+                Navigator.of(ctx).pop();
+                try {
+                  await PressingAtelierPdfService.instance
+                      .partagerPdf(donnees, _etapes);
+                } catch (e) {
+                  debugPrint('Bordereau atelier partage : $e');
+                  _message('Partage impossible sur cet appareil.',
+                      erreur: true);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -372,15 +463,18 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
         title: const Text('Atelier & qualité'),
         actions: <Widget>[
           IconButton(
+            tooltip: 'Imprimer le bordereau d\'atelier',
+            onPressed: _chargement ? null : _imprimerBordereau,
+            icon: const Icon(Icons.print_rounded),
+          ),
+          IconButton(
             tooltip: _mesVetements ? 'Voir tout l\'atelier' : 'Mes vêtements',
             onPressed: () {
               setState(() => _mesVetements = !_mesVetements);
               _charger();
             },
             icon: Icon(
-              _mesVetements
-                  ? Icons.person_rounded
-                  : Icons.people_alt_rounded,
+              _mesVetements ? Icons.person_rounded : Icons.people_alt_rounded,
             ),
           ),
           IconButton(
@@ -446,10 +540,10 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
   }
 
   Widget _filtresEtapes() {
-    final List<PressingEtape> actives =
-        _etapes.where((PressingEtape e) => e.actif).toList()
-          ..sort((PressingEtape a, PressingEtape b) =>
-              a.ordre.compareTo(b.ordre));
+    final List<PressingEtape> actives = _etapes
+        .where((PressingEtape e) => e.actif)
+        .toList()
+      ..sort((PressingEtape a, PressingEtape b) => a.ordre.compareTo(b.ordre));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,8 +573,7 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
                   child: ChoiceChip(
                     label: Text('${e.libelle} (${_compter(e.code)})'),
                     selected: _filtreEtape == e.code,
-                    onSelected: (_) =>
-                        setState(() => _filtreEtape = e.code),
+                    onSelected: (_) => setState(() => _filtreEtape = e.code),
                   ),
                 ),
               ),
@@ -593,7 +686,8 @@ class _PressingAtelierPageState extends State<PressingAtelierPage> {
                         if ((ligne.prestationNom ?? '').isNotEmpty)
                           ligne.prestationNom!,
                         ligne.numero,
-                        if ((ligne.clientNom ?? '').isNotEmpty) ligne.clientNom!,
+                        if ((ligne.clientNom ?? '').isNotEmpty)
+                          ligne.clientNom!,
                         'prévu ${formatDate(ligne.datePrevue)}',
                       ].join(' · '),
                       style: TextStyle(

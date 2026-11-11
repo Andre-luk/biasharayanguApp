@@ -37,9 +37,10 @@ class _SetupPageState extends State<SetupPage> {
   final _nomCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _codeBoutiqueCtrl = TextEditingController(); // AJOUT : Contrôleur pour le code d'invitation
-  final _boutiqueCtrl = TextEditingController(); // 🏪 Nom de la boutique (entreprise)
-  final _telephoneCtrl = TextEditingController(); // 📞 Correctif 21 : téléphone du responsable
+  final _boutiqueCtrl =
+      TextEditingController(); // 🏪 Nom de la boutique (entreprise)
+  final _telephoneCtrl =
+      TextEditingController(); // 📞 Correctif 21 : téléphone du responsable
 
   String _role = 'vendor';
   bool _saving = false;
@@ -79,7 +80,8 @@ class _SetupPageState extends State<SetupPage> {
 
   /// Un code boutique est saisi → le compte rejoint une entreprise : la
   /// catégorie est celle du patron, le sélecteur disparaît.
-  bool _aCodeBoutique = false;
+  /// PLUS UTILISÉ : les comptes collaborateurs sont créés par le propriétaire
+  /// depuis « Mon Équipe » (migration 0140), sans code d'invitation.
 
   @override
   void initState() {
@@ -91,14 +93,7 @@ class _SetupPageState extends State<SetupPage> {
     }
     if (!widget.adminCreating) {
       _chargerCategories();
-      _codeBoutiqueCtrl.addListener(_onCodeBoutiqueChange);
     }
-  }
-
-  void _onCodeBoutiqueChange() {
-    final bool aCode = _codeBoutiqueCtrl.text.trim().isNotEmpty;
-    if (aCode == _aCodeBoutique) return;
-    setState(() => _aCodeBoutique = aCode);
   }
 
   /// 🧩 MODULE 17 — catégories d'activité proposées à l'inscription.
@@ -118,8 +113,7 @@ class _SetupPageState extends State<SetupPage> {
         for (final dynamic element in reponse) {
           if (element is! Map) continue;
           final String code = (element['type'] ?? '').toString().trim();
-          final String libelle =
-              (element['libelle'] ?? '').toString().trim();
+          final String libelle = (element['libelle'] ?? '').toString().trim();
           if (code.isEmpty || libelle.isEmpty || !vus.add(code)) continue;
           liste.add((code: code, libelle: libelle));
         }
@@ -151,8 +145,6 @@ class _SetupPageState extends State<SetupPage> {
     _nomCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
-    _codeBoutiqueCtrl.removeListener(_onCodeBoutiqueChange);
-    _codeBoutiqueCtrl.dispose(); // AJOUT : Libération du contrôleur
     _boutiqueCtrl.dispose(); // 🏪 Libération du contrôleur
     _telephoneCtrl.dispose(); // 📞 Libération du contrôleur
     super.dispose();
@@ -169,11 +161,16 @@ class _SetupPageState extends State<SetupPage> {
   }
 
   /// Attendre que le profil distant existe (trigger côté DB)
-  Future<bool> _waitForRemoteProfile(String userId, {int maxAttempts = 6, int delayMs = 400}) async {
+  Future<bool> _waitForRemoteProfile(String userId,
+      {int maxAttempts = 6, int delayMs = 400}) async {
     final client = SupabaseService.instance.client;
     for (int attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        final data = await client.from('utilisateurs').select().eq('id', userId).maybeSingle();
+        final data = await client
+            .from('utilisateurs')
+            .select()
+            .eq('id', userId)
+            .maybeSingle();
         if (data != null) return true;
       } catch (e) {
         // ignore and retry
@@ -190,7 +187,6 @@ class _SetupPageState extends State<SetupPage> {
     final nom = _nomCtrl.text.trim();
     final email = _emailCtrl.text.trim().toLowerCase();
     final password = _passwordCtrl.text.trim();
-    final codeSaisi = _codeBoutiqueCtrl.text.trim(); // AJOUT
     final nomBoutique = _boutiqueCtrl.text.trim(); // 🏪 nom de l'entreprise
     final telephone = _telephoneCtrl.text.trim(); // 📞 contact du responsable
 
@@ -213,20 +209,18 @@ class _SetupPageState extends State<SetupPage> {
       }
 
       // LOGIQUE DE PARENTÉ ET RÔLE
+      //  • inscription autonome  → le compte est PROPRIÉTAIRE de son entreprise
+      //  • création par le patron → compte rattaché, rôle choisi
+      // ⚠️ Il n'y a PLUS de code d'invitation : un collaborateur ne s'inscrit
+      // pas lui-même, c'est le propriétaire qui crée son compte depuis
+      // « Mon Équipe » (migration 0140).
       String? parentId;
-      // ⚠️ Inscription autonome (sans code) : on envoie directement le code
-      // du Module 4 « PROPRIETAIRE ». L'ancien « vendor » est traduit en
-      // « VENDEUR » par le trigger de la base (alors que l'application le
-      // réserve au patron) — d'où le mauvais rôle des anciens comptes.
-      String roleFinal = widget.adminCreating ? _role : 'PROPRIETAIRE';
+      final String roleFinal = widget.adminCreating ? _role : 'PROPRIETAIRE';
 
       if (widget.adminCreating) {
-        // Le patron crée lui-même le collaborateur
+        // Le patron crée lui-même le collaborateur : le serveur rattache le
+        // compte à son entreprise et lui donne le rôle choisi.
         parentId = await SessionManager.getUserId();
-      } else if (codeSaisi.isNotEmpty) {
-        // Le collaborateur s'inscrit lui-même avec un code boutique
-        parentId = codeSaisi;
-        roleFinal = 'collaborator';
       }
 
       // 1) Créer le user via Supabase Auth
@@ -260,7 +254,8 @@ class _SetupPageState extends State<SetupPage> {
         );
         try {
           await DBHelper.instance.insertUtilisateur(minimal);
-          debugPrint('Profil distant non trouvé : insert local minimal effectué.');
+          debugPrint(
+              'Profil distant non trouvé : insert local minimal effectué.');
         } catch (e) {
           debugPrint('Impossible d\'insérer localement le profil minimal: $e');
         }
@@ -321,8 +316,7 @@ class _SetupPageState extends State<SetupPage> {
                     'p_type': 'boutique',
                   },
                 );
-                unawaited(
-                    AbonnementService.instance.rafraichirSilencieux());
+                unawaited(AbonnementService.instance.rafraichirSilencieux());
               } catch (e2) {
                 debugPrint('Création de l\'entreprise (repli) ignorée : $e2');
               }
@@ -376,7 +370,8 @@ class _SetupPageState extends State<SetupPage> {
         context.pop(true);
       }
     } on supabase_auth.AuthException catch (e) {
-      if (e.message.contains('already registered') || e.code == 'user_already_exists') {
+      if (e.message.contains('already registered') ||
+          e.code == 'user_already_exists') {
         _showSnackBar('Cet email est déjà utilisé.', isError: true);
       } else {
         _showSnackBar(e.message, isError: true);
@@ -396,7 +391,9 @@ class _SetupPageState extends State<SetupPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          isEdit ? 'Modifier profil' : (widget.adminCreating ? 'Nouvel utilisateur' : ''),
+          isEdit
+              ? 'Modifier profil'
+              : (widget.adminCreating ? 'Nouvel utilisateur' : ''),
         ),
         centerTitle: true,
       ),
@@ -428,12 +425,15 @@ class _SetupPageState extends State<SetupPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (!isEdit && !widget.adminCreating) ...[
-                      Center(child: Image.asset('assets/Biashara_app_off-.png', height: 80)),
+                      Center(
+                          child: Image.asset('assets/Biashara_app_off-.png',
+                              height: 80)),
                       const SizedBox(height: 16),
                       const Text(
                         'Créer un compte',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -443,29 +443,26 @@ class _SetupPageState extends State<SetupPage> {
                       ),
                       const SizedBox(height: 32),
                     ],
-
                     _buildFieldTitle("Nom complet"),
                     TextFormField(
                       controller: _nomCtrl,
-                      decoration: _buildInputDecoration(Icons.person_outline, "Votre nom"),
+                      decoration: _buildInputDecoration(
+                          Icons.person_outline, "Votre nom"),
                       validator: (v) => v!.isEmpty ? 'Nom requis' : null,
                     ),
                     const SizedBox(height: 20),
-
                     _buildFieldTitle("Email"),
                     TextFormField(
                       controller: _emailCtrl,
                       enabled: !isEdit,
                       keyboardType: TextInputType.emailAddress,
                       decoration: _buildInputDecoration(
-                          Icons.email_outlined,
-                          "exemple@mail.com",
-                          isGreyed: isEdit
-                      ),
-                      validator: (v) => !v!.contains('@') ? 'Email invalide' : null,
+                          Icons.email_outlined, "exemple@mail.com",
+                          isGreyed: isEdit),
+                      validator: (v) =>
+                          !v!.contains('@') ? 'Email invalide' : null,
                     ),
                     const SizedBox(height: 20),
-
                     if (!isEdit) ...[
                       _buildFieldTitle("Mot de passe"),
                       TextFormField(
@@ -475,18 +472,22 @@ class _SetupPageState extends State<SetupPage> {
                           Icons.lock_outline_rounded,
                           "6 caractères minimum",
                           suffix: IconButton(
-                            icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            icon: Icon(_obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined),
+                            onPressed: () => setState(
+                                () => _obscurePassword = !_obscurePassword),
                           ),
                         ),
-                        validator: (v) => v!.length < 6 ? 'Min 6 caractères' : null,
+                        validator: (v) =>
+                            v!.length < 6 ? 'Min 6 caractères' : null,
                       ),
                       const SizedBox(height: 20), // AJOUT : Espacement
 
                       // ⚡ MODULE 23 — MODE DE DÉMARRAGE.
                       // Rapide : essai actif immédiatement, accueil épuré.
                       // Complet : vérification par l'équipe plateforme.
-                      if (!widget.adminCreating && !_aCodeBoutique) ...[
+                      if (!widget.adminCreating) ...[
                         _buildFieldTitle('Mode de démarrage'),
                         SegmentedButton<ModeApplication>(
                           segments: const <ButtonSegment<ModeApplication>>[
@@ -528,8 +529,8 @@ class _SetupPageState extends State<SetupPage> {
                       // disparaître en « mode rapide » : c'est lui qui décide
                       // de l'environnement (Boutique ou Distribution).
                       if (!widget.adminCreating &&
-                          !_aCodeBoutique &&
-                          (_chargementCategories || _categories.isNotEmpty)) ...[
+                          (_chargementCategories ||
+                              _categories.isNotEmpty)) ...[
                         const SizedBox(height: 20),
                         _buildFieldTitle("Catégorie d'activité"),
                         if (_chargementCategories)
@@ -582,7 +583,10 @@ class _SetupPageState extends State<SetupPage> {
                           padding: EdgeInsets.only(top: 8.0, left: 4.0),
                           child: Text(
                             "C'est le nom de votre entreprise (essai de 7 jours). Laissez vide pour « votre catégorie + votre nom ».",
-                            style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontStyle: FontStyle.italic),
                           ),
                         ),
 
@@ -607,32 +611,17 @@ class _SetupPageState extends State<SetupPage> {
                         ),
                       ],
 
-                      // AJOUT : Champ Code Boutique pour les nouveaux utilisateurs
-                      if (!widget.adminCreating) ...[
-                        _buildFieldTitle("Code Boutique (Optionnel)"),
-                        TextFormField(
-                          controller: _codeBoutiqueCtrl,
-                          decoration: _buildInputDecoration(
-                            Icons.vpn_key_outlined,
-                            "Collez le code de votre patron",
-                          ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8.0, left: 4.0),
-                          child: Text(
-                            "Laissez vide si vous êtes le propriétaire.",
-                            style: TextStyle(fontSize: 11, color: Colors.grey, fontStyle: FontStyle.italic),
-                          ),
-                        ),
-                      ],
+                      // ⚠️ PLUS DE CHAMP « CODE BOUTIQUE » : les comptes
+                      // collaborateurs sont créés par le propriétaire depuis
+                      // « Mon Équipe » (migration 0140).
                     ],
-
                     if (widget.adminCreating) ...[
                       const SizedBox(height: 20),
                       _buildFieldTitle("Rôle de l'utilisateur"),
                       DropdownButtonFormField<String>(
                         value: _role,
-                        decoration: _buildInputDecoration(Icons.badge_outlined, ""),
+                        decoration:
+                            _buildInputDecoration(Icons.badge_outlined, ""),
                         items: <DropdownMenuItem<String>>[
                           for (final ({String code, String libelle}) r
                               in _rolesProposables)
@@ -654,9 +643,7 @@ class _SetupPageState extends State<SetupPage> {
                         onChanged: (v) => setState(() => _role = v!),
                       ),
                     ],
-
                     const SizedBox(height: 36),
-
                     FilledButton(
                       onPressed: _saving ? null : _save,
                       child: _saving
@@ -679,7 +666,6 @@ class _SetupPageState extends State<SetupPage> {
                               style: const TextStyle(letterSpacing: 1.0),
                             ),
                     ),
-
                     if (!isEdit && !widget.adminCreating)
                       Padding(
                         padding: const EdgeInsets.only(top: 24),
@@ -687,10 +673,13 @@ class _SetupPageState extends State<SetupPage> {
                           alignment: WrapAlignment.center,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            const Text("Déjà un compte ? ", style: TextStyle(color: Colors.grey)),
+                            const Text("Déjà un compte ? ",
+                                style: TextStyle(color: Colors.grey)),
                             TextButton(
                               onPressed: () => context.go('/login'),
-                              child: const Text("Se connecter", style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: const Text("Se connecter",
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.bold)),
                             )
                           ],
                         ),
@@ -719,7 +708,8 @@ class _SetupPageState extends State<SetupPage> {
     );
   }
 
-  InputDecoration _buildInputDecoration(IconData icon, String hint, {Widget? suffix, bool isGreyed = false}) {
+  InputDecoration _buildInputDecoration(IconData icon, String hint,
+      {Widget? suffix, bool isGreyed = false}) {
     // Le style (fond, coins, état désactivé, focus) vient du thème global :
     // ici, seuls le libellé, l'icône et la teinte « lecture seule » changent.
     final ColorScheme scheme = Theme.of(context).colorScheme;

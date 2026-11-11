@@ -185,8 +185,9 @@ doublerait la caisse.
 
 ## 7. Mise en route d'un nouveau pressing
 
-1. Exécuter les migrations `0120` → `0123`, puis `0136` (équipe et métiers)
-   et `0137` (caisse du jour) dans le SQL Editor.
+1. Exécuter les migrations `0120` → `0123`, puis `0136` (équipe et métiers),
+   `0137` (caisse du jour), `0140` (comptes collaborateurs créés par le
+   propriétaire), `0141`/`0142` (rattachement des comptes) dans le SQL Editor.
 2. Créer l'entreprise avec le type d'espace **« Pressing & Blanchisserie »**.
 3. Ouvrir **Dépôts & commandes → ⚙️ Réglages** :
    - onglet **Vêtements** → « Créer le catalogue de départ » ;
@@ -198,14 +199,43 @@ doublerait la caisse.
 5. Prendre un premier dépôt de test, imprimer le reçu, scanner le QR au
    retrait.
 
+> ℹ️ Deux chemins pour créer un agent : **Mon Équipe** (rôle général de
+> l'entreprise, commun à tous les modules) et **Pressing → 👥 Équipe** (rôle
+> **métier** : accueil, caisse, atelier, responsable). Le second est celui qui
+> active les garde-fous du pressing ; un compte sans métier travaille
+> normalement mais ne peut pas toucher aux prix ni aux réglages.
+
 ---
 
-## 8. Ce qui reste volontairement en attente
+## 8. Le bordereau d'atelier (imprimable)
+
+**Atelier & qualité → icône 🖨️** (`/main/pressing/atelier`).
+
+L'atelier travaille debout, loin de l'écran : le bordereau est la feuille à
+punaiser ou à remettre à l'agent.
+
+- vêtements **regroupés par étape** (lavage, repassage, contrôle…), dans
+  l'ordre du circuit ;
+- pour chacun : n° de dossier, client, description (type · couleur · taille),
+  **défauts constatés au dépôt** et date de retrait prévue (en rouge si en
+  retard) ;
+- une **case à cocher** par vêtement, pour le marquage au stylo ;
+- un résumé en tête : vêtements, dossiers, urgents, en retard ;
+- visa atelier et contrôle qualité en bas de page.
+
+Le document suit **le filtre de l'écran** (étape sélectionnée, « mes
+vêtements ») : on peut donc imprimer uniquement la file du jour. Deux actions :
+**imprimer** ou **partager le PDF**.
+
+> ⚠️ C'est un document de TRAVAIL interne : aucun montant, et il ne remplace
+> pas le reçu du client.
+
+---
+
+## 9. Ce qui reste volontairement en attente
 
 - **Publication** : le module n'est pas activé dans la version publiée ; il le
   sera quand le parcours complet aura été validé sur un vrai pressing.
 - **Envoi sans relecture** : le message est toujours préparé dans WhatsApp et
   envoyé par l'agent (il le relit). Rien ne part silencieusement au nom du
   pressing.
-- **Bordereau d'atelier imprimable** (liste des vêtements par étape) : non
-  prévu dans cette version.

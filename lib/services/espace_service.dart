@@ -16,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/espace.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -68,6 +69,10 @@ class EspaceService {
 
         final EtatEspaces resultat = EtatEspaces.fromMap(map);
         etat.value = resultat;
+        // 🧩 Les données métier suivent la BOUTIQUE affichée (produits, stock,
+        // ventes, caisse…). L'espace par défaut porte l'UUID du patron : pour
+        // un compte mono-boutique la valeur ne change donc pas.
+        ScopeDonnees.definirEspaceActif(resultat.actifId);
         return resultat;
       },
       'le chargement de vos entreprises',
@@ -107,6 +112,9 @@ class EspaceService {
         } else {
           await charger();
         }
+
+        // La nouvelle boutique devient la source des données affichées.
+        ScopeDonnees.definirEspaceActif(espaceId);
       },
       'le changement d\'entreprise',
       'Impossible de changer d\'entreprise. Vérifiez votre connexion internet.',
@@ -229,6 +237,9 @@ class EspaceService {
   /// Vide le cache (déconnexion, changement de compte).
   void reinitialiser() {
     etat.value = null;
+    // Déconnexion : plus aucune boutique active (le compte suivant ne doit
+    // jamais hériter de l'espace de données du précédent).
+    ScopeDonnees.reinitialiser();
   }
 
   // ---------------------------------------------------------------------------
