@@ -169,7 +169,10 @@ begin
      and (
        u.entreprise_id = p_entreprise
        -- Repli historique : collaborateur rattaché au patron sans entreprise.
-       or (u.entreprise_id is null and u.parent_id = v_patron::text)
+       -- ⚠️ Comparaison en TEXTE des deux côtés : selon les bases,
+       --    `parent_id` est un uuid (récent) ou du texte (ancien) — et
+       --    « uuid = text » n'existe pas en PostgreSQL.
+       or (u.entreprise_id is null and u.parent_id::text = v_patron::text)
      );
 
   return coalesce(v_n, 0);
