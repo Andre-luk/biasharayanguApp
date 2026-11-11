@@ -2,7 +2,7 @@
 
 **État :** terminé côté application, **non encore publié**.
 **Migrations :** `20260916000120` → `20260916000123`, puis `20260916000136`
-(l'équipe et les métiers).
+(l'équipe et les métiers) et `20260916000137` (caisse du jour).
 
 ---
 
@@ -160,10 +160,33 @@ attribuer un métier pour qu'il entre dans le cadre.
 
 ---
 
-## 6. Mise en route d'un nouveau pressing
+## 6. La caisse du jour
+
+**Dépôts & commandes → 💰 Caisse du jour** (`/main/pressing/caisse`).
+
+L'argent d'un pressing entre **plusieurs fois** : acompte au dépôt, solde à la
+remise. Cet écran répond à la seule question de fin de journée :
+
+- **combien est réellement entré**, et **par quel moyen** (espèces, Mobile
+  Money, carte, virement) ;
+- **ce qui a été annulé** — affiché **à part**, jamais déduit en silence ;
+- l'activité du jour : dossiers déposés, montant facturé, remises effectuées ;
+- le **reste dû global** du pressing (toutes périodes) ;
+- le **détail de chaque encaissement** : heure, dossier, client, mode, agent.
+
+Un bouton **imprimer** produit le rapport A4 correspondant (le même document
+que le comptable demande). On peut consulter n'importe quelle journée passée.
+
+> ⚠️ Une seule source de vérité pour l'argent : `pressing_paiements`. La colonne
+> `montant_encaisse` d'un retrait n'est qu'une trace : la compter aussi
+doublerait la caisse.
+
+---
+
+## 7. Mise en route d'un nouveau pressing
 
 1. Exécuter les migrations `0120` → `0123`, puis `0136` (équipe et métiers)
-   dans le SQL Editor.
+   et `0137` (caisse du jour) dans le SQL Editor.
 2. Créer l'entreprise avec le type d'espace **« Pressing & Blanchisserie »**.
 3. Ouvrir **Dépôts & commandes → ⚙️ Réglages** :
    - onglet **Vêtements** → « Créer le catalogue de départ » ;
@@ -177,7 +200,7 @@ attribuer un métier pour qu'il entre dans le cadre.
 
 ---
 
-## 7. Ce qui reste volontairement en attente
+## 8. Ce qui reste volontairement en attente
 
 - **Publication** : le module n'est pas activé dans la version publiée ; il le
   sera quand le parcours complet aura été validé sur un vrai pressing.

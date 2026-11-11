@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/pressing.dart';
+import 'package:biashara_yangu/models/pressing_caisse.dart';
 import 'package:biashara_yangu/models/pressing_equipe.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -813,6 +814,26 @@ class PressingService {
   // ---------------------------------------------------------------------------
   // ÉQUIPE (métiers du pressing)
   // ---------------------------------------------------------------------------
+
+  /// La caisse d'une journée (encaissements par mode, annulations, activité).
+  Future<CaisseJourPressing> caisseJour({DateTime? date}) async {
+    try {
+      final dynamic r = await _client.rpc(
+        'pressing_caisse_jour',
+        params: <String, dynamic>{'p_date': _date(date ?? DateTime.now())},
+      );
+      final Map<String, dynamic>? map = parseMap(r);
+      if (map == null) return const CaisseJourPressing();
+      return CaisseJourPressing.fromRpc(map);
+    } on PostgrestException catch (e) {
+      throw PressingException(_message(e.message));
+    } catch (e) {
+      debugPrint('PressingService.caisseJour : $e');
+      throw const PressingException(
+        'Impossible de charger la caisse du pressing.',
+      );
+    }
+  }
 
   /// Métier du compte connecté dans son pressing.
   ///

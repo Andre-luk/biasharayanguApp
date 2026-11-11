@@ -170,6 +170,11 @@ class _PressingCommandesPageState extends State<PressingCommandesPage> {
             icon: const Icon(Icons.groups_rounded),
           ),
           IconButton(
+            tooltip: 'Caisse du jour et rapport',
+            onPressed: () => context.pushNamed('pressing-caisse'),
+            icon: const Icon(Icons.point_of_sale_rounded),
+          ),
+          IconButton(
             tooltip: 'Actualiser',
             onPressed: _charger,
             icon: const Icon(Icons.refresh_rounded),

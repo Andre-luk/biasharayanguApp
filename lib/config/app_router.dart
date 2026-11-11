@@ -105,6 +105,7 @@ import 'package:biashara_yangu/models/chambre.dart';
 import 'package:biashara_yangu/models/reservation.dart';
 import 'package:biashara_yangu/pages/chambre_form_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_atelier_page.dart';
+import 'package:biashara_yangu/pages/pressing/pressing_caisse_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_commandes_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_depot_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_equipe_page.dart';
@@ -1060,6 +1061,13 @@ final GoRouter appRouter = GoRouter(
                   path: 'pressing/equipe',
                   name: 'pressing-equipe',
                   builder: (context, state) => const PressingEquipePage(),
+                ),
+                // 💰 CAISSE DU PRESSING : ce qui est réellement entré dans la
+                // journée, par moyen de paiement, et son rapport imprimable.
+                GoRoute(
+                  path: 'pressing/caisse',
+                  name: 'pressing-caisse',
+                  builder: (context, state) => const PressingCaissePage(),
                 ),
 
                 // 🏨 MODULE 16 C2 — HÔTEL : chambres & occupation, planning
