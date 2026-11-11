@@ -246,3 +246,54 @@ rôle inconnu, compte désactivé.
 2. **Marketplace** : les tables portent déjà `espace_id` ; publier une vitrine
    par boutique est possible mais l'écran de publication reste à adapter.
 3. **Quotas IA** : pool par compte ou par boutique — non tranché.
+
+---
+
+## 9. Route B : un propriétaire, plusieurs ENTREPRISES (abonnements séparés)
+
+**Besoin** : le patron possède Urembo Market **et** Hekima Pharma. Un seul
+identifiant, deux entreprises, **deux abonnements de 12 500 FC**, et il bascule
+de l'une à l'autre.
+
+### 9.1 Ce qui bloquait
+
+L'appartenance d'une entreprise à son patron était **implicite**
+(`utilisateurs.entreprise_id`). Un compte ne pouvait donc avoir qu'une
+entreprise, et l'abonnement (porté par l'entreprise) était de fait unique.
+
+### 9.2 Migrations
+
+| Migration | Contenu |
+|---|---|
+| `0145_entreprises_owner_id.sql` | `entreprises.owner_id` (+ index, trigger, backfill) ; `mon_patron()` ; reprise de `utilisateurs.entreprise_id` des collaborateurs ; **correction du comptage** : le patron n'est plus facturé 2 500 |
+| `0146_bascule_entreprise.sql` | `rpc_espaces_lister` (toutes les boutiques du patron, avec entreprise + état d'abonnement) ; `rpc_espace_basculer` (**entreprise + boutique** d'un seul geste) ; `rpc_espace_creer` (**nouvelle entreprise**, essai 7 j, installation offerte, quota par nombre d'entreprises) |
+| `0147_hekima_pharma_route_b.sql` | ouvre concrètement **HEKIMA PHARMA** (entreprise + boutique pharmacie), crée **Harold** (mot de passe à changer ensuite) et affiche les deux factures |
+
+### 9.3 Le comptage qui donne 12 500 et non 15 000
+
+`abonnement_collaborateurs_actifs()` exclut désormais **le patron par
+identité** (`u.id <> entreprises.owner_id`). Sans cela, comme le patron
+apparaît avec `entreprise_id` sur chaque entreprise qu'il consulte, chaque
+facture aurait été majorée de 2 500.
+
+$$\text{facture} = 10\,000 + 2\,500 \times \text{collaborateurs}$$
+
+- Urembo + Marlene → **12 500**
+- Hekima + Harold → **12 500**
+
+### 9.4 Ce que le client voit
+
+- **Sélecteur d'entreprise** : « Urembo Market » et « HEKIMA PHARMA » côte à
+  côte ; la bascule change l'abonnement, les modules, la devise et les données.
+- Chaque entreprise a **son échéance** : un essai échu sur l'une ne bloque pas
+  l'autre.
+- Les rôles restent : **Mon Équipe** de chaque entreprise ne montre que ses
+  collaborateurs.
+
+### 9.5 Points de vigilance
+
+1. Le quota « nombre de boutiques » se lit dans `groupes_tarifaires.max_espaces`
+   mais compte désormais les **entreprises du patron**.
+2. Un collaborateur **ne peut pas** basculer vers l'autre entreprise du patron
+   (contrôle serveur).
+3. Les données restent cloisonnées par **espace** : `ScopeDonnees` (lot 1).

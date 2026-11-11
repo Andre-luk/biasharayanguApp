@@ -11,10 +11,13 @@
 // `mon_proprietaire()` renvoie alors le nouvel espace et TOUTES les données
 // (ventes, stock, clients…) suivent automatiquement.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/espace.dart';
+import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 
 /// Icône associée au type d'entreprise.
@@ -215,6 +218,11 @@ class SelecteurEspace extends StatelessWidget {
     try {
       await EspaceService.instance.basculer(choix);
       if (!context.mounted) return;
+
+      // 🧩 ROUTE B — chaque entreprise a SON abonnement : l'état d'accès
+      //    (essai, actif, échu) doit être relu pour la nouvelle entreprise,
+      //    sinon les cadenas de l'accueil resteraient ceux de la précédente.
+      unawaited(AbonnementService.instance.rafraichirSilencieux());
 
       final Espace? nouveau = EspaceService.instance.actif;
       ScaffoldMessenger.of(context).showSnackBar(
