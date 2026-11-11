@@ -442,19 +442,20 @@ class SupabaseService {
   }
 
   Future<List<Utilisateur>> getAllUtilisateurs() async {
-    try {
-      final List<dynamic> data = await _client
-          .from('utilisateurs')
-          .select('*')
-          .order('nom', ascending: true);
+    // ⚠️ CORRECTIF 139 — UNE LISTE VIDE NE DOIT JAMAIS CACHER UNE ERREUR.
+    //
+    //  Avant, toute exception (RLS, colonne illisible, réseau) était avalée
+    //  et la méthode renvoyait `[]` : la page SUPER ADMIN → UTILISATEURS
+    //  affichait « aucun utilisateur », ce qui laissait croire que les comptes
+    //  avaient disparu. L'erreur remonte maintenant à l'écran, qui l'affiche.
+    final List<dynamic> data = await _client
+        .from('utilisateurs')
+        .select('*')
+        .order('nom', ascending: true);
 
-      return (data as List)
-          .map((m) => Utilisateur.fromMap(Map<String, dynamic>.from(m as Map)))
-          .toList();
-    } catch (e) {
-      debugPrint('getAllUtilisateurs error: $e');
-      return [];
-    }
+    return (data as List)
+        .map((m) => Utilisateur.fromMap(Map<String, dynamic>.from(m as Map)))
+        .toList();
   }
 
   // AJOUT : Pour récupérer uniquement les collaborateurs d'un patron spécifique
