@@ -18,6 +18,7 @@ import 'package:biashara_yangu/models/pressing.dart';
 import 'package:biashara_yangu/services/etablissement_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/services/pressing_notification_service.dart';
 import 'package:biashara_yangu/services/pressing_recu_pdf_service.dart';
 import 'package:biashara_yangu/services/pressing_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
@@ -541,6 +542,41 @@ class _FicheCommandeState extends State<_FicheCommande> {
     );
   }
 
+  /// Prévient le client sur WhatsApp.
+  ///
+  /// ⚠️ Le message est proposé seulement si le réglage « Prévenir quand c'est
+  ///    prêt » est actif : le propriétaire qui l'a coupé ne veut pas qu'on
+  ///    sollicite ses clients depuis l'application.
+  Future<void> _prevenirClient() async {
+    Etablissement etab = EtablissementService.instance.courant;
+    try {
+      etab = await EtablissementService.instance.charger();
+    } catch (_) {
+      // Fiche ancienne acceptée : le nom de l'établissement est un confort.
+    }
+
+    final PressingCommande c = _commande;
+    final int total = c.lignes.where((PressingLigne l) => !l.estRemis).length;
+    final bool partiel = c.nbPrets > 0 && c.nbPrets < total;
+    final TypeMessagePressing type = c.nbPrets > 0
+        ? TypeMessagePressing.pret
+        : TypeMessagePressing.retard;
+
+    final bool ok = await PressingNotificationService.instance.envoyer(
+      commande: c,
+      etablissement: etab,
+      type: type,
+      partiel: partiel,
+    );
+    if (!mounted) return;
+    _message(
+      ok
+          ? 'Message préparé dans WhatsApp : vérifiez puis envoyez.'
+          : 'Impossible d\'ouvrir WhatsApp sur cet appareil.',
+      erreur: !ok,
+    );
+  }
+
   Future<void> _encaisser() async {
     final TextEditingController montant = TextEditingController(
       text: _commande.solde == _commande.solde.roundToDouble()
@@ -800,6 +836,22 @@ class _FicheCommandeState extends State<_FicheCommande> {
                 ),
             ],
           ),
+          // 📣 PRÉVENIR LE CLIENT (réglage « Prévenir quand c'est prêt »).
+          if (widget.config.notifyPret && !c.estAnnulee && c.nbRemis < c.nbLignes) ...<Widget>[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _prevenirClient,
+                icon: const Icon(Icons.chat_rounded),
+                label: Text(
+                  c.nbPrets > 0
+                      ? 'Prévenir le client : commande prête'
+                      : 'Prévenir le client (retard)',
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

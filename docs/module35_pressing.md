@@ -28,6 +28,16 @@ de stock de boutique. Ce sont des vêtements **confiés**, tracés un par un.
 | 2. Atelier | **Atelier & qualité** | La file de travail affiche des **vêtements**, pas des dossiers. On fait avancer un vêtement (ou plusieurs d'un coup), puis on passe le **contrôle qualité** : conforme ⇒ prêt, sinon ⇒ à retraiter. |
 | 3. Retrait | **Retraits & scan** | On scanne le QR du client (ou on cherche le numéro), on vérifie le **contrôle qualité**, on encaisse, et le vêtement est remis. |
 
+Depuis la fiche d'une commande, deux boutons complètent le parcours :
+
+- **Reçu** : le PDF du dépôt (impression, partage, WhatsApp) ;
+- **Prévenir le client** : prépare le message WhatsApp « votre commande est
+  prête » (numéro, date de retrait, solde restant). Pour une commande
+  partiellement prête, le message dit « **une partie** de votre commande est
+  prête » ; pour une commande en retard, il s'excuse et rappelle la date
+  promise. Ce bouton n'apparaît que si le réglage **« Prévenir quand c'est
+  prêt »** est actif.
+
 Ce qui est affiché en permanence : ce qui est **en cours**, ce qui est **prêt**,
 ce qui est **en retard**, et ce qui **reste à encaisser**.
 
@@ -127,7 +137,8 @@ revérifie à chaque écriture.
 
 - **Publication** : le module n'est pas activé dans la version publiée ; il le
   sera quand le parcours complet aura été validé sur un vrai pressing.
-- **Notifications automatiques** : les cases existent dans les réglages et sont
-  enregistrées ; l'envoi réel (WhatsApp / SMS) reste à brancher.
+- **Envoi automatique** des messages : aujourd'hui c'est l'agent qui déclenche
+  (bouton « Prévenir le client »). L'envoi automatique à l'étape finale (sans
+  intervention) reste à brancher — les réglages sont déjà enregistrés.
 - **Impression d'un bordereau d'atelier** (liste des vêtements par étape) : non
   prévu dans cette version.
