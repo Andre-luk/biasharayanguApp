@@ -159,6 +159,11 @@ class _PressingCommandesPageState extends State<PressingCommandesPage> {
             icon: const Icon(Icons.qr_code_scanner_rounded),
           ),
           IconButton(
+            tooltip: 'Réglages, catalogue et tarifs',
+            onPressed: () => context.pushNamed('pressing-reglages'),
+            icon: const Icon(Icons.tune_rounded),
+          ),
+          IconButton(
             tooltip: 'Actualiser',
             onPressed: _charger,
             icon: const Icon(Icons.refresh_rounded),

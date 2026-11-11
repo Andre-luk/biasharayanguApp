@@ -788,6 +788,16 @@ void main() {
           PageAccess.assistantIa);
       expect(PermissionService.pageRequisePour('/agent-ia-config'),
           PageAccess.parametres);
+      // 🧺 MODULE 35 — pressing : dépôts, atelier, retraits et réglages.
+      expect(PermissionService.pageRequisePour('/main/pressing/depots'),
+          PageAccess.pressingDepots);
+      expect(PermissionService.pageRequisePour('/main/pressing/atelier'),
+          PageAccess.pressingAtelier);
+      expect(PermissionService.pageRequisePour('/main/pressing/retraits'),
+          PageAccess.pressingRetraits);
+      // Le catalogue et les tarifs sont du ressort du responsable du pressing.
+      expect(PermissionService.pageRequisePour('/main/pressing/reglages'),
+          PageAccess.pressingDepots);
     });
 
     test('routeAutorisee respecte le rôle connecté', () {

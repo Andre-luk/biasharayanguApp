@@ -565,7 +565,9 @@ class PermissionService {
     // propriétaire et au pack).
     _RegleRoute('/main/mes-entreprises', PageAccess.dashboard),
     // 🧺 MODULE 35 — PRESSING : dépôts et commandes (atelier et retraits
-    // auront leurs propres règles).
+    // auront leurs propres règles). Les réglages et le catalogue sont du
+    // ressort du responsable : même page de droits que les dépôts.
+    _RegleRoute('/main/pressing/reglages', PageAccess.pressingDepots),
     _RegleRoute('/main/pressing/depots', PageAccess.pressingDepots),
     _RegleRoute('/main/pressing/atelier', PageAccess.pressingAtelier),
     _RegleRoute('/main/pressing/retraits', PageAccess.pressingRetraits),

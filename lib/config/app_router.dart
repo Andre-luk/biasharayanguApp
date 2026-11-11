@@ -107,6 +107,7 @@ import 'package:biashara_yangu/pages/chambre_form_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_atelier_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_commandes_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_depot_page.dart';
+import 'package:biashara_yangu/pages/pressing/pressing_reglages_page.dart';
 import 'package:biashara_yangu/pages/pressing/pressing_retraits_page.dart';
 import 'package:biashara_yangu/pages/chambres_page.dart';
 import 'package:biashara_yangu/pages/facture_sejour_page.dart';
@@ -1042,6 +1043,14 @@ final GoRouter appRouter = GoRouter(
                   path: 'pressing/retraits',
                   name: 'pressing-retraits',
                   builder: (context, state) => const PressingRetraitsPage(),
+                ),
+                // ⚙️ Réglages & catalogue du pressing : prestations, types de
+                // vêtements, tarifs, étapes de traitement et politique de
+                // remise. Sans catalogue, aucun vêtement ne peut être facturé.
+                GoRoute(
+                  path: 'pressing/reglages',
+                  name: 'pressing-reglages',
+                  builder: (context, state) => const PressingReglagesPage(),
                 ),
 
                 // 🏨 MODULE 16 C2 — HÔTEL : chambres & occupation, planning
