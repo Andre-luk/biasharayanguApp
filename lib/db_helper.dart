@@ -29,7 +29,6 @@ import 'models/collaborateur_stats.dart';
 /// ✅ ENSUITE seulement les variables
 final _uuidGenerator = Uuid();
 
-
 class DBHelper {
   DBHelper._privateConstructor();
   static final DBHelper instance = DBHelper._privateConstructor();
@@ -85,7 +84,6 @@ class DBHelper {
   // 🌐 PHASE F (web) — le chargement de SQLite embarqué vit désormais dans
   // `utils/sqlite_local_native.dart` (inaccessible au web) et est déclenché
   // par `preparerSqliteLocal()`.
-
 
   // ========================= CREATION & MIGRATION =========================
 
@@ -242,7 +240,7 @@ CREATE TABLE dettes (
 )
 ''');
 
-    await db.execute(''' 
+    await db.execute('''
 CREATE TABLE paiements_dette (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   dette_id INTEGER NOT NULL,
@@ -308,15 +306,20 @@ CREATE TABLE approvisionnements (
     updated_at TEXT DEFAULT (datetime('now'))
   );
   ''');
-
   }
 
-
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 11) { // On passe à la version 11 pour déclencher la mise à jour
+    if (oldVersion < 11) {
+      // On passe à la version 11 pour déclencher la mise à jour
       debugPrint('🚀 Migration V11 : Ajout de la colonne uuid...');
 
-      final tables = ['produits', 'ventes', 'clients', 'approvisionnements', 'categories'];
+      final tables = [
+        'produits',
+        'ventes',
+        'clients',
+        'approvisionnements',
+        'categories'
+      ];
 
       for (var table in tables) {
         // On ajoute 'uuid' au cas où ton code l'utilise à la place de 'supabase_id'
@@ -427,13 +430,15 @@ CREATE TABLE approvisionnements (
       //  Certains produits ne peuvent pas être comptés : le stock n'est ni
       //  contrôlé ni décrémenté, et la caisse continue de vendre.
       debugPrint('🚀 Migration V18 : stock non suivi...');
-      await _safeAddColumn(db, 'produits', 'stock_illimite', 'INTEGER DEFAULT 0');
+      await _safeAddColumn(
+          db, 'produits', 'stock_illimite', 'INTEGER DEFAULT 0');
       debugPrint('✅ Migration V18 terminée.');
     }
   }
 
   /// Fonction utilitaire pour ajouter une colonne sans crash si elle existe déjà
-  Future<void> _safeAddColumn(Database db, String table, String column, String type) async {
+  Future<void> _safeAddColumn(
+      Database db, String table, String column, String type) async {
     try {
       await db.execute('ALTER TABLE $table ADD COLUMN $column $type');
       debugPrint('Colone [$column] ajoutée à la table [$table]');
@@ -468,7 +473,8 @@ CREATE TABLE approvisionnements (
       throw Exception("Fichier de base de données introuvable.");
     }
     final appDocDir = await getApplicationDocumentsDirectory();
-    final timestamp = DateTime.now().toIso8601String().substring(0, 10).replaceAll('-', '');
+    final timestamp =
+        DateTime.now().toIso8601String().substring(0, 10).replaceAll('-', '');
     final backupFileName = 'biashara_yangu_backup_$timestamp.db';
     final backupPath = join(appDocDir.path, backupFileName);
     await close();
@@ -727,7 +733,8 @@ CREATE TABLE approvisionnements (
     }
   }
 
-  Future<int> updateDetteStatus(int id, double montantPaye, String statut) async {
+  Future<int> updateDetteStatus(
+      int id, double montantPaye, String statut) async {
     final db = await instance.database;
 
     return await db.update(
@@ -796,7 +803,8 @@ CREATE TABLE approvisionnements (
     });
   }
 
-  Future<List<InventaireQuotidien>> getInventairesQuotidiens({required String ownerId}) async {
+  Future<List<InventaireQuotidien>> getInventairesQuotidiens(
+      {required String ownerId}) async {
     final db = await database;
 
     final maps = await db.query(
@@ -823,7 +831,8 @@ CREATE TABLE approvisionnements (
     return InventaireQuotidien.fromMap(result.first);
   }
 
-  Future<List<InventaireQuotidien>> getUnsyncedInventairesQuotidiens({required String ownerId}) async {
+  Future<List<InventaireQuotidien>> getUnsyncedInventairesQuotidiens(
+      {required String ownerId}) async {
     final db = await database;
 
     final maps = await db.query(
@@ -836,7 +845,8 @@ CREATE TABLE approvisionnements (
     return maps.map((e) => InventaireQuotidien.fromMap(e)).toList();
   }
 
-  Future<int> markInventaireQuotidienAsSynced(int localId, String supabaseId) async {
+  Future<int> markInventaireQuotidienAsSynced(
+      int localId, String supabaseId) async {
     final db = await database;
 
     return await db.update(
@@ -869,7 +879,8 @@ CREATE TABLE approvisionnements (
     );
   }
 
-  Future<int> upsertInventaireQuotidienFromSupabase(InventaireQuotidien i) async {
+  Future<int> upsertInventaireQuotidienFromSupabase(
+      InventaireQuotidien i) async {
     final db = await database;
 
     if (i.supabaseId == null || i.supabaseId!.isEmpty) return 0;
@@ -964,7 +975,8 @@ CREATE TABLE approvisionnements (
     );
 
     if (prod.isEmpty) {
-      throw Exception('Produit ID $produitId introuvable pour la mise à jour de stock.');
+      throw Exception(
+          'Produit ID $produitId introuvable pour la mise à jour de stock.');
     }
 
     final currentQty = (prod.first['quantite'] as num?)?.toDouble() ?? 0.0;
@@ -1002,11 +1014,11 @@ CREATE TABLE approvisionnements (
     final List<Map<String, dynamic>> maps = (ownerId == null)
         ? await db.query('produits', orderBy: 'nom COLLATE NOCASE ASC')
         : await db.query(
-      'produits',
-      where: 'owner_id = ?',
-      whereArgs: [ownerId],
-      orderBy: 'nom COLLATE NOCASE ASC',
-    );
+            'produits',
+            where: 'owner_id = ?',
+            whereArgs: [ownerId],
+            orderBy: 'nom COLLATE NOCASE ASC',
+          );
 
     return maps.map((m) => Produit.fromMap(m)).toList();
   }
@@ -1077,8 +1089,10 @@ CREATE TABLE approvisionnements (
           // Si la date locale est PLUS RÉCENTE ou ÉGALE à la date du serveur,
           // on ignore la mise à jour du serveur.
           // On enlève la condition "local['is_synced'] == 0" pour ce check.
-          if (localDate.isAfter(remoteDate) || localDate.isAtSameMomentAs(remoteDate)) {
-            debugPrint("DBHelper: ⛔ Donnée serveur ignorée (Date locale plus récente ou identique)");
+          if (localDate.isAfter(remoteDate) ||
+              localDate.isAtSameMomentAs(remoteDate)) {
+            debugPrint(
+                "DBHelper: ⛔ Donnée serveur ignorée (Date locale plus récente ou identique)");
             return 0;
           }
         }
@@ -1236,7 +1250,11 @@ CREATE TABLE approvisionnements (
     final db = await database;
     return await db.update(
       'produits',
-      {'photo': path, 'is_synced': 0, 'updated_at': DateTime.now().toIso8601String()},
+      {
+        'photo': path,
+        'is_synced': 0,
+        'updated_at': DateTime.now().toIso8601String()
+      },
       where: 'id = ?',
       whereArgs: [produitId],
     );
@@ -1372,8 +1390,9 @@ CREATE TABLE approvisionnements (
         'produits',
         {
           'quantite': nouveauStock,
-          'updated_at': now, // 🛡️ CRITIQUE : Permet au DBHelper de rejeter les vieux stocks du serveur
-          'is_synced': 0,    // Indique qu'une synchro vers Supabase est nécessaire
+          'updated_at':
+              now, // 🛡️ CRITIQUE : Permet au DBHelper de rejeter les vieux stocks du serveur
+          'is_synced': 0, // Indique qu'une synchro vers Supabase est nécessaire
         },
         where: 'id = ?',
         whereArgs: [produitId],
@@ -1513,7 +1532,8 @@ CREATE TABLE approvisionnements (
 
       final Map<String, dynamic> venteMap = v.toMap();
       venteMap['is_synced'] = 0;
-      venteMap['mode_paiement'] = v.modePaiement.isEmpty ? 'cash' : v.modePaiement;
+      venteMap['mode_paiement'] =
+          v.modePaiement.isEmpty ? 'cash' : v.modePaiement;
 
       final id = await txn.insert('ventes', venteMap);
 
@@ -1549,7 +1569,8 @@ CREATE TABLE approvisionnements (
           limit: 1,
         );
 
-        if (prod.isEmpty) throw Exception('Produit ID ${vente.produitId} introuvable');
+        if (prod.isEmpty)
+          throw Exception('Produit ID ${vente.produitId} introuvable');
 
         // ♾️ MODULE 31 — un article vendu SANS suivi de stock n'est jamais
         //  bloqué et son stock n'est pas décrémenté : il ne peut pas être
@@ -1564,7 +1585,8 @@ CREATE TABLE approvisionnements (
 
         final Map<String, dynamic> venteMap = vente.toMap();
         venteMap['is_synced'] = 0;
-        if (venteMap['mode_paiement'] == null || venteMap['mode_paiement'].isEmpty) {
+        if (venteMap['mode_paiement'] == null ||
+            venteMap['mode_paiement'].isEmpty) {
           venteMap['mode_paiement'] = 'cash';
         }
 
@@ -1594,11 +1616,11 @@ CREATE TABLE approvisionnements (
     final maps = (ownerId == null)
         ? await db.query('ventes', orderBy: 'date DESC')
         : await db.query(
-      'ventes',
-      where: 'owner_id = ?',
-      whereArgs: [ownerId],
-      orderBy: 'date DESC',
-    );
+            'ventes',
+            where: 'owner_id = ?',
+            whereArgs: [ownerId],
+            orderBy: 'date DESC',
+          );
 
     return maps.map((m) => Vente.fromMap(m)).toList();
   }
@@ -1656,7 +1678,8 @@ CREATE TABLE approvisionnements (
     if (existing.isNotEmpty) {
       final localId = existing.first['id'] as int;
       map.remove('id');
-      return await db.update('ventes', map, where: 'id = ?', whereArgs: [localId]);
+      return await db
+          .update('ventes', map, where: 'id = ?', whereArgs: [localId]);
     } else {
       map.remove('id');
       return await db.insert('ventes', map);
@@ -1729,7 +1752,8 @@ CREATE TABLE approvisionnements (
   Future<void> cachePurger(String cle) async {
     try {
       final db = await database;
-      await db.delete('cache_lecture', where: 'cle = ?', whereArgs: <Object?>[cle]);
+      await db
+          .delete('cache_lecture', where: 'cle = ?', whereArgs: <Object?>[cle]);
     } catch (_) {}
   }
 
@@ -1864,11 +1888,13 @@ CREATE TABLE approvisionnements (
 
   Future<int> deleteVenteBySupabaseId(String supabaseId) async {
     final db = await database;
-    return await db.delete('ventes', where: 'supabase_id = ?', whereArgs: [supabaseId]);
+    return await db
+        .delete('ventes', where: 'supabase_id = ?', whereArgs: [supabaseId]);
   }
 
   /// Récupère les stats pour tous les collaborateurs d'un owner
-  Future<List<CollaborateurStats>> getStatsByCollaborateur(String ownerId) async {
+  Future<List<CollaborateurStats>> getStatsByCollaborateur(
+      String ownerId) async {
     final db = await database;
 
     final List<Map<String, dynamic>> result = await db.rawQuery('''
@@ -1879,15 +1905,18 @@ CREATE TABLE approvisionnements (
     ORDER BY total_amount DESC
   ''', [ownerId]);
 
-    return result.map((row) => CollaborateurStats(
-      sellerId: row['seller_id'] as String,
-      ventesCount: (row['ventes_count'] as int?) ?? 0,
-      totalAmount: (row['total_amount'] as num?)?.toDouble() ?? 0.0,
-    )).toList();
+    return result
+        .map((row) => CollaborateurStats(
+              sellerId: row['seller_id'] as String,
+              ventesCount: (row['ventes_count'] as int?) ?? 0,
+              totalAmount: (row['total_amount'] as num?)?.toDouble() ?? 0.0,
+            ))
+        .toList();
   }
 
   /// Récupère les stats pour un collaborateur précis
-  Future<CollaborateurStats?> getStatsForSeller(String ownerId, String sellerId) async {
+  Future<CollaborateurStats?> getStatsForSeller(
+      String ownerId, String sellerId) async {
     final db = await database;
 
     final List<Map<String, dynamic>> result = await db.rawQuery('''
@@ -1910,7 +1939,6 @@ CREATE TABLE approvisionnements (
   /// Stats pour un collaborateur entre deux dates
   Future<CollaborateurStats?> getStatsForSellerPeriod(
       String ownerId, String sellerId, DateTime start, DateTime end) async {
-
     final db = await database;
 
     final String startDate = start.toIso8601String().substring(0, 10);
@@ -1954,11 +1982,11 @@ CREATE TABLE approvisionnements (
   }
 
   Future<List<VenteDetail>> getDetailedSalesForSellerPeriod(
-      String ownerId,
-      String sellerId,
-      DateTime start,
-      DateTime end,
-      ) async {
+    String ownerId,
+    String sellerId,
+    DateTime start,
+    DateTime end,
+  ) async {
     final db = await database;
 
     final startIso = start.toUtc().toIso8601String();
@@ -1980,12 +2008,16 @@ CREATE TABLE approvisionnements (
     ORDER BY v.date DESC
   ''', [ownerId, sellerId, startIso, endIso]);
 
-    return res.map((map) => VenteDetail(
-      produitNom: map['produit_nom']?.toString() ?? 'Inconnu',
-      quantite: (map['quantite'] as num?)?.toDouble() ?? 0.0,
-      dateVente: DateTime.tryParse(map['date_vente']?.toString() ?? '') ?? DateTime.now(),
-      prixTotal: (map['prix_total'] as num?)?.toDouble() ?? 0.0,
-    )).toList();
+    return res
+        .map((map) => VenteDetail(
+              produitNom: map['produit_nom']?.toString() ?? 'Inconnu',
+              quantite: (map['quantite'] as num?)?.toDouble() ?? 0.0,
+              dateVente:
+                  DateTime.tryParse(map['date_vente']?.toString() ?? '') ??
+                      DateTime.now(),
+              prixTotal: (map['prix_total'] as num?)?.toDouble() ?? 0.0,
+            ))
+        .toList();
   }
   // ========================= CLIENTS =========================
 
@@ -2018,7 +2050,8 @@ CREATE TABLE approvisionnements (
     final db = await database;
     final maps = (ownerId == null)
         ? await db.query('clients', orderBy: 'nom ASC')
-        : await db.query('clients', where: 'owner_id = ?', whereArgs: [ownerId], orderBy: 'nom ASC');
+        : await db.query('clients',
+            where: 'owner_id = ?', whereArgs: [ownerId], orderBy: 'nom ASC');
     return maps.map((m) => Client.fromMap(m)).toList();
   }
 
@@ -2043,23 +2076,21 @@ CREATE TABLE approvisionnements (
     // S'assurer que le client est marqué comme SYNC (1) car il vient du serveur
     map['is_synced'] = 1;
     if (c.supabaseId == null) {
-      throw Exception("Le client Supabase doit avoir un 'supabaseId' pour l'upsert.");
+      throw Exception(
+          "Le client Supabase doit avoir un 'supabaseId' pour l'upsert.");
     }
 
     // 1. Vérifier si le client existe déjà localement via son supabase_id
-    final existing = await db.query(
-        'clients',
-        where: 'supabase_id = ?',
-        whereArgs: [c.supabaseId],
-        limit: 1
-    );
+    final existing = await db.query('clients',
+        where: 'supabase_id = ?', whereArgs: [c.supabaseId], limit: 1);
 
     if (existing.isNotEmpty) {
       // 2. Si la ligne existe localement -> MISE À JOUR (on utilise l'ID local existant)
       final localId = existing.first['id'] as int;
       // On retire l'ID local de la map pour l'update
       map.remove('id');
-      return await db.update('clients', map, where: 'id = ?', whereArgs: [localId]);
+      return await db
+          .update('clients', map, where: 'id = ?', whereArgs: [localId]);
     } else {
       // 3. Si c'est un nouvel enregistrement du serveur -> INSERTION
       // On retire l'ID local de la map pour laisser SQLite l'auto-incrémenter
@@ -2097,7 +2128,8 @@ CREATE TABLE approvisionnements (
   // ✅ NOUVEAU: Suppression par ID Supabase (pour la gestion Realtime DELETE dans SyncService)
   Future<int> deleteClientBySupabaseId(String supabaseId) async {
     final db = await database;
-    return await db.delete('clients', where: 'supabase_id = ?', whereArgs: [supabaseId]);
+    return await db
+        .delete('clients', where: 'supabase_id = ?', whereArgs: [supabaseId]);
   }
 
   Future<Client?> getClientBySupabaseId(String supabaseId) async {
@@ -2197,8 +2229,7 @@ CREATE TABLE approvisionnements (
     final db = await database;
     final res = await db.rawQuery(
         "SELECT COUNT(*) as c FROM utilisateurs WHERE parent_id = ?",
-        [patronId]
-    );
+        [patronId]);
     return (res.first['c'] as int?) ?? 0;
   }
 
@@ -2251,12 +2282,10 @@ CREATE TABLE approvisionnements (
     // 🔐 MODULE 4 — un SUPER_ADMIN (nouvelle colonne `new_role`) est protégé
     // au même titre qu'un ancien compte `admin` : sans lui, plus personne ne
     // peut administrer la plateforme.
-    final String? ancienRole = target.isNotEmpty
-        ? target.first['role'] as String?
-        : null;
-    final String? nouveauRole = target.isNotEmpty
-        ? target.first['new_role'] as String?
-        : null;
+    final String? ancienRole =
+        target.isNotEmpty ? target.first['role'] as String? : null;
+    final String? nouveauRole =
+        target.isNotEmpty ? target.first['new_role'] as String? : null;
 
     final bool estAdministrateur = ancienRole == 'admin' ||
         (nouveauRole ?? '').toUpperCase() == 'SUPER_ADMIN';
@@ -2277,9 +2306,9 @@ CREATE TABLE approvisionnements (
 
   /// 🔐 Login collaborateur local (email + mot de passe)
   Future<Utilisateur?> getUtilisateurByEmailAndPassword(
-      String email,
-      String password,
-      ) async {
+    String email,
+    String password,
+  ) async {
     final db = await database;
     final hash = sha256.convert(utf8.encode(password)).toString();
     final maps = await db.query(
@@ -2295,9 +2324,9 @@ CREATE TABLE approvisionnements (
 
   /// Recherche un utilisateur par email + password_hash
   Future<Utilisateur?> getUtilisateurByEmailAndPasswordHash(
-      String email,
-      String passwordHash,
-      ) async {
+    String email,
+    String passwordHash,
+  ) async {
     final db = await database;
 
     final result = await db.query(
@@ -2374,8 +2403,6 @@ CREATE TABLE approvisionnements (
     );
   }
 
-
-
   // ========================= CATEGORIES =========================
 
   Future<int> insertCategoryIfNotExists(String name, {String? ownerId}) async {
@@ -2384,7 +2411,8 @@ CREATE TABLE approvisionnements (
     if (trimmed.isEmpty) throw Exception('Nom de catégorie vide');
 
     return await db.transaction<int>((txn) async {
-      final existing = await txn.query('categories', where: 'nom = ?', whereArgs: [trimmed], limit: 1);
+      final existing = await txn.query('categories',
+          where: 'nom = ?', whereArgs: [trimmed], limit: 1);
       if (existing.isNotEmpty) {
         return existing.first['id'] as int;
       }
@@ -2393,7 +2421,8 @@ CREATE TABLE approvisionnements (
     });
   }
 
-  Future<void> updateCategory(String oldCategory, String newCategory, String ownerId) async {
+  Future<void> updateCategory(
+      String oldCategory, String newCategory, String ownerId) async {
     final db = await database;
     final oldTrim = oldCategory.trim();
     final newTrim = newCategory.trim();
@@ -2408,11 +2437,14 @@ CREATE TABLE approvisionnements (
         whereArgs: [oldTrim, ownerId],
       );
       try {
-        final existsNew = await txn.query('categories', where: 'nom = ?', whereArgs: [newTrim], limit: 1);
+        final existsNew = await txn.query('categories',
+            where: 'nom = ?', whereArgs: [newTrim], limit: 1);
         if (existsNew.isNotEmpty) {
-          await txn.delete('categories', where: 'nom = ?', whereArgs: [oldTrim]);
+          await txn
+              .delete('categories', where: 'nom = ?', whereArgs: [oldTrim]);
         } else {
-          await txn.update('categories', {'nom': newTrim}, where: 'nom = ?', whereArgs: [oldTrim]);
+          await txn.update('categories', {'nom': newTrim},
+              where: 'nom = ?', whereArgs: [oldTrim]);
         }
       } catch (_) {
         // ignore errors (table may not exist)
@@ -2420,7 +2452,8 @@ CREATE TABLE approvisionnements (
     });
   }
 
-  Future<void> deleteCategory(String category, String defaultCategory, String ownerId) async {
+  Future<void> deleteCategory(
+      String category, String defaultCategory, String ownerId) async {
     final db = await database;
     final catTrim = category.trim();
     final defTrim = defaultCategory.trim();
@@ -2451,7 +2484,8 @@ CREATE TABLE approvisionnements (
 
   Future<List<Category>> getCategories() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query('categories', orderBy: 'nom ASC');
+    final List<Map<String, dynamic>> maps =
+        await db.query('categories', orderBy: 'nom ASC');
     return List.generate(maps.length, (i) {
       return Category.fromMap(maps[i]);
     });
@@ -2493,7 +2527,8 @@ CREATE TABLE approvisionnements (
     return await db.insert('approvisionnements', map);
   }
 
-  Future<List<Approvisionnement>> getHistoriqueApprovisionnement(int produitId) async {
+  Future<List<Approvisionnement>> getHistoriqueApprovisionnement(
+      int produitId) async {
     final db = await database;
     final result = await db.query(
       'approvisionnements',
@@ -2504,7 +2539,6 @@ CREATE TABLE approvisionnements (
 
     return result.map((map) => Approvisionnement.fromMap(map)).toList();
   }
-
 
   Future<int> addStockAndLog(
       Produit produit, double quantiteAjout, double nouveauPrixAchat) async {
@@ -2551,12 +2585,12 @@ CREATE TABLE approvisionnements (
       // MAIS ON LE GARDE is_synced = 1 pour ne pas l'envoyer au serveur !
       await txn.rawUpdate(
           'UPDATE produits SET quantite = quantite + ?, prix_achat = ?, is_synced = 1 WHERE id = ?',
-          [quantiteAjout, nouveauPrixAchat, produit.id]
-      );
+          [quantiteAjout, nouveauPrixAchat, produit.id]);
 
       return logId;
     });
   }
+
   Future<List<Approvisionnement>> getUnsyncedApprovisionnements({
     required String ownerId,
   }) async {
@@ -2572,11 +2606,15 @@ CREATE TABLE approvisionnements (
   }
 
   /// Marque un approvisionnement comme synchronisé
-  Future<int> markApprovisionnementAsSynced(int localId, String supabaseId) async {
+  Future<int> markApprovisionnementAsSynced(
+      int localId, String supabaseId) async {
     final db = await database;
     return await db.update(
       'approvisionnements',
-      {'is_synced': 1, 'supabase_id': supabaseId}, // Assure-toi d'avoir la colonne supabase_id dans ta table locale
+      {
+        'is_synced': 1,
+        'supabase_id': supabaseId
+      }, // Assure-toi d'avoir la colonne supabase_id dans ta table locale
       where: 'id = ?',
       whereArgs: [localId],
     );
@@ -2587,14 +2625,15 @@ CREATE TABLE approvisionnements (
   Future<List<String>> getDistinctCategories({String? ownerId}) async {
     final db = await database;
     try {
-      final List<Map<String, dynamic>> rows = await db.rawQuery(ownerId != null
-          ? '''
+      final List<Map<String, dynamic>> rows = await db.rawQuery(
+          ownerId != null
+              ? '''
             SELECT nom AS category FROM categories
             UNION
             SELECT DISTINCT categorie AS category FROM produits WHERE owner_id = ?
             ORDER BY category ASC
           '''
-          : '''
+              : '''
             SELECT nom AS category FROM categories
             UNION
             SELECT DISTINCT categorie AS category FROM produits
@@ -2632,12 +2671,15 @@ CREATE TABLE approvisionnements (
           .toList();
     }
   }
+
   Future<int> getVentesCountForUser(String ownerId) async {
     final db = await database;
-    final res = await db.rawQuery('SELECT COUNT(*) as c FROM ventes WHERE owner_id = ?', [ownerId]);
+    final res = await db.rawQuery(
+        'SELECT COUNT(*) as c FROM ventes WHERE owner_id = ?', [ownerId]);
     final c = res.first['c'];
     return (c == null) ? 0 : (c as int);
   }
+
   Future<int> updateUserPasswordOffline(String email, String hashedPass) async {
     final db = await instance.database;
     return await db.update(
@@ -2650,7 +2692,9 @@ CREATE TABLE approvisionnements (
 
   Future<int> getDistinctClientsCountForUser(String ownerId) async {
     final db = await database;
-    final res = await db.rawQuery('SELECT COUNT(DISTINCT client_id) as c FROM ventes WHERE owner_id = ?', [ownerId]);
+    final res = await db.rawQuery(
+        'SELECT COUNT(DISTINCT client_id) as c FROM ventes WHERE owner_id = ?',
+        [ownerId]);
     final c = res.first['c'];
     return (c == null) ? 0 : (c as int);
   }
@@ -2728,7 +2772,11 @@ CREATE TABLE approvisionnements (
       qtyByProduct[nom] = (qtyByProduct[nom] ?? 0.0) + qty;
 
       if (!productSummary.containsKey(nom)) {
-        productSummary[nom] = {'produit_nom': nom, 'quantite': 0.0, 'montant_vente': 0.0};
+        productSummary[nom] = {
+          'produit_nom': nom,
+          'quantite': 0.0,
+          'montant_vente': 0.0
+        };
       }
       productSummary[nom]?['quantite'] += qty;
       productSummary[nom]?['montant_vente'] += totalSalePrice;
@@ -2745,12 +2793,14 @@ CREATE TABLE approvisionnements (
       'total_quantity': totalQuantity,
       'total_profit': totalProfit,
       'qty_by_category': qtyByCategory,
-      'top_products': sortedTopProducts.map((e) => {'nom': e.key, 'qty_sold': e.value}).toList(),
+      'top_products': sortedTopProducts
+          .map((e) => {'nom': e.key, 'qty_sold': e.value})
+          .toList(),
       'detailed_sales': productSummary.values.toList(),
     };
   }
 
-  Future<List<Map<String,dynamic>>> getTopProducts({
+  Future<List<Map<String, dynamic>>> getTopProducts({
     String? ownerId,
     required DateTime from,
     required DateTime to,
@@ -2759,7 +2809,10 @@ CREATE TABLE approvisionnements (
     final db = await database;
     final args = <Object?>[from.toIso8601String(), to.toIso8601String()];
     String whereOwner = '';
-    if (ownerId != null) { whereOwner = 'AND v.owner_id = ?'; args.add(ownerId); }
+    if (ownerId != null) {
+      whereOwner = 'AND v.owner_id = ?';
+      args.add(ownerId);
+    }
     final res = await db.rawQuery('''
       SELECT p.id, p.nom, p.categorie, SUM(v.quantite) as qty_sold, SUM(v.prix) as revenue
       FROM ventes v
@@ -2772,8 +2825,7 @@ CREATE TABLE approvisionnements (
     return res;
   }
 
-
-  Future<List<Map<String,dynamic>>> getSalesSeries({
+  Future<List<Map<String, dynamic>>> getSalesSeries({
     String? ownerId,
     required DateTime from,
     required DateTime to,
@@ -2796,7 +2848,10 @@ CREATE TABLE approvisionnements (
     }
     final args = <Object?>[from.toIso8601String(), to.toIso8601String()];
     String whereOwner = '';
-    if (ownerId != null) { whereOwner = 'AND owner_id = ?'; args.add(ownerId); }
+    if (ownerId != null) {
+      whereOwner = 'AND owner_id = ?';
+      args.add(ownerId);
+    }
 
     final res = await db.rawQuery('''
       SELECT $groupExpr as period, SUM(prix) as total, SUM(quantite) as qty
@@ -2808,4 +2863,3 @@ CREATE TABLE approvisionnements (
     return res;
   }
 }
-

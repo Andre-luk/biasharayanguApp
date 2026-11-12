@@ -117,4 +117,47 @@ void main() {
       expect(ScopeDonnees.espaceActif, 'patron-uuid');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // 🩺 0157 — LA PORTÉE DES DONNÉES N'EST PAS L'IDENTITÉ DU PROPRIÉTAIRE.
+  // ---------------------------------------------------------------------------
+  group('ScopeDonnees — propriétaire effectif (serveur)', () {
+    const String espace = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const String patron = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+    test('sans valeur serveur, on écrit dans l’espace choisi', () {
+      ScopeDonnees.definirEspaceActif(espace);
+      expect(ScopeDonnees.proprietaireEffectif, isNull);
+      expect(ScopeDonnees.proprioPourEcriture, espace);
+    });
+
+    test('la valeur du serveur prime sur l’espace choisi', () {
+      ScopeDonnees.definirEspaceActif(espace);
+      ScopeDonnees.definirProprietaireEffectif(patron);
+
+      expect(ScopeDonnees.proprioPourEcriture, patron,
+          reason: 'La RLS compare owner_id à mon_proprietaire() : c’est cette '
+              'valeur qui doit servir, sinon les lignes sont invisibles.');
+    });
+
+    test('changer d’espace périme la valeur serveur', () {
+      ScopeDonnees.definirEspaceActif(espace);
+      ScopeDonnees.definirProprietaireEffectif(patron);
+
+      ScopeDonnees.definirEspaceActif('cccccccc-cccc-cccc-cccc-cccccccccccc');
+      expect(ScopeDonnees.proprietaireEffectif, isNull);
+      expect(ScopeDonnees.proprioPourEcriture,
+          'cccccccc-cccc-cccc-cccc-cccccccccccc');
+    });
+
+    test('la déconnexion efface les deux valeurs', () {
+      ScopeDonnees.definirEspaceActif(espace);
+      ScopeDonnees.definirProprietaireEffectif(patron);
+      ScopeDonnees.reinitialiser();
+
+      expect(ScopeDonnees.espaceActif, isNull);
+      expect(ScopeDonnees.proprietaireEffectif, isNull);
+      expect(ScopeDonnees.proprioPourEcriture, isNull);
+    });
+  });
 }

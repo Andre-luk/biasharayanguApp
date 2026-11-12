@@ -73,6 +73,7 @@ class EspaceService {
         // ventes, caisse…). L'espace par défaut porte l'UUID du patron : pour
         // un compte mono-boutique la valeur ne change donc pas.
         ScopeDonnees.definirEspaceActif(resultat.actifId);
+        await _lireProprietaireEffectif();
         return resultat;
       },
       'le chargement de vos entreprises',
@@ -90,8 +91,35 @@ class EspaceService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // ÉCRITURE
+  // ---------------------------------------------------------------------------  // PROPRIÉTAIRE EFFECTIF (source de vérité = le SERVEUR)
+  // -----------------------------------------------------------------------
+
+  /// Lit `mon_proprietaire()` : c'est EXACTEMENT la valeur que les policies
+  /// RLS comparent à `owner_id`.
+  ///
+  /// Pourquoi ne pas garder seulement l'espace choisi ? Parce que le serveur
+  /// n'honore `espace_actif_id` que s'il appartient à l'entreprise courante
+  /// du compte. Quand les deux divergent, écrire avec l'espace choisi créait
+  /// des lignes INVISIBLES (« ça s'enregistre mais aucun article ne s'affiche »).
+  ///
+  /// Best-effort : hors ligne, l'ancienne valeur (espace choisi) est gardée.
+  Future<void> _lireProprietaireEffectif() async {
+    try {
+      final dynamic reponse = await _client.rpc('mon_proprietaire');
+      final String? valeur = parseStringOrNull(reponse);
+      ScopeDonnees.definirProprietaireEffectif(valeur);
+      if (valeur != null && valeur != ScopeDonnees.espaceActif) {
+        debugPrint(
+          'EspaceService : espace ${ScopeDonnees.espaceActif} ≠ '
+          'propriétaire effectif $valeur — les données suivent le serveur.',
+        );
+      }
+    } catch (e) {
+      debugPrint('EspaceService.propriétaire effectif (ignoré) : $e');
+    }
+  }
+
+  // -----------------------------------------------------------------------  // ÉCRITURE
   // ---------------------------------------------------------------------------
 
   /// Bascule vers une autre entreprise du compte.
@@ -115,6 +143,7 @@ class EspaceService {
 
         // La nouvelle boutique devient la source des données affichées.
         ScopeDonnees.definirEspaceActif(espaceId);
+        await _lireProprietaireEffectif();
       },
       'le changement d\'entreprise',
       'Impossible de changer d\'entreprise. Vérifiez votre connexion internet.',
@@ -208,15 +237,13 @@ class EspaceService {
         <({String code, String libelle})>[];
 
     try {
-      final dynamic reponse =
-          await _client.rpc('rpc_types_espaces_publics');
+      final dynamic reponse = await _client.rpc('rpc_types_espaces_publics');
 
       if (reponse is List) {
         for (final dynamic element in reponse) {
           if (element is! Map) continue;
           final String code = (element['type'] ?? '').toString().trim();
-          final String libelle =
-              (element['libelle'] ?? '').toString().trim();
+          final String libelle = (element['libelle'] ?? '').toString().trim();
           if (code.isEmpty || libelle.isEmpty || !vus.add(code)) continue;
           liste.add((code: code, libelle: libelle));
         }

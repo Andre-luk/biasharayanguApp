@@ -32,6 +32,19 @@ class ScopeDonnees {
 
   static String? _espaceActif;
 
+  /// Propriétaire EFFECTIF renvoyé par le serveur (`mon_proprietaire()`).
+  ///
+  /// Pourquoi une seconde valeur ? Le serveur ne retient `espace_actif_id`
+  /// que si l'espace appartient bien à l'entreprise courante du compte
+  /// (sinon il retombe sur l'UUID du patron). Écrire avec l'espace choisi
+  /// pendant que la RLS attend l'UUID du patron produit des lignes
+  /// INVISIBLES : elles s'enregistrent, mais aucun écran ne les revoit.
+  ///
+  /// Cette valeur, lue UNE fois par espace après un chargement ou une
+  /// bascule, garantit que l'application lit et écrit exactement là où la
+  /// RLS l'autorise.
+  static String? _proprietaireEffectif;
+
   /// Espace de travail actif, ou `null` tant que la liste n'est pas chargée.
   ///
   /// `null` = comportement historique (patron / collaborateur), ce qui évite
@@ -44,12 +57,36 @@ class ScopeDonnees {
   /// Appelé par [EspaceService] après un chargement ou une bascule.
   static void definirEspaceActif(String? id) {
     final String? valeur = id?.trim();
-    _espaceActif = (valeur == null || valeur.isEmpty) ? null : valeur;
+    final String? propre = (valeur == null || valeur.isEmpty) ? null : valeur;
+    if (propre != _espaceActif) {
+      // L'espace change : la valeur vérifiée par le serveur ne vaut plus.
+      _proprietaireEffectif = null;
+    }
+    _espaceActif = propre;
   }
 
-  /// Déconnexion : plus aucun espace actif (évite de laisser fuiter la
+  /// Déconnexion : plus aucun espace actif (evite de laisser fuiter la
   /// boutique précédente au compte suivant).
-  static void reinitialiser() => _espaceActif = null;
+  static void reinitialiser() {
+    _espaceActif = null;
+    _proprietaireEffectif = null;
+  }
+
+  /// Propriétaire effectif vérifié par le serveur, ou `null` s'il n'a pas
+  /// encore été lu (hors ligne, démarrage à froid).
+  static String? get proprietaireEffectif {
+    final String? valeur = _proprietaireEffectif?.trim();
+    return (valeur == null || valeur.isEmpty) ? null : valeur;
+  }
+
+  /// Enregistre la valeur renvoyée par `mon_proprietaire()`.
+  static void definirProprietaireEffectif(String? id) {
+    final String? valeur = id?.trim();
+    _proprietaireEffectif = (valeur == null || valeur.isEmpty) ? null : valeur;
+  }
+
+  /// La valeur à utiliser pour `owner_id` : celle du serveur d'abord.
+  static String? get proprioPourEcriture => proprietaireEffectif ?? espaceActif;
 
   /// Un espace est-il connu ? (`false` = démarrage à froid / hors ligne :
   /// on retombe alors sur le comportement historique).
@@ -57,4 +94,7 @@ class ScopeDonnees {
 
   /// Pour les tests et le diagnostic.
   static String? get valeurBrute => _espaceActif;
+
+  /// Pour les tests et le diagnostic.
+  static String? get proprietaireEffectifBrut => _proprietaireEffectif;
 }

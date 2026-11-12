@@ -75,6 +75,15 @@ class ArticleService {
   Future<String?> proprietaireCourant() async {
     // 🧩 MODULE 15 — les articles affichés sont ceux de la BOUTIQUE active
     //    (et non plus de toutes les boutiques du compte).
+    //
+    // ⚠️ La valeur VÉRIFIÉE PAR LE SERVEUR passe en premier : `mon_proprietaire
+    //    ()`
+    //    est exactement ce que la RLS compare. Utiliser l'espace choisi alors
+    //    que le serveur attend autre chose créait des articles enregistrés…
+    //    et invisibles (aucun article à l'écran, tableau de bord à zéro).
+    final String? effectif = ScopeDonnees.proprietaireEffectif;
+    if (effectif != null) return effectif;
+
     final String? espace = ScopeDonnees.espaceActif;
     if (espace != null) return espace;
 
@@ -451,8 +460,7 @@ class ArticleService {
   Future<int> compterExpirations({int? jours}) {
     return _executer(
       () async {
-        final int horizon =
-            jours ?? await PeremptionService.instance.charger();
+        final int horizon = jours ?? await PeremptionService.instance.charger();
         final String proprietaire = await _requireProprietaire();
         final DateTime reference = DateTime.now();
         final String limite = _isoJour(
@@ -922,11 +930,10 @@ class ArticleService {
         // 🌐 PHASE F (web) — l'extension vient du chemin quand il en a une
         // (fichier natif) ; sinon « jpg » (blob navigateur).
         final String brut = cheminLocal.split('.').last.toLowerCase();
-        final String extension = cheminLocal.contains('.') &&
-                brut.length <= 5 &&
-                !brut.contains('/')
-            ? brut
-            : 'jpg';
+        final String extension =
+            cheminLocal.contains('.') && brut.length <= 5 && !brut.contains('/')
+                ? brut
+                : 'jpg';
         final String chemin =
             '$utilisateurId/${DateTime.now().millisecondsSinceEpoch}.$extension';
         await _client.storage.from(bucketPhotos).uploadBinary(
