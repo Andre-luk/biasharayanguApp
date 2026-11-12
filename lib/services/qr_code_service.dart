@@ -28,6 +28,7 @@ import 'package:biashara_yangu/models/etiquette_qr.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/fichiers_locaux.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 /// Erreur métier du module « QR codes ».
 ///
@@ -410,7 +411,7 @@ class QrCodeService {
           avecTexte: avecTexte,
         );
 
-        await Printing.sharePdf(bytes: bytes, filename: nomFichier);
+        await PartagePdf.partager(bytes, nomFichier: nomFichier);
       },
       actionLibelle: 'le partage des étiquettes',
       messageEchec: 'Impossible de partager les étiquettes. Réessayez.',
@@ -432,8 +433,8 @@ class QrCodeService {
           );
         }
 
-        final _MetriquesPlanche metriques =
-            _MetriquesPlanche.calculer(avecTexte: avecTexte, souhaitee: tailleQrPoints);
+        final _MetriquesPlanche metriques = _MetriquesPlanche.calculer(
+            avecTexte: avecTexte, souhaitee: tailleQrPoints);
 
         // Les images sont fabriquées à la résolution exacte de l'impression
         // (300 DPI une fois posées sur la page) puis réutilisées.
@@ -545,15 +546,16 @@ class QrCodeService {
         mainAxisAlignment: pw.MainAxisAlignment.center,
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
-          pw.Image(image, width: metriques.qrPoints, height: metriques.qrPoints),
+          pw.Image(image,
+              width: metriques.qrPoints, height: metriques.qrPoints),
           if (avecTexte) ...[
             pw.SizedBox(height: 5),
             pw.Text(
               etiquette.titre,
               maxLines: 2,
               textAlign: pw.TextAlign.center,
-              style: pw.TextStyle(
-                  fontSize: 8.5, fontWeight: pw.FontWeight.bold),
+              style:
+                  pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
             ),
             if ((etiquette.sousTitre ?? '').trim().isNotEmpty)
               pw.Text(
@@ -566,7 +568,8 @@ class QrCodeService {
             pw.SizedBox(height: 2),
             pw.Text(
               etiquette.code,
-              style: const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey500),
+              style:
+                  const pw.TextStyle(fontSize: 6.5, color: PdfColors.grey500),
             ),
           ],
         ],
@@ -649,7 +652,8 @@ class QrCodeService {
 
     final ui.Picture picture = recorder.endRecording();
     final ui.Image image = await picture.toImage(cote, cote);
-    final ByteData? octets = await image.toByteData(format: ui.ImageByteFormat.png);
+    final ByteData? octets =
+        await image.toByteData(format: ui.ImageByteFormat.png);
     image.dispose();
     picture.dispose();
 

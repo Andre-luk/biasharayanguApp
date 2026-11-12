@@ -26,6 +26,7 @@ import 'package:printing/printing.dart';
 
 import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/models/pressing.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 /// Tout ce dont le bordereau a besoin.
 class DonneesBordereauAtelier {
@@ -53,7 +54,8 @@ class DonneesBordereauAtelier {
   int get nbDossiers =>
       lignes.map((PressingLigneAtelier l) => l.commandeId).toSet().length;
 
-  int get nbUrgents => lignes.where((PressingLigneAtelier l) => l.urgence).length;
+  int get nbUrgents =>
+      lignes.where((PressingLigneAtelier l) => l.urgence).length;
 
   int get nbEnRetard =>
       lignes.where((PressingLigneAtelier l) => l.enRetard).length;
@@ -80,8 +82,8 @@ class DonneesBordereauAtelier {
 
     // Étapes inconnues (circuit modifié après le dépôt) : jamais perdues.
     final List<PressingLigneAtelier> orphelines = lignes
-        .where((PressingLigneAtelier l) =>
-            !groupes.values.any((List<PressingLigneAtelier> g) => g.contains(l)))
+        .where((PressingLigneAtelier l) => !groupes.values
+            .any((List<PressingLigneAtelier> g) => g.contains(l)))
         .toList(growable: false);
     if (orphelines.isNotEmpty) {
       final Map<String, List<PressingLigneAtelier>> parLibelle =
@@ -125,7 +127,8 @@ class PressingAtelierPdfService {
       final pw.Font gras = await PdfGoogleFonts.robotoBold();
       theme = pw.ThemeData.withFont(base: base, bold: gras);
     } catch (e) {
-      debugPrint('PressingAtelierPdfService : police Unicode indisponible ($e)');
+      debugPrint(
+          'PressingAtelierPdfService : police Unicode indisponible ($e)');
     }
 
     final Map<String, List<PressingLigneAtelier>> groupes =
@@ -277,7 +280,8 @@ class PressingAtelierPdfService {
         _vignette('VÊTEMENTS', '${d.nbVetements}', _marine),
         _vignette('DOSSIERS', '${d.nbDossiers}', _marine),
         _vignette('URGENTS', '${d.nbUrgents}', _orange),
-        _vignette('EN RETARD', '${d.nbEnRetard}', const PdfColor.fromInt(0xFFC62828)),
+        _vignette(
+            'EN RETARD', '${d.nbEnRetard}', const PdfColor.fromInt(0xFFC62828)),
       ],
     );
   }
@@ -354,9 +358,7 @@ class PressingAtelierPdfService {
               _cellule((l.clientNom ?? '—').trim()),
               _cellule(vetement),
               _cellule(
-                (l.defauts ?? '').trim().isEmpty
-                    ? '—'
-                    : l.defauts!.trim(),
+                (l.defauts ?? '').trim().isEmpty ? '—' : l.defauts!.trim(),
                 petite: true,
               ),
               _cellule(
@@ -452,6 +454,6 @@ class PressingAtelierPdfService {
   ) async {
     final pw.Document document = await construire(donnees, etapes);
     final Uint8List bytes = await document.save();
-    await Printing.sharePdf(bytes: bytes, filename: donnees.nomFichier);
+    await PartagePdf.partager(bytes, nomFichier: donnees.nomFichier);
   }
 }

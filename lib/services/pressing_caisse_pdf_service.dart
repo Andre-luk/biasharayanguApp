@@ -18,6 +18,7 @@ import 'package:printing/printing.dart';
 import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/models/pressing_caisse.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 class DonneesCaissePressing {
   const DonneesCaissePressing({
@@ -127,7 +128,8 @@ class PressingCaissePdfService {
           crossAxisAlignment: pw.CrossAxisAlignment.end,
           children: <pw.Widget>[
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: pw.BoxDecoration(
                 color: _marine,
                 borderRadius: pw.BorderRadius.circular(4),
@@ -143,7 +145,8 @@ class PressingCaissePdfService {
               ),
             ),
             pw.SizedBox(height: 6),
-            pw.Text(d.periode, style: const pw.TextStyle(fontSize: 9, color: _gris)),
+            pw.Text(d.periode,
+                style: const pw.TextStyle(fontSize: 9, color: _gris)),
           ],
         ),
       ],
@@ -217,9 +220,8 @@ class PressingCaissePdfService {
       decoration: pw.BoxDecoration(
         color: fond ?? PdfColor.fromInt(0xFFF8FAFC),
         borderRadius: pw.BorderRadius.circular(5),
-        border: fond == null
-            ? pw.Border.all(color: _bordure, width: 0.6)
-            : null,
+        border:
+            fond == null ? pw.Border.all(color: _bordure, width: 0.6) : null,
       ),
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -281,7 +283,8 @@ class PressingCaissePdfService {
           decoration: pw.BoxDecoration(color: PdfColor.fromInt(0xFFF1F5F9)),
           children: <pw.Widget>[
             _cellule('TOTAL ENCAISSÉ', gras: true),
-            _cellule('${d.caisse.nbPaiements}', aligne: pw.TextAlign.right, gras: true),
+            _cellule('${d.caisse.nbPaiements}',
+                aligne: pw.TextAlign.right, gras: true),
             _cellule(
               formatMontant(d.caisse.encaisse, devise: d.devise),
               aligne: pw.TextAlign.right,
@@ -403,7 +406,8 @@ class PressingCaissePdfService {
     );
   }
 
-  pw.Widget _celluleEntete(String texte, {pw.TextAlign aligne = pw.TextAlign.left}) {
+  pw.Widget _celluleEntete(String texte,
+      {pw.TextAlign aligne = pw.TextAlign.left}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 7, vertical: 6),
       child: pw.Text(
@@ -448,9 +452,9 @@ class PressingCaissePdfService {
   /// Partage le PDF (WhatsApp, e-mail, Drive…).
   Future<void> partager(DonneesCaissePressing donnees) async {
     final pw.Document document = await construire(donnees);
-    await Printing.sharePdf(
-      bytes: await document.save(),
-      filename: donnees.nomFichier,
+    await PartagePdf.partager(
+      await document.save(),
+      nomFichier: donnees.nomFichier,
     );
   }
 }

@@ -13,6 +13,7 @@ import 'package:printing/printing.dart';
 
 import 'package:biashara_yangu/models/distribution_gestion.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 class DistributionFacturePdf {
   DistributionFacturePdf._();
@@ -50,8 +51,7 @@ class DistributionFacturePdf {
                       style: pw.TextStyle(
                           fontSize: 16, fontWeight: pw.FontWeight.bold)),
                   pw.Text(facture.numero),
-                  if (facture.date != null)
-                    pw.Text(_date(facture.date!)),
+                  if (facture.date != null) pw.Text(_date(facture.date!)),
                 ],
               ),
             ],
@@ -73,8 +73,7 @@ class DistributionFacturePdf {
                         style: pw.TextStyle(
                             fontSize: 8, color: PdfColors.grey700)),
                     pw.Text(facture.client,
-                        style: pw.TextStyle(
-                            fontWeight: pw.FontWeight.bold)),
+                        style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
                     if (facture.clientTelephone.isNotEmpty)
                       pw.Text(facture.clientTelephone),
                     if (facture.clientAdresse.isNotEmpty)
@@ -110,10 +109,9 @@ class DistributionFacturePdf {
                       formatMontant(l.total),
                     ])
                 .toList(growable: false),
-            headerDecoration:
-                const pw.BoxDecoration(color: PdfColors.grey300),
-            headerStyle: pw.TextStyle(
-                fontSize: 9, fontWeight: pw.FontWeight.bold),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+            headerStyle:
+                pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
             cellStyle: const pw.TextStyle(fontSize: 9),
             cellAlignments: <int, pw.Alignment>{
               1: pw.Alignment.centerRight,
@@ -161,7 +159,8 @@ class DistributionFacturePdf {
           pw.Text(libelle,
               style: pw.TextStyle(
                   fontSize: gras ? 11 : 9,
-                  fontWeight: gras ? pw.FontWeight.bold : pw.FontWeight.normal)),
+                  fontWeight:
+                      gras ? pw.FontWeight.bold : pw.FontWeight.normal)),
           pw.Text(
             formatMontant(montant),
             style: pw.TextStyle(
@@ -183,9 +182,10 @@ class DistributionFacturePdf {
 
   static Future<void> partager(FactureDistribution facture) async {
     final Uint8List octets = await construire(facture);
-    await Printing.sharePdf(
-      bytes: octets,
-      filename: 'facture-${facture.numero.isEmpty ? 'distribution' : facture.numero}.pdf',
+    await PartagePdf.partager(
+      octets,
+      nomFichier:
+          'facture-${facture.numero.isEmpty ? 'distribution' : facture.numero}.pdf',
     );
   }
 

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/collaborateur_stats.dart';
@@ -13,6 +12,7 @@ import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/models/vente.dart';
 // 🪙 MODULE 18 — montants formatés dans la devise de l'entreprise.
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 enum StatsPeriod { today, thisWeek, thisMonth, custom }
 
@@ -21,7 +21,8 @@ class CollaborateursStatsPage extends StatefulWidget {
   const CollaborateursStatsPage({super.key, required this.ownerId});
 
   @override
-  State<CollaborateursStatsPage> createState() => _CollaborateursStatsPageState();
+  State<CollaborateursStatsPage> createState() =>
+      _CollaborateursStatsPageState();
 }
 
 class _SellerAgg {
@@ -113,7 +114,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
         );
 
       case StatsPeriod.thisWeek:
-        final startOfWeek = todayStart.subtract(Duration(days: now.weekday - 1));
+        final startOfWeek =
+            todayStart.subtract(Duration(days: now.weekday - 1));
         return DateTimeRange(
           start: startOfWeek,
           end: todayStart.add(const Duration(days: 1)),
@@ -179,7 +181,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   Future<void> _loadOwnerProfile() async {
     final data = await _supabase
         .from('utilisateurs')
-        .select('id, nom, prenom, avatar, role, parent_id, email, created_at, valide')
+        .select(
+            'id, nom, prenom, avatar, role, parent_id, email, created_at, valide')
         .eq('id', widget.ownerId)
         .maybeSingle();
 
@@ -191,7 +194,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   Future<void> _loadSellers() async {
     final data = await _supabase
         .from('utilisateurs')
-        .select('id, nom, prenom, avatar, role, parent_id, email, created_at, valide')
+        .select(
+            'id, nom, prenom, avatar, role, parent_id, email, created_at, valide')
         .eq('parent_id', widget.ownerId);
 
     final list = (data as List)
@@ -246,7 +250,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
 
       final salesData = await _supabase
           .from('ventes')
-          .select('id, produit_id, quantite, prix, date, owner_id, seller_id, mode_paiement')
+          .select(
+              'id, produit_id, quantite, prix, date, owner_id, seller_id, mode_paiement')
           .eq('owner_id', widget.ownerId)
           .gte('date', range.start.toIso8601String())
           .lt('date', range.end.toIso8601String())
@@ -315,22 +320,22 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   }
 
   Future<void> _downloadCollaborateurReport(
-      String collabId,
-      String name,
-      List<VenteDetail> details,
-      DateTimeRange range,
-      ) async {
+    String collabId,
+    String name,
+    List<VenteDetail> details,
+    DateTimeRange range,
+  ) async {
     try {
       final font = pw.Font.helvetica();
       final bold = pw.Font.helveticaBold();
 
       final totalAmount = details.fold<double>(
         0.0,
-            (sum, item) => sum + item.prixTotal,
+        (sum, item) => sum + item.prixTotal,
       );
       final totalQty = details.fold<double>(
         0.0,
-            (sum, item) => sum + item.quantite,
+        (sum, item) => sum + item.quantite,
       );
 
       final pdf = pw.Document();
@@ -352,7 +357,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
             children: [
               pw.Text(
                 'Rapport vendeur',
-                style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+                style:
+                    pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
               ),
               pw.SizedBox(height: 6),
               pw.Text('Vendeur : $name'),
@@ -380,7 +386,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                 children: [
                   pw.Text(
                     'Résumé',
-                    style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(
+                        fontSize: 14, fontWeight: pw.FontWeight.bold),
                   ),
                   pw.SizedBox(height: 8),
                   pw.Row(
@@ -427,7 +434,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                   ];
                 }).toList(),
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-                headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColors.grey300),
                 cellStyle: const pw.TextStyle(fontSize: 10),
                 cellAlignment: pw.Alignment.centerLeft,
                 cellAlignments: {
@@ -446,11 +454,12 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
       final fileName =
           'rapport_$safeName${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf';
 
-      await Printing.sharePdf(bytes: bytes, filename: fileName);
+      await PartagePdf.partager(bytes, nomFichier: fileName);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Erreur lors du téléchargement du rapport : $e")),
+        SnackBar(
+            content: Text("Erreur lors du téléchargement du rapport : $e")),
       );
     }
   }
@@ -508,66 +517,68 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
             Expanded(
               child: details.isEmpty
                   ? const Center(
-                child: Text("Aucun article vendu sur cette période"),
-              )
+                      child: Text("Aucun article vendu sur cette période"),
+                    )
                   : ListView.separated(
-                controller: scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: details.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, i) {
-                  final d = details[i];
-                  final localDate = d.dateVente.toLocal();
-                  final time =
-                      "${localDate.hour.toString().padLeft(2, '0')}:${localDate.minute.toString().padLeft(2, '0')}";
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: details.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, i) {
+                        final d = details[i];
+                        final localDate = d.dateVente.toLocal();
+                        final time =
+                            "${localDate.hour.toString().padLeft(2, '0')}:${localDate.minute.toString().padLeft(2, '0')}";
 
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.blue[50],
-                          child: Text(
-                            _formatQty(d.quantite),
-                            style: const TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[200]!),
                           ),
-                        ),
-                        const SizedBox(width: 15),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(
-                                d.produitNom,
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              CircleAvatar(
+                                backgroundColor: Colors.blue[50],
+                                child: Text(
+                                  _formatQty(d.quantite),
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      d.produitNom,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      time,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               Text(
-                                time,
+                                formatMontant(d.prixTotal),
                                 style: const TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
-                        ),
-                        Text(
-                          formatMontant(d.prixTotal),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
             Padding(
               padding: const EdgeInsets.all(12.0),
@@ -689,15 +700,19 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   }
 
   Widget _buildSummarySection() {
-    final ownerName = _ownerProfile != null ? _displayName(_ownerProfile!) : 'Patron';
+    final ownerName =
+        _ownerProfile != null ? _displayName(_ownerProfile!) : 'Patron';
 
-    final totalSales = _stats.fold<double>(0.0, (sum, s) => sum + s.totalAmount);
+    final totalSales =
+        _stats.fold<double>(0.0, (sum, s) => sum + s.totalAmount);
     final totalQty = _detailsBySeller.values
         .expand((e) => e)
         .fold<double>(0.0, (sum, d) => sum + d.quantite);
 
-    final ownerStats = _stats.where((s) => s.sellerId == widget.ownerId).toList();
-    final ownerAmount = ownerStats.fold<double>(0.0, (sum, s) => sum + s.totalAmount);
+    final ownerStats =
+        _stats.where((s) => s.sellerId == widget.ownerId).toList();
+    final ownerAmount =
+        ownerStats.fold<double>(0.0, (sum, s) => sum + s.totalAmount);
     final ownerCount = ownerStats.fold<int>(0, (sum, s) => sum + s.ventesCount);
 
     return Padding(
@@ -767,7 +782,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                     child: const Text(
                       'Chiffre d’affaires personnel du patron',
                       style: TextStyle(fontWeight: FontWeight.bold),
-                      overflow: TextOverflow.ellipsis, // Ajoute "..." si vraiment trop long
+                      overflow: TextOverflow
+                          .ellipsis, // Ajoute "..." si vraiment trop long
                       maxLines: 1,
                     ),
                   ),
@@ -807,7 +823,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
       child: ListTile(
         onTap: () => _showCollaborateurDetails(s.sellerId, name),
         leading: CircleAvatar(
-          backgroundColor: isOwner ? Colors.deepPurple.shade50 : Colors.green.shade50,
+          backgroundColor:
+              isOwner ? Colors.deepPurple.shade50 : Colors.green.shade50,
           child: Icon(
             isOwner ? Icons.badge : Icons.person,
             color: isOwner ? Colors.deepPurple : Colors.green,
@@ -866,16 +883,17 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _errorMessage != null
-                ? Center(child: Text(_errorMessage!))
-                : !hasData
-                ? const Center(child: Text("Aucune vente sur cette période"))
-                : ListView.builder(
-              padding: const EdgeInsets.only(top: 10),
-              itemCount: _stats.length,
-              itemBuilder: (context, index) {
-                return _buildSellerCard(_stats[index]);
-              },
-            ),
+                    ? Center(child: Text(_errorMessage!))
+                    : !hasData
+                        ? const Center(
+                            child: Text("Aucune vente sur cette période"))
+                        : ListView.builder(
+                            padding: const EdgeInsets.only(top: 10),
+                            itemCount: _stats.length,
+                            itemBuilder: (context, index) {
+                              return _buildSellerCard(_stats[index]);
+                            },
+                          ),
           ),
         ],
       ),

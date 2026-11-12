@@ -12,6 +12,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:biashara_yangu/models/resultat_partage.dart';
 import 'package:biashara_yangu/services/facture_vente_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
@@ -52,8 +53,8 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
   bool _enCours = false;
   String? _info;
 
-  Future<void> _executer(Future<bool> Function() action, String succes,
-      String echec) async {
+  Future<void> _executer(
+      Future<bool> Function() action, String succes, String echec) async {
     setState(() {
       _enCours = true;
       _info = null;
@@ -111,17 +112,22 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
               ),
             ),
             const SizedBox(height: 14),
-
             FilledButton.icon(
               onPressed: _enCours
                   ? null
-                  : () => _executer(
-                        () => FactureVenteService.instance.telecharger(f),
-                        'Facture prête : choisissez où l\'enregistrer ou à qui '
-                            'l\'envoyer.',
-                        'Téléchargement impossible sur cet appareil. '
-                            'Essayez « Imprimer » puis « Enregistrer en PDF ».',
-                      ),
+                  : () async {
+                      setState(() {
+                        _enCours = true;
+                        _info = null;
+                      });
+                      final ResultatPartage resultat =
+                          await FactureVenteService.instance.partager(f);
+                      if (!mounted) return;
+                      setState(() {
+                        _enCours = false;
+                        _info = resultat.message;
+                      });
+                    },
               icon: _enCours
                   ? const SizedBox(
                       width: 18,
@@ -133,19 +139,30 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
               label: const Text('TÉLÉCHARGER / PARTAGER LE PDF'),
             ),
             const SizedBox(height: 8),
-
             FilledButton.tonalIcon(
               onPressed: _enCours
                   ? null
                   : () async {
+                      setState(() {
+                        _enCours = true;
+                        _info = null;
+                      });
                       await FactureVenteService.instance
                           .proposerEnvoiWhatsApp(context, f);
+                      if (!mounted) return;
+                      final ResultatPartage? dernier =
+                          FactureVenteService.instance.dernierPartage;
+                      setState(() {
+                        _enCours = false;
+                        _info = dernier?.message ??
+                            'Choisissez WhatsApp dans la liste pour envoyer le '
+                                'PDF au client.';
+                      });
                     },
               icon: const Icon(Icons.chat_rounded),
               label: const Text('ENVOYER SUR WHATSAPP'),
             ),
             const SizedBox(height: 8),
-
             OutlinedButton.icon(
               onPressed: _enCours
                   ? null
@@ -157,7 +174,6 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
               icon: const Icon(Icons.print_rounded),
               label: const Text('IMPRIMER'),
             ),
-
             if (_info != null) ...<Widget>[
               const SizedBox(height: 12),
               Container(

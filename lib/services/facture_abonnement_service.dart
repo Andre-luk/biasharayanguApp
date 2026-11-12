@@ -29,6 +29,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:biashara_yangu/models/facture_abonnement.dart';
 import 'package:biashara_yangu/utils/fichiers_locaux.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 // ⚠️ Import PRÉFIXÉ : la classe expose elle-même une méthode `lienWhatsApp`
 // (qui compose le récapitulatif de la facture). Sans préfixe, l'appel
 // s'adresserait à la méthode elle-même — une récursion infinie.
@@ -37,7 +38,8 @@ import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// Erreur métier d'une facture d'abonnement.
 class FactureAbonnementException implements Exception {
-  const FactureAbonnementException(this.message, {this.type = TypeErreurFacture.inconnu});
+  const FactureAbonnementException(this.message,
+      {this.type = TypeErreurFacture.inconnu});
 
   /// Message déjà rédigé en français, affichable tel quel.
   final String message;
@@ -71,7 +73,8 @@ enum TypeErreurFacture {
 
 /// Ce qui reste à envoyer, avec le compte pour le badge de l'écran.
 class FacturesAEnvoyer {
-  const FacturesAEnvoyer({this.total = 0, this.factures = const <FactureAbonnement>[]});
+  const FacturesAEnvoyer(
+      {this.total = 0, this.factures = const <FactureAbonnement>[]});
 
   final int total;
   final List<FactureAbonnement> factures;
@@ -127,7 +130,9 @@ class FactureAbonnementService {
       );
 
       return _factures(brut);
-    }, messageEchec: 'Impossible de lire les factures. Vérifiez votre connexion internet.');
+    },
+        messageEchec:
+            'Impossible de lire les factures. Vérifiez votre connexion internet.');
   }
 
   /// Factures émises et pas encore envoyées (badge de l'écran).
@@ -260,7 +265,8 @@ class FactureAbonnementService {
   }) {
     return geo.lienWhatsApp(
       facture.clientTelephone,
-      message: messageWhatsAppFacture(facture, nomEtablissement: nomEtablissement),
+      message:
+          messageWhatsAppFacture(facture, nomEtablissement: nomEtablissement),
     );
   }
 
@@ -274,7 +280,8 @@ class FactureAbonnementService {
     FactureAbonnement facture, {
     String? nomEtablissement,
   }) async {
-    final String? lien = lienWhatsApp(facture, nomEtablissement: nomEtablissement);
+    final String? lien =
+        lienWhatsApp(facture, nomEtablissement: nomEtablissement);
 
     if (lien == null) {
       throw const FactureAbonnementException(
@@ -292,7 +299,8 @@ class FactureAbonnementService {
       );
     }
 
-    final bool ouvert = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final bool ouvert =
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ouvert) {
       throw const FactureAbonnementException(
         'WhatsApp n\'a pas pu être ouvert sur cet appareil.',
@@ -326,7 +334,8 @@ class FactureAbonnementService {
     Uint8List? logo,
     bool chargerPolices = true,
   }) async {
-    final pw.ThemeData? theme = chargerPolices ? await _chargerThemePdf() : null;
+    final pw.ThemeData? theme =
+        chargerPolices ? await _chargerThemePdf() : null;
     final pw.Document document = pw.Document(theme: theme);
 
     // ⚠️ Toutes les chaînes sont formatées AVANT d'entrer dans le PDF : on ne
@@ -354,9 +363,8 @@ class FactureAbonnementService {
         : formatDate(facture.dateLimiteComplement);
 
     final String emetteur = facture.resumeEmetteur;
-    final String motifAnnulation = facture.estAnnulee
-        ? (facture.note ?? 'Annulée')
-        : '';
+    final String motifAnnulation =
+        facture.estAnnulee ? (facture.note ?? 'Annulée') : '';
 
     document.addPage(
       pw.MultiPage(
@@ -417,9 +425,9 @@ class FactureAbonnementService {
       nomEtablissement: nomEtablissement,
     );
 
-    await Printing.sharePdf(
-      bytes: octets,
-      filename: nomFichierFacture(facture),
+    await PartagePdf.partager(
+      octets,
+      nomFichier: nomFichierFacture(facture),
     );
   }
 
@@ -495,16 +503,20 @@ class FactureAbonnementService {
             children: <pw.Widget>[
               pw.Text(
                 nomEtablissement.toUpperCase(),
-                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                style:
+                    pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
               ),
               pw.SizedBox(height: 2),
               pw.Text(titre,
-                  style: const pw.TextStyle(fontSize: 16, color: PdfColors.grey800)),
+                  style: const pw.TextStyle(
+                      fontSize: 16, color: PdfColors.grey800)),
               pw.SizedBox(height: 4),
               pw.Text('N° $reference — $nature',
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey700)),
               pw.Text('Émise le $emiseLe',
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                  style: const pw.TextStyle(
+                      fontSize: 10, color: PdfColors.grey700)),
             ],
           ),
         ),
@@ -585,7 +597,8 @@ class FactureAbonnementService {
             for (int i = 0; i < lignes.length; i++)
               pw.TableRow(
                 children: <pw.Widget>[
-                  _cellulePdf(lignes[i][0], gras: i == lignes.length - 1 && grasDerniereLigne),
+                  _cellulePdf(lignes[i][0],
+                      gras: i == lignes.length - 1 && grasDerniereLigne),
                   _cellulePdf(
                     lignes[i][1],
                     gras: i == lignes.length - 1 && grasDerniereLigne,
@@ -686,7 +699,8 @@ class FactureAbonnementService {
           pw.SizedBox(
             width: 130,
             child: pw.Text(libelle,
-                style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
+                style:
+                    const pw.TextStyle(fontSize: 9, color: PdfColors.grey700)),
           ),
           pw.Expanded(
             child: pw.Text(valeur, style: const pw.TextStyle(fontSize: 9.5)),
@@ -696,7 +710,8 @@ class FactureAbonnementService {
     );
   }
 
-  pw.Widget _cellulePdf(String texte, {bool gras = false, bool aligneDroite = false}) {
+  pw.Widget _cellulePdf(String texte,
+      {bool gras = false, bool aligneDroite = false}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
       child: pw.Text(
@@ -740,7 +755,8 @@ class FactureAbonnementService {
         code.contains('FACTURE_ANNULEE')) {
       return TypeErreurFacture.verrouillee;
     }
-    if (code.contains('FACTURE_INTROUVABLE')) return TypeErreurFacture.introuvable;
+    if (code.contains('FACTURE_INTROUVABLE'))
+      return TypeErreurFacture.introuvable;
     if (code.contains('MOTIF_REQUIS') ||
         code.contains('CANAL_INVALIDE') ||
         code.contains('ENTREPRISE_INTROUVABLE')) {

@@ -34,11 +34,13 @@ import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/rapport.dart';
-import 'package:biashara_yangu/models/vente_enregistree.dart' show reponseRpcEnMap;
+import 'package:biashara_yangu/models/vente_enregistree.dart'
+    show reponseRpcEnMap;
 import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/fichiers_locaux.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 /// Nature d'une erreur de rapport (pour adapter l'interface).
 enum TypeErreurRapport { droits, validation, reseau, inconnu }
@@ -226,7 +228,8 @@ class RapportService {
   /// Référence lisible d'une opération : `RPT-AAAAMMJJ-XXXXXX`.
   ///
   /// [maintenant] et [suffixe] sont injectables pour les tests.
-  static String genererReferenceRapport({DateTime? maintenant, String? suffixe}) {
+  static String genererReferenceRapport(
+      {DateTime? maintenant, String? suffixe}) {
     final DateTime date = maintenant ?? DateTime.now();
     final String jour = '${date.year}'
         '${date.month.toString().padLeft(2, '0')}'
@@ -264,8 +267,9 @@ class RapportService {
   }
 
   /// Empreinte abrégée (12 caractères) affichée sur les documents.
-  static String empreinteCourte(String empreinte) =>
-      empreinte.length <= 12 ? empreinte : empreinte.substring(0, 12).toUpperCase();
+  static String empreinteCourte(String empreinte) => empreinte.length <= 12
+      ? empreinte
+      : empreinte.substring(0, 12).toUpperCase();
 
   /// Nom de fichier d'un rapport : `rapport_<type>_<début>_<fin>.<ext>`.
   static String nomFichierRapport({
@@ -314,7 +318,7 @@ class RapportService {
                 donnees, nomEntreprise, logo, referenceDocument, genereLe)
             : _entetePdfSuite(donnees),
         footer: (pw.Context context) => _piedDePagePdf(
-          context, donnees, referenceDocument, resultat.empreinte, genereLe),
+            context, donnees, referenceDocument, resultat.empreinte, genereLe),
         build: (pw.Context context) => <pw.Widget>[
           if (donnees.resume.isNotEmpty) ...<pw.Widget>[
             _bandeauResumePdf(donnees.resume),
@@ -329,7 +333,8 @@ class RapportService {
               ),
               child: pw.Text(
                 'Aucune donnée sur la période sélectionnée.',
-                style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                style:
+                    const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
               ),
             )
           else
@@ -403,7 +408,7 @@ class RapportService {
       extension: 'pdf',
     );
 
-    await Printing.sharePdf(bytes: octets, filename: nomFichier);
+    await PartagePdf.partager(octets, nomFichier: nomFichier);
 
     await _tracer(
       espace: _espaceDepuisPortee(resultat.donnees.portee),
@@ -602,7 +607,8 @@ class RapportService {
         fin: resultat.donnees.fin,
         extension: 'xlsx',
       ),
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      mimeType:
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
 
     await _tracer(
@@ -676,7 +682,8 @@ class RapportService {
   /// Logo utilisé dans l'en-tête des PDF (best-effort : `null` si absent).
   Future<Uint8List?> chargerLogo() async {
     try {
-      final ByteData data = await rootBundle.load('assets/Biashara_app_off-.png');
+      final ByteData data =
+          await rootBundle.load('assets/Biashara_app_off-.png');
       return data.buffer.asUint8List();
     } catch (e) {
       debugPrint('RapportService (logo indisponible): $e');
@@ -904,13 +911,13 @@ class RapportService {
                 pw.Text(
                   'Devise : ${FormatMonetaire.code} '
                   '(${FormatMonetaire.symbole})',
-                  style: const pw.TextStyle(
-                      fontSize: 8, color: PdfColors.grey600),
+                  style:
+                      const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
                 ),
                 pw.Text(
                   'Généré le ${formatDateHeure(genereLe)}',
-                  style: const pw.TextStyle(
-                      fontSize: 8, color: PdfColors.grey600),
+                  style:
+                      const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
                 ),
               ],
             ),
@@ -937,7 +944,8 @@ class RapportService {
             if (donnees.periodeTexte != null)
               pw.Text(
                 donnees.periodeTexte!,
-                style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+                style:
+                    const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
               ),
           ],
         ),
@@ -1000,8 +1008,8 @@ class RapportService {
                 children: <pw.Widget>[
                   pw.Text(
                     _textePdf(indicateur.libelle),
-                    style:
-                        const pw.TextStyle(fontSize: 7, color: PdfColors.grey700),
+                    style: const pw.TextStyle(
+                        fontSize: 7, color: PdfColors.grey700),
                   ),
                   pw.SizedBox(height: 1),
                   pw.Text(
@@ -1024,8 +1032,7 @@ class RapportService {
         .map((ColonneRapport colonne) => _textePdf(colonne.libelle))
         .toList(growable: false);
 
-    final Map<int, pw.Alignment> alignements =
-        <int, pw.Alignment>{
+    final Map<int, pw.Alignment> alignements = <int, pw.Alignment>{
       for (int i = 0; i < donnees.colonnes.length; i++)
         if (donnees.colonnes[i].type == TypeColonneRapport.montant ||
             donnees.colonnes[i].type == TypeColonneRapport.nombre ||
@@ -1051,16 +1058,16 @@ class RapportService {
               )
               .toList(growable: false),
           headerStyle: pw.TextStyle(
-              fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
-          headerDecoration:
-              pw.BoxDecoration(color: PdfColor.fromHex('37474F')),
+              fontSize: 8,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white),
+          headerDecoration: pw.BoxDecoration(color: PdfColor.fromHex('37474F')),
           cellStyle: const pw.TextStyle(fontSize: 7.5),
           cellPadding:
               const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 2.5),
           cellAlignments: alignements,
           border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.4),
-          oddRowDecoration:
-              pw.BoxDecoration(color: PdfColor.fromHex('F5F7F9')),
+          oddRowDecoration: pw.BoxDecoration(color: PdfColor.fromHex('F5F7F9')),
         ),
       );
 
@@ -1082,11 +1089,13 @@ class RapportService {
               ],
             ],
             headerStyle: pw.TextStyle(
-                fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                fontSize: 8,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.white),
             headerDecoration:
                 pw.BoxDecoration(color: PdfColor.fromHex('37474F')),
-            cellStyle: pw.TextStyle(
-                fontSize: 7.5, fontWeight: pw.FontWeight.bold),
+            cellStyle:
+                pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold),
             cellPadding:
                 const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 2.5),
             cellAlignments: alignements,
@@ -1164,7 +1173,8 @@ class RapportService {
     }
   }
 
-  static void _fusionnerTitre(xls.Sheet feuille, int indexLigne, int nbColonnes) {
+  static void _fusionnerTitre(
+      xls.Sheet feuille, int indexLigne, int nbColonnes) {
     if (nbColonnes <= 1) return;
     feuille.merge(
       xls.CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: indexLigne),

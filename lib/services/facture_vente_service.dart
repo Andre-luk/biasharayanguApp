@@ -24,11 +24,11 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/services/etablissement_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 /// Statut de paiement d'une facture.
 enum StatutFacture {
@@ -151,6 +151,11 @@ class FactureVenteService {
   FactureVenteService._();
 
   static final FactureVenteService instance = FactureVenteService._();
+
+  /// Où le dernier PDF est allé (feuille de partage, téléchargement,
+  /// enregistrement sur le disque). Lu par les écrans pour afficher un message
+  /// exact — par exemple le chemin du fichier sur ordinateur.
+  ResultatPartage? dernierPartage;
 
   /// Couleur de la marque sur le document.
   static const PdfColor _marine = PdfColor.fromInt(0xFF1F3864);
@@ -429,12 +434,12 @@ class FactureVenteService {
               pw.SizedBox(height: 4),
               pw.Text(
                 d.modePaiement,
-                style: pw.TextStyle(
-                    fontSize: 10, fontWeight: pw.FontWeight.bold),
+                style:
+                    pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
               ),
               if (d.montantPaye != null)
                 pw.Text(
-                  'Payé : ${formatMontant(d.montantPaye!) } ${d.devise}',
+                  'Payé : ${formatMontant(d.montantPaye!)} ${d.devise}',
                   style: const pw.TextStyle(fontSize: 8.5),
                 ),
               if (d.solde > 0.009)
@@ -638,8 +643,7 @@ class FactureVenteService {
           if (d.valeurCadeaux > 0.009)
             pw.Text(
               'Valeur commerciale offerte : ${formatMontant(d.valeurCadeaux)} ${d.devise}',
-              style: const pw.TextStyle(
-                  fontSize: 8, color: PdfColors.green800),
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.green800),
             ),
         ],
       ),
@@ -661,11 +665,13 @@ class FactureVenteService {
           children: <pw.Widget>[
             pw.Text(
               d.etablissement.nomAffiche,
-              style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
+              style:
+                  const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
             ),
             pw.Text(
               'Page ${context.pageNumber} / ${context.pagesCount}',
-              style: const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
+              style:
+                  const pw.TextStyle(fontSize: 7.5, color: PdfColors.grey700),
             ),
           ],
         ),
@@ -708,17 +714,43 @@ class FactureVenteService {
 
   /// 💾 TÉLÉCHARGEMENT AUTOMATIQUE — appelé juste après la validation d'une
   /// vente. Sur téléphone, la feuille de partage s'ouvre avec le PDF (l'utilis
-  /// ateur peut l'enregistrer) ; sur le web, le navigateur télécharge le
-  /// fichier. En cas de refus (permission, navigateur), on renvoie `false`
-  /// pour que l'écran propose un bouton explicite.
+  /// ateur peut l'enregistrer) ; sur ordinateur le fichier est enregistré dans
+  /// « Téléchargements/Biashara Yangu/Factures » puis ouvert ; sur le web, le
+  /// navigateur télécharge le fichier. En cas de refus (permission,
+  /// navigateur), on renvoie `false` pour que l'écran propose un bouton
+  /// explicite.
   Future<bool> telecharger(DonneesFacture d) async {
+    final ResultatPartage resultat = await partager(d);
+    return resultat.ok;
+  }
+
+  /// 📎 Partage / enregistrement du PDF, avec le détail de ce qui s'est passé.
+  ///
+  /// [texte] accompagne le fichier sur mobile (corps du message WhatsApp) ;
+  /// il est ignoré là où il n'existe pas de feuille de partage avec pièce
+  /// jointe.
+  Future<ResultatPartage> partager(
+    DonneesFacture d, {
+    String? texte,
+  }) async {
     try {
       final Uint8List octets = await construire(d);
-      await Printing.sharePdf(bytes: octets, filename: d.nomFichier);
-      return true;
+      final ResultatPartage resultat = await PartagePdf.partager(
+        octets,
+        nomFichier: d.nomFichier,
+        texte: texte,
+        sujet: 'Facture ${d.numero} — ${d.etablissement.nomAffiche}',
+      );
+      dernierPartage = resultat;
+      return resultat;
     } catch (e) {
-      debugPrint('FactureVenteService.telecharger : $e');
-      return false;
+      debugPrint('FactureVenteService.partager : $e');
+      const ResultatPartage echec = ResultatPartage.echec(
+        'La facture n\'a pas pu être générée sur cet appareil. '
+        'Essayez « Imprimer » puis « Enregistrer en PDF ».',
+      );
+      dernierPartage = echec;
+      return echec;
     }
   }
 
@@ -738,37 +770,46 @@ class FactureVenteService {
   }
 
   /// 📎 Partage du PDF (feuille de partage : WhatsApp, e-mail, Drive…).
-  /// C'est LA façon d'envoyer le fichier lui-même.
-  Future<bool> partagerPdf(DonneesFacture d) => telecharger(d);
+  Future<bool> partagerPdf(DonneesFacture d) async {
+    final ResultatPartage resultat = await partager(d);
+    return resultat.ok;
+  }
 
-  /// 💬 Ouvre WhatsApp avec le bon numéro et un message professionnel.
+  /// 💬 Envoie la facture au client sur WhatsApp — LE FICHIER, PAS LE TEXTE.
   ///
-  /// ⚠️ Le message ne prétend PAS que le PDF est joint : le fichier est
-  ///    partagé via [partagerPdf] (ou téléchargé juste avant).
+  /// 📱 Mobile : la feuille de partage s'ouvre avec le PDF joint et le message
+  ///    du client ; l'utilisateur choisit WhatsApp puis le contact. C'est le
+  ///    seul moyen d'envoyer réellement un fichier (un lien `wa.me` ne
+  ///    transporte que du texte).
+  /// 🖥️ Ordinateur : le PDF est enregistré (WhatsApp Desktop n'accepte pas de
+  ///    pièce jointe par lien) puis la conversation du client s'ouvre avec le
+  ///    message et le nom du fichier à joindre.
   Future<bool> envoyerParWhatsApp(
     DonneesFacture d, {
     required String telephone,
     bool pdfDejaTelecharge = true,
   }) async {
     final String numero = normaliserTelephone(telephone);
-    if (numero.isEmpty) return false;
+    final String message = d.messageWhatsApp();
 
-    final StringBuffer texte = StringBuffer(d.messageWhatsApp());
-    if (pdfDejaTelecharge) {
-      texte.write('\n\nLa facture PDF vient d\'être téléchargée sur cet '
-          'appareil : vous pouvez l\'ajouter à cette conversation.');
+    // 1. Le fichier d'abord.
+    final ResultatPartage partage = await partager(d, texte: message);
+
+    // 2. Feuille de partage (mobile/web) : WhatsApp est dans la liste, avec le
+    //    PDF joint. On n'ouvre PAS `wa.me` en plus, sinon l'utilisateur
+    //    enverrait un texte sans fichier.
+    if (partage.fichierJoint && partage.mode != ModePartage.enregistre) {
+      return true;
     }
+    if (!partage.ok) return false;
 
-    final Uri lien = Uri.parse(
-      'https://wa.me/$numero?text=${Uri.encodeComponent(texte.toString())}',
-    );
-
-    try {
-      return await launchUrl(lien, mode: LaunchMode.externalApplication);
-    } catch (e) {
-      debugPrint('FactureVenteService.envoyerParWhatsApp : $e');
-      return false;
+    // 3. Ordinateur : conversation pré-remplie, fichier déjà sur le disque.
+    final StringBuffer texte = StringBuffer(message);
+    if (partage.chemin != null) {
+      texte.write('\n\nLe PDF est enregistré sur cet appareil : '
+          '${partage.chemin}');
     }
+    return PartagePdf.whatsApp(numero, texte: texte.toString());
   }
 
   /// Conserve les chiffres, ajoute l'indicatif RDC (243) si le numéro est
@@ -846,16 +887,15 @@ class FactureVenteService {
     );
   }
 
-  /// Demande le numéro WhatsApp du client (si absent) puis envoie.
+  /// Demande le numéro WhatsApp du client (si absent) puis envoie LE FICHIER.
   ///
-  /// Renvoie `true` si WhatsApp a été ouvert. Ne prétend jamais avoir joint le
-  /// PDF : le partage du fichier reste une action distincte.
+  /// Sur mobile, c'est la feuille de partage qui porte le PDF ; le numéro sert
+  /// de repli quand aucune application de partage n'est disponible.
   Future<bool> proposerEnvoiWhatsApp(
     BuildContext context,
     DonneesFacture d,
   ) async {
     String? numero = d.clientTelephone;
-    bool pdfPartage = false;
 
     final String? saisie = await showDialog<String>(
       context: context,
@@ -867,17 +907,7 @@ class FactureVenteService {
     if (saisie == null) return false;
     numero = saisie;
 
-    // 1. On propose d'abord le FICHIER (vraie pièce jointe via le partage).
-    if (context.mounted) {
-      pdfPartage = await partagerPdf(d);
-    }
-
-    // 2. Puis la conversation WhatsApp du client, message pré-rempli.
-    return envoyerParWhatsApp(
-      d,
-      telephone: numero,
-      pdfDejaTelecharge: pdfPartage,
-    );
+    return envoyerParWhatsApp(d, telephone: numero);
   }
 }
 

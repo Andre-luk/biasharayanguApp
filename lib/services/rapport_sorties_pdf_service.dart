@@ -18,6 +18,7 @@ import 'package:printing/printing.dart';
 import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/models/sortie_stock.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 /// Tout ce dont le rapport a besoin.
 class DonneesRapportSorties {
@@ -37,10 +38,9 @@ class DonneesRapportSorties {
   /// Devise d'affichage (par défaut celle de l'établissement).
   final String? devise;
 
-  String get deviseAffichee =>
-      (devise ?? etablissement.devise).trim().isEmpty
-          ? 'CDF'
-          : (devise ?? etablissement.devise).trim();
+  String get deviseAffichee => (devise ?? etablissement.devise).trim().isEmpty
+      ? 'CDF'
+      : (devise ?? etablissement.devise).trim();
 
   String get periode {
     final String? fournie = libellePeriode;
@@ -163,7 +163,8 @@ class RapportSortiesPdfService {
           crossAxisAlignment: pw.CrossAxisAlignment.end,
           children: <pw.Widget>[
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding:
+                  const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: pw.BoxDecoration(
                 color: _marine,
                 borderRadius: pw.BorderRadius.circular(4),
@@ -432,7 +433,8 @@ class RapportSortiesPdfService {
   // PETITS OUTILS
   // ---------------------------------------------------------------------------
 
-  pw.Widget _celluleEntete(String texte, {pw.TextAlign aligne = pw.TextAlign.left}) {
+  pw.Widget _celluleEntete(String texte,
+      {pw.TextAlign aligne = pw.TextAlign.left}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: pw.Text(
@@ -483,7 +485,7 @@ class RapportSortiesPdfService {
   Future<void> partager(DonneesRapportSorties donnees) async {
     final pw.Document document = await construire(donnees);
     final Uint8List bytes = await document.save();
-    await Printing.sharePdf(bytes: bytes, filename: donnees.nomFichier);
+    await PartagePdf.partager(bytes, nomFichier: donnees.nomFichier);
   }
 
   /// Télécharge le PDF sur l'appareil. Renvoie `true` en cas de succès.
@@ -491,7 +493,7 @@ class RapportSortiesPdfService {
     try {
       final pw.Document document = await construire(donnees);
       final Uint8List bytes = await document.save();
-      await Printing.sharePdf(bytes: bytes, filename: donnees.nomFichier);
+      await PartagePdf.partager(bytes, nomFichier: donnees.nomFichier);
       return true;
     } catch (e) {
       debugPrint('RapportSortiesPdfService.telecharger : $e');

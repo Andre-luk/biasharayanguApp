@@ -21,11 +21,11 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:biashara_yangu/models/etablissement.dart';
 import 'package:biashara_yangu/models/pressing.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 /// Tout ce dont le reçu a besoin.
 class DonneesRecuPressing {
@@ -42,9 +42,8 @@ class DonneesRecuPressing {
   final bool soldeObligatoire;
 
   String get nomFichier {
-    final String base = commande.numero.trim().isEmpty
-        ? 'depot'
-        : commande.numero.trim();
+    final String base =
+        commande.numero.trim().isEmpty ? 'depot' : commande.numero.trim();
     return 'recu-${base.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '-')}.pdf';
   }
 
@@ -587,8 +586,9 @@ class PressingRecuPdfService {
     try {
       final pw.Document document = await construire(donnees);
       final Uint8List bytes = await document.save();
-      await Printing.sharePdf(bytes: bytes, filename: donnees.nomFichier);
-      return true;
+      final ResultatPartage r =
+          await PartagePdf.partager(bytes, nomFichier: donnees.nomFichier);
+      return r.ok;
     } catch (e) {
       debugPrint('PressingRecuPdfService.telecharger : $e');
       return false;
@@ -603,28 +603,33 @@ class PressingRecuPdfService {
     );
   }
 
-  Future<void> partagerPdf(DonneesRecuPressing donnees) async {
+  Future<ResultatPartage> partagerPdf(DonneesRecuPressing donnees) async {
     final pw.Document document = await construire(donnees);
     final Uint8List bytes = await document.save();
-    await Printing.sharePdf(bytes: bytes, filename: donnees.nomFichier);
+    return PartagePdf.partager(bytes, nomFichier: donnees.nomFichier);
   }
 
-  /// Ouvre WhatsApp avec le message et le numéro du client.
+  /// Envoie LE FICHIER au client (WhatsApp joint le PDF, pas un texte).
   Future<bool> envoyerParWhatsApp(DonneesRecuPressing donnees) async {
-    final String? numero = donnees.commande.clientTelephone;
-    final String texte = Uri.encodeComponent(donnees.messageWhatsApp());
-    final String base = (numero ?? '').trim().isEmpty
-        ? 'https://wa.me/?text=$texte'
-        : 'https://wa.me/${normaliserTelephone(numero!)}?text=$texte';
-    try {
-      return await launchUrl(
-        Uri.parse(base),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (e) {
-      debugPrint('PressingRecuPdfService.envoyerParWhatsApp : $e');
-      return false;
+    final ResultatPartage partage = await partagerPdf(donnees);
+
+    if (partage.fichierJoint && partage.mode != ModePartage.enregistre) {
+      return true;
     }
+    if (!partage.ok) return false;
+
+    final String? numero = donnees.commande.clientTelephone;
+    if ((numero ?? '').trim().isEmpty) return true;
+
+    final StringBuffer texte = StringBuffer(donnees.messageWhatsApp());
+    if (partage.chemin != null) {
+      texte.write('\n\nLe PDF est enregistré sur cet appareil : '
+          '${partage.chemin}');
+    }
+    return PartagePdf.whatsApp(
+      normaliserTelephone(numero!),
+      texte: texte.toString(),
+    );
   }
 
   /// « +243 990 000 000 » → « 243990000000 ».
