@@ -604,6 +604,53 @@ class EntrepriseService {
     );
   }
 
+  /// 🏪 0160 — LE CHANGEMENT DE TYPE COMPLET.
+  ///
+  /// `definirTypeActivite` ne réglait que l'axe commercial (boutique /
+  /// distribution). Ici, on change le **MÉTIER** : tous les espaces de
+  /// l'entreprise prennent [type] (pharmacie, pressing, hôtel…), ce qui
+  /// déclenche le bon profil de modules — et le serveur en déduit l'axe
+  /// commercial. C'est ce que fait l'écran Super Admin.
+  ///
+  /// Renvoie le libellé enregistré (ex. « Pharmacie »).
+  Future<String> definirMetier(String entrepriseId, String type) {
+    return _executer(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_entreprise_metier_definir',
+          params: <String, dynamic>{
+            'p_entreprise_id': entrepriseId,
+            'p_type': type,
+          },
+        );
+
+        // La fiche doit relire ce qui vient d'être écrit (cache + espaces).
+        try {
+          await CacheLecture.instance
+              .oublier(CacheLecture.cleRpc('entreprises_liste'));
+          await EspaceService.instance.chargerSilencieux();
+
+          final String? actif = EspaceService.instance.actif?.id;
+          if (actif != null) {
+            if (actif == entrepriseId) {
+              await ModulesService.instance.chargerSilencieux();
+              await TypeActiviteService.instance.charger();
+            }
+          }
+        } catch (e) {
+          debugPrint('definirMetier : rafraîchissement ignoré ($e)');
+        }
+
+        final Map<String, dynamic>? map = parseMap(reponse);
+        return parseStringOrNull(map?['libelle']) ?? type;
+      },
+      actionLibelle: 'le changement du métier',
+      messageEchec:
+          'Impossible de changer ce type d\'activité. Vérifiez votre connexion '
+          'internet.',
+    );
+  }
+
   /// 🪙 Fixe les quotas IA mensuels d'une entreprise (`null` = valeur du pack).
   ///
   /// Ces quotas sont crédités automatiquement à chaque cycle d'abonnement
@@ -1188,7 +1235,10 @@ class EntrepriseService {
       case '23502':
         return 'Un champ obligatoire est manquant. Vérifiez le formulaire.';
       case '22P02':
-        return "La valeur transmise n'est pas valide pour la base de données.";
+        // 🩺 On joint la précision du serveur : sans elle, impossible de
+        // savoir QUELLE valeur est refusée (identifiant, montant, type…).
+        return "La valeur transmise n'est pas valide pour la base de données "
+            "(${e.message.trim()}).";
       case 'PGRST116':
         return "L'entreprise demandée est introuvable.";
     }

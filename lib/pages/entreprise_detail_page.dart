@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/entreprise.dart';
+import 'package:biashara_yangu/models/espace.dart';
 import 'package:biashara_yangu/models/type_activite.dart';
 import 'package:biashara_yangu/models/fonctionnalites.dart';
 import 'package:biashara_yangu/models/paiement_abonnement.dart';
@@ -11,8 +12,11 @@ import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/services/abonnement_niveaux_service.dart';
 import 'package:biashara_yangu/services/agent_service.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
+import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/widgets/selecteur_espace.dart'
+    show iconePourTypeEspace;
 import 'package:biashara_yangu/widgets/statut_abonnement_chip.dart';
 
 /// Fiche détaillée d'une entreprise : informations générales, état de
@@ -835,8 +839,7 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(
-                onPressed:
-                    _actionEnCours ? null : () => _choisirTypeActivite(),
+                onPressed: _actionEnCours ? null : () => _choisirTypeActivite(),
                 icon: const Icon(Icons.edit_rounded, size: 18),
                 label: const Text('Changer le type'),
               ),
@@ -847,11 +850,37 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
     );
   }
 
+  /// 🏪 0160 — CHANGER LE TYPE D'ACTIVITÉ DE L'ENTREPRISE.
+  ///
+  /// Avant : deux choix codés en dur (Boutique / Distribution). Désormais la
+  /// liste vient du référentiel complet (`types_espaces_modules`) : boutique,
+  /// distribution, pharmacie, pressing, hôtel, restaurant, dépôt… et même les
+  /// types créés par l'Expert.
+  ///
+  /// Le choix s'applique aux ESPACES de l'entreprise (le métier pilote les
+  /// modules) ; le serveur en déduit l'axe commercial.
   Future<void> _choisirTypeActivite() async {
     final Entreprise? entreprise = _entreprise;
     if (entreprise == null) return;
 
-    final TypeActivite? actuel = entreprise.typeActivite;
+    List<({String code, String libelle})> categories =
+        const <({String code, String libelle})>[];
+    try {
+      categories = await EspaceService.instance.listerCategories();
+    } catch (e) {
+      debugPrint('Types d\'activité (ignoré) : $e');
+    }
+
+    if (!mounted) return;
+
+    if (categories.isEmpty) {
+      _afficherMessage(
+        'Impossible de charger la liste des activités. Vérifiez votre '
+        'connexion internet.',
+        estErreur: true,
+      );
+      return;
+    }
 
     final String? choix = await showDialog<String>(
       context: context,
@@ -859,53 +888,38 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
         title: Text("Type d'activité — ${entreprise.nom}",
             overflow: TextOverflow.ellipsis),
         children: <Widget>[
-          RadioListTile<String>(
-            value: 'boutique',
-            // ignore: deprecated_member_use
-            groupValue: actuel?.code ?? 'aucun',
-            // ignore: deprecated_member_use
-            onChanged: (String? v) => Navigator.of(ctx).pop(v),
-            title: const Text('Boutique'),
-            subtitle: const Text('Caisse, stock, ventes, clients'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+            child: Text(
+              'Toutes les activités de la plateforme. Le type s\'applique aux '
+              'boutiques de cette entreprise et recharge leurs modules.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
-          RadioListTile<String>(
-            value: 'distribution',
-            // ignore: deprecated_member_use
-            groupValue: actuel?.code ?? 'aucun',
-            // ignore: deprecated_member_use
-            onChanged: (String? v) => Navigator.of(ctx).pop(v),
-            title: const Text('Distribution'),
-            subtitle: const Text('Tournées, agents, récipients, bonus'),
-          ),
-          RadioListTile<String>(
-            value: 'aucun',
-            // ignore: deprecated_member_use
-            groupValue: actuel?.code ?? 'aucun',
-            // ignore: deprecated_member_use
-            onChanged: (String? v) => Navigator.of(ctx).pop(v),
-            title: const Text('Non renseigné'),
-            subtitle: const Text('Tous les écrans restent visibles'),
-          ),
+          for (final ({String code, String libelle}) categorie in categories)
+            ListTile(
+              leading: Icon(
+                  iconePourTypeEspace(TypeEspace.fromCode(categorie.code)),
+                  size: 20),
+              title: Text(categorie.libelle),
+              onTap: () => Navigator.of(ctx).pop(categorie.code),
+            ),
         ],
       ),
     );
 
     if (choix == null) return;
 
-    final TypeActivite? nouveau =
-        choix == 'aucun' ? null : TypeActivite.depuis(choix);
-
     setState(() => _actionEnCours = true);
     try {
-      await _service.definirTypeActivite(entreprise.id, nouveau);
+      final String libelle = await _service.definirMetier(entreprise.id, choix);
       if (!mounted) return;
       _afficherMessage(
-        nouveau == null
-            ? 'Type effacé : tous les écrans redeviennent visibles.'
-            : nouveau == TypeActivite.distribution
-                ? 'Distribution : tournées, récipients et production '
-                    'activés pour cette entreprise.'
-                : 'Boutique : les écrans de distribution sont masqués.',
+        'Type « $libelle » appliqué : les modules et les écrans de cette '
+        'entreprise suivent immédiatement.',
       );
       await _charger(silencieux: true);
     } on EntrepriseServiceException catch (e) {
