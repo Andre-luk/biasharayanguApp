@@ -48,11 +48,6 @@ select jsonb_pretty(
     -- 2. Le métier (pilote les modules : lots_expiration → péremption)
     'entreprise_pharmacie',        (select ph.nom from pharma ph),
     'type_activite',               (select ph.type_activite from pharma ph),
-    'module_lots_expiration',      exists (
-                                      select 1
-                                        from public.types_activite t
-                                       where t.type = (select ph.type_activite from pharma ph)
-                                         and t.modules ? 'lots_expiration'),
 
     -- 3. La portée des données (ce que la RLS compare à owner_id)
     'espace_pharmacie_id',         (select ph.espace_id from pharma ph),
@@ -71,13 +66,9 @@ select jsonb_pretty(
                                         and not exists (select 1 from public.utilisateurs u
                                                          where u.id = pr.owner_id)),
 
-    -- 5. Le pack du métier (le module doit être autorisé par l'abonnement)
-    'modules_pharmacie',           (
-      select coalesce(jsonb_agg(m order by m), '[]'::jsonb)
-        from public.types_activite t,
-             jsonb_array_elements_text(t.modules) as m
-       where t.type = (select ph.type_activite from pharma ph)
-         and m in ('produits', 'stock', 'lots_expiration', 'employes')),
+    -- 5. Le pack du métier : à contrôler avec tools/inventaire_modules.sql
+    --    (le référentiel `types_espaces_modules` peut ne pas exister :
+    --    cette vérification ne doit donc pas en dépendre).
 
     'verdict', case
       when (select p.espace_actif_id from patron p)
