@@ -275,7 +275,7 @@ begin
        and s.value -> 'roles' ? v_role
   ) into v_perso;
 
-  for v_page in array v_pages loop
+  foreach v_page in array v_pages loop
     if not (coalesce(v_eff, '{}'::jsonb) ? v_page) then
       v_ajout := v_ajout || jsonb_build_object(
         v_page, to_jsonb(public.actions_permissions()));
