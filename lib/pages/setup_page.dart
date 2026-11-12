@@ -313,7 +313,10 @@ class _SetupPageState extends State<SetupPage> {
                   params: <String, dynamic>{
                     if (nomBoutique.isNotEmpty) 'p_nom': nomBoutique,
                     if (telephone.isNotEmpty) 'p_telephone': telephone,
-                    'p_type': 'boutique',
+                    // ⚠️ La CATÉGORIE choisie doit survivre au repli : forcer
+                    // `boutique` créait un pressing… en boutique (et le compte
+                    // perdait ses modules métier dès la reconnexion).
+                    'p_type': _categorieActivite,
                   },
                 );
                 unawaited(AbonnementService.instance.rafraichirSilencieux());

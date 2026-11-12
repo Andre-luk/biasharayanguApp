@@ -1294,7 +1294,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// 🧩 MODULE 16/17 — sous-titre de l'AppBar : la catégorie d'activité
   /// (profil de modules de l'espace actif) et la devise de travail.
   String _sousTitreActivite() {
-    final String? libelle = ModulesService.instance.libelle;
+    String? libelle = ModulesService.instance.libelle;
+
+    // Repli : la catégorie RÉELLE de l'espace actif. « ESPACE ENTREPRISE »
+    // ne disait rien au commerçant (et apparaissait à chaque reconnexion
+    // quand le profil de modules n'était pas encore revenu du serveur).
+    if (libelle == null || libelle.trim().isEmpty) {
+      libelle = EspaceService.instance.actif?.type.libelle;
+    }
+
     final String activite = (libelle != null && libelle.trim().isNotEmpty)
         ? libelle.trim().toUpperCase()
         : 'ESPACE ENTREPRISE';

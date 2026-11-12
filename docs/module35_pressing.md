@@ -234,8 +234,64 @@ vêtements ») : on peut donc imprimer uniquement la file du jour. Deux actions 
 
 ## 9. Ce qui reste volontairement en attente
 
-- **Publication** : le module n'est pas activé dans la version publiée ; il le
-  sera quand le parcours complet aura été validé sur un vrai pressing.
 - **Envoi sans relecture** : le message est toujours préparé dans WhatsApp et
   envoyé par l'agent (il le relit). Rien ne part silencieusement au nom du
   pressing.
+
+---
+
+## 10. Le pressing est une ACTIVITÉ à part entière
+
+Trois choses doivent être vraies **en même temps** pour qu'un compte soit
+réellement un pressing :
+
+| Ce qui doit être vrai | Où ça se règle |
+| --- | --- |
+| L'**espace** est de type `pressing` | `public.espaces.type` |
+| L'**activité** existe dans les groupes tarifaires | `public.activites` + `public.groupes_tarifaires` |
+| L'**entreprise** est typée pressing | `public.entreprises.type_activite` |
+
+La migration `20260916000150_pressing_activite_et_groupe_tarifaire.sql` met ces
+trois points en place :
+
+- activité **« Pressing & Blanchisserie »** dans le référentiel des métiers
+  (elle apparaît donc dans **Groupes tarification**) ;
+- forfait **« Pressing & Blanchisserie — Standard »** : 10 000 FC/mois,
+  essai 7 jours, cycle 30 jours, 2 500 FC par collaborateur, 1 entreprise
+  (modifiable ensuite par la plateforme) ;
+- contraintes de type élargies à tous les métiers (un pressing ne peut plus
+  être forcé en « boutique » par une contrainte obsolète).
+
+### 10.1 Corriger la catégorie d'un compte déjà créé
+
+Deux chemins, sans intervention technique :
+
+1. **Depuis l'application** — *Mes entreprises* → menu de l'entreprise →
+   **Catégorie d'activité** → « Pressing & Blanchisserie ». L'environnement
+   (modules, accueil, navigation) suit immédiatement.
+2. **Depuis le SQL Editor** — rejouer la section 5 de la migration 0150 (elle
+   est idempotente) en vérifiant l'e-mail du patron.
+
+⚠️ Un pressing **ne voit ni ventes, ni produits, ni stock** : son profil de
+modules ne contient que dépôts, atelier, retraits, clients, finance, équipe et
+rapports. Si un compte pressing affiche encore la caisse, c'est que son espace
+est resté de type `boutique`.
+
+---
+
+## 11. Consommer son propre stock (hors pressing)
+
+Un patron qui prend une bouteille dans sa boutique pour la boire ne fait **pas**
+une vente et ne fait **pas** une dépense :
+
+- le **stock diminue** ;
+- la **caisse ne bouge pas** (aucun encaissement, aucun chiffre d'affaires) ;
+- la sortie est **justifiée** par un motif : consommation du propriétaire,
+  offert, perte, casse, péremption, retour fournisseur, usage interne, autre ;
+- un **rapport imprimable** récapitule toutes les sorties de la période.
+
+Chemin : **Stock** → menu d'un article → **Sortie de stock** (ou l'icône
+« sorties » de la barre du haut pour un état global). Ces sorties sont
+installées par la migration `20260916000132_sorties_stock_speciales.sql` ; la
+fin de la migration 0150 vérifie leur présence (`rpc_sortie_ok`,
+`table_sorties_ok`, `stock_applique_ok`).
