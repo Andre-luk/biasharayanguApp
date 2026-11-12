@@ -128,6 +128,7 @@ select 'ENTREPRISES DU COMPTE' as etape,
   join public.entreprises e
     on e.owner_id = coalesce(u.parent_id, u.id)
     or e.id = u.entreprise_id
+  left join public.groupes_tarifaires g on g.id = e.groupe_tarifaire_id
  where lower(u.email) = 'lucjean@gmail.com';
 
 select 'BOUTIQUES DU COMPTE' as etape,
@@ -213,7 +214,7 @@ begin
     raise notice '0151 — entreprise existante réutilisée : « % » (%).', v_nom, v_ent;
   end if;
 
-  -- 2) Le type `pressing` est-il accepté (constraint de la migration 0150) ?
+  -- 2) Le type `pressing` est-il accepté (contrainte élargie par la 0150) ?
   begin
     update public.entreprises
        set owner_id      = coalesce(owner_id, v_patron),
@@ -222,14 +223,15 @@ begin
      where id = v_ent;
     v_type_ok := true;
   exception
-    when check_violation then
-      -- Base pas encore migrée par 0150 : on garde le type tel quel, la
-      -- catégorie de l'ESPACE suffit à activer les modules du pressing.
+    when others then
+      -- Base pas encore migrée par 0150 (ou colonne absente) : on garde le
+      -- type tel quel — la catégorie de l'ESPACE suffit à activer les
+      -- modules du pressing.
       update public.entreprises
          set owner_id = coalesce(owner_id, v_patron),
              updated_at = now()
        where id = v_ent;
-      raise warning '0151 — type_activite non élargi : exécutez la migration 0150.';
+      raise warning '0151 — type_activite non écrit (%) : exécutez la migration 0150.', sqlerrm;
   end;
 
   -- 3) La boutique (espace) de type pressing.
