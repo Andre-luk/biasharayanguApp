@@ -194,8 +194,7 @@ class CarteAccueil {
       page: PageAccess.distribution,
       priorite: 22,
       titre: (AppLocalizations T) => 'Tournées',
-      valeur: (DonneesAccueil d, AppLocalizations T) =>
-          '${d.tourneesActives}',
+      valeur: (DonneesAccueil d, AppLocalizations T) => '${d.tourneesActives}',
       icone: Icons.local_shipping_rounded,
       couleur: const Color(0xFF0F766E),
       route: '/main/tournees',
@@ -316,8 +315,7 @@ class CarteAccueil {
       icone: Icons.room_service_rounded,
       couleur: const Color(0xFF9333EA),
       route: '/main/hotel/reception',
-      alerte: (DonneesAccueil d) =>
-          d.arriveesJour > 0 || d.departsJour > 0,
+      alerte: (DonneesAccueil d) => d.arriveesJour > 0 || d.departsJour > 0,
     ),
     // 🧺 MODULE 35 — pressing : dépôts, vêtements confiés et retraits.
     //    (Le détail chiffré vit dans l'écran du module : pas de compteur
@@ -366,8 +364,7 @@ class CarteAccueil {
       page: PageAccess.cuisine,
       priorite: 17,
       titre: (AppLocalizations T) => 'Cuisine',
-      valeur: (DonneesAccueil d, AppLocalizations T) =>
-          '${d.cuisineEnAttente}',
+      valeur: (DonneesAccueil d, AppLocalizations T) => '${d.cuisineEnAttente}',
       icone: Icons.soup_kitchen_rounded,
       couleur: const Color(0xFFB91C1C),
       route: '/main/restaurant/cuisine',
@@ -380,8 +377,7 @@ class CarteAccueil {
       page: PageAccess.evenements,
       priorite: 18,
       titre: (AppLocalizations T) => 'Événements',
-      valeur: (DonneesAccueil d, AppLocalizations T) =>
-          '${d.evenementsAVenir}',
+      valeur: (DonneesAccueil d, AppLocalizations T) => '${d.evenementsAVenir}',
       icone: Icons.celebration_rounded,
       couleur: const Color(0xFF7C3AED),
       route: '/main/evenements',
@@ -394,8 +390,9 @@ class CarteAccueil {
       page: PageAccess.salles,
       priorite: 19,
       titre: (AppLocalizations T) => 'Salles',
-      valeur: (DonneesAccueil d, AppLocalizations T) =>
-          d.sallesTotal == 0 ? 'À créer' : '${d.sallesActives}/${d.sallesTotal}',
+      valeur: (DonneesAccueil d, AppLocalizations T) => d.sallesTotal == 0
+          ? 'À créer'
+          : '${d.sallesActives}/${d.sallesTotal}',
       icone: Icons.meeting_room_rounded,
       couleur: const Color(0xFF9333EA),
       route: '/main/evenements/salles',
@@ -407,8 +404,7 @@ class CarteAccueil {
       page: PageAccess.production,
       priorite: 21,
       titre: (AppLocalizations T) => 'Production',
-      valeur: (DonneesAccueil d, AppLocalizations T) =>
-          '${d.productionsJour}',
+      valeur: (DonneesAccueil d, AppLocalizations T) => '${d.productionsJour}',
       icone: Icons.bakery_dining_rounded,
       couleur: const Color(0xFFB45309),
       route: '/main/production',
@@ -538,6 +534,48 @@ class CarteAccueil {
       route: '/main/mon-activation',
     ),
   ];
+
+  /// 🚀 MODE RAPIDE — les cartes qui gardent leur sens quand on simplifie.
+  ///
+  /// Le mode rapide ne doit simplifier que le COMMERCE DE MARCHANDISES
+  /// (nom + prix → vendre). Il ne doit jamais effacer les écrans d'un AUTRE
+  /// métier : un pressing, un hôtel ou un restaurant n'ont pas de caisse
+  /// « simplifiée » à protéger — ils ont leurs propres écrans.
+  static const Set<String> idsEssentiels = <String>{
+    'produits',
+    'distribution-pro',
+    'tournees',
+    'consignes',
+    'ma-tournee',
+  };
+
+  /// Cartes des MÉTIERS (hors commerce de détail) : jamais filtrées par le
+  /// mode rapide.
+  static const Set<String> idsMetier = <String>{
+    'pressing',
+    'chambres',
+    'reservations',
+    'checkin',
+    'tables',
+    'commandes',
+    'cuisine',
+    'salles',
+    'evenements',
+    'production',
+    'expirations',
+  };
+
+  /// Filtre du MODE RAPIDE — PUR (testable sans réseau).
+  ///
+  /// ⚠️ Avant ce correctif, la liste était figée à cinq identifiants de
+  /// boutique : dans un pressing, un hôtel ou un restaurant, le mode rapide
+  /// vidait TOUTE la grille (aucune de leurs cartes n'y figurait).
+  static List<CarteAccueil> pourModeRapide(List<CarteAccueil> cartes) {
+    return cartes
+        .where((CarteAccueil c) =>
+            idsEssentiels.contains(c.id) || idsMetier.contains(c.id))
+        .toList(growable: false);
+  }
 
   /// Cartes visibles pour un état donné — PUR (testable sans réseau).
   ///

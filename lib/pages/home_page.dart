@@ -421,8 +421,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       // 🧩 MODULE 15 — la boutique affichée porte ses propres chiffres.
       //    (`ScopeDonnees` est rempli par EspaceService ; à défaut on garde
       //     le comportement historique : patron du compte.)
-      _effectiveOwnerId = ScopeDonnees.espaceActif ??
-          (_isCollaborator ? u.parentId : u.id);
+      _effectiveOwnerId =
+          ScopeDonnees.espaceActif ?? (_isCollaborator ? u.parentId : u.id);
       _displayName = u.nom.isNotEmpty
           ? u.nom
           : (u.email.isNotEmpty ? u.email : 'Utilisateur');
@@ -631,8 +631,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             serveur?.caTotal ?? (results[0] as num?)?.toDouble() ?? 0.0;
         dailyTotalVentesAmount =
             serveur?.caJour ?? (results[1] as num?)?.toDouble() ?? 0.0;
-        overallVentesCount =
-            serveur?.ventesTotal ?? results[2] as int;
+        overallVentesCount = serveur?.ventesTotal ?? results[2] as int;
         dailyVentesCount =
             serveur != null ? serveur.ventesJour : results[3] as int;
         produitsCount = serveur?.produits ?? results[4] as int;
@@ -1018,7 +1017,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color:
+            theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
@@ -1063,9 +1063,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: verrouille
-                        ? null
-                        : () => _navTo('/main/articles/new'),
+                    onPressed:
+                        verrouille ? null : () => _navTo('/main/articles/new'),
                     icon: const Icon(Icons.add_rounded, size: 18),
                     label: const Text('Ajouter'),
                   ),
@@ -1102,7 +1101,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ],
           // ⚖️ Une boucherie en mode rapide pèse et encaisse ici.
           if (ModulesService.instance.moduleActif(ModuleCode.pesee) &&
-              permissions.peut(PageAccess.caisse, ActionAccess.creer)) ...<Widget>[
+              permissions.peut(
+                  PageAccess.caisse, ActionAccess.creer)) ...<Widget>[
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: verrouille ? null : () => _navTo('/main/pesee'),
@@ -1137,17 +1137,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // ⚡ MODULE 23 — MODE RAPIDE : on ne garde que l'essentiel (produits,
     // ventes, tournée). Les écrans avancés restent accessibles par les menus
     // et les permissions ; ils ne sont pas bloqués.
+    //
+    // ⚠️ Le mode rapide ne s'applique QU'AU commerce de marchandises : les
+    // cartes des autres métiers (pressing, hôtel, restaurant…) sont toujours
+    // conservées — sinon un pressing voyait une grille vide.
     final List<CarteAccueil> cartesAffichees =
         ModeApplicationService.instance.rapide
-            ? cartes
-                .where((CarteAccueil c) => const <String>{
-                      'products',
-                      'distribution-pro',
-                      'tournees',
-                      'consignes',
-                      'ma-tournee',
-                    }.contains(c.id))
-                .toList(growable: false)
+            ? CarteAccueil.pourModeRapide(cartes)
             : cartes;
     final DonneesAccueil donnees = DonneesAccueil(
       produitsCount: produitsCount,
@@ -1215,8 +1211,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           // ♿ AUDIT FINAL — proportion corrigée de l'échelle de texte : avec
           // un texte agrandi (Réglages → Accessibilité, jusqu'à 1,3), les
           // libellés des cartes d'accueil étaient tronqués.
-          childAspectRatio:
-              MiseEnPageAdaptative.proportionCarte(context, 1.28),
+          childAspectRatio: MiseEnPageAdaptative.proportionCarte(context, 1.28),
           children: [
             for (final CarteAccueil carte in cartesAffichees)
               _CarteStat(
@@ -1251,8 +1246,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         permissions.peut(PageAccess.articles, ActionAccess.creer);
     // 🧩 MODULE 16 — « Collaborateurs » suit aussi l'activité : une activité
     // qui ne gère pas d'équipe ne propose pas l'écran.
-    final bool equipeDisponible = ModulesService.instance
-        .moduleActif(ModuleCode.employes);
+    final bool equipeDisponible =
+        ModulesService.instance.moduleActif(ModuleCode.employes);
     final bool peutGererCollaborateurs =
         equipeDisponible && permissions.peutVoir(PageAccess.collaborateurs);
 
@@ -1395,8 +1390,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   // 🚚 MODULE 24 — tableau de bord DIFFÉRENT pour la
                   // distribution : rôle, opérations en attente, caisse et
                   // anomalies du module, au lieu des repères de la boutique.
-                  if (ContexteDistribution.instance.universDistribution) ...<
-                    Widget>[
+                  if (ContexteDistribution
+                      .instance.universDistribution) ...<Widget>[
                     const SizedBox(height: 16),
                     _Apparition(
                       delai: 1,

@@ -720,4 +720,93 @@ void main() {
       expect(rapports(const <String>{}, true), isTrue);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // ⚡ MODE RAPIDE — il ne doit JAMAIS vider la grille d'un autre métier
+  // ---------------------------------------------------------------------------
+
+  group('CarteAccueil.pourModeRapide', () {
+    const Set<String> profilPressing = <String>{
+      'clients',
+      'caisse',
+      'finance',
+      'employes',
+      'rapports',
+      'assistant_ia',
+      'press_depots',
+      'press_atelier',
+      'press_retraits',
+    };
+
+    test('un pressing garde sa carte en mode rapide', () {
+      final List<CarteAccueil> visibles = CarteAccueil.visibles(
+        modules: profilPressing,
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+      final List<CarteAccueil> rapide = CarteAccueil.pourModeRapide(visibles);
+
+      expect(idsDe(rapide), contains('pressing'));
+    });
+
+    test('un hôtel garde ses cartes en mode rapide', () {
+      final List<CarteAccueil> visibles = CarteAccueil.visibles(
+        modules: profilHotel,
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+      final List<CarteAccueil> rapide = CarteAccueil.pourModeRapide(visibles);
+
+      expect(idsDe(rapide), contains('chambres'));
+      expect(idsDe(rapide), contains('reservations'));
+    });
+
+    test('une boutique simple est bien réduite', () {
+      final List<CarteAccueil> visibles = CarteAccueil.visibles(
+        modules: <String>{
+          'ventes',
+          'produits',
+          'stock',
+          'caisse',
+          'clients',
+          'finance',
+          'rapports',
+          'assistant_ia',
+        },
+        profilCharge: true,
+        autorise: autorisationPour(toutesPages),
+      );
+      final List<CarteAccueil> rapide = CarteAccueil.pourModeRapide(visibles);
+
+      expect(idsDe(rapide), contains('produits'));
+      expect(idsDe(rapide), isNot(contains('caisse')));
+      expect(idsDe(rapide), isNot(contains('finance')));
+    });
+
+    test('les identifiants des filtres existent vraiment', () {
+      // 🐛 Garde-fou : `idsEssentiels` contenait `products` alors que la carte
+      // s'appelle `produits` — le mode rapide n'affichait donc aucun produit.
+      final Set<String> reels =
+          CarteAccueil.registre.map((CarteAccueil c) => c.id).toSet();
+      for (final String id in <String>{
+        ...CarteAccueil.idsEssentiels,
+        ...CarteAccueil.idsMetier,
+      }) {
+        expect(reels, contains(id),
+            reason: '$id n\'existe pas dans le registre');
+      }
+    });
+
+    test('aucune carte métier n\'est oubliée par le filtre', () {
+      // Toute carte portant un module de `idsMetier` doit survivre.
+      for (final CarteAccueil carte in CarteAccueil.registre) {
+        if (!CarteAccueil.idsMetier.contains(carte.id)) continue;
+        expect(
+          CarteAccueil.pourModeRapide(<CarteAccueil>[carte]),
+          isNotEmpty,
+          reason: '${carte.id} disparaît en mode rapide',
+        );
+      }
+    });
+  });
 }
