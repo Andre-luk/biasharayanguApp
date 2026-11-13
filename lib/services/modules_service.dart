@@ -105,9 +105,43 @@ class ModulesService {
   /// Les deux sont fail-open : une panne réseau, une migration non exécutée
   /// ou une liste vide laissent TOUT visible — aucune régression possible
   /// chez un commerçant dont l'abonnement est en règle.
-  bool moduleActif(String code) =>
-      estActif(modules.value, _charge, code) &&
-      estAutoriseParAbonnement(modulesAbonnement.value, _chargeAbonnement, code);
+  bool moduleActif(String code) {
+    if (!estActif(modules.value, _charge, code)) return false;
+    // 🛟 PACK MAL CONFIGURÉ — « un pack ne doit jamais cacher un écran ».
+    // Si l'abonnement ouvre des fonctionnalités dont AUCUNE n'appartient à
+    // l'activité (cas réel : le pack « Pharmacie » contenait les modules du
+    // pressing), le filtre d'abonnement masquait des champs légitimes —
+    // « Lot & péremption » disparaissait d'une pharmacie. On considère alors
+    // le pack comme non informatif et on laisse passer.
+    if (packHorsActivite(
+      modulesAbonnement.value,
+      modules.value,
+      abonnementCharge: _chargeAbonnement,
+      activiteChargee: _charge,
+    )) {
+      return true;
+    }
+    return estAutoriseParAbonnement(modulesAbonnement.value, _chargeAbonnement, code);
+  }
+
+  /// Version PURE (testable sans réseau) : le pack d'abonnement ouvre-t-il des
+  /// fonctionnalités qui n'ont **aucun rapport** avec l'activité de l'espace ?
+  ///
+  /// `true` seulement quand les deux listes sont connues et non vides et que
+  /// leur intersection est vide. C'est le signal d'une configuration
+  /// incohérente (pack rattaché au mauvais type d'entreprise) : dans ce cas
+  /// l'abonnement ne doit pas servir de filtre.
+  static bool packHorsActivite(
+    Set<String> ouverts,
+    Set<String> activite, {
+    required bool abonnementCharge,
+    required bool activiteChargee,
+  }) {
+    if (!abonnementCharge || !activiteChargee) return false;
+    if (ouverts.isEmpty || activite.isEmpty) return false;
+    if (ouverts.contains(ReglesAbonnement.joker)) return false;
+    return ouverts.intersection(activite).isEmpty;
+  }
 
   /// Version PURE (testable sans réseau) du filtre ACTIVITÉ.
   ///

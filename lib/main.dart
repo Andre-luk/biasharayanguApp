@@ -31,6 +31,7 @@ import 'services/activation_service.dart';
 import 'services/notification_service.dart';
 // 🧩 MODULE 16 — modules de l'activité (socle multi-activités, phase A).
 import 'services/modules_service.dart';
+import 'services/espace_service.dart';
 import 'services/type_activite_service.dart';
 // ⚡ MODULE 23 — mode rapide / complet.
 import 'services/mode_application_service.dart';
@@ -362,6 +363,20 @@ class _BiasharaAppState extends State<BiasharaApp> {
             roleEffectif.code,
             forcerRechargement: true,
           );
+
+          // 🧩 MODULE 15 — CONTEXTE D'ENTREPRISE APRÈS RESTAURATION DE SESSION.
+          //
+          // ⚠️ SANS CET APPEL, un simple rechargement de la page (web) ou un
+          // redémarrage de l'application affichait les données de la MAUVAISE
+          // entreprise : « Charger d'entreprise » disparaissait du bandeau et
+          // la liste des articles montrait la boutique alors que la pharmacie
+          // était active. La liste n'était chargée qu'après une CONNEXION
+          // (`login_page`), jamais après la restauration d'une session.
+          //
+          // Il est ATTENDU (une seule requête) : la portée de travail doit être
+          // connue AVANT le premier écran, sinon celui-ci interroge la base
+          // avec la portée de secours. `chargerSilencieux` n'échoue jamais.
+          await EspaceService.instance.chargerSilencieux();
 
           // 🧩 MODULE 16 — profil de modules de l'espace actif (activité de
           // l'entreprise). En arrière-plan : l'écran s'ouvre sans attendre le

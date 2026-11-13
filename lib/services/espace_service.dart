@@ -116,6 +116,25 @@ class EspaceService {
     }
   }
 
+  /// Chargement en cours (déduplication : plusieurs écrans peuvent le
+  /// demander en même temps au démarrage).
+  Future<void>? _chargementEnCours;
+
+  /// Charge la liste **seulement si elle n'est pas déjà connue**.
+  ///
+  /// Utilisé par les écrans (mixin `EcouteContexteEntreprise`) : quand la
+  /// session est restaurée sans passer par l'écran de connexion — rechargement
+  /// de la page web, retour d'arrière-plan, redémarrage — rien n'avait chargé
+  /// les entreprises. Les écrans interrogeaient alors la base avec la portée
+  /// de secours et affichaient **les données d'une autre entreprise**.
+  /// Ne lève jamais, ne relance pas un chargement déjà en cours.
+  Future<void> assurerChargement() {
+    if (etat.value != null) return Future<void>.value();
+    return _chargementEnCours ??= chargerSilencieux().whenComplete(() {
+      _chargementEnCours = null;
+    });
+  }
+
   // ---------------------------------------------------------------------------  // PROPRIÉTAIRE EFFECTIF (source de vérité = le SERVEUR)
   // -----------------------------------------------------------------------
 

@@ -31,6 +31,8 @@
 //    identifiant choisi dans le menu : les deux peuvent différer quand le
 //    serveur retombe sur l'UUID du patron.
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/widgets.dart';
 
 import 'package:biashara_yangu/services/espace_service.dart';
@@ -49,6 +51,13 @@ mixin EcouteContexteEntreprise<T extends StatefulWidget> on State<T> {
     _dernierEspaceConnu = ScopeDonnees.espaceActif;
     _ecouteActive = true;
     EspaceService.instance.etat.addListener(_surEspace);
+
+    // 🛟 FILET DE SÉCURITÉ — « je ne dois jamais lire la mauvaise entreprise ».
+    // Si la liste des entreprises n'est pas encore connue (session restaurée,
+    // rechargement web, échec réseau au démarrage), on la demande maintenant :
+    // l'écran s'est chargé avec la portée de secours, et [_surEspace] le
+    // rechargera dès que la vraie portée arrivera.
+    unawaited(EspaceService.instance.assurerChargement());
   }
 
   @override
