@@ -68,11 +68,75 @@ reste juste.
 <p><span class="etape">Étape 3 — Renseigner la péremption de ce qui est déjà en rayon</span></p>
 <p>Les articles créés avant la version 3.10 n'ont pas de date. Deux façons de faire :</p>
 <ul>
-  <li><strong>Réception de lot</strong> (recommandé, voir §4) : tu saisis le lot réel, la quantité et la date ;</li>
-  <li>ou, pour un dépannage, <strong>la fiche de l'article</strong> permet de saisir un numéro de lot et une date de péremption.</li>
+  <li><strong>Réception de lot</strong> (recommandé, voir §3.1) : tu saisis le lot réel, la quantité et la date ;</li>
+  <li>ou, pour un dépannage, <strong>la fiche de l'article</strong> permet de saisir un numéro de lot et une date de péremption (§3.2).</li>
 </ul>
 
-<h2>3. L'écran « Expirations »</h2>
+<h2>3. Comment encoder la date d'expiration</h2>
+<p>La date ne se <strong>tape jamais à la main</strong> : elle se choisit dans un <strong>calendrier</strong>,
+et s'affiche ensuite au format <strong>JJ/MM/AAAA</strong> (exemple : <code>04/10/2026</code>).
+Il y a deux endroits pour la saisir — et un seul est à utiliser au quotidien.</p>
+
+<h3>3.1 Méthode recommandée — à la réception du lot</h3>
+<div class="chemin"><strong>Produits → ouvrir l'article → 🗃️ (Lots) → « Réceptionner un lot »</strong></div>
+<ol>
+  <li><strong>Numéro de lot *</strong> — obligatoire : recopie ce qui est imprimé sur la boîte
+      (ex. <code>LOT-2026-A17</code>). Les majuscules sont automatiques.</li>
+  <li><strong>Péremption *</strong> — appuie sur le champ : le calendrier s'ouvre, déjà positionné
+      sur <strong>aujourd'hui + 1 an</strong>. Choisis l'année et le mois, puis le jour, et valide.
+      La date choisie s'affiche en clair sous le libellé (ex. <code>04/10/2027</code>).</li>
+  <li><strong>Date de fabrication</strong> — facultative, même calendrier.</li>
+  <li><strong>Quantité reçue</strong> — en <em>unités de base</em> : 10 boîtes de 10 comprimés = <strong>100</strong>.</li>
+  <li><strong>Prix d'achat unitaire</strong>, <strong>fournisseur</strong>, <strong>observations</strong>, puis 
+      <strong>Enregistrer</strong>.</li>
+</ol>
+<p>Ce que l'application impose, sans exception :</p>
+<table class="eviter">
+  <tr><th style="width:44%">Règle</th><th>Ce que tu vois</th></tr>
+  <tr><td>La péremption est <strong>obligatoire</strong></td><td>« Indiquez la date de péremption du lot. »</td></tr>
+  <tr><td>Le calendrier ne propose <strong>aucune date passée</strong></td><td>Il démarre au jour même : impossible de faire défiler avant.</td></tr>
+  <tr><td>Une date antérieure est <strong>refusée</strong></td><td>« Ce lot est déjà périmé : refusez-le plutôt que de l'entrer. »</td></tr>
+  <tr><td>La date est stockée <strong>sans heure</strong></td><td>Aucun décalage de fuseau : le 04/10 reste le 04/10.</td></tr>
+</table>
+
+<h3>3.2 Dépannage — directement sur la fiche de l'article</h3>
+<div class="chemin"><strong>Produits → ouvrir l'article → section « Lot &amp; péremption »</strong></div>
+<p>Cette section n'apparaît que si le module <em>Lots &amp; péremptions</em> est actif (catégorie « Pharmacie »).
+Elle sert à <strong>rattraper le stock déjà en rayon</strong>, pas à enregistrer une livraison.</p>
+<ul>
+  <li><strong>Numéro de lot (optionnel)</strong> — champ texte, majuscules automatiques.</li>
+  <li><strong>Date de péremption (optionnelle)</strong> — appui → calendrier « Date de péremption ».
+      Bornes : de 5 ans en arrière à 10 ans en avant. Le bouton <strong>✕</strong> efface la date.</li>
+  <li>Dès qu'une date est posée, un message t'avertit en direct :
+      « Produit EXPIRÉ (il y a 3 jours) — la vente sera refusée en caisse »,
+      ou « bientôt périmé » avec le nombre de jours restants.</li>
+  <li><strong>Enregistrer</strong> en bas de la fiche.</li>
+</ul>
+<div class="alerte">
+<strong>Ne saisis pas deux fois la même chose.</strong> Si tu utilises la fiche article pour la date
+<em>et</em> une réception de lot pour la même boîte, le stock sera augmenté deux fois. La fiche article
+sert une fois (mise à niveau), la réception sert à chaque livraison.
+</div>
+
+<h3>3.3 Quel écran pour quel cas</h3>
+<table class="eviter">
+  <tr><th style="width:40%">Situation</th><th>Geste</th></tr>
+  <tr><td>Médicament qui vient d'arriver</td><td>Réception de lot (§3.1) — une réception par date de péremption.</td></tr>
+  <tr><td>Stock déjà en rayon, jamais daté</td><td>Fiche article (§3.2), une fois, pour chaque produit concerné.</td></tr>
+  <tr><td>Boîte périmée au fond de la réserve</td><td><strong>Ne cherche pas à saisir une date passée</strong> : elle est refusée. Sors le lot par un retrait motivé « péremption » (§5.3).</td></tr>
+  <tr><td>Date saisie par erreur sur un lot</td><td>Un lot est immuable : retrait du lot erroné + nouvelle réception avec la bonne date.</td></tr>
+  <tr><td>Deux livraisons de dates différentes</td><td><strong>Deux lots distincts</strong> : c'est le FEFO qui décidera lequel part en premier.</td></tr>
+  <tr><td>« Périmé » alors que la boîte est récente</td><td>La date de la fiche article est fausse : corrige-la (§3.2) ou ignore-la en datant les lots.</td></tr>
+</table>
+
+<div class="astuce">
+<strong>Repère visuel.</strong> Une date proche de l'échéance (30 jours par défaut) apparaît en
+« bientôt périmé » dans l'écran <em>Expirations</em> et bloque la vente le jour où la date est dépassée —
+quel que soit le lot. C'est pour cela que la date doit être celle <strong>imprimée sur la boîte</strong>,
+pas une date approximative.
+</div>
+
+<h2>4. L'écran « Expirations »</h2>
 <div class="chemin"><strong>Produits → 🗓️ Expirations</strong></div>
 <ul>
   <li>Liste des articles <strong>périmés</strong> et <strong>bientôt périmés</strong> (30 jours par défaut), triés par urgence.</li>
@@ -82,13 +146,13 @@ reste juste.
 <div class="alerte">
 Un article <strong>expiré</strong> reste dans le stock (il est encore dans ta réserve) mais il ne peut
 plus être vendu : l'application le refuse au moment de l'encaissement. Sors-le par un
-<strong>retrait de lot</strong> motivé (§4.3) pour que le stock redevienne juste.
+<strong>retrait de lot</strong> motivé (§5.3) pour que le stock redevienne juste.
 </div>
 
-<h2>4. Les lots et les péremptions (module 36)</h2>
+<h2>5. Les lots et les péremptions (module 36)</h2>
 <div class="chemin"><strong>Produits → ouvrir un article → icône 🗃️ (Lots)</strong></div>
 
-<h3>4.1 Le résumé, en haut de l'écran</h3>
+<h3>5.1 Le résumé, en haut de l'écran</h3>
 <table class="eviter">
   <tr><th style="width:38%">Indicateur</th><th>Ce qu'il veut dire</th></tr>
   <tr><td><strong>Stock de la fiche</strong></td><td>La quantité totale du produit (toutes origines confondues).</td></tr>
@@ -98,7 +162,7 @@ plus être vendu : l'application le refuse au moment de l'encaissement. Sors-le 
   <tr><td><strong>Écart</strong></td><td>Stock de la fiche − total des lots. <strong>0 = tout est justifié par un lot.</strong></td></tr>
 </table>
 
-<h3>4.2 Réception d'un lot (à chaque livraison)</h3>
+<h3>5.2 Réception d'un lot (à chaque livraison)</h3>
 <div class="chemin"><strong>Lots → « Réceptionner un lot »</strong></div>
 <ol>
   <li><strong>Numéro de lot</strong> du fabricant (ex. <code>LOT-2026-A14</code>).</li>
@@ -115,18 +179,18 @@ quantité, saisis un <strong>retrait</strong> (si tu as compté trop) ou une nou
 as compté trop peu), avec un motif clair.
 </div>
 
-<h3>4.3 Retrait d'un lot</h3>
+<h3>5.3 Retrait d'un lot</h3>
 <div class="chemin"><strong>Lots → menu d'un lot → « Retirer »</strong></div>
 <p>Motif <strong>obligatoire</strong> : casse, perte, rappel fabricant, péremption, retour fournisseur,
 usage interne. Le retrait <strong>diminue le stock</strong> et laisse une trace dans les mouvements.
 Un lot périmé doit toujours être sorti de cette façon : c'est ce qui rend le rapport de stock crédible.</p>
 
-<h3>4.4 Le bandeau FEFO</h3>
+<h3>5.4 Le bandeau FEFO</h3>
 <p>L'écran indique quel lot partira en premier (« prochain lot vendu »). Si le plus ancien n'est pas
 celui que tu attendais, c'est le signe d'une date mal saisie : corrige en sortant le lot et en le
 réceptionnant à nouveau avec la bonne date.</p>
 
-<h2>5. La vente au comptoir</h2>
+<h2>6. La vente au comptoir</h2>
 <ol>
   <li><strong>Scanner</strong> le QR de la boîte (ou choisir l'article).</li>
   <li>L'application relit le <strong>prix en base</strong> : jamais celui affiché par le client.</li>
@@ -137,12 +201,12 @@ réceptionnant à nouveau avec la bonne date.</p>
 <p>Trois refus possibles, et ils sont normaux :</p>
 <table class="eviter">
   <tr><th style="width:32%">Message</th><th>Geste</th></tr>
-  <tr><td><code>PRODUIT_EXPIRE</code></td><td>Le produit est périmé : sors le lot (§4.3) et propose un autre lot au client.</td></tr>
+  <tr><td><code>PRODUIT_EXPIRE</code></td><td>Le produit est périmé : sors le lot (§5.3) et propose un autre lot au client.</td></tr>
   <tr><td>Stock insuffisant</td><td>La quantité demandée dépasse le stock vendable : vérifie les lots.</td></tr>
   <tr><td><code>PEREMPTION_PASSEE</code></td><td>Le lot choisi est déjà périmé : c'est le contrôle du lot qui parle.</td></tr>
 </table>
 
-<h2>6. Stock, inventaire et fournisseurs</h2>
+<h2>7. Stock, inventaire et fournisseurs</h2>
 <ul>
   <li><strong>Stock</strong> : état global, articles en alerte, valeur du stock, décomposition en conditionnements.</li>
   <li><strong>Entrée de stock</strong> (approvisionnement) : à utiliser pour un achat <em>sans</em> numéro de lot ; sinon, préfère la réception de lot.</li>
@@ -151,7 +215,7 @@ réceptionnant à nouveau avec la bonne date.</p>
   <li><strong>Sorties spéciales</strong> (consommation du patron, offert, perte, retour fournisseur) : le stock baisse, la caisse ne bouge pas.</li>
 </ul>
 
-<h2>7. Rapports utiles au pharmacien</h2>
+<h2>8. Rapports utiles au pharmacien</h2>
 <table class="eviter">
   <tr><th style="width:34%">Rapport</th><th>À quoi il sert</th></tr>
   <tr><td><strong>Expirations</strong></td><td>Ce qui va être perdu, et quand : planifie les promotions ou les retours.</td></tr>
@@ -160,7 +224,7 @@ réceptionnant à nouveau avec la bonne date.</p>
   <tr><td><strong>Finance</strong></td><td>Chiffre d'affaires, coût des marchandises, marge, dépenses.</td></tr>
 </table>
 
-<h2>8. Bonnes pratiques</h2>
+<h2>9. Bonnes pratiques</h2>
 <ul>
   <li><strong>Une livraison = un lot</strong>, avec son vrai numéro et sa vraie date.</li>
   <li><strong>Ne mélange jamais deux dates</strong> dans un même lot : le FEFO deviendrait faux.</li>
@@ -170,7 +234,7 @@ réceptionnant à nouveau avec la bonne date.</p>
   <li>Contrôle chaque soir les <strong>articles en alerte</strong> avant la commande du lendemain.</li>
 </ul>
 
-<h2>9. Questions fréquentes</h2>
+<h2>10. Questions fréquentes</h2>
 <p><strong>J'ai vendu un comprimé à l'unité, comment le stock suit-il ?</strong> L'unité de base de
 l'article doit être le comprimé ; la boîte n'est qu'un conditionnement de 10.</p>
 <p><strong>Puis-je vendre malgré tout un produit périmé, sur demande du client ?</strong> Non : le
