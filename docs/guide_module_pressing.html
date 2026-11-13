@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Guide du module Pressing &amp; Blanchisserie</title>
+<style>
+  @page { size: A4; margin: 15mm 14mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #16212e; line-height: 1.42; }
+  h1 { font-size: 18pt; margin: 0 0 1mm; color: #0d3b66; }
+  h2 { font-size: 12.5pt; margin: 6mm 0 2mm; color: #fff; background: #0d3b66; padding: 2mm 3mm; border-radius: 2mm; }
+  h3 { font-size: 10.5pt; margin: 3.5mm 0 1mm; color: #12507f; }
+  p.sous { color: #5b6b7c; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 9pt; }
+  th { background: #e8eff7; color: #0d3b66; text-align: left; padding: 1.8mm; font-size: 8.5pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 1.8mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 1.1mm; }
+  code { background: #eef4fa; padding: 0.2mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; }
+  .chemin { background: #f2f7fc; border-left: 3px solid #12507f; padding: 1.5mm 2.5mm; margin: 1mm 0 2mm; font-size: 9pt; }
+  .alerte { border-left: 3px solid #c0392b; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .astuce { border-left: 3px solid #1b7f4a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .eviter { page-break-inside: avoid; }
+  .pied { margin-top: 5mm; border-top: 1px solid #d9e2ec; padding-top: 1.5mm; font-size: 8pt; color: #5b6b7c; }
+  .etape { font-weight: bold; color: #0d3b66; }
+</style>
+</head>
+<body>
+
+<h1>Le module Pressing &amp; Blanchisserie</h1>
+<p class="sous">Mode d'emploi complet — Biashara Yangu 3.10.1 · du dépôt du vêtement à sa remise au client</p>
+
+<div class="astuce">
+<strong>À qui s'adresse ce guide.</strong> Au <strong>patron d'un pressing</strong> et à son équipe
+(accueil, atelier, caisse). Il explique ce que le module fait, <em>dans quel ordre</em> s'enchaînent
+les étapes, et ce qu'il faut faire quand un client conteste ou ne revient pas.
+</div>
+
+<h2>1. Ce qu'un pressing fait — et ce qu'il ne fait pas</h2>
+<p>Un pressing ne <strong>vend</strong> pas des marchandises : il <strong>garde</strong> des biens qui
+appartiennent aux clients, les <strong>traite</strong>, puis doit <strong>prouver</strong> qu'il les a
+rendus. Tout le module est construit là-dessus.</p>
+
+<table class="eviter">
+  <tr><th style="width:38%">Dans un pressing</th><th>Conséquence dans l'application</th></tr>
+  <tr><td>On dépose un vêtement, on ne l'achète pas</td><td>Une <strong>commande</strong> (dossier) + des <strong>lignes</strong> (un vêtement = une ligne). Jamais une « vente de produit ».</td></tr>
+  <tr><td>Le prix dépend de la prestation et du vêtement</td><td>Catalogue <strong>Prestations</strong> + <strong>Tarifs</strong>. Le prix est <strong>figé</strong> au dépôt : le changer plus tard ne réécrit pas l'histoire.</td></tr>
+  <tr><td>Le client paie parfois une avance, parfois tout à la fin</td><td><strong>Facturé</strong> et <strong>encaissé</strong> sont toujours deux chiffres séparés ; le solde reste visible.</td></tr>
+  <tr><td>Certains vêtements partent, d'autres restent</td><td>Retrait <strong>partiel</strong> possible : chaque vêtement a son propre statut.</td></tr>
+  <tr><td>Il faut retrouver un vêtement sans se tromper</td><td>Chaque commande a un numéro <code>PR-AAAA-NNNNNN</code> et un <strong>QR code</strong> unique, réimprimable.</td></tr>
+</table>
+
+<div class="alerte">
+<strong>Un pressing n'a ni « Produits », ni « Mes ventes », ni « Nouvelle Vente ».</strong>
+Depuis la version 3.10.1, ces écrans de boutique sont retirés du métier pressing :
+le module vit avec <em>Dépôts</em>, <em>Atelier</em>, <em>Retraits</em>, <em>Caisse</em>,
+<em>Clients</em>, <em>Finance</em>, <em>Rapports</em>. Si tu les vois encore sur un compte pressing,
+c'est que le profil de modules n'est pas à jour (migration <code>0173</code>).
+</div>
+
+<h2>2. Mise en route (une seule fois)</h2>
+
+<p><span class="etape">Étape 1 — Vérifier que l'entreprise est bien de type « Pressing »</span></p>
+<div class="chemin"><strong>Mes entreprises → ✏️ (modifier) → catégorie « Pressing &amp; Blanchisserie »</strong></div>
+<p>C'est la catégorie qui décide des écrans visibles. Une entreprise restée en « Boutique » n'aura
+jamais les dépôts ni l'atelier.</p>
+
+<p><span class="etape">Étape 2 — Renseigner les tarifs</span></p>
+<div class="chemin"><strong>Pressing → ⚙️ Réglages, catalogue et tarifs</strong></div>
+<ul>
+  <li><strong>Vêtements</strong> : chemise, pantalon, costume, robe, couverture… (ce que tu acceptes).</li>
+  <li><strong>Prestations</strong> : lavage simple, lavage + repassage, nettoyage à sec, détachage, repassage seul…</li>
+  <li><strong>Tarifs</strong> : le prix d'une prestation pour un vêtement donné. Un <strong>tarif par défaut</strong> évite de tout ressaisir.</li>
+  <li><strong>Étapes</strong> : l'ordre de ton atelier (reçu → lavé → séché → repassé → contrôle → prêt).</li>
+  <li><strong>Réglages</strong> : prévenir le client, politique de remise (voir §5).</li>
+</ul>
+
+<p><span class="etape">Étape 3 — Créer l'équipe</span></p>
+<div class="chemin"><strong>Pressing → 👥 Équipe du pressing</strong></div>
+<table class="eviter">
+  <tr><th style="width:26%">Métier</th><th>Ce qu'il fait</th></tr>
+  <tr><td><strong>Responsable</strong></td><td>Remplace le patron : réglages, catalogue, tarifs, équipe.</td></tr>
+  <tr><td><strong>Accueil &amp; dépôt</strong></td><td>Reçoit les vêtements, crée les clients, imprime le reçu, encaisse.</td></tr>
+  <tr><td><strong>Atelier</strong></td><td>Fait avancer les vêtements et passe le contrôle qualité.</td></tr>
+  <tr><td><strong>Caisse &amp; retrait</strong></td><td>Encaisse les soldes et remet les vêtements au client.</td></tr>
+</table>
+<div class="astuce">
+Chaque membre se connecte avec <strong>son propre compte</strong>. Le serveur vérifie son métier
+<em>en plus</em> des permissions : un agent d'atelier ne peut pas encaisser, même s'il connaît l'écran.
+</div>
+
+<h2>3. Le parcours normal, de bout en bout</h2>
+<ol>
+  <li><strong>Le client arrive avec un sac.</strong> Accueil → <strong>Nouveau dépôt</strong> : client (existant ou nouveau), vêtements + prestations, urgence éventuelle, date promise, avance si le client en donne une. → la commande reçoit son numéro et son QR.</li>
+  <li><strong>On imprime le reçu</strong> (A4, avec QR). C'est la preuve de dépôt : une copie pour le client, une pour le pressing.</li>
+  <li><strong>L'atelier travaille.</strong> Chaque vêtement avance d'étape en étape. Le contrôle qualité valide ou renvoie en traitement.</li>
+  <li><strong>Le vêtement devient « prêt ».</strong> L'accueil peut prévenir le client par WhatsApp en un clic.</li>
+  <li><strong>Le client revient.</strong> Retraits → scan du QR (ou recherche par numéro/téléphone) → remise. Le solde est encaissé si nécessaire.</li>
+  <li><strong>En fin de journée</strong>, la <strong>Caisse du jour</strong> récapitule les encaissements, les dépôts et les restes à payer.</li>
+</ol>
+
+<h2>4. Les écrans, un par un</h2>
+
+<h3>4.1 Dépôts &amp; commandes (l'écran d'entrée)</h3>
+<p>Il montre d'abord l'état réel du pressing : ce qui est <strong>en cours</strong>, ce qui est
+<strong>prêt</strong>, ce qui est <strong>en retard</strong> et ce qui reste <strong>à encaisser</strong>.
+Puis la liste des dossiers, avec recherche (numéro, nom, téléphone) et filtres par statut.</p>
+<ul>
+  <li>Un dossier ouvert affiche la fiche : lignes (vêtements), montants, paiements, historique.</li>
+  <li><strong>Nouveau dépôt</strong> : le bouton principal, en bas à droite de la fiche.</li>
+</ul>
+
+<h3>4.2 Nouveau dépôt</h3>
+<ul>
+  <li><strong>Client</strong> : choisis dans la liste ou crée-le (nom + téléphone ; le téléphone sert à WhatsApp).</li>
+  <li><strong>Vêtements</strong> : pour chaque pièce, le vêtement, la prestation, la quantité. Une ligne = un vêtement identifiable.</li>
+  <li><strong>Urgence</strong> : signale un traitement express (le prix peut être majoré par ton tarif).</li>
+  <li><strong>Date promise</strong> : c'est elle qui déclenche les alertes de retard.</li>
+  <li><strong>Avance</strong> : jamais supérieure au total. Le reste devient le solde.</li>
+</ul>
+<div class="alerte">
+Le prix appliqué est celui du <strong>tarif en vigueur au moment du dépôt</strong>. Si tu augmentes
+tes tarifs demain, les dossiers déjà pris gardent l'ancien prix — c'est voulu, le client a été prévenu.
+</div>
+
+<h3>4.3 Atelier &amp; qualité</h3>
+<p>La file de travail est en <strong>vêtements</strong>, jamais en « commandes » : un dossier de cinq
+pièces apparaît cinq fois, parce que cinq pièces ne sortent pas de machine en même temps.</p>
+<ul>
+  <li><strong>Faire avancer</strong> un vêtement (ou un lot) vers l'étape suivante.</li>
+  <li><strong>Mes vêtements</strong> : filtre sur ceux dont tu es responsable.</li>
+  <li><strong>Contrôle qualité</strong> : valide la pièce (elle devient prête) ou renvoie-la en traitement avec un motif (tache restante, bouton manquant…).</li>
+</ul>
+
+<h3>4.4 Retraits &amp; scan</h3>
+<ul>
+  <li><strong>Scanner le QR</strong> du reçu (ou saisir le numéro) : la fiche s'ouvre directement.</li>
+  <li>Les vêtements prêts sont cochés pour la remise ; les autres restent dans le dossier.</li>
+  <li><strong>Remise partielle</strong> : le client peut repartir avec deux pièces et revenir pour le costume.</li>
+  <li>Si un solde existe et que ta politique l'exige, la remise finale est <strong>refusée</strong> tant qu'il n'est pas réglé.</li>
+</ul>
+
+<h3>4.5 Caisse du jour</h3>
+<p>Tous les encaissements de la journée (espèces, mobile money, carte…), les annulations, les dépôts,
+les remises et le <strong>reste à encaisser global</strong>. Le rapport peut être imprimé ou enregistré
+en PDF en fin de journée.</p>
+<div class="astuce">
+La caisse du pressing ne lit <strong>que</strong> les paiements du pressing : elle ne mélange jamais
+l'argent d'une autre entreprise du même patron.
+</div>
+
+<h3>4.6 Réglages, catalogue et tarifs · Équipe</h3>
+<p>Réservés au propriétaire (et au responsable désigné). Un agent d'accueil ou d'atelier voit ces
+écrans en lecture seule : c'est le serveur qui refuse l'écriture, pas seulement le bouton.</p>
+
+<h2>5. L'argent : avance, solde, annulation</h2>
+<table class="eviter">
+  <tr><th style="width:30%">Situation</th><th>Ce que fait l'application</th></tr>
+  <tr><td>Le client paie une avance au dépôt</td><td>Le paiement est enregistré, le solde diminue. Le total facturé ne change pas.</td></tr>
+  <tr><td>Il règle tout au retrait</td><td>Encaisse le solde, puis la remise est autorisée.</td></tr>
+  <tr><td>Il demande une remise finale sans payer</td><td>Refus <code>SOLDE_DU</code> si ta politique de remise est « solde obligatoire » ; sinon la remise passe et le solde reste dû.</td></tr>
+  <tr><td>Un paiement a été saisi par erreur</td><td><strong>Annulation</strong> motivée, réservée à la validation finance (patron). On n'efface jamais un encaissement.</td></tr>
+  <tr><td>La commande est annulée</td><td>Statut « annulée » avec motif ; le vêtement reste tracé, l'argent reçu reste dans l'historique.</td></tr>
+</table>
+
+<h2>6. Le client : reçu, QR et WhatsApp</h2>
+<ul>
+  <li><strong>Reçu de dépôt</strong> (A4) : en-tête de l'établissement, numéro, liste des vêtements, dates, montants, QR code, conditions.</li>
+  <li><strong>QR code</strong> : jeton aléatoire, jamais un identifiant de base. S'il a fuité, il est <strong>régénérable</strong> ; l'ancien cesse de fonctionner et l'opération est tracée.</li>
+  <li><strong>« Prévenir le client »</strong> : message WhatsApp prêt à envoyer (commande prête, ou retard avec excuses). Le texte s'adapte au cas « une partie de votre commande est prête ».</li>
+</ul>
+
+<h2>7. Les messages du serveur, et quoi faire</h2>
+<table class="eviter">
+  <tr><th style="width:34%">Message</th><th>Signification et geste</th></tr>
+  <tr><td><code>VETEMENT_NON_PRET</code></td><td>Au moins une pièce n'est pas prête : termine le contrôle qualité avant de remettre.</td></tr>
+  <tr><td><code>DEJA_REMIS</code></td><td>La pièce (ou la commande) a déjà été remise : vérifie l'historique, ne remets pas deux fois.</td></tr>
+  <tr><td><code>SOLDE_DU</code></td><td>Le solde bloque la remise finale selon ta politique. Encaisse d'abord (ou change la politique en connaissance de cause).</td></tr>
+  <tr><td><code>ROLE_PRESSING_REFUSE</code></td><td>Le métier du collaborateur ne l'autorise pas : demande au responsable.</td></tr>
+  <tr><td>Même message pour « commande inconnue » et « commande d'un autre pressing »</td><td>C'est volontaire : on ne révèle pas l'existence d'un dossier à un tiers.</td></tr>
+</table>
+
+<h2>8. Bonnes pratiques</h2>
+<ul>
+  <li><strong>Une ligne par vêtement</strong>, avec son état à l'arrivée (tache, bouton manquant) : c'est ta protection en cas de contestation.</li>
+  <li><strong>Numérote les sacs</strong> comme les lignes ; le QR est la clé, le numéro est le secours.</li>
+  <li><strong>Ne saisis pas un même dépôt deux fois</strong> : si le réseau a coupé, l'écran reprend la même référence locale au lieu de créer un doublon.</li>
+  <li><strong>Vide la caisse chaque soir</strong> : le rapport du jour est ta pièce comptable.</li>
+  <li><strong>Vérifie la date promise</strong> : c'est elle qui fait apparaître les retards, donc les appels.</li>
+</ul>
+
+<h2>9. Questions fréquentes</h2>
+<p><strong>Le client a perdu son reçu.</strong> Retrouve la commande par son numéro, son nom ou son
+téléphone ; le QR n'est pas indispensable.</p>
+<p><strong>Puis-je changer un prix déjà enregistré ?</strong> Pas sur un dossier existant : ajoute une
+prestation ou annule le dossier. Les tarifs ne s'appliquent qu'aux nouveaux dépôts.</p>
+<p><strong>Un vêtement est perdu ou abîmé.</strong> Annule la ligne avec un motif ; la trace reste dans
+l'historique et le journal d'audit.</p>
+<p><strong>Le patron a deux pressings.</strong> Chaque entreprise a ses dépôts, son atelier, sa caisse
+et son équipe : bascule d'entreprise en haut de l'écran (voir le guide « Un patron, deux entreprises »).</p>
+
+<div class="pied">
+Biashara Yangu — Guide du module Pressing &amp; Blanchisserie · version 3.10.1 (58)<br>
+Éditeur : Biashara Tech — Lubumbashi, RDC · support@biasharayangu.cd · +243 974 084 668
+</div>
+
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Biashara Yangu — Un patron, deux entreprises (ou plus)</title>
+<style>
+  @page { size: A4; margin: 15mm 14mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #16212e; line-height: 1.42; }
+  h1 { font-size: 18pt; margin: 0 0 1mm; color: #0d3b66; }
+  h2 { font-size: 12.5pt; margin: 6mm 0 2mm; color: #fff; background: #0d3b66; padding: 2mm 3mm; border-radius: 2mm; }
+  h3 { font-size: 10.5pt; margin: 3.5mm 0 1mm; color: #12507f; }
+  p.sous { color: #5b6b7c; font-size: 9pt; margin: 0 0 3mm; }
+  table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 3mm; font-size: 9pt; }
+  th { background: #e8eff7; color: #0d3b66; text-align: left; padding: 1.8mm; font-size: 8.5pt; }
+  td { border-bottom: 1px solid #e3e9ef; padding: 1.8mm; vertical-align: top; }
+  ol, ul { margin: 1mm 0 2mm 5mm; padding: 0; }
+  li { margin-bottom: 1.1mm; }
+  code { background: #eef4fa; padding: 0.2mm 1mm; border-radius: 2px; font-family: "DejaVu Sans Mono", monospace; font-size: 8.5pt; }
+  .chemin { background: #f2f7fc; border-left: 3px solid #12507f; padding: 1.5mm 2.5mm; margin: 1mm 0 2mm; font-size: 9pt; }
+  .alerte { border-left: 3px solid #c0392b; background: #fdecea; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .astuce { border-left: 3px solid #1b7f4a; background: #eaf7ef; padding: 2mm 2.5mm; margin: 2mm 0; font-size: 9pt; }
+  .eviter { page-break-inside: avoid; }
+  .pied { margin-top: 5mm; border-top: 1px solid #d9e2ec; padding-top: 1.5mm; font-size: 8pt; color: #5b6b7c; }
+  .etape { font-weight: bold; color: #0d3b66; }
+</style>
+</head>
+<body>
+
+<h1>Un patron, deux entreprises (ou plus)</h1>
+<p class="sous">Comment travailler proprement avec plusieurs entreprises sur un seul compte — Biashara Yangu 3.10.1</p>
+
+<div class="astuce">
+<strong>À qui s'adresse ce guide.</strong> Au <strong>propriétaire</strong> qui possède plusieurs
+activités (une boutique et une pharmacie, deux pressings, un dépôt et un magasin…) et à la personne
+qui l'assiste. Objectif : ne jamais mélanger les données de deux entreprises.
+</div>
+
+<h2>1. Le principe : un compte, plusieurs entreprises séparées</h2>
+<p>Tu te connectes <strong>une seule fois</strong> avec ton e-mail. À l'intérieur, chaque entreprise est
+un <strong>espace de travail distinct</strong> : ses articles, son stock, ses ventes, son argent, son
+équipe et son abonnement. Rien ne circule de l'une à l'autre.</p>
+<p>À tout instant, l'application sait dans <strong>quelle entreprise</strong> tu travailles : c'est
+indiqué en haut de l'écran (nom de l'entreprise + catégorie + devise), et c'est ce que le serveur
+utilise pour enregistrer chaque opération.</p>
+
+<div class="alerte">
+<strong>Règle d'or :</strong> avant de saisir quoi que ce soit (un article, une vente, une dépense),
+<strong>regarde le nom de l'entreprise affiché en haut</strong>. Une vente saisie dans la mauvaise
+entreprise est une vente à annuler, pas un simple clic à défaire.
+</div>
+
+<h2>2. Créer une deuxième entreprise</h2>
+<div class="chemin"><strong>Mes entreprises → « Nouvelle entreprise »</strong></div>
+<ol>
+  <li><strong>Nom</strong> : mets un nom qui te permet de la reconnaître tout de suite (« HEKIMA Pharma », « Urembo Market »…).</li>
+  <li><strong>Catégorie</strong> : boutique, pharmacie, pressing, hôtel, restaurant, distribution…</li>
+  <li><strong>Téléphone / ville</strong> : utiles pour les documents et le support.</li>
+</ol>
+<p>C'est la <strong>catégorie</strong> qui décide des écrans : une pharmacie reçoit les lots et les
+péremptions, un pressing reçoit les dépôts et l'atelier, une boutique reçoit les ventes au comptoir.
+Une entreprise mal catégorisée n'aura pas les bons écrans — cela se corrige à tout moment
+(<strong>Mes entreprises → ✏️</strong>).</p>
+
+<h2>3. Basculer d'une entreprise à l'autre</h2>
+<div class="chemin"><strong>En haut de l'accueil → bouton « Mes entreprises » (nom de l'entreprise en cours)</strong></div>
+<ul>
+  <li>Choisis l'entreprise : l'écran d'accueil <strong>se reconstruit</strong> avec ses modules, sa devise et ses chiffres.</li>
+  <li>Le <strong>panier en cours et l'historique du scanner sont vidés</strong> : un panier ne peut pas changer d'entreprise.</li>
+  <li>Les écrans déjà ouverts <strong>se rechargent</strong> : plus de liste d'articles de l'ancienne entreprise affichée par erreur.</li>
+  <li>Le cache de lecture hors ligne est <strong>séparé par entreprise</strong> : pas de fuite de données entre les deux.</li>
+</ul>
+
+<h2>4. Ce qui est strictement séparé</h2>
+<table class="eviter">
+  <tr><th style="width:34%">Donnée</th><th>Séparation</th></tr>
+  <tr><td>Articles, conditionnements, catégories</td><td>Chaque entreprise a son catalogue. Un article créé chez l'une n'existe pas chez l'autre.</td></tr>
+  <tr><td>Stock, lots, péremptions</td><td>Stocks indépendants (y compris les lots de pharmacie).</td></tr>
+  <tr><td>Ventes, panier, scanner</td><td>Numérotation propre (<code>VTE-…</code>), historique propre.</td></tr>
+  <tr><td>Clients et dettes</td><td>Un même client peut exister dans les deux, avec des soldes distincts.</td></tr>
+  <tr><td>Caisse, dépenses, inventaires, clôtures</td><td>L'argent d'une entreprise n'apparaît jamais dans la caisse de l'autre.</td></tr>
+  <tr><td>Pressing, hôtel, restaurant…</td><td>Chaque activité a ses dossiers : une commande pressing n'est pas une vente de la boutique.</td></tr>
+  <tr><td>Collaborateurs</td><td>Un collaborateur est rattaché à <strong>une</strong> entreprise.</td></tr>
+  <tr><td>Devise</td><td>Chaque entreprise peut travailler en CDF ou en USD, avec son taux.</td></tr>
+  <tr><td>Abonnement et activation</td><td>Chaque entreprise a son état (essai, actif, échéance, solde).</td></tr>
+  <tr><td>Quotas de l'assistant IA</td><td>Comptés par entreprise : ceux de la pharmacie ne consomment pas ceux du pressing.</td></tr>
+</table>
+
+<h2>5. Ce qui est commun</h2>
+<ul>
+  <li><strong>Ton compte</strong> : un seul e-mail, un seul mot de passe, une seule connexion.</li>
+  <li><strong>Ton identité de patron</strong> : c'est elle qui prouve que tu as le droit d'ouvrir chaque entreprise.</li>
+  <li><strong>Les documents légaux</strong> et les paramètres généraux de l'application (thème, langue, accessibilité).</li>
+  <li><strong>Les rapports</strong> : ils se génèrent <em>pour l'entreprise active</em> — pas de cumul automatique entre deux entreprises.</li>
+</ul>
+
+<h2>6. L'équipe : un collaborateur = une entreprise</h2>
+<table class="eviter">
+  <tr><th style="width:30%">Qui</th><th>Ce qu'il voit</th></tr>
+  <tr><td><strong>Toi (propriétaire)</strong></td><td>Toutes tes entreprises, et tu peux basculer librement.</td></tr>
+  <tr><td><strong>Un vendeur de la pharmacie</strong></td><td>Uniquement la pharmacie. Le sélecteur ne lui propose pas l'autre entreprise ; s'il tente d'y accéder, le serveur refuse (<code>DROIT_REFUSE</code>).</td></tr>
+  <tr><td><strong>Un agent du pressing</strong></td><td>Uniquement le pressing, et seulement les écrans de son métier (accueil, atelier ou caisse).</td></tr>
+</table>
+<div class="astuce">
+Si la même personne doit travailler dans deux entreprises, <strong>crée deux comptes collaborateurs</strong>
+(ou change son rattachement). Un compte ne « partage » pas deux entreprises : c'est ce qui garantit
+que personne ne voit les chiffres de l'autre activité.
+</div>
+
+<h2>7. Les erreurs classiques — et pourquoi elles n'arrivent plus</h2>
+<table class="eviter">
+  <tr><th style="width:40%">Symptôme</th><th>Cause / ce qui a été corrigé</th></tr>
+  <tr><td>« Mes articles saisis dans la pharmacie n'apparaissent pas dans sa liste »</td><td>Les articles étaient enregistrés sous le mauvais espace de travail. Depuis 3.10.0, chaque écriture porte l'entreprise active.</td></tr>
+  <tr><td>« Une vente de la pharmacie est comptée dans la boutique »</td><td>Même cause : la vente est maintenant rattachée à l'entreprise où elle a été encaissée.</td></tr>
+  <tr><td>« Je change d'entreprise mais la liste reste celle d'avant »</td><td>Les écrans se rechargent désormais au changement d'entreprise.</td></tr>
+  <tr><td>« Un collaborateur voit deux entreprises »</td><td>Un collaborateur est limité à l'entreprise de son patron.</td></tr>
+  <tr><td>« Mon panier contenait des articles de l'autre entreprise »</td><td>Le panier et le scanner sont vidés à chaque bascule.</td></tr>
+</table>
+
+<h2>8. Bonnes pratiques</h2>
+<ul>
+  <li><strong>Un nom explicite</strong> par entreprise : tu dois la reconnaître d'un coup d'œil dans le sélecteur.</li>
+  <li><strong>Vérifie l'entreprise active</strong> avant toute saisie importante (vente, dépense, inventaire).</li>
+  <li><strong>Une caisse par entreprise, vidée chaque soir</strong> : c'est la seule façon de prouver les recettes de chacune.</li>
+  <li><strong>Ne duplique pas un article à la main</strong> d'une entreprise à l'autre : crée-le dans la bonne entreprise (les prix et le stock peuvent différer).</li>
+  <li><strong>Rapports :</strong> génère-les entreprise par entreprise, puis compare.</li>
+  <li><strong>Abonnements :</strong> surveille l'échéance de <em>chaque</em> entreprise ; une entreprise échue passe en lecture seule sans bloquer les autres.</li>
+</ul>
+
+<h2>9. Questions fréquentes</h2>
+<p><strong>Puis-je ouvrir les deux entreprises en même temps sur deux appareils ?</strong> Oui, mais
+chaque appareil travaille dans l'entreprise qu'il a choisie. Évite deux caisses ouvertes en parallèle
+sur la même entreprise.</p>
+<p><strong>Mes clients sont-ils partagés ?</strong> Non. Un même nom peut exister dans les deux
+entreprises, avec des dettes séparées.</p>
+<p><strong>Un article vendu dans l'entreprise A apparaît-il dans les rapports de B ?</strong> Non :
+les rapports lisent l'entreprise active.</p>
+<p><strong>Que se passe-t-il si je supprime une entreprise ?</strong> Elle disparaît du sélecteur pour
+tout le monde. Ses données ne sont pas fondues dans une autre entreprise : ne compte pas sur une
+suppression pour « récupérer » des articles.</p>
+<p><strong>Et si je bascule par erreur au milieu d'une saisie ?</strong> La saisie en cours est perdue
+(panier vidé) : recommence dans la bonne entreprise. C'est préférable à une écriture au mauvais endroit.</p>
+
+<div class="pied">
+Biashara Yangu — Guide « Un patron, deux entreprises » · version 3.10.1 (58)<br>
+Éditeur : Biashara Tech — Lubumbashi, RDC · support@biasharayangu.cd · +243 974 084 668
+</div>
+
+</body>
+</html>
