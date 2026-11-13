@@ -1,9 +1,9 @@
 # Mise à jour 3.10.0 (build 57)
 
-> **En une phrase :** le pharmacien gère enfin ses **lots et péremptions** (FEFO),
-> le **pressing s'affiche** dans l'application, et la **facture n'est plus
-> téléchargée ni ouverte toute seule** (fini le message Windows « aucune
-> application associée »).
+**En une phrase :** le pharmacien gère enfin ses **lots et péremptions** (FEFO),
+le **pressing s'affiche** dans l'application, et la **facture n'est plus
+téléchargée ni ouverte toute seule** (fini le message Windows « aucune
+application associée »).
 
 ---
 
@@ -52,6 +52,11 @@ boutons étaient donc filtrés pour tout le monde, y compris le propriétaire.
   magasinier (atelier), comptable (consultation des dépôts).
 - La carte « Pressing » reste accessible à un agent d'**atelier**, qui n'a que
   la page atelier.
+- **Migration `0173`** : le profil pressing perd les modules de boutique
+  (`ventes`, `produits`, `stock`, `qr`). Un pressing n'a donc plus « Produits »,
+  « Statut du Stock », « Mes ventes », ni les boutons « Nouvelle Vente » /
+  « Scanner », ni l'onglet « Stock » — il garde dépôts, atelier, retraits,
+  caisse, clients, finance, rapports, assistant IA et abonnement.
 
 ## 4. Facture — plus de téléchargement automatique
 
@@ -81,7 +86,7 @@ action… ». C'est terminé.
 
 | Qui | Action |
 |---|---|
-| Exploitant de la base | Exécuter `supabase/migrations/20260916000172_fix_collaborateurs_espaces.sql` dans le SQL Editor (les migrations `0163` à `0171` le sont déjà). |
+| Exploitant de la base | Exécuter dans le SQL Editor `20260916000172_fix_collaborateurs_espaces.sql` puis `20260916000173_pressing_profil_sans_boutique.sql` (les migrations `0163` à `0171` le sont déjà). |
 | Pharmacien | Vérifier que le module « Lots & péremptions » est actif, puis saisir la péremption des articles existants. |
 | Tout le monde | Rien : la facture et le pressing fonctionnent dès l'installation. |
 

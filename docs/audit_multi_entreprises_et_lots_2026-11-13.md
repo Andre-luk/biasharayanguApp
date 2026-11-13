@@ -79,7 +79,8 @@ profil de modules → carte d'accueil `pressing` → `/main/pressing/depots` →
 `PressingCommandesPage`. Les deux pannes connues sont déjà corrigées :
 
 - profil incomplet (0162 : ajout de `ventes/produits/stock/qr`, sans retirer
-  de module) ;
+  de module) — **puis 0173 (13/11) : ces 4 modules « boutique » sont RETIRÉS du
+  profil pressing** (décision du patron : un pressing ne vend pas d'articles) ;
 - métier lu depuis l'espace et non depuis `entreprises.type_activite`
   (0158/0159).
 
@@ -286,7 +287,8 @@ Compte de test : `pressing.test@biashara.cd` — entreprise
 - métier retenu par `rpc_mes_modules()` : `pressing` (source `espace+metier`) ;
 - 13 modules servis, dont `press_depots`, `press_atelier`, `press_retraits` ;
   les modules commerciaux (`ventes`, `produits`, `stock`, `qr`) sont présents
-  **volontairement** depuis `0162` (profil complet) ;
+  **volontairement** depuis `0162` (profil complet) ; **retirés par 0173**
+  (13/11/2026) à la demande du patron ;
 - catalogue 12 catégories / 7 prestations, 10 étapes (`PRET` finale,
   `RETRAITEMENT` = boucle) ;
 - tableau de bord, atelier, retraits, caisse du jour et fiche commande
