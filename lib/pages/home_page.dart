@@ -60,6 +60,9 @@ import 'package:biashara_yangu/services/donnees_service.dart';
 // 🚚 MODULE 23 — distribution terrain (compteurs de la carte d'accueil).
 import 'package:biashara_yangu/models/distribution_terrain.dart';
 import 'package:biashara_yangu/services/distribution_service.dart';
+// 🧺 MODULE 35 — pressing : dépôts, vêtements prêts et facturé du jour.
+import 'package:biashara_yangu/models/pressing.dart';
+import 'package:biashara_yangu/services/pressing_service.dart';
 // ⚡ MODULE 23 — mode rapide et vente express.
 import 'package:biashara_yangu/services/mode_application_service.dart';
 // 📊 MODULE 23 — chiffres d'accueil lus sur Supabase (vérité partagée).
@@ -133,6 +136,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _matieresTotal = 0;
   int _matieresAlerte = 0;
   int _productionsJour = 0;
+
+  // 🧺 MODULE 35 — pressing : dépôts du jour, vêtements prêts, facturé.
+  PressingTableauBord _pressingBord = const PressingTableauBord();
 
   // Variables d'état utilisateur
   Utilisateur? utilisateur;
@@ -534,6 +540,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       if (!mounted) return;
 
+      // 🧺 MODULE 35 — pressing : le bandeau parle de DÉPÔTS, pas de ventes
+      // (le pressing n'a pas le module « ventes »). Une seule RPC.
+      PressingTableauBord pressingBord = _pressingBord;
+      if (ModulesService.instance.moduleActif(ModuleCode.pressDepots) &&
+          PermissionService.instance.peutVoir(PageAccess.pressingDepots)) {
+        try {
+          pressingBord = await PressingService.instance.tableauBord();
+        } catch (e) {
+          debugPrint('HomePage pressing (ignoré) : $e');
+        }
+      }
+
+      if (!mounted) return;
+
       // 🍽️ MODULE 16 C3 — restaurant : tables + commandes (best-effort).
       int tablesTotal = _tablesTotal;
       int tablesOccupees = _tablesOccupees;
@@ -655,6 +675,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         _matieresTotal = matieresTotal;
         _matieresAlerte = matieresAlerte;
         _productionsJour = productionsJour;
+        _pressingBord = pressingBord;
       });
     } catch (e) {
       debugPrint('HomePage: Erreur lors du chargement des stats: $e');
@@ -813,19 +834,51 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   //  BLOCS DE L'ÉCRAN
   // ==========================================================================
 
-  /// Carte « hero » : profil + ventes du jour sur un dégradé de marque.
+  /// Carte « hero » : profil + indicateur du jour sur un dégradé de marque.
+  ///
+  /// 🧺 MODULE 35 — l'indicateur SUIT LE MÉTIER :
+  ///   • boutique (module `ventes`) → « VENTES DU JOUR » + montant encaissé ;
+  ///   • pressing → « FACTURÉ AUJOURD'HUI » + dépôts / vêtements prêts ;
+  ///   • autre métier sans `ventes` (hôtel, restaurant…) → bloc masqué, plutôt
+  ///     qu'un faux « 0 vente » qui laissait croire à une panne.
   Widget _buildCarteHero(AppLocalizations T) {
     // 🪙 MODULE 18 — la devise de l'entreprise remplace « CDF ».
-    final String montantJour =
-        '${dailyTotalVentesAmount.toStringAsFixed(0)} ${DeviseService.instance.symbole}';
+    final String symbole = DeviseService.instance.symbole;
+    final Set<String> modules = ModulesService.instance.modules.value;
+    final bool profilCharge = ModulesService.instance.charge;
+    final bool ventesActives = ReglesActivite.ventes(modules, profilCharge);
+    final bool pressingActif =
+        ModulesService.instance.moduleActif(ModuleCode.pressDepots);
+
+    if (!ventesActives && pressingActif) {
+      final PressingTableauBord b = _pressingBord;
+      final String depots = b.commandesAujourdhui == 1
+          ? '1 dépôt'
+          : '${b.commandesAujourdhui} dépôts';
+      final String prets = b.vetementsPrets == 1
+          ? '1 vêtement prêt'
+          : '${b.vetementsPrets} vêtements prêts';
+      return _CarteHero(
+        sousTitre: T.homeSummaryGreeting(_displayName),
+        isCollaborator: _isCollaborator,
+        nomBoutique: _parentBusinessName,
+        montantJour: '${b.montantFacture.toStringAsFixed(0)} $symbole',
+        libelleJour: 'FACTURÉ AUJOURD’HUI',
+        nbVentesJour: '$depots · $prets',
+        iconePastille: Icons.local_laundry_service_rounded,
+        avatar: _getAvatarImage(),
+      );
+    }
 
     return _CarteHero(
       sousTitre: T.homeSummaryGreeting(_displayName),
       isCollaborator: _isCollaborator,
       nomBoutique: _parentBusinessName,
-      montantJour: montantJour,
+      montantJour: '${dailyTotalVentesAmount.toStringAsFixed(0)} $symbole',
       libelleJour: T.statDailySales.toUpperCase(),
       nbVentesJour: '$dailyVentesCount ${T.statSalesCount.toLowerCase()}',
+      // Pas de module « ventes » : on n'affiche pas d'indicateur trompeur.
+      masquerIndicateur: !ventesActives,
       avatar: _getAvatarImage(),
     );
   }
@@ -1455,6 +1508,8 @@ class _CarteHero extends StatelessWidget {
     required this.libelleJour,
     required this.nbVentesJour,
     required this.avatar,
+    this.masquerIndicateur = false,
+    this.iconePastille = Icons.receipt_long_rounded,
   });
 
   final String sousTitre;
@@ -1464,6 +1519,13 @@ class _CarteHero extends StatelessWidget {
   final String libelleJour;
   final String nbVentesJour;
   final ImageProvider avatar;
+
+  /// `true` pour un métier qui n'a pas le module « ventes » : le bloc
+  /// montant/label/pastille est retiré (aucun « 0 vente » trompeur).
+  final bool masquerIndicateur;
+
+  /// Icône de la pastille du bas (reçu en boutique, panier au pressing…).
+  final IconData iconePastille;
 
   @override
   Widget build(BuildContext context) {
@@ -1556,44 +1618,45 @@ class _CarteHero extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.14),
                       height: 1,
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      libelleJour,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.4,
+                    if (!masquerIndicateur) ...<Widget>[
+                      const SizedBox(height: 18),
+                      Text(
+                        libelleJour,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.4,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            montantJour,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 34,
-                              height: 1.05,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1,
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              montantJour,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 34,
+                                height: 1.05,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.trending_up_rounded,
-                          color: Colors.white.withValues(alpha: 0.75),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _Pastille(
-                        icone: Icons.receipt_long_rounded, texte: nbVentesJour),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.trending_up_rounded,
+                            color: Colors.white.withValues(alpha: 0.75),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _Pastille(icone: iconePastille, texte: nbVentesJour),
+                    ],
                   ],
                 ),
               ),
