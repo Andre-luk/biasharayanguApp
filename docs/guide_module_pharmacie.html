@@ -136,6 +136,73 @@ quel que soit le lot. C'est pour cela que la date doit être celle <strong>impri
 pas une date approximative.
 </div>
 
+<h3>3.4 Cas 1 — les médicaments sont DÉJÀ dans la pharmacie et je les enregistre maintenant</h3>
+<p>Deux méthodes, selon ce que tu veux : une date qui bloque la vente tout de suite, ou un vrai
+suivi par lots (FEFO).</p>
+
+<p><span class="etape">Méthode A — rapide : tout sur la fiche de l'article</span></p>
+<div class="chemin"><strong>Produits → « Ajouter un article »</strong></div>
+<ol>
+  <li>Nom, <strong>unité de base</strong> (comprimé, flacon…), catégorie.</li>
+  <li><strong>Quantité</strong> = ce que tu as réellement en rayon <em>maintenant</em>.
+      Prix d'achat, prix de vente, seuil d'alerte.</li>
+  <li>Section <strong>« Lot &amp; péremption »</strong> : numéro de lot (facultatif) puis
+      <strong>date de péremption</strong> via le calendrier.</li>
+  <li><strong>Enregistrer</strong>.</li>
+</ol>
+<p>Résultat : la date est connue de l'application (écran <em>Expirations</em>, blocage en caisse),
+mais le stock <strong>n'est pas rattaché à un lot</strong>. L'écran 🗃️ affichera donc :</p>
+<div class="chemin">⚠ Écart fiche / lots : +12. Le stock a probablement été saisi avant la mise en place des lots.</div>
+<p>Ce n'est <strong>pas une erreur</strong> : c'est le signal que ces 12 unités n'ont pas d'origine
+(lot) connue. Tu peux vivre ainsi ; tu perdras simplement le FEFO (choix automatique du lot qui
+périme le plus tôt).</p>
+
+<p><span class="etape">Méthode B — rigoureuse : le stock entre par un lot</span></p>
+<div class="chemin"><strong>Produits → « Ajouter un article » (quantité = 0) → 🗃️ (Lots) → « Réceptionner un lot »</strong></div>
+<ol>
+  <li>Crée l'article <strong>sans quantité</strong> (ou avec la quantité, puis retire-la, voir §3.4 « mise à niveau »).</li>
+  <li>Ouvre 🗃️ <strong>Lots</strong> et réceptionne un lot avec la <strong>quantité réelle</strong> et sa date.</li>
+  <li>Le stock devient exact, l'<strong>écart est à 0</strong> et le FEFO fonctionne.</li>
+</ol>
+<div class="alerte">
+<strong>Ne cumule jamais les deux méthodes pour les mêmes boîtes</strong> : si tu saisis 12 dans la
+fiche <em>et</em> que tu réceptionnes un lot de 12, le stock affichera 24 (la réception ajoute
+toujours la quantité au stock).
+</div>
+
+<h3>3.5 Cas 2 — le produit est DÉJÀ enregistré, je veux ajouter (ou corriger) la date</h3>
+<div class="chemin"><strong>Produits → ouvrir l'article → ✏️ (Modifier) → section « Lot &amp; péremption »</strong></div>
+<ol>
+  <li>Appuie sur <strong>« Date de péremption »</strong> : le calendrier s'ouvre sur la date actuelle
+      (ou sur celle déjà enregistrée).</li>
+  <li>Choisis la date imprimée sur la boîte, puis valide.</li>
+  <li>Le statut s'affiche immédiatement sous le champ (« bientôt périmé », ou
+      « Produit EXPIRÉ (…) — la vente sera refusée en caisse »).</li>
+  <li><strong>Enregistrer</strong> en bas de la fiche.</li>
+</ol>
+<p>Ce que cette modification change :</p>
+<table class="eviter">
+  <tr><th style="width:40%">Conséquence</th><th>Détail</th></tr>
+  <tr><td><strong>Le stock ne bouge pas</strong></td><td>On modifie une date, pas une quantité. Aucun mouvement, aucun ajustement.</td></tr>
+  <tr><td><strong>La vente est bloquée le jour J</strong></td><td>Dès que la date est dépassée, la caisse refuse (message <code>PRODUIT_EXPIRE</code>).</td></tr>
+  <tr><td><strong>L'écran Expirations la voit</strong></td><td>Le produit apparaît en « proche » puis « expiré », avec le nombre de jours.</td></tr>
+  <tr><td><strong>Pour effacer la date</strong></td><td>Bouton <strong>✕</strong> dans le champ, puis Enregistrer. Le produit redevient « sans date ».</td></tr>
+  <tr><td><strong>Si le produit a déjà des lots</strong></td><td>La date de la fiche est alors <strong>gérée automatiquement</strong> : elle est réécrite à chaque entrée/sortie de lot avec la péremption du lot valide le plus proche (et vidée s'il n'en reste aucun). Inutile de la nettoyer à la main.</td></tr>
+</table>
+
+<h3>3.6 Passer un stock existant sous « lots » (mise à niveau sans se tromper)</h3>
+<p>À faire une seule fois par produit, idéalement en dehors des heures de vente :</p>
+<ol>
+  <li><strong>Note la quantité réelle</strong> Q du produit (écran Stock ou fiche article).</li>
+  <li><strong>Stock → Ajustement</strong> : mets la quantité à <strong>0</strong> avec le motif
+      « Mise en place des lots ».</li>
+  <li>🗃️ <strong>Lots → Réceptionner un lot</strong> : numéro, <strong>date de péremption</strong>,
+      <strong>quantité = Q</strong>.</li>
+  <li>Vérifie : stock = Q, lots = Q, <strong>écart = 0</strong>.</li>
+</ol>
+<p>Pourquoi remettre à zéro d'abord ? Parce que la réception <strong>ajoute</strong> la quantité au
+stock : sans le passage à zéro, un stock de 12 deviendrait 24.</p>
+
 <h2>4. L'écran « Expirations »</h2>
 <div class="chemin"><strong>Produits → 🗓️ Expirations</strong></div>
 <ul>
