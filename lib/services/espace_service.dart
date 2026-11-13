@@ -11,7 +11,11 @@
 // L'état est exposé via [etat] (ValueNotifier) : les écrans s'y abonnent
 // pour rafraîchir leurs données quand l'entreprise active change.
 
+import 'dart:async' show unawaited;
+import 'dart:convert' show jsonDecode, jsonEncode;
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/espace.dart';
@@ -92,6 +96,7 @@ class EspaceService {
         await _lireProprietaireEffectif();
 
         etat.value = resultat;
+        unawaited(_ecrireCache(map));
 
         if (precedente != null &&
             nouvelle != null &&
@@ -106,13 +111,113 @@ class EspaceService {
     );
   }
 
+  // -----------------------------------------------------------------------
+  // CACHE LOCAL — « LA BONNE ENTREPRISE DÈS LA PREMIÈRE SECONDE »
+  // -----------------------------------------------------------------------
+
+  /// Clé SharedPreferences de la dernière liste d'entreprises connue.
+  ///
+  /// POURQUOI UN CACHE
+  ///   Le contexte d'entreprise venait UNIQUEMENT du réseau. Au démarrage
+  ///   (rechargement web, redémarrage de l'application, réseau lent ou
+  ///   instable), la requête pouvait échouer : l'application revenait alors
+  ///   silencieusement à l'UUID du patron — c'est-à-dire à la PREMIÈRE
+  ///   entreprise. Résultat vécu par les utilisateurs : « le sélecteur
+  ///   disparaît et je vois les produits de la boutique alors que j'étais
+  ///   dans la pharmacie ».
+  ///
+  ///   Le cache est lu AVANT tout appel réseau : l'entreprise active est donc
+  ///   connue dès le premier écran, même hors ligne. Le serveur reste la
+  ///   source de vérité : dès qu'il répond, la valeur est remplacée.
+  static const String cleCache = 'espace_etat_cache_v1';
+
+  /// Entreprise de travail restaurée depuis le cache (diagnostic / tests).
+  bool get restaureeDepuisCache => _restaureeDepuisCache;
+  bool _restaureeDepuisCache = false;
+
+  /// Publie immédiatement le dernier état connu (aucun réseau).
+  Future<void> restaurerDepuisCache() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String? brut = prefs.getString(cleCache);
+      if (brut == null || brut.isEmpty) return;
+
+      final dynamic decode = jsonDecode(brut);
+      final Map<String, dynamic>? map = parseMap(decode);
+      if (map == null) return;
+
+      final EtatEspaces resultat = EtatEspaces.fromMap(map);
+      if (resultat.espaces.isEmpty) return;
+
+      final String? actif = resultat.actifId;
+      if (actif != null && actif.isNotEmpty) {
+        ScopeDonnees.definirEspaceActif(actif);
+      }
+      etat.value = resultat;
+      _restaureeDepuisCache = true;
+
+      debugPrint(
+        'EspaceService : contexte restauré du cache '
+        '(${resultat.espaces.length} entreprise(s), active : $actif).',
+      );
+    } catch (e) {
+      debugPrint('EspaceService.restaurerDepuisCache (ignoré) : $e');
+    }
+  }
+
+  Future<void> _ecrireCache(Map<String, dynamic> map) async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString(cleCache, jsonEncode(map));
+    } catch (e) {
+      debugPrint('EspaceService._ecrireCache (ignoré) : $e');
+    }
+  }
+
+  Future<void> _viderCache() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove(cleCache);
+    } catch (e) {
+      debugPrint('EspaceService._viderCache (ignoré) : $e');
+    }
+  }
+
+  /// 🚀 DÉMARRAGE — restaure le cache, puis confirme avec le serveur.
+  ///
+  /// 1. lecture du cache (instantanée) : sélecteur visible et portée de
+  ///    travail correcte même si le réseau est lent ;
+  /// 2. confirmation serveur avec réessais ; un échec ne supprime pas le
+  ///    cache (on garde la dernière entreprise connue).
+  Future<void> initialiserContexte({
+    Duration delai = const Duration(seconds: 8),
+  }) async {
+    await restaurerDepuisCache();
+    try {
+      await chargerSilencieux().timeout(delai);
+    } catch (e) {
+      debugPrint('EspaceService.initialiserContexte (ignoré) : $e');
+    }
+  }
+
   /// Variante silencieuse (démarrage / connexion) : un échec ne doit jamais
   /// bloquer l'application.
-  Future<void> chargerSilencieux() async {
-    try {
-      await charger();
-    } catch (e) {
-      debugPrint('EspaceService.chargerSilencieux (ignoré): $e');
+  ///
+  /// 🔁 RÉESSAIS : un démarrage sur réseau instable (4G faible, wifi qui
+  /// s'établit) échouait au premier essai et l'application restait sur la
+  /// première entreprise du compte. Trois tentatives suffisent en pratique ;
+  /// le cache local couvre le cas où toutes échouent.
+  Future<void> chargerSilencieux({int tentatives = 3}) async {
+    for (int essai = 1; essai <= tentatives; essai++) {
+      try {
+        await charger();
+        return;
+      } catch (e) {
+        debugPrint('EspaceService.chargerSilencieux essai $essai/$tentatives : $e');
+        if (essai < tentatives) {
+          await Future<void>.delayed(Duration(milliseconds: 400 * essai));
+        }
+      }
     }
   }
 
@@ -339,6 +444,8 @@ class EspaceService {
     // Déconnexion : plus aucune boutique active (le compte suivant ne doit
     // jamais hériter de l'espace de données du précédent).
     ScopeDonnees.reinitialiser();
+    _restaureeDepuisCache = false;
+    unawaited(_viderCache());
     _reinitialiserSessionMetier();
   }
 
