@@ -15,7 +15,10 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/espace.dart';
+import 'package:biashara_yangu/services/donnees_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
+import 'package:biashara_yangu/services/panier_service.dart';
+import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -40,6 +43,13 @@ class EspaceService {
 
   /// État courant (entreprises + active). `null` tant que rien n'est chargé.
   final ValueNotifier<EtatEspaces?> etat = ValueNotifier<EtatEspaces?>(null);
+
+  /// 🔄 Nombre de changements d'entreprise depuis le démarrage.
+  ///
+  /// Les écrans qui ne peuvent pas s'abonner à [etat] (widgets reconstruits
+  /// avec une clé, diagnostics, tests) peuvent utiliser cette valeur comme
+  /// identité du contexte : elle ne change QUE sur une bascule réelle.
+  final ValueNotifier<int> generation = ValueNotifier<int>(0);
 
   /// Entreprise active (raccourci).
   Espace? get actif => etat.value?.actif;
@@ -68,12 +78,27 @@ class EspaceService {
         }
 
         final EtatEspaces resultat = EtatEspaces.fromMap(map);
-        etat.value = resultat;
-        // 🧩 Les données métier suivent la BOUTIQUE affichée (produits, stock,
-        // ventes, caisse…). L'espace par défaut porte l'UUID du patron : pour
-        // un compte mono-boutique la valeur ne change donc pas.
-        ScopeDonnees.definirEspaceActif(resultat.actifId);
+
+        // 🧩 L'entreprise active a-t-elle CHANGÉ ? (rechargement de la liste
+        //    après création, correction de type, retour au premier plan…)
+        final String? precedente = ScopeDonnees.espaceActif;
+        final String? nouvelle = resultat.actifId;
+
+        // ⚠️ ORDRE IMPORTANT : la portée de travail est publiée AVANT la
+        // notification de `etat`. Les écrans qui écoutent le changement
+        // lisent `ScopeDonnees` dans leur rechargement : si l'ordre était
+        // inversé, ils reliraient l'ANCIENNE entreprise.
+        ScopeDonnees.definirEspaceActif(nouvelle);
         await _lireProprietaireEffectif();
+
+        etat.value = resultat;
+
+        if (precedente != null &&
+            nouvelle != null &&
+            precedente != nouvelle) {
+          _reinitialiserSessionMetier();
+        }
+
         return resultat;
       },
       'le chargement de vos entreprises',
@@ -135,15 +160,23 @@ class EspaceService {
         );
 
         final EtatEspaces? actuel = etat.value;
+
+        // ⚠️ La portée est publiée AVANT la notification (même raison que
+        // dans `charger`) : les écrans doivent relire la NOUVELLE entreprise.
+        ScopeDonnees.definirEspaceActif(espaceId);
+        await _lireProprietaireEffectif();
+
         if (actuel != null) {
           etat.value = actuel.avecActif(espaceId);
         } else {
           await charger();
         }
 
-        // La nouvelle boutique devient la source des données affichées.
-        ScopeDonnees.definirEspaceActif(espaceId);
-        await _lireProprietaireEffectif();
+        // 🧹 Une bascule est un changement de CONTEXTE, pas un simple
+        //    changement de menu : tout ce qui appartenait à la vente en
+        //    cours (panier, historique de scans) est abandonné, sinon un
+        //    article de la pharmacie partirait dans une vente de la boutique.
+        _reinitialiserSessionMetier();
       },
       'le changement d\'entreprise',
       'Impossible de changer d\'entreprise. Vérifiez votre connexion internet.',
@@ -261,12 +294,33 @@ class EspaceService {
     return liste;
   }
 
+  /// 🧹 Remise à zéro de l'état de SESSION métier après une bascule.
+  ///
+  /// Ce qui NE doit PAS survivre à un changement d'entreprise :
+  ///   • le panier (lignes, remises, cadeaux) — sinon une vente de la
+  ///     pharmacie serait encaissée sur la boutique ;
+  ///   • l'historique des scans (mêmes raisons) ;
+  ///   • les totaux mis en cache (l'accueil et les listes sont prévenus).
+  ///
+  /// Ce qui survit légitimement : la session, les préférences d'affichage et
+  /// le catalogue public.
+  void _reinitialiserSessionMetier() {
+    PanierService.instance.vider();
+    ScannerService.instance.viderHistorique();
+    generation.value = generation.value + 1;
+
+    // Carillon commun : accueil, ventes, tableaux de bord et caches de
+    // lecture se rafraîchissent sur le NOUVEAU contexte.
+    DonneesService.instance.signale('entreprise');
+  }
+
   /// Vide le cache (déconnexion, changement de compte).
   void reinitialiser() {
     etat.value = null;
     // Déconnexion : plus aucune boutique active (le compte suivant ne doit
     // jamais hériter de l'espace de données du précédent).
     ScopeDonnees.reinitialiser();
+    _reinitialiserSessionMetier();
   }
 
   // ---------------------------------------------------------------------------

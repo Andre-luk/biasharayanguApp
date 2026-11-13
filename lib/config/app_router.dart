@@ -96,6 +96,7 @@ import 'package:biashara_yangu/pages/article_form_page.dart';
 import 'package:biashara_yangu/pages/articles_page.dart';
 import 'package:biashara_yangu/pages/categories_page.dart';
 import 'package:biashara_yangu/pages/conditionnement_form_page.dart';
+import 'package:biashara_yangu/pages/lots_medicament_page.dart';
 // 🧩 MODULE 16 C1 — écran « Expirations » (pharmacie : lots & péremption).
 import 'package:biashara_yangu/pages/expirations_page.dart';
 // ⚖️ Conditions d'utilisation (droit congolais — Lubumbashi, RDC).
@@ -1431,6 +1432,19 @@ final GoRouter appRouter = GoRouter(
                                 ? state.extra as Article
                                 : null,
                             articleId: state.pathParameters['id'],
+                          ),
+                        ),
+                        // 🧪 MODULE 36 — lots & péremption (pharmacie).
+                        GoRoute(
+                          path: 'lots',
+                          name: 'article-lots',
+                          builder: (context, state) => LotsMedicamentPage(
+                            articleId: int.tryParse(
+                                    state.pathParameters['id'] ?? '') ??
+                                -1,
+                            articleNom: state.extra is Article
+                                ? (state.extra as Article).nom
+                                : null,
                           ),
                         ),
                         GoRoute(

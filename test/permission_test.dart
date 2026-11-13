@@ -324,6 +324,9 @@ void main() {
           PageAccess.evenements,
           // 🥖 MODULE 16 C5 — boulanger-vendeur : productions (voir + créer).
           PageAccess.production,
+          // 🧺 MODULE 35 — accueil du pressing : dépôts et remises.
+          PageAccess.pressingDepots,
+          PageAccess.pressingRetraits,
           // 🚚 MODULE 24 — espace Distribution : produits, clients, ventes,
           // retours et remises du commercial.
           PageAccess.distribution,
@@ -432,11 +435,22 @@ void main() {
       );
     });
 
-    test('aucune action modifier / supprimer / valider, nulle part', () {
+    test('modifier / supprimer / valider : une seule exception (pressing)', () {
+      // ⚠️ La règle historique « un vendeur ne modifie jamais rien » a une
+      // exception, alignée sur la matrice SQL (`permissions_defaut`) :
+      // l'agent d'accueil du pressing peut MODIFIER un dépôt (annuler une
+      // commande) et VALIDER un retrait (remettre un vêtement).
+      const Set<PageAccess> modifierAutorise = <PageAccess>{
+        PageAccess.pressingDepots,
+      };
+      const Set<PageAccess> validerAutorise = <PageAccess>{
+        PageAccess.pressingRetraits,
+      };
+
       for (final PageAccess page in PageAccess.values) {
         expect(
           service.aAcces(RoleUtilisateur.vendeur, page, ActionAccess.modifier),
-          isFalse,
+          modifierAutorise.contains(page),
           reason: page.code,
         );
         expect(
@@ -446,7 +460,7 @@ void main() {
         );
         expect(
           service.aAcces(RoleUtilisateur.vendeur, page, ActionAccess.valider),
-          isFalse,
+          validerAutorise.contains(page),
           reason: page.code,
         );
       }
@@ -682,7 +696,7 @@ void main() {
 
   group('Menu dynamique', () {
     test(
-        'le menu d\'un vendeur contient ses seize pages (hôtel, resto, fêtes, boulangerie, tournée & distribution)',
+        'le menu d\'un vendeur contient ses dix-huit pages (hôtel, resto, fêtes, boulangerie, pressing, tournée & distribution)',
         () {
       final List<EntreeMenu> menu = service.menuPour(
           RoleUtilisateur.vendeur, EspaceApplication.entreprise);
@@ -708,6 +722,9 @@ void main() {
           PageAccess.evenements,
           // 🥖 MODULE 16 C5 — boulangerie.
           PageAccess.production,
+          // 🧺 MODULE 35 — accueil du pressing (dépôts et retraits).
+          PageAccess.pressingDepots,
+          PageAccess.pressingRetraits,
           // 🚚 MODULE 24 — espace Distribution complet (le commercial y
           // trouve ses produits, ses clients, ses ventes et ses remises).
           PageAccess.distribution,

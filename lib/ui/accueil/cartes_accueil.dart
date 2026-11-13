@@ -130,6 +130,7 @@ class CarteAccueil {
     this.module,
     this.typeRequis,
     this.page,
+    this.pagesOu = const <PageAccess>[],
     this.action = ActionAccess.voir,
     this.priorite = 50,
     this.alerte,
@@ -151,6 +152,16 @@ class CarteAccueil {
   /// Permission requise sur [page] / [action] (`null` = aucune).
   final PageAccess? page;
   final ActionAccess action;
+
+  /// 🧺 MODULE 35 — pages équivalentes : il suffit d'UNE permission parmi
+  /// celles-ci (sur [action]) pour ouvrir la carte.
+  ///
+  /// Cas d'usage : l'écran d'entrée du pressing (les commandes) n'a pas de
+  /// permission propre côté serveur — il suffit d'appartenir au pressing.
+  /// Un agent d'atelier (`PageAccess.pressingAtelier`, rôle MAGASINIER) doit
+  /// donc voir la carte même s'il n'a pas `pressing_depots`.
+  /// Vide (défaut) = seul [page] compte.
+  final List<PageAccess> pagesOu;
 
   /// Ordre d'affichage (croissant).
   final int priorite;
@@ -324,6 +335,12 @@ class CarteAccueil {
       id: 'pressing',
       module: ModuleCode.pressDepots,
       page: PageAccess.pressingDepots,
+      // 🧺 Un agent d'ATELIER (MAGASINIER) n'a que `pressing_atelier` : la
+      // carte doit rester son point d'entrée vers le hub du pressing.
+      pagesOu: const <PageAccess>[
+        PageAccess.pressingAtelier,
+        PageAccess.pressingRetraits,
+      ],
       priorite: 13,
       titre: (AppLocalizations T) => 'Pressing',
       valeur: (DonneesAccueil d, AppLocalizations T) => 'Dépôts & retraits',
@@ -621,7 +638,13 @@ class CarteAccueil {
 
       // 2. Permissions du rôle.
       final PageAccess? page = carte.page;
-      if (page != null && !autorise(page, carte.action)) return false;
+      if (page != null) {
+        final bool autoriseCarte = carte.pagesOu.isEmpty
+            ? autorise(page, carte.action)
+            : <PageAccess>[page, ...carte.pagesOu]
+                .any((PageAccess p) => autorise(p, carte.action));
+        if (!autoriseCarte) return false;
+      }
 
       return true;
     }).toList(growable: false);

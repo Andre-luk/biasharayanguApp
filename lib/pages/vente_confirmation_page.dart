@@ -34,9 +34,6 @@ class VenteConfirmationPage extends StatefulWidget {
 }
 
 class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
-  /// 🧾 Le PDF a-t-il déjà été proposé après la vente ?
-  bool _factureTelechargee = false;
-
   /// 🚚 MODULE 23 — stock restant APRÈS la vente, relu dans la base.
   /// Clé = produit, valeur = quantité restante (`null` = inconnu).
   final Map<int, double> _stockRestant = <int, double>{};
@@ -46,20 +43,11 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
   void initState() {
     super.initState();
     _chargerStockRestant();
-    // 🧾 MODULE 27 — la facture est générée et proposée AUTOMATIQUEMENT :
-    // l'utilisateur n'a rien à chercher. Si l'appareil refuse, le bouton
-    // « FACTURE » reste disponible juste en dessous.
-    unawaited(_proposerFactureAutomatiquement());
-  }
-
-  Future<void> _proposerFactureAutomatiquement() async {
-    // L'identité de l'établissement est nécessaire à l'en-tête.
-    await EtablissementService.instance.charger();
-    if (!mounted) return;
-    final bool ok =
-        await FactureVenteService.instance.telecharger(_donneesFacture());
-    if (!mounted) return;
-    setState(() => _factureTelechargee = ok);
+    // ⛔ CORRECTIF 14/11/2026 — AUCUN téléchargement automatique.
+    //   L'ancien enchaînement « vente validée → PDF écrit puis OUVERT »
+    //   déclenchait sous Windows : « ce fichier ne contient pas d'application
+    //   associée pour effectuer cette action… ». La facture se demande avec le
+    //   bouton « Facture » (télécharger, WhatsApp, imprimer).
   }
 
   /// 🔎 TRADABILITÉ (exigence du module 23) : après chaque vente, le vendeur
@@ -147,12 +135,13 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
   }
 
   /// 🧾 Ouvre la facture professionnelle (télécharger, WhatsApp, imprimer).
-  Future<void> _imprimer() async {
-    await afficherActionsFacture(
-      context,
-      _donneesFacture(),
-      telechargeeAutomatiquement: _factureTelechargee,
-    );
+  Future<void> _ouvrirFacture() async {
+    // L'en-tête de la facture a besoin de l'identité de l'établissement : on la
+    // relit ici (au lieu de la précharger au démarrage, ce qui ne servait
+    // qu'au téléchargement automatique supprimé).
+    await EtablissementService.instance.charger();
+    if (!mounted) return;
+    await afficherActionsFacture(context, _donneesFacture());
   }
 
   @override
@@ -181,15 +170,15 @@ class _VenteConfirmationPageState extends State<VenteConfirmationPage> {
           SizedBox(
             height: 54,
             child: FilledButton.icon(
-              onPressed: _imprimer,
+              onPressed: _ouvrirFacture,
               style: FilledButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              icon: const Icon(Icons.print_rounded),
+              icon: const Icon(Icons.receipt_long_rounded),
               label: const Text(
-                'IMPRIMER LE REÇU',
+                'FACTURE — PDF / WHATSAPP',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
             ),

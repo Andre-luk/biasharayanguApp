@@ -30,6 +30,7 @@ import 'package:biashara_yangu/models/stock_article.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/stock_service.dart';
+import 'package:biashara_yangu/utils/ecoute_contexte_entreprise.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
@@ -62,7 +63,8 @@ class StockGestionPage extends StatefulWidget {
   State<StockGestionPage> createState() => _StockGestionPageState();
 }
 
-class _StockGestionPageState extends State<StockGestionPage> {
+class _StockGestionPageState extends State<StockGestionPage>
+    with EcouteContexteEntreprise<StockGestionPage> {
   final StockService _service = StockService.instance;
   final TextEditingController _rechercheController = TextEditingController();
 
@@ -82,6 +84,20 @@ class _StockGestionPageState extends State<StockGestionPage> {
     super.initState();
     _rechercheController.addListener(_rafraichir);
     _demarrerEcouteTempsReel();
+    _charger();
+  }
+
+  /// 🧩 MULTI-ENTREPRISES — le stock affiché est celui de l'entreprise
+  /// active : après une bascule, on relit le catalogue et on oublie la
+  /// recherche / les filtres de la précédente.
+  @override
+  void onChangementEntreprise(String? espaceId) {
+    if (!mounted) return;
+    _rechercheController.clear();
+    setState(() {
+      _filtreStatut = _FiltreStatut.tous;
+      _filtreCategorie = null;
+    });
     _charger();
   }
 

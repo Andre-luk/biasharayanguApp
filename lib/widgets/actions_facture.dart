@@ -8,42 +8,37 @@
 //   • l'envoyer au client sur WhatsApp ;
 //   • l'imprimer.
 //
+// ⛔ CORRECTIF (14/11/2026) — RIEN N'EST PLUS TÉLÉCHARGÉ AUTOMATIQUEMENT.
+// L'ancien enchaînement « vente validée → PDF écrit puis ouvert » déclenchait
+// sous Windows « ce fichier ne contient pas l'application associée pour
+// effectuer cette action… ». Le patron a demandé que la facture soit
+// TÉLÉCHARGÉE ET PARTAGÉE PAR WHATSAPP, à la demande, jamais toute seule.
+//
 // Un seul endroit à maintenir : les écrans appellent [afficherActionsFacture].
 
 import 'package:flutter/material.dart';
 
-import 'package:biashara_yangu/models/resultat_partage.dart';
 import 'package:biashara_yangu/services/facture_vente_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/partage_pdf.dart';
 
 /// Ouvre la feuille d'actions de la facture d'une vente.
-///
-/// [telechargeeAutomatiquement] : `true` quand le PDF a déjà été proposé au
-/// partage juste après la vente (on adapte le libellé, on ne réimpose rien).
 Future<void> afficherActionsFacture(
   BuildContext context,
-  DonneesFacture facture, {
-  bool telechargeeAutomatiquement = false,
-}) {
+  DonneesFacture facture,
+) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (BuildContext ctx) => _FeuilleActions(
-      facture: facture,
-      telechargeeAutomatiquement: telechargeeAutomatiquement,
-    ),
+    builder: (BuildContext ctx) => _FeuilleActions(facture: facture),
   );
 }
 
 class _FeuilleActions extends StatefulWidget {
-  const _FeuilleActions({
-    required this.facture,
-    required this.telechargeeAutomatiquement,
-  });
+  const _FeuilleActions({required this.facture});
 
   final DonneesFacture facture;
-  final bool telechargeeAutomatiquement;
 
   @override
   State<_FeuilleActions> createState() => _FeuilleActionsState();
@@ -52,6 +47,10 @@ class _FeuilleActions extends StatefulWidget {
 class _FeuilleActionsState extends State<_FeuilleActions> {
   bool _enCours = false;
   String? _info;
+
+  /// Chemin du PDF enregistré sur cet appareil (`null` sur mobile / web, ou
+  /// avant le premier téléchargement) : sert au bouton « ouvrir le dossier ».
+  String? _cheminPdf;
 
   Future<void> _executer(
       Future<bool> Function() action, String succes, String echec) async {
@@ -101,11 +100,8 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
             ),
             const SizedBox(height: 4),
             Text(
-              widget.telechargeeAutomatiquement
-                  ? 'La facture a été proposée au téléchargement. Vous pouvez '
-                      'la récupérer à nouveau, l\'envoyer au client ou '
-                      'l\'imprimer.'
-                  : 'Récupérez la facture, envoyez-la au client ou imprimez-la.',
+              'Aucun téléchargement automatique : choisissez ce que vous '
+              'voulez faire de cette facture.',
               style: TextStyle(
                 fontSize: 12,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -126,6 +122,9 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
                       setState(() {
                         _enCours = false;
                         _info = resultat.message;
+                        if (resultat.chemin != null) {
+                          _cheminPdf = resultat.chemin;
+                        }
                       });
                     },
               icon: _enCours
@@ -136,7 +135,7 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
                           strokeWidth: 2.2, color: Colors.white),
                     )
                   : const Icon(Icons.download_rounded),
-              label: const Text('TÉLÉCHARGER / PARTAGER LE PDF'),
+              label: const Text('TÉLÉCHARGER LA FACTURE (PDF)'),
             ),
             const SizedBox(height: 8),
             FilledButton.tonalIcon(
@@ -157,6 +156,9 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
                         _info = dernier?.message ??
                             'Choisissez WhatsApp dans la liste pour envoyer le '
                                 'PDF au client.';
+                        if (dernier?.chemin != null) {
+                          _cheminPdf = dernier!.chemin;
+                        }
                       });
                     },
               icon: const Icon(Icons.chat_rounded),
@@ -174,6 +176,23 @@ class _FeuilleActionsState extends State<_FeuilleActions> {
               icon: const Icon(Icons.print_rounded),
               label: const Text('IMPRIMER'),
             ),
+            // 🖥️ Ordinateur : le PDF est enregistré, mais on n'ouvre JAMAIS le
+            // fichier tout seul (message « aucune application associée » sous
+            // Windows). On propose le DOSSIER — toujours ouvrable.
+            if (_cheminPdf != null) ...<Widget>[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _enCours
+                    ? null
+                    : () => _executer(
+                          () => PartagePdf.ouvrirLeDossier(_cheminPdf!),
+                          'Dossier ouvert.',
+                          'Le dossier n\'a pas pu être ouvert.',
+                        ),
+                icon: const Icon(Icons.folder_open_rounded),
+                label: const Text('OUVRIR LE DOSSIER'),
+              ),
+            ],
             if (_info != null) ...<Widget>[
               const SizedBox(height: 12),
               Container(

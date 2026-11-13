@@ -21,6 +21,7 @@ import 'package:biashara_yangu/models/statut_expiration.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
 import 'package:biashara_yangu/utils/devise_produit.dart';
+import 'package:biashara_yangu/utils/ecoute_contexte_entreprise.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/code_barre_lecteur.dart';
@@ -34,7 +35,8 @@ class ArticlesPage extends StatefulWidget {
   State<ArticlesPage> createState() => _ArticlesPageState();
 }
 
-class _ArticlesPageState extends State<ArticlesPage> {
+class _ArticlesPageState extends State<ArticlesPage>
+    with EcouteContexteEntreprise<ArticlesPage> {
   static const int _seuilStockBas = 5;
 
   final ArticleService _service = ArticleService.instance;
@@ -120,6 +122,18 @@ class _ArticlesPageState extends State<ArticlesPage> {
     _rechercheController.addListener(_rafraichir);
     _demarrerEcouteTempsReel();
     _chargerDelaiPeremption();
+    _charger();
+  }
+
+  /// 🧩 MULTI-ENTREPRISES — l'écran vit dans un `IndexedStack` : il n'est pas
+  /// recréé lors d'une bascule. On relit donc le catalogue de l'entreprise
+  /// qui vient d'être activée, en oubliant la recherche et le filtre de la
+  /// précédente (ils n'ont plus de sens ici).
+  @override
+  void onChangementEntreprise(String? espaceId) {
+    if (!mounted) return;
+    _rechercheController.clear();
+    setState(() => _filtreCategorie = null);
     _charger();
   }
 

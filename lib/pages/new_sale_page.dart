@@ -945,9 +945,11 @@ class _NewSalePageState extends State<NewSalePage> {
           _loading = false;
         });
 
-        // 🧾 MODULE 27 — FACTURE PROFESSIONNELLE, GÉNÉRÉE AUTOMATIQUEMENT.
-        //  Même service que la caisse classique : modèle, numérotation,
-        //  calculs et partage WhatsApp identiques.
+        // 🧾 MODULE 27 — FACTURE PROFESSIONNELLE, PROPOSÉE (pas imposée).
+        //  ⛔ CORRECTIF 14/11/2026 : plus AUCUN téléchargement automatique.
+        //  L'ouverture automatique du PDF déclenchait sous Windows « ce
+        //  fichier ne contient pas l'application associée… ». On ouvre la
+        //  feuille d'actions : télécharger, envoyer sur WhatsApp, imprimer.
         await EtablissementService.instance.charger();
         if (mounted) {
           final DonneesFacture facture = DonneesFacture(
@@ -974,15 +976,8 @@ class _NewSalePageState extends State<NewSalePage> {
             devise: EtablissementService.instance.courant.devise,
           );
 
-          final bool telechargee =
-              await FactureVenteService.instance.telecharger(facture);
-
           if (mounted) {
-            await afficherActionsFacture(
-              context,
-              facture,
-              telechargeeAutomatiquement: telechargee,
-            );
+            await afficherActionsFacture(context, facture);
           }
         }
       }

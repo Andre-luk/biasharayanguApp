@@ -11,7 +11,7 @@
 //     légales, pied de page) ;
 //   • les mêmes données pour toutes les pages de vente : elles construisent un
 //     [DonneesFacture] et appellent ce service ;
-//   • téléchargement automatique après la vente, impression, partage du PDF et
+//   • téléchargement À LA DEMANDE, impression, partage du PDF et
 //     message WhatsApp prêt pour le client ;
 //   • aucune information inventée : un champ absent est simplement masqué.
 
@@ -712,13 +712,18 @@ class FactureVenteService {
   // ACTIONS
   // ---------------------------------------------------------------------------
 
-  /// 💾 TÉLÉCHARGEMENT AUTOMATIQUE — appelé juste après la validation d'une
-  /// vente. Sur téléphone, la feuille de partage s'ouvre avec le PDF (l'utilis
-  /// ateur peut l'enregistrer) ; sur ordinateur le fichier est enregistré dans
-  /// « Téléchargements/Biashara Yangu/Factures » puis ouvert ; sur le web, le
-  /// navigateur télécharge le fichier. En cas de refus (permission,
-  /// navigateur), on renvoie `false` pour que l'écran propose un bouton
-  /// explicite.
+  /// 💾 Téléchargement À LA DEMANDE (bouton « TÉLÉCHARGER LA FACTURE »).
+  ///
+  /// ⛔ CORRECTIF 14/11/2026 : plus aucun écran ne l'appelle tout seul. Après
+  /// une vente, l'application ouvre la feuille d'actions ; c'est le patron qui
+  /// décide de télécharger, d'envoyer sur WhatsApp ou d'imprimer. L'ancien
+  /// enchaînement automatique ouvrait le PDF et déclenchait sous Windows
+  /// « ce fichier ne contient pas d'application associée… ».
+  ///
+  /// Sur téléphone, la feuille de partage s'ouvre avec le PDF ; sur
+  /// ordinateur le fichier est enregistré dans « Téléchargements/Biashara
+  /// Yangu/Factures » SANS être ouvert ; sur le web, le navigateur télécharge
+  /// le fichier. En cas de refus (permission, navigateur), on renvoie `false`.
   Future<bool> telecharger(DonneesFacture d) async {
     final ResultatPartage resultat = await partager(d);
     return resultat.ok;
@@ -943,9 +948,10 @@ class _DialogueWhatsAppState extends State<_DialogueWhatsApp> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
-            'Le PDF sera d\'abord proposé au partage (vous pourrez l\'envoyer '
-            'dans la conversation), puis WhatsApp s\'ouvrira avec le message '
-            'pré-rempli.',
+            'Le PDF est enregistré sur l\'appareil, puis WhatsApp s\'ouvre avec '
+            'le message pré-rempli : joignez le fichier depuis vos '
+            'téléchargements. Sur téléphone, la feuille de partage s\'ouvre '
+            'directement avec le PDF.',
             style: TextStyle(fontSize: 12.5),
           ),
           const SizedBox(height: 12),

@@ -55,3 +55,8 @@ android/key.properties
 
 # Supabase CLI (cache local)
 supabase/.temp/
+
+# 🔐 Secrets de test live — NE JAMAIS COMMITTER.
+# Emplacement recommandé (hors dépôt) : ~/.config/biashara/supabase.env
+*.env
+tools/live/supabase.env

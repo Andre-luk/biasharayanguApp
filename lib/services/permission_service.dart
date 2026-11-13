@@ -302,6 +302,13 @@ class PermissionService {
         PageAccess.evenements,
         // 🥖 MODULE 16 C5 — boulangerie : matières, productions (tout).
         PageAccess.production,
+        // 🧺 MODULE 35 — pressing & blanchisserie : accueil (dépôts),
+        // atelier et remise (tout). Sans ces trois pages, la carte
+        // « Pressing » et ses écrans étaient masqués pour TOUS les rôles,
+        // y compris le propriétaire du pressing.
+        PageAccess.pressingDepots,
+        PageAccess.pressingAtelier,
+        PageAccess.pressingRetraits,
         // 🚚 MODULE 23 — distribution terrain : tournées et rapport par agent.
         PageAccess.distribution,
         PageAccess.maTournee,
@@ -373,6 +380,22 @@ class PermissionService {
           ActionAccess.voir,
           ActionAccess.creer,
         },
+        // 🧺 MODULE 35 — agent d'accueil / caisse du pressing (`role_pressing`
+        // `accueil` ou `caisse`) : il prend les dépôts, encaisse et remet les
+        // vêtements. Les tarifs, les réglages et la configuration restent au
+        // responsable (métier `role_pressing` + triggers serveur).
+        // ⚠️ Aligné sur `permissions_defaut('VENDEUR')` : c'est le SEUL
+        // endroit où ce rôle reçoit `modifier` (annuler une commande).
+        PageAccess.pressingDepots: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+          ActionAccess.modifier, // annuler une commande d'accueil
+        },
+        PageAccess.pressingRetraits: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer, // remise du vêtement au client
+          ActionAccess.valider,
+        },
         // 🚚 MODULE 23 — l'agent/livreur ne voit QUE sa tournée : il vend sa
         // dotation, enregistre consignes et bonus. Le rapport du patron
         // (`distribution`) ne lui est pas ouvert.
@@ -408,6 +431,15 @@ class PermissionService {
           ActionAccess.creer,
           ActionAccess.modifier,
         },
+        // 🧺 MODULE 35 — l'agent d'atelier du pressing (`role_pressing`
+        // `atelier`) fait avancer les vêtements et passe le contrôle
+        // qualité. Aligné sur `permissions_defaut('MAGASINIER')` : l'atelier
+        // seulement (il ouvre le hub grâce à la carte « au moins une page »).
+        PageAccess.pressingAtelier: const <ActionAccess>{
+          ActionAccess.voir,
+          ActionAccess.creer,
+          ActionAccess.modifier,
+        },
         // 🚚 MODULE 24 — le gestionnaire de stock entre dans l'espace
         // Distribution : réceptions, sorties, dotations et retours.
         PageAccess.distribution: const <ActionAccess>{
@@ -438,6 +470,10 @@ class PermissionService {
           ActionAccess.creer,
         },
         PageAccess.parametres: const <ActionAccess>{ActionAccess.voir},
+        // 🧺 MODULE 35 — un comptable de pressing lit les dépôts (donc les
+        // soldes dus) sans pouvoir les modifier, comme le dit la matrice
+        // serveur.
+        PageAccess.pressingDepots: const <ActionAccess>{ActionAccess.voir},
         // 🚚 MODULE 24 — le comptable réceptionne les remises et tient la
         // caisse/les dépenses de la distribution. La validation finale de
         // l'entrée en caisse reste au gérant/propriétaire (serveur).

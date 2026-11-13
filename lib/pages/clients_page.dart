@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/client.dart';
+import 'package:biashara_yangu/utils/ecoute_contexte_entreprise.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/l10n/app_localizations.dart';
 
@@ -13,7 +14,8 @@ class ClientsPage extends StatefulWidget {
   State<ClientsPage> createState() => _ClientsPageState();
 }
 
-class _ClientsPageState extends State<ClientsPage> {
+class _ClientsPageState extends State<ClientsPage>
+    with EcouteContexteEntreprise<ClientsPage> {
   final DBHelper _db = DBHelper.instance;
   final TextEditingController _searchController = TextEditingController();
 
@@ -27,6 +29,15 @@ class _ClientsPageState extends State<ClientsPage> {
     super.initState();
     _loadData();
     _searchController.addListener(_onSearchChanged);
+  }
+
+  /// 🧩 MULTI-ENTREPRISES — les clients sont ceux de la boutique affichée :
+  /// on relit la liste à chaque bascule et on efface la recherche en cours.
+  @override
+  void onChangementEntreprise(String? espaceId) {
+    if (!mounted) return;
+    _searchController.clear();
+    _loadData();
   }
 
   @override

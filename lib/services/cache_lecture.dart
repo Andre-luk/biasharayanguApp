@@ -30,6 +30,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/db_helper.dart';
+import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 
 /// Origine d'une valeur lue : fraîche du serveur, ou reprise du cache local.
@@ -123,12 +124,22 @@ class CacheLecture {
               if (e.value != null) e.key: e.value,
           };
 
-    if (propres == null || propres.isEmpty) return '$fonction|$utilisateur';
+    // 🧩 MULTI-ENTREPRISES — sans cette dimension, une réponse lue dans la
+    //    pharmacie pouvait être resservie HORS LIGNE dans la boutique : la
+    //    clé ne mentionnait que l'utilisateur et les paramètres de la RPC.
+    //    On y ajoute l'entreprise de travail (celle qui porte `owner_id`).
+    final String entreprise = ScopeDonnees.proprietaireEffectif ??
+        ScopeDonnees.espaceActif ??
+        '-';
+
+    if (propres == null || propres.isEmpty) {
+      return '$fonction|$utilisateur|espace=$entreprise';
+    }
 
     final List<String> cles = propres.keys.toList()..sort();
     final String args =
         cles.map((String k) => '$k=${propres[k]}').join('&');
-    return '$fonction|$utilisateur|$args';
+    return '$fonction|$utilisateur|espace=$entreprise|$args';
   }
 
   /// Lit une RPC avec reprise sur cache.

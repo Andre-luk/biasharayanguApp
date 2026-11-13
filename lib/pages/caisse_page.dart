@@ -24,6 +24,7 @@ import 'package:biashara_yangu/models/mouvement_caisse.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/finance_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/utils/ecoute_contexte_entreprise.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/widgets/decaissement_caisse_dialogue.dart';
 
@@ -34,7 +35,8 @@ class CaissePage extends StatefulWidget {
   State<CaissePage> createState() => _CaissePageState();
 }
 
-class _CaissePageState extends State<CaissePage> {
+class _CaissePageState extends State<CaissePage>
+    with EcouteContexteEntreprise<CaissePage> {
   final FinanceService _finance = FinanceService.instance;
 
   bool _chargement = true;
@@ -50,6 +52,18 @@ class _CaissePageState extends State<CaissePage> {
   @override
   void initState() {
     super.initState();
+    _charger();
+  }
+
+  /// 🧩 MULTI-ENTREPRISES — la caisse est calculée par le serveur pour
+  /// l'entreprise active : on la relit intégralement après une bascule.
+  @override
+  void onChangementEntreprise(String? espaceId) {
+    if (!mounted) return;
+    setState(() {
+      _resume = null;
+      _journal = null;
+    });
     _charger();
   }
 

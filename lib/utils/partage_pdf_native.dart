@@ -13,9 +13,13 @@
 //     PDF, l'utilisateur reçoit « ce fichier ne contient pas d'application
 //     associée… » et le fichier est perdu dans /tmp.
 //
-// Sur ordinateur on enregistre donc le PDF dans « Téléchargements/Biashara
-// Yangu/Factures » (fichier durable, nommé proprement) puis on essaie, dans
-// l'ordre, plusieurs ouvreurs connus avant de se rabattre sur le dossier.
+// ⛔ CORRECTIF (14/11/2026) — PLUS AUCUNE OUVERTURE AUTOMATIQUE.
+// `Printing.sharePdf` n'est plus utilisé sur ordinateur : le PDF est écrit
+// dans « Téléchargements/Biashara Yangu/Factures » et C'EST TOUT. Ouvrir le
+// fichier tout seul déclenchait sous Windows le message « ce fichier ne
+// contient pas d'application associée pour effectuer cette action… » (aucun
+// lecteur PDF associé). L'utilisateur choisit lui-même : ouvrir le dossier,
+// envoyer sur WhatsApp ou imprimer depuis l'écran de facture.
 
 import 'dart:io';
 
@@ -84,7 +88,7 @@ Future<ResultatPartage> partagerPdf(
     );
   }
 
-  // 🖥️ Ordinateur : on enregistre d'abord, ensuite on ouvre.
+  // 🖥️ Ordinateur : on ENREGISTRE, sans rien ouvrir (voir l'en-tête).
   final String? chemin = await enregistrerPdf(octets, nomFichier: nom);
   if (chemin == null) {
     return const ResultatPartage.echec(
@@ -92,22 +96,10 @@ Future<ResultatPartage> partagerPdf(
     );
   }
 
-  final bool ouvert = await ouvrirFichier(chemin);
-  if (ouvert) {
-    return ResultatPartage(
-      mode: ModePartage.enregistre,
-      message: 'Facture enregistrée et ouverte : $chemin',
-      chemin: chemin,
-      fichierJoint: true,
-    );
-  }
-
-  await ouvrirDossier(chemin);
   return ResultatPartage(
     mode: ModePartage.enregistre,
-    message: 'Facture enregistrée dans « $dossierFactures » : $chemin\n'
-        'Aucun lecteur PDF n\'a pu être lancé automatiquement — le dossier '
-        'vient de s\'ouvrir.',
+    message: 'PDF enregistré dans « Téléchargements/$dossierFactures » :\n'
+        '$chemin',
     chemin: chemin,
     fichierJoint: true,
   );

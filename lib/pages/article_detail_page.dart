@@ -14,9 +14,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/etiquette_qr.dart';
+import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/mouvement_article.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/article_service.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/qr_code_service.dart';
 import 'package:biashara_yangu/utils/devise_produit.dart';
@@ -639,6 +641,20 @@ class _ArticleDetailPageState extends State<ArticleDetailPage> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         actions: [
+          if (article != null &&
+              ModulesService.instance.moduleActif(ModuleCode.lotsExpiration))
+            PermissionGate(
+              page: PageAccess.stock,
+              action: ActionAccess.voir,
+              child: IconButton(
+                onPressed: () => context.push(
+                  '/main/articles/${article.id}/lots',
+                  extra: article,
+                ),
+                icon: const Icon(Icons.inventory_2_outlined),
+                tooltip: 'Lots & péremption',
+              ),
+            ),
           if (article != null)
             PermissionGate(
               page: PageAccess.qrCodes,
