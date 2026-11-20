@@ -847,8 +847,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final Set<String> modules = ModulesService.instance.modules.value;
     final bool profilCharge = ModulesService.instance.charge;
     final bool ventesActives = ReglesActivite.ventes(modules, profilCharge);
-    final bool pressingActif =
-        ModulesService.instance.moduleActif(ModuleCode.pressDepots);
+    final bool pressingActif = PermissionService.instance.estDansPressing ||
+      ModulesService.instance.moduleActif(ModuleCode.pressDepots);
 
     if (!ventesActives && pressingActif) {
       final PressingTableauBord b = _pressingBord;
@@ -890,8 +890,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   /// Vente » ni le scanner. Il garde en revanche l'accès direct à sa CAISSE,
   /// écran d'encaissement de ses réservations et séjours.
   ///
-  /// Masquage uniquement (règle d'or du module 16) : les écrans restent
-  /// joignables par lien direct, les permissions du module 4 n'ont pas bougé.
+  /// La visibilité des raccourcis suit le métier ; les routes directes restent
+  /// elles aussi protégées par PermissionService et la matrice serveur.
   Widget _buildActionsRapides(AppLocalizations T) {
     final PermissionService permissions = PermissionService.instance;
     final ThemeData theme = Theme.of(context);
@@ -912,7 +912,40 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     final List<Widget> actions = <Widget>[];
 
-    if (universDistribution) {
+    if (permissions.estDansPressing) {
+      final String? rolePressing = permissions.rolePressingCode;
+      final ({String libelle, IconData icone, String route})? destination =
+          switch (rolePressing) {
+        'proprietaire' || 'responsable' || 'accueil' => (
+            libelle: 'Dépôts pressing',
+            icone: Icons.local_laundry_service_rounded,
+            route: '/main/pressing/depots',
+          ),
+        'atelier' => (
+            libelle: 'Atelier pressing',
+            icone: Icons.local_laundry_service_rounded,
+            route: '/main/pressing/atelier',
+          ),
+        'caisse' => (
+            libelle: 'Caisse pressing',
+            icone: Icons.point_of_sale_rounded,
+            route: '/main/pressing/caisse',
+          ),
+        _ => null,
+      };
+      if (destination != null) {
+        actions.add(
+          _ActionRapide(
+            libelle: destination.libelle,
+            icone: destination.icone,
+            degrade: AppDegrades.hero,
+            couleurTexte: Colors.white,
+            verrouille: verrouille,
+            onTap: () => _navTo(destination.route),
+          ),
+        );
+      }
+    } else if (universDistribution) {
       actions.add(
         _ActionRapide(
           libelle: 'Espace distribution',
@@ -1007,7 +1040,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     // ⚖️ Pesée rapide (boucherie, primeur…) : un raccourci direct pour les
     // boutiques qui vendent au poids.
-    if (!universDistribution &&
+    if (!permissions.estDansPressing &&
+      !universDistribution &&
         ModulesService.instance.moduleActif(ModuleCode.pesee) &&
         permissions.peut(PageAccess.caisse, ActionAccess.creer)) {
       actions.add(
@@ -1153,7 +1187,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
           ],
           // ⚖️ Une boucherie en mode rapide pèse et encaisse ici.
-          if (ModulesService.instance.moduleActif(ModuleCode.pesee) &&
+            if (!permissions.estDansPressing &&
+              ModulesService.instance.moduleActif(ModuleCode.pesee) &&
               permissions.peut(
                   PageAccess.caisse, ActionAccess.creer)) ...<Widget>[
             const SizedBox(height: 10),
@@ -1166,6 +1201,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ],
       ),
     );
+  }
+
+  String? _routeCarteAccueil(CarteAccueil carte) {
+    if (carte.id != 'pressing') return carte.route;
+    return switch (PermissionService.instance.rolePressingCode) {
+      'atelier' => '/main/pressing/atelier',
+      'caisse' => '/main/pressing/caisse',
+      'accueil' || 'responsable' || 'proprietaire' =>
+        '/main/pressing/depots',
+      _ => carte.route,
+    };
   }
 
   Widget _buildSectionStatistiques(AppLocalizations T) {
@@ -1273,7 +1319,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 icone: carte.icone,
                 couleur: carte.couleur,
                 alerte: carte.alerte?.call(donnees) ?? false,
-                onTap: () => _navTo(carte.route),
+                onTap: () => _navTo(_routeCarteAccueil(carte) ?? '/main'),
               ),
           ],
         ),

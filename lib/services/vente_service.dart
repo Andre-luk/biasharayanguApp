@@ -130,6 +130,11 @@ class VenteService {
           'de le restaurer sous son numéro.';
     }
 
+            if (code == 'VENTE_INTERDITE_PRESSING') {
+          return 'La vente boutique est désactivée pour un pressing. '
+              'Enregistrez le vêtement comme dépôt dans le module Pressing.';
+            }
+
     return message;
   }
 
@@ -143,6 +148,7 @@ class VenteService {
       case 'DROIT_REFUSE':
       case 'SESSION_ABSENTE':
       case 'HORS_BOUTIQUE':
+      case 'VENTE_INTERDITE_PRESSING':
         return TypeErreurVente.droits;
       case 'PANIER_VIDE':
       case 'LIGNE_INVALIDE':

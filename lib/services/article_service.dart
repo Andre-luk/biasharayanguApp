@@ -191,6 +191,48 @@ class ArticleService {
     );
   }
 
+  /// 🏢 MODE PLATEFORME — articles de TOUTES les boutiques d'une ENTREPRISE.
+  ///
+  /// Correctif 175 : l'écran QR cherchait les articles par UUID du PATRON.
+  /// Depuis que `produits.owner_id` porte l'ESPACE, cette recherche ne
+  /// trouvait plus rien (ou les mauvais articles) — d'où des étiquettes
+  /// générées pour des articles invisibles au scan.
+  ///
+  /// La RPC `rpc_articles_entreprise` renvoie le catalogue de tous les
+  /// espaces de l'entreprise (+ les articles historiques du patron).
+  Future<List<Article>> getArticlesPourEntreprise(String entrepriseId) {
+    return _executer(
+      () async {
+        final dynamic reponse = await _client.rpc(
+          'rpc_articles_entreprise',
+          params: <String, dynamic>{'p_entreprise_id': entrepriseId},
+        );
+
+        final List<dynamic> lignes = reponse is List
+            ? reponse
+            : (parseMap(reponse)?['articles'] as List<dynamic>? ?? const []);
+
+        final List<Article> articles =
+            parseMapList(lignes).map(Article.fromMap).toList();
+
+        final Map<int, List<Conditionnement>> parArticle =
+            await _conditionnementsParProduit(
+          articles.map((Article a) => a.id).toList(),
+        );
+
+        return articles
+            .map((Article a) => a.copyWith(
+                  conditionnements:
+                      parArticle[a.id] ?? const <Conditionnement>[],
+                ))
+            .toList();
+      },
+      actionLibelle: 'le chargement des articles',
+      messageEchec:
+          'Impossible de charger les articles de cette entreprise. Vérifiez votre connexion internet.',
+    );
+  }
+
   /// Un article et ses conditionnements, ou `null` s'il a été supprimé.
   Future<Article?> getArticleById(int id) {
     return _executer(

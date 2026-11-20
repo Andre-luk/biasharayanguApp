@@ -47,7 +47,22 @@ class Entreprise {
 
   /// 🏪 Type d'activité (migration 0083) : `boutique`, `distribution`, ou
   /// `null` = non renseigné (tous les écrans restent visibles).
+  ///
+  /// ⚠️ C'est l'AXE COMMERCIAL, pas le MÉTIER. Le métier (pharmacie, pressing,
+  /// hôtel…) vit dans `espaces.type` et pilote les modules : voir [metier].
   final TypeActivite? typeActivite;
+
+  /// 🧩 Le MÉTIER réel de l'entreprise, lu dans ses ESPACES
+  /// (`espaces.type`) par la RPC `rpc_entreprises_metiers` (migration 174).
+  ///
+  /// Champ de confort (non persisté dans `entreprises`) : c'est la seule
+  /// valeur à afficher comme « type de boutique ». Une entreprise peut avoir
+  /// plusieurs boutiques ; on retient le métier spécialisé (jamais
+  /// « boutique » quand un métier précis existe).
+  final String? metier;
+
+  /// Libellé lisible du [metier] (« Pharmacie », « Pressing »…).
+  final String? metierLibelle;
 
   const Entreprise({
     required this.id,
@@ -71,6 +86,8 @@ class Entreprise {
     this.telephone,
     this.activationEtape,
     this.typeActivite,
+    this.metier,
+    this.metierLibelle,
   });
 
   factory Entreprise.fromMap(Map<String, dynamic> map) {
@@ -110,6 +127,10 @@ class Entreprise {
       activationEtape: parseStringOrNull(map['activation_etape']),
       typeActivite:
           TypeActivite.depuis(parseStringOrNull(map['type_activite'])),
+      // `metier` n'est pas une colonne de `entreprises` : il est ajouté par
+      // la jointure locale de `EntrepriseService` (RPC dédiée).
+      metier: parseStringOrNull(map['metier']),
+      metierLibelle: parseStringOrNull(map['metier_libelle']),
     );
   }
 
@@ -226,6 +247,8 @@ class Entreprise {
     String? responsableNom,
     String? telephone,
     String? activationEtape,
+    String? metier,
+    String? metierLibelle,
   }) {
     return Entreprise(
       id: id ?? this.id,
@@ -249,6 +272,8 @@ class Entreprise {
       responsableNom: responsableNom ?? this.responsableNom,
       telephone: telephone ?? this.telephone,
       activationEtape: activationEtape ?? this.activationEtape,
+      metier: metier ?? this.metier,
+      metierLibelle: metierLibelle ?? this.metierLibelle,
     );
   }
 

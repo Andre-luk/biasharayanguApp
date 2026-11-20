@@ -172,6 +172,129 @@ void main() {
     });
   });
 
+  group('Contexte métier pressing — aucun écran de vente boutique', () {
+    test('aucun métier pressing n\'ouvre la vente, scanner, pesée ou caisse boutique', () {
+      const List<String> metiers = <String>[
+        'proprietaire',
+        'responsable',
+        'accueil',
+        'atelier',
+        'caisse',
+      ];
+      const List<PageAccess> pagesBoutique = <PageAccess>[
+        PageAccess.ventes,
+        PageAccess.scanner,
+        PageAccess.panier,
+        PageAccess.caisse,
+        PageAccess.stock,
+        PageAccess.articles,
+      ];
+
+      for (final String metier in metiers) {
+        service.definirRoleCourant(
+          metier == 'atelier'
+              ? RoleUtilisateur.magasinier
+              : metier == 'responsable' || metier == 'proprietaire'
+                  ? RoleUtilisateur.proprietaire
+                  : RoleUtilisateur.vendeur,
+        );
+        service.definirContextePressing(actif: true, roleCode: metier);
+
+        for (final PageAccess page in pagesBoutique) {
+          expect(
+            service.peut(page, ActionAccess.voir),
+            isFalse,
+            reason: '$metier ne doit pas voir ${page.name}',
+          );
+        }
+        expect(service.routeAutorisee('/main/new-sale'), isFalse);
+        expect(service.routeAutorisee('/scanner'), isFalse);
+        expect(service.routeAutorisee('/main/pesee'), isFalse);
+        expect(service.routeAutorisee('/main/caisse'), isFalse);
+      }
+    });
+
+    test('accueil peut déposer/retirer, jamais vente, scanner ou pesée', () {
+      service.definirRoleCourant(RoleUtilisateur.vendeur);
+      service.definirContextePressing(actif: true, roleCode: 'accueil');
+
+      expect(service.peut(PageAccess.pressingDepots, ActionAccess.creer), isTrue);
+      expect(service.peut(PageAccess.pressingRetraits, ActionAccess.creer), isTrue);
+      expect(service.peut(PageAccess.ventes, ActionAccess.voir), isFalse);
+      expect(service.peut(PageAccess.scanner, ActionAccess.voir), isFalse);
+      expect(service.peut(PageAccess.panier, ActionAccess.voir), isFalse);
+      expect(service.routeAutorisee('/main/new-sale'), isFalse);
+      expect(service.routeAutorisee('/scanner'), isFalse);
+      expect(service.routeAutorisee('/main/pesee'), isFalse);
+      expect(service.routeAutorisee('/main/ventes'), isFalse);
+      expect(service.routeAutorisee('/main/caisse'), isFalse);
+    });
+
+    test('atelier ne voit que son atelier, pas la caisse ni le stock boutique',
+        () {
+      service.definirRoleCourant(RoleUtilisateur.magasinier);
+      service.definirContextePressing(actif: true, roleCode: 'atelier');
+
+      expect(service.peut(PageAccess.pressingAtelier, ActionAccess.voir), isTrue);
+      expect(service.peut(PageAccess.pressingDepots, ActionAccess.voir), isFalse);
+      expect(service.peut(PageAccess.pressingRetraits, ActionAccess.voir), isFalse);
+      expect(service.peut(PageAccess.stock, ActionAccess.voir), isFalse);
+      expect(service.peut(PageAccess.articles, ActionAccess.voir), isFalse);
+      expect(service.peut(PageAccess.scanner, ActionAccess.voir), isFalse);
+    });
+
+    test('caisse pressing accède à sa caisse et aux retraits seulement', () {
+      service.definirRoleCourant(RoleUtilisateur.vendeur);
+      service.definirContextePressing(actif: true, roleCode: 'caisse');
+
+      expect(service.peut(PageAccess.caisse, ActionAccess.creer), isFalse);
+      expect(service.routeAutorisee('/main/pressing/caisse'), isTrue);
+      expect(service.peut(PageAccess.pressingRetraits, ActionAccess.creer), isTrue);
+      expect(service.peut(PageAccess.pressingDepots, ActionAccess.voir), isFalse);
+        expect(service.peut(PageAccess.caisse, ActionAccess.voir), isFalse,
+          reason: 'la caisse boutique est masquée, seule la route pressing existe');
+      expect(service.routeAutorisee('/main/caisse'), isFalse);
+          expect(service.routeAutorisee('/main/pesee'), isFalse);
+      expect(service.peut(PageAccess.ventes, ActionAccess.voir), isFalse);
+    });
+
+    test('responsable garde ses écrans pressing mais jamais les ventes boutique',
+        () {
+      service.definirRoleCourant(RoleUtilisateur.proprietaire);
+      service.definirContextePressing(actif: true, roleCode: 'responsable');
+
+      expect(service.peut(PageAccess.pressingDepots, ActionAccess.voir), isTrue);
+      expect(service.peut(PageAccess.pressingAtelier, ActionAccess.voir), isTrue);
+      expect(service.peut(PageAccess.pressingRetraits, ActionAccess.voir), isTrue);
+      expect(service.peut(PageAccess.ventes, ActionAccess.voir), isFalse);
+      expect(service.routeAutorisee('/scanner'), isFalse);
+    });
+
+    test('hors pressing, un vendeur garde les droits habituels', () {
+      service.definirRoleCourant(RoleUtilisateur.vendeur);
+      service.definirContextePressing(actif: false);
+
+      expect(service.peut(PageAccess.ventes, ActionAccess.creer), isTrue);
+      expect(service.peut(PageAccess.scanner, ActionAccess.voir), isTrue);
+    });
+  });
+
+  test('un profil pressing obsolète ne réaffiche pas les cartes boutique', () {
+    service.definirRoleCourant(RoleUtilisateur.vendeur);
+    service.definirContextePressing(actif: true, roleCode: 'accueil');
+
+    final Set<String> ids = idsDe(CarteAccueil.visibles(
+      modules: modulesPressing,
+      profilCharge: true,
+      autorise: service.peut,
+    ));
+
+    expect(ids, contains('pressing'));
+    expect(ids, isNot(contains('ventes')));
+    expect(ids, isNot(contains('caisse')));
+    expect(ids, isNot(contains('stock')));
+  });
+
   group('Carte d\'accueil « Pressing »', () {
     test('elle s\'affiche pour un profil pressing et le rôle propriétaire', () {
       service.definirRoleCourant(RoleUtilisateur.proprietaire);

@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<title>guide_module_pharmacie_complet</title><style>
+@page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+body {
+  font-family: "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+  font-size: 10.5pt; line-height: 1.45; color: #111;
+}
+h1 { font-size: 20pt; color: #065f46; border-bottom: 2px solid #065f46;
+     padding-bottom: 4px; margin-top: 0; }
+h2 { font-size: 14pt; color: #065f46; margin-top: 18px;
+     border-bottom: 1px solid #d1d5db; padding-bottom: 2px; }
+h3 { font-size: 11.5pt; color: #111827; margin-top: 14px; }
+p, li { font-size: 10.5pt; }
+ul, ol { margin: 4px 0 8px 18px; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; }
+th { background: #065f46; color: #fff; font-size: 9.5pt;
+     text-align: left; padding: 5px 6px; border: 1px solid #065f46; }
+td { font-size: 9.5pt; padding: 4px 6px; border: 1px solid #cbd5e1;
+     vertical-align: top; }
+tr:nth-child(even) td { background: #f3f4f6; }
+code, pre { font-family: "DejaVu Sans Mono", monospace; font-size: 9pt; }
+pre { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px;
+      padding: 8px; white-space: pre-wrap; page-break-inside: avoid; }
+blockquote { margin: 8px 0; padding: 6px 10px; background: #fef9c3;
+             border-left: 4px solid #ca8a04; font-size: 10pt; }
+hr { border: none; border-top: 1px solid #e5e7eb; margin: 14px 0; }
+h2, h3 { page-break-after: avoid; }
+table, pre, blockquote { page-break-inside: avoid; }
+</style></head>
+<body><h1 id="le-module-pharmacie-guide-complet">Le module Pharmacie — guide complet</h1>
+<p><strong>Application</strong> : Biashara Yangu · <strong>Public</strong> : pharmacien propriétaire, responsable, caissier, magasinier, comptable<br />
+<strong>Version du document</strong> : 20 novembre 2026 (application 3.10.x)<br />
+<strong>Complète</strong> : <code>docs/guide_module_pharmacie.html</code> (ancien guide, sans la partie collaborateurs)</p>
+<hr />
+<h2 id="sommaire">Sommaire</h2>
+<ol>
+<li><a href="#1-en-une-page">En une page</a></li>
+<li><a href="#2-ce-que-fait-le-module">Ce que fait le module</a></li>
+<li><a href="#3-mise-en-route-étape-par-étape">Mise en route, étape par étape</a></li>
+<li><a href="#4-les-articles-médicaments">Les articles (médicaments)</a></li>
+<li><a href="#5-les-lots--réception-consultation-retrait">Les lots : réception, consultation, retrait</a></li>
+<li><a href="#6-la-vente-au-comptoir">La vente au comptoir</a></li>
+<li><a href="#7-alertes-de-péremption">Alertes de péremption</a></li>
+<li><a href="#8-ajouter-et-gérer-les-collaborateurs"><strong>Ajouter et gérer les collaborateurs</strong></a></li>
+<li><a href="#9-rapports-et-exports">Rapports et exports</a></li>
+<li><a href="#10-bonnes-pratiques">Bonnes pratiques</a></li>
+<li><a href="#11-dépannage-questions-fréquentes">Dépannage (questions fréquentes)</a></li>
+<li><a href="#12-annexe-technique">Annexe technique</a></li>
+</ol>
+<hr />
+<h2 id="1-en-une-page">1. En une page</h2>
+<p>Une <strong>pharmacie</strong> n'est pas une boutique comme les autres : un médicament a une
+<strong>date de péremption</strong>, il arrive <strong>par lots</strong> (numéro de lot, fournisseur,
+prix d'achat), et il doit être vendu <strong>d'abord quand il périme le plus tôt</strong>
+(règle FEFO : <em>First Expired, First Out</em>).</p>
+<p>Le module Pharmacie ajoute donc, à toutes les fonctions d'une boutique
+(articles, stock, caisse, clients, dépenses, rapports, QR codes), trois
+capacités :</p>
+<table>
+<thead>
+<tr>
+<th>Capacité</th>
+<th>Ce que vous obtenez</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lots</strong></td>
+<td>Chaque livraison devient un lot traçable : numéro, péremption, quantité reçue, quantité restante, fournisseur, prix d'achat</td>
+</tr>
+<tr>
+<td><strong>Péremption</strong></td>
+<td>Alerte réglable (7 → 365 jours), écran « Expirations », rapport dédié, et <strong>vente refusée</strong> pour un produit expiré</td>
+</tr>
+<tr>
+<td><strong>FEFO</strong></td>
+<td>À chaque vente, le stock est prélevé automatiquement sur le lot qui périme le plus tôt</td>
+</tr>
+</tbody>
+</table>
+<p>Trois écrans seulement sont propres à la pharmacie :</p>
+<ul>
+<li>la section <strong>Lot &amp; péremption</strong> dans la fiche article ;</li>
+<li>l'écran <strong>Lots &amp; péremption</strong> d'un article (icône 🗃️ en haut de la fiche) ;</li>
+<li>l'écran <strong>Expirations</strong> (et sa carte sur l'accueil).</li>
+</ul>
+<p>Tout le reste (vente, caisse, stock, clients, rapports) fonctionne comme dans
+une boutique : mêmes écrans, mêmes gestes.</p>
+<hr />
+<h2 id="2-ce-que-fait-le-module">2. Ce que fait le module</h2>
+<h3 id="21-la-liste-des-modules-installes-pour-une-pharmacie">2.1 La liste des modules installés pour une pharmacie</h3>
+<p>Quand le métier de l'espace est <strong>« Pharmacie »</strong>, l'application installe et
+affiche :</p>
+<p><code>ventes</code> · <code>produits</code> · <code>stock</code> · <code>qr</code> · <code>caisse</code> · <code>clients</code> · <code>finance</code> ·
+<code>employes</code> · <code>rapports</code> · <code>assistant_ia</code> · <strong><code>lots_expiration</code></strong></p>
+<p>Le module <code>lots_expiration</code> est celui qui ajoute tout ce qui suit. Il
+n'apparaît <strong>que</strong> pour les activités qui en ont besoin (pharmacie,
+alimentation, dépôt…), jamais pour un salon de coiffure.</p>
+<h3 id="22-le-cycle-de-vie-dun-medicament">2.2 Le cycle de vie d'un médicament</h3>
+<pre><code class="language-text">   Article (nom, prix de vente)
+            |
+            v
+   Reception d'un lot  (numero + peremption + quantite)
+            |
+            +------------&gt; Ecran « Expirations » + carte d'accueil
+            |                 (alerte a J-90 par defaut)
+            v
+   Stock de la pharmacie
+            |
+            v
+   Vente au comptoir  --FEFO--&gt;  le lot qui perime le plus tot part en premier
+            |
+            v
+   Retrait de lot (casse / rappel / peremption) -&gt; stock diminue, trace
+
+   Un produit EXPIRE ne peut pas etre vendu : la caisse refuse la vente.
+</code></pre>
+<h3 id="23-les-regles-appliquees-par-le-serveur-jamais-contournables">2.3 Les règles appliquées par le serveur (jamais contournables)</h3>
+<table>
+<thead>
+<tr>
+<th>Règle</th>
+<th>Effet concret</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Un lot = une réception</td>
+<td>La date de péremption et la quantité reçue d'un lot <strong>ne se modifient pas</strong>. Nouvelle livraison → nouveau lot.</td>
+</tr>
+<tr>
+<td>Numéro de lot obligatoire</td>
+<td>À la réception, impossible d'enregistrer un lot sans numéro.</td>
+</tr>
+<tr>
+<td>Péremption obligatoire</td>
+<td>À la réception, impossible d'enregistrer un lot sans date de péremption.</td>
+</tr>
+<tr>
+<td>Lot déjà périmé refusé</td>
+<td>Un lot dont la date est passée est refusé à l'entrée : il faut le refuser au fournisseur, pas l'entrer en stock.</td>
+</tr>
+<tr>
+<td>Produit expiré = vente bloquée</td>
+<td>Un article dont la date de péremption est dépassée ne peut plus être vendu, quel que soit le stock. Peut être désactivé par la plateforme si besoin (réglage <code>ventes.bloquer_produits_expires</code>).</td>
+</tr>
+<tr>
+<td>Stock valide seulement</td>
+<td>Si un article est suivi par lots, le stock vendable est la somme des <strong>lots non périmés et non retirés</strong>. Un lot périmé ne « sauve » jamais une vente.</td>
+</tr>
+<tr>
+<td>FEFO</td>
+<td>Le stock est prélevé sur le lot le plus proche de la péremption, puis le suivant.</td>
+</tr>
+<tr>
+<td>Retrait tracé</td>
+<td>Retirer un lot demande un <strong>motif</strong> (au moins 3 caractères) et crée un ajustement de stock + une ligne d'historique + une ligne au journal d'audit.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="24-ce-qui-est-trace">2.4 Ce qui est tracé</h3>
+<ul>
+<li><strong>Journal d'audit</strong> : <code>LOT_RECU</code>, <code>LOT_RETIRE</code> (qui, quand, quel produit, quel lot, quelle quantité, quel motif).</li>
+<li><strong>Historique des lots</strong> : chaque mouvement (réception, vente, retrait) avec la quantité et, pour une vente, le lien vers la vente.</li>
+<li><strong>Mouvements de stock</strong> : le retrait d'un lot crée un ajustement négatif, donc le stock affiché reste toujours juste.</li>
+</ul>
+<hr />
+<h2 id="3-mise-en-route-etape-par-etape">3. Mise en route, étape par étape</h2>
+<h3 id="etape-1-creer-lentreprise-avec-le-metier-pharmacie">Étape 1 — Créer l'entreprise avec le métier « Pharmacie »</h3>
+<ol>
+<li><strong>Créer l'entreprise</strong> (écran de démarrage ou <em>Paramètres → Mes entreprises</em>).</li>
+<li>Choisir le type d'activité <strong>Pharmacie</strong>.</li>
+<li>L'application installe automatiquement les modules de la pharmacie, dont
+   <code>lots_expiration</code>.</li>
+</ol>
+<blockquote>
+<p>Si l'entreprise existe déjà en « Boutique » : ouvrir la fiche de
+l'entreprise → carte <strong>Type d'activité</strong> → <strong>Changer le type</strong> → <em>Pharmacie</em>.
+Les modules et les écrans suivent immédiatement (y compris les écrans déjà
+ouverts après actualisation).</p>
+</blockquote>
+<h3 id="etape-2-verifier-lespace-de-travail">Étape 2 — Vérifier l'espace de travail</h3>
+<p>En haut de l'écran, le sélecteur d'espace doit afficher la <strong>pharmacie</strong>
+(icône 💊). Toutes les données sont cloisonnées par espace : si vous restez sur
+une autre boutique, vous ne verrez ni ses articles ni ses lots.</p>
+<h3 id="etape-3-regler-lalerte-de-peremption">Étape 3 — Régler l'alerte de péremption</h3>
+<p><em>Paramètres → </em><em>Alerte de péremption</em><strong> → choisir </strong>90 j** (ou un nombre de
+jours entre 1 et 365).</p>
+<p>C'est le délai à partir duquel un produit est signalé « expire bientôt ». Il
+est utilisé par la liste des articles, l'écran <strong>Expirations</strong>, la carte de
+l'accueil et le rappel de fin de journée.</p>
+<blockquote>
+<p>⚠️ Ce réglage ne change <strong>pas</strong> le blocage de vente d'un produit déjà expiré :
+un produit périmé reste invendable, quel que soit le délai choisi.</p>
+</blockquote>
+<h3 id="etape-4-creer-les-articles-medicaments">Étape 4 — Créer les articles (médicaments)</h3>
+<p>Voir le chapitre 4.</p>
+<h3 id="etape-5-enregistrer-la-premiere-reception">Étape 5 — Enregistrer la première réception</h3>
+<p>Voir le chapitre 5.</p>
+<h3 id="etape-6-ajouter-les-collaborateurs">Étape 6 — Ajouter les collaborateurs</h3>
+<p>Voir le chapitre 8.</p>
+<h3 id="etape-7-ouvrir-la-caisse">Étape 7 — Ouvrir la caisse</h3>
+<p><em>Caisse</em> → encaisser normalement. Le format de vente (unité / plaquette /
+boîte) est proposé s'il existe des conditionnements sur l'article.</p>
+<hr />
+<h2 id="4-les-articles-medicaments">4. Les articles (médicaments)</h2>
+<p><em>Articles → bouton </em><em>+</em><em> (ou </em><em>Nouvel article</em><em>)</em></p>
+<h3 id="41-les-champs-a-ne-pas-oublier">4.1 Les champs à ne pas oublier</h3>
+<table>
+<thead>
+<tr>
+<th>Champ</th>
+<th>Pourquoi c'est important en pharmacie</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nom</strong></td>
+<td>Tel qu'il est écrit sur la boîte (nom + dosage)</td>
+</tr>
+<tr>
+<td><strong>Catégorie</strong></td>
+<td>Famille thérapeutique, ou « Divers »</td>
+</tr>
+<tr>
+<td><strong>Prix de vente</strong></td>
+<td>Prix au comptoir (par unité de base : comprimé, flacon…)</td>
+</tr>
+<tr>
+<td><strong>Prix d'achat</strong></td>
+<td>Sert au calcul de la marge (rapports)</td>
+</tr>
+<tr>
+<td><strong>Seuil d'alerte</strong></td>
+<td>Déclenche l'alerte « stock bas »</td>
+</tr>
+<tr>
+<td><strong>Unité</strong></td>
+<td>Comprimé, boîte, flacon, sachet…</td>
+</tr>
+<tr>
+<td><strong>Numéro de lot</strong> <em>(facultatif)</em></td>
+<td>Résumé affiché ; le détail vit dans les lots (chapitre 5)</td>
+</tr>
+<tr>
+<td><strong>Date de péremption</strong> <em>(facultatif)</em></td>
+<td>Résumé du <strong>lot valide le plus proche</strong>. C'est cette date qui bloque la vente quand elle est dépassée</td>
+</tr>
+</tbody>
+</table>
+<p>La section <strong>Lot &amp; péremption</strong> n'apparaît que si l'activité a le module
+<code>lots_expiration</code> (donc : en pharmacie, oui).</p>
+<p>Sous la date, l'application affiche tout de suite le verdict :</p>
+<ul>
+<li>« Produit EXPIRÉ (…) — la vente sera refusée en caisse. »</li>
+<li>« Expire bientôt : dans N jours. »</li>
+<li>ou rien (produit valide).</li>
+</ul>
+<h3 id="42-les-formats-de-vente-plaquette-boite">4.2 Les formats de vente (plaquette, boîte)</h3>
+<p>Un médicament se vend souvent à l'unité <strong>et</strong> par plaquette ou par boîte.</p>
+<ol>
+<li>Ouvrir la fiche de l'article.</li>
+<li>Section <strong>Conditionnements</strong> → <strong>Ajouter</strong>.</li>
+<li>Indiquer le libellé (« Plaquette de 10 »), le nombre d'unités de base
+   contenues (10) et le <strong>prix de vente du format</strong>.</li>
+</ol>
+<p>En caisse, l'application propose alors le choix du format, avec des prix
+<strong>lus en base</strong> (jamais saisis au comptoir). Chaque format peut aussi recevoir
+son propre QR code (module QR codes).</p>
+<hr />
+<h2 id="5-les-lots-reception-consultation-retrait">5. Les lots : réception, consultation, retrait</h2>
+<h3 id="51-acceder-aux-lots-dun-article">5.1 Accéder aux lots d'un article</h3>
+<p><em>Articles</em> → ouvrir l'article → icône 🗃️ <strong>Lots &amp; péremption</strong> (en haut à
+droite).</p>
+<p>L'écran affiche, pour l'article :</p>
+<ul>
+<li>le <strong>stock fiche</strong> (quantité de la fiche article) et le <strong>stock vendable</strong>
+  (somme des lots non périmés et non retirés — c'est lui qui autorise la
+  vente) ;</li>
+<li>la liste des lots : numéro, péremption, quantité reçue, <strong>quantité restante</strong>,
+  fournisseur, prix d'achat, état (valide / périmé / retiré) ;</li>
+<li>l'historique des mouvements du lot.</li>
+</ul>
+<h3 id="52-receptionner-un-lot-livraison-dun-fournisseur">5.2 Réceptionner un lot (livraison d'un fournisseur)</h3>
+<ol>
+<li>Sur l'écran <strong>Lots &amp; péremption</strong>, appuyer sur <strong>Réception de lot</strong>.</li>
+<li>Remplir :</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Champ</th>
+<th>Obligatoire</th>
+<th>Remarque</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Numéro de lot</strong></td>
+<td>Oui</td>
+<td>Tel qu'imprimé sur la boîte (ex. <code>LOT-2026-A17</code>)</td>
+</tr>
+<tr>
+<td><strong>Péremption</strong></td>
+<td>Oui</td>
+<td>Refusée si elle est déjà passée</td>
+</tr>
+<tr>
+<td><strong>Fabrication</strong></td>
+<td>Non</td>
+<td>Refusée si elle est postérieure à la péremption</td>
+</tr>
+<tr>
+<td><strong>Quantité reçue</strong></td>
+<td>Oui</td>
+<td>Strictement supérieure à zéro, en unités de base</td>
+</tr>
+<tr>
+<td><strong>Prix d'achat / unité</strong></td>
+<td>Non</td>
+<td>Sert au calcul de la marge</td>
+</tr>
+<tr>
+<td><strong>Fournisseur</strong></td>
+<td>Non</td>
+<td>Texte libre</td>
+</tr>
+<tr>
+<td><strong>Observations</strong></td>
+<td>Non</td>
+<td>Facture, bon de livraison…</td>
+</tr>
+</tbody>
+</table>
+<ol start="3">
+<li><strong>Enregistrer</strong>.</li>
+</ol>
+<p>Résultat : le stock de l'article augmente de la quantité reçue, le lot apparaît
+dans la liste, un mouvement « réception » est créé et une ligne <code>LOT_RECU</code> est
+ajoutée au journal d'audit.</p>
+<blockquote>
+<p>💡 <strong>Une livraison = un lot.</strong> Si le fournisseur livre deux fois le même
+produit avec deux dates différentes, faites <strong>deux réceptions</strong>. Si vous
+saisissez deux fois le même numéro de lot avec la même date, l'application
+refuse (« Ce numéro de lot existe déjà pour cet article avec cette date de
+péremption »).</p>
+</blockquote>
+<h3 id="53-retirer-un-lot-casse-rappel-peremption">5.3 Retirer un lot (casse, rappel, péremption)</h3>
+<ol>
+<li>Sur l'écran <strong>Lots &amp; péremption</strong>, appuyer sur <strong>Retirer du stock</strong> sur la
+   ligne du lot.</li>
+<li>Saisir le <strong>motif</strong> (obligatoire, au moins 3 caractères) :
+   « casse », « rappel fournisseur », « périmé », « vol »…</li>
+<li>Confirmer <strong>Retirer</strong>.</li>
+</ol>
+<p>Résultat : la quantité restante du lot passe à <strong>0</strong>, le stock diminue d'autant
+(ajustement tracé), un mouvement « retrait » est enregistré et une ligne
+<code>LOT_RETIRE</code> est ajoutée au journal d'audit.</p>
+<blockquote>
+<p>Un lot retiré ne peut pas être retiré deux fois. Les lots périmés <strong>non
+retirés</strong> restent visibles mais ne sont jamais vendus.</p>
+</blockquote>
+<h3 id="54-entree-de-stock-simple-ou-reception-de-lot">5.4 Entrée de stock simple ou réception de lot ?</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Entrée de stock</strong> (approvisionnement)</th>
+<th><strong>Réception de lot</strong> (pharmacie)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Où</td>
+<td><em>Stock → Entrée de stock</em></td>
+<td><em>Fiche article → 🗃️ → Réception de lot</em></td>
+</tr>
+<tr>
+<td>Saisie</td>
+<td>Quantité en unités ou en cartons</td>
+<td>Numéro de lot + péremption obligatoires</td>
+</tr>
+<tr>
+<td>Stock</td>
+<td>Augmente</td>
+<td>Augmente</td>
+</tr>
+<tr>
+<td>Péremption</td>
+<td>Non suivie</td>
+<td>Suivie, alerte, blocage à l'expiration</td>
+</tr>
+<tr>
+<td>Usage pharmacie</td>
+<td>Déconseillé pour les médicaments</td>
+<td><strong>À utiliser systématiquement</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="55-les-messages-derreur-et-leur-signification">5.5 Les messages d'erreur et leur signification</h3>
+<table>
+<thead>
+<tr>
+<th>Message</th>
+<th>Cause</th>
+<th>Que faire</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LOT_OBLIGATOIRE</code> / « Le numéro de lot est obligatoire »</td>
+<td>Champ vide</td>
+<td>Saisir le numéro imprimé sur la boîte</td>
+</tr>
+<tr>
+<td><code>PEREMPTION_OBLIGATOIRE</code></td>
+<td>Date absente</td>
+<td>Choisir la date de péremption</td>
+</tr>
+<tr>
+<td><code>PEREMPTION_PASSEE</code></td>
+<td>Le lot est déjà périmé</td>
+<td>Refuser le lot au fournisseur</td>
+</tr>
+<tr>
+<td><code>DATES_INCOHERENTES</code></td>
+<td>Fabrication après péremption</td>
+<td>Corriger la date de fabrication</td>
+</tr>
+<tr>
+<td><code>QUANTITE_INVALIDE</code></td>
+<td>Quantité ≤ 0</td>
+<td>Saisir la quantité réellement reçue</td>
+</tr>
+<tr>
+<td><code>LOT_DOUBLON</code></td>
+<td>Même numéro + même date</td>
+<td>Vérifier la livraison, ou corriger le numéro</td>
+</tr>
+<tr>
+<td><code>MOTIF_OBLIGATOIRE</code></td>
+<td>Motif trop court</td>
+<td>Écrire la raison du retrait</td>
+</tr>
+<tr>
+<td><code>LOT_DEJA_RETIRE</code></td>
+<td>Lot déjà sorti</td>
+<td>Aucune action : il est déjà à zéro</td>
+</tr>
+<tr>
+<td><code>DROIT_REFUSE</code></td>
+<td>Rôle sans droit stock</td>
+<td>Demander au propriétaire d'attribuer le rôle Magasinier</td>
+</tr>
+<tr>
+<td><code>HORS_BOUTIQUE</code></td>
+<td>Article/lot d'un autre espace</td>
+<td>Basculer sur la bonne pharmacie</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-la-vente-au-comptoir">6. La vente au comptoir</h2>
+<p><em>Caisse</em> → scanner ou choisir l'article → choisir le format (unité, plaquette,
+boîte) → encaisser.</p>
+<p>Ce que le serveur vérifie <strong>avant</strong> d'accepter la vente :</p>
+<ol>
+<li><strong>Produit expiré → refus</strong> : « <em>X</em> est expiré depuis le JJ/MM/AAAA : vente
+   bloquée. »</li>
+<li><strong>Article suivi par lots → stock valide</strong> : seuls les lots non périmés et
+   non retirés comptent. Sinon : « Stock valide insuffisant pour <em>X</em> : N
+   vendable(s) hors lots périmés. »</li>
+</ol>
+<p>Puis, une fois la vente acceptée, le stock est prélevé <strong>FEFO</strong> : le lot qui
+périme le plus tôt est consommé en premier, et le suivant si nécessaire. Chaque
+prélèvement est écrit dans l'historique du lot avec le lien vers la vente.</p>
+<blockquote>
+<p>Un produit <strong>sans</strong> date de péremption n'est jamais bloqué : il se comporte
+comme un article de boutique ordinaire.</p>
+</blockquote>
+<hr />
+<h2 id="7-alertes-de-peremption">7. Alertes de péremption</h2>
+<p>Le module vous prévient à <strong>cinq</strong> endroits :</p>
+<ol>
+<li><strong>Fiche article</strong> — verdict immédiat sous la date (expiré / expire bientôt).</li>
+<li><strong>Liste des articles</strong> — chaque ligne affiche sa péremption (icône rouge =
+   expiré, orange = expire bientôt), avec le délai réglé pour la pharmacie.</li>
+<li><strong>Carte « Expirations » sur l'accueil</strong> — compte des produits à traiter ;
+   elle passe en alerte rouge dès qu'il y en a au moins un.</li>
+<li><strong>Écran Expirations</strong> (<em>Accueil → carte </em><em>Expirations</em><strong>, ou
+   <code>/main/articles/expirations</code>) — trois compteurs : </strong>Expiré<strong>, </strong>Expire
+   bientôt<strong>, </strong>Valide**, triés par urgence, avec le nombre de jours restants.</li>
+<li><strong>Rappel de fin de journée</strong> — la notification de clôture rappelle les
+   produits expirés / proches de la péremption.</li>
+</ol>
+<p>Le seuil « expire bientôt » est celui réglé dans <em>Paramètres → Alerte de
+péremption</em> (90 jours conseillés en pharmacie).</p>
+<hr />
+<h2 id="8-ajouter-et-gerer-les-collaborateurs">8. Ajouter et gérer les collaborateurs</h2>
+<blockquote>
+<p>En pharmacie, l'équipe se gère avec l'écran <strong>Mon Équipe</strong>, commun à toutes
+les activités. Il n'y a pas d'écran d'équipe spécifique comme au pressing.</p>
+</blockquote>
+<h3 id="81-qui-peut-le-faire">8.1 Qui peut le faire</h3>
+<ul>
+<li><strong>Propriétaire</strong> de l'entreprise, ou collaborateur ayant le rôle
+  <strong>Responsable (tous les droits)</strong>.</li>
+<li>Un <strong>Vendeur</strong>, un <strong>Magasinier</strong> ou un <strong>Comptable</strong> ne voit pas cet écran.</li>
+<li>La plateforme (Super Administrateur) peut aussi intervenir, voir 8.7.</li>
+</ul>
+<h3 id="82-le-chemin-le-plus-court">8.2 Le chemin le plus court</h3>
+<p>Deux accès mènent au même écran <strong>Mon Équipe</strong> :</p>
+<ul>
+<li><strong>Accueil</strong> → bouton <strong>Collaborateurs</strong> (sous les raccourcis) ;</li>
+<li><strong>Paramètres → section Équipe → « Mes vendeurs »</strong>
+  (sous-titre : « Ajouter ou supprimer des collaborateurs »).</li>
+</ul>
+<h3 id="83-ajouter-un-collaborateur-champ-par-champ">8.3 Ajouter un collaborateur, champ par champ</h3>
+<ol>
+<li>Sur <strong>Mon Équipe</strong>, appuyer sur le bouton <strong>+</strong> (ou <em>Nouveau collaborateur</em>).</li>
+<li>Remplir la fiche :</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Champ</th>
+<th>Obligatoire</th>
+<th>Ce qu'il faut savoir</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nom</strong></td>
+<td>Oui</td>
+<td>Nom de famille</td>
+</tr>
+<tr>
+<td><strong>Prénom</strong></td>
+<td>Non</td>
+<td></td>
+</tr>
+<tr>
+<td><strong>E-mail</strong></td>
+<td>Oui</td>
+<td><strong>C'est l'identifiant de connexion.</strong> Une adresse = un seul compte sur toute la plateforme</td>
+</tr>
+<tr>
+<td><strong>Téléphone</strong></td>
+<td>Non</td>
+<td>Utile pour joindre le collaborateur</td>
+</tr>
+<tr>
+<td><strong>Mot de passe</strong></td>
+<td>Oui</td>
+<td><strong>8 caractères minimum</strong> — à communiquer vous-même au collaborateur</td>
+</tr>
+<tr>
+<td><strong>Rôle</strong></td>
+<td>Oui</td>
+<td>Voir le tableau 8.4</td>
+</tr>
+<tr>
+<td><strong>Boutique / espace</strong></td>
+<td>Oui (par défaut : l'espace actif)</td>
+<td>Détermine ce que le collaborateur voit en se connectant. En pharmacie : la pharmacie</td>
+</tr>
+</tbody>
+</table>
+<ol start="3">
+<li><strong>Enregistrer</strong>.</li>
+</ol>
+<p>Le compte est créé <strong>immédiatement</strong> : aucun code d'invitation, aucun e-mail de
+validation. Le collaborateur peut se connecter tout de suite avec son e-mail et
+le mot de passe que vous venez de saisir.</p>
+<p>Message de confirmation : « Compte de <em>Nom</em> créé : il peut se connecter dès
+maintenant. »</p>
+<blockquote>
+<p>🛠️ Correctif 177 : l'espace de travail proposé par défaut est celui de
+<strong>votre entreprise</strong> (et non celui d'une autre entreprise du même patron).
+Choisissez toujours <strong>la pharmacie</strong> dans le champ « Boutique / espace »
+si votre compte gère plusieurs activités.</p>
+</blockquote>
+<h3 id="84-les-roles-et-ce-quils-permettent">8.4 Les rôles et ce qu'ils permettent</h3>
+<table>
+<thead>
+<tr>
+<th>Rôle proposé</th>
+<th>Pour qui</th>
+<th>Ce qu'il peut faire</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Vendeur / caissier</strong></td>
+<td>Comptoir</td>
+<td>Vendre, encaisser, consulter les articles. <strong>Ne modifie jamais un prix</strong> (règle appliquée par le serveur)</td>
+</tr>
+<tr>
+<td><strong>Magasinier / stock</strong></td>
+<td>Réception, rayons</td>
+<td>Entrées de stock, réceptions de lot, retraits de lot, inventaire, ajustements</td>
+</tr>
+<tr>
+<td><strong>Comptable</strong></td>
+<td>Administration</td>
+<td>Dépenses, finances, rapports, exports</td>
+</tr>
+<tr>
+<td><strong>Responsable (tous les droits)</strong></td>
+<td>Gérant, pharmacien adjoint</td>
+<td>Tout ce que fait le propriétaire dans l'entreprise, y compris <strong>gérer l'équipe</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Les droits détaillés viennent de la matrice de permissions du module 4 : la
+plateforme peut les ajuster (elle ne fait jamais confiance au téléphone pour
+cela — chaque action est revérifiée côté serveur).</p>
+<blockquote>
+<p><strong>Principe de moindre privilège</strong> : donnez le rôle <em>Vendeur</em> à un caissier,
+pas <em>Responsable</em>. Un compte <em>Responsable</em> peut créer d'autres comptes et
+supprimer des données.</p>
+</blockquote>
+<h3 id="85-modifier-un-collaborateur">8.5 Modifier un collaborateur</h3>
+<p>Sur sa ligne → <strong>Modifier</strong> :</p>
+<ul>
+<li>changer le <strong>rôle</strong> (ex. Vendeur → Magasinier) ;</li>
+<li><strong>activer / désactiver</strong> le compte (désactivé = ne peut plus se connecter) ;</li>
+<li><strong>réinitialiser le mot de passe</strong> (8 caractères minimum) ;</li>
+<li>changer l'<strong>espace d'affectation</strong> (utile si la pharmacie a plusieurs
+  points de vente).</li>
+</ul>
+<p>Message de confirmation : « <em>Nom</em> mis à jour. » Les changements sont effectifs
+à la connexion suivante (ou immédiatement pour une désactivation).</p>
+<h3 id="86-supprimer-un-collaborateur">8.6 Supprimer un collaborateur</h3>
+<p>Sur sa ligne → <strong>Supprimer</strong> → taper <strong>SUPPRIMER</strong> dans le champ de confirmation
+→ confirmer.</p>
+<p>Ce qui se passe :</p>
+<ul>
+<li>son <strong>profil</strong> et son <strong>compte de connexion</strong> sont supprimés : il ne peut plus
+  se connecter ;</li>
+<li>ses <strong>ventes, encaissements, lots et historiques restent</strong> dans la pharmacie
+  (l'auteur est simplement détaché) ;</li>
+<li>une ligne <code>COLLABORATEUR_SUPPRIME</code> est écrite au journal d'audit ;</li>
+<li>le propriétaire ne peut pas être supprimé par cet écran, et vous ne pouvez pas
+  supprimer votre propre compte.</li>
+</ul>
+<p>Pour une absence temporaire, préférez <strong>désactiver</strong> plutôt que supprimer : le
+compte reste, l'accès est fermé.</p>
+<blockquote>
+<p>🛠️ Correctif 176 : jusqu'au 20/11/2026, ce bouton échouait toujours (la
+fonction appelée n'existait pas en base). Il fonctionne dès que la migration
+<code>20260916000176_suppression_collaborateur.sql</code> est exécutée.</p>
+</blockquote>
+<h3 id="87-cas-particuliers">8.7 Cas particuliers</h3>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Ce qu'il faut faire</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>La personne a <strong>déjà un compte</strong> Biashara Yangu (autre entreprise)</td>
+<td>Ne créez pas de doublon : la création échoue avec « Cette adresse e-mail est déjà utilisée ». Utilisez le <strong>rattachement</strong> depuis la fiche entreprise (Super Administrateur) ou choisissez une autre adresse</td>
+</tr>
+<tr>
+<td>C'est le <strong>Super Administrateur</strong> qui installe l'équipe</td>
+<td><em>Super Admin → Entreprises → fiche de la pharmacie → </em><em>Gérer les utilisateurs</em>** : rattacher un compte existant, ou vérifier qui est rattaché</td>
+</tr>
+<tr>
+<td>Le collaborateur <strong>ne voit pas la pharmacie</strong></td>
+<td>Son <strong>espace d'affectation</strong> est probablement une autre boutique : Modifier → choisir la pharmacie</td>
+</tr>
+<tr>
+<td>Le collaborateur <strong>ne voit pas les lots</strong></td>
+<td>Son rôle n'a pas le droit <code>stock</code> : passer en <strong>Magasinier</strong> ou <strong>Responsable</strong></td>
+</tr>
+<tr>
+<td>Le patron quitte la pharmacie</td>
+<td>Ne supprimez pas son compte : changez son rôle ou créez un nouveau <em>Responsable</em>. Le propriétaire de l'entreprise ne peut pas être supprimé par ce biais</td>
+</tr>
+</tbody>
+</table>
+<h3 id="88-les-erreurs-dajout-traduites">8.8 Les erreurs d'ajout, traduites</h3>
+<table>
+<thead>
+<tr>
+<th>Message affiché</th>
+<th>Signification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>« Seul le propriétaire peut créer ou modifier un collaborateur. »</td>
+<td>Votre rôle ne le permet pas</td>
+</tr>
+<tr>
+<td>« Indiquez le nom du collaborateur. »</td>
+<td>Nom vide</td>
+</tr>
+<tr>
+<td>« Adresse e-mail invalide : elle sert d'identifiant de connexion. »</td>
+<td>E-mail mal formé</td>
+</tr>
+<tr>
+<td>« Le mot de passe doit comporter au moins 8 caractères. »</td>
+<td>Mot de passe trop court</td>
+</tr>
+<tr>
+<td>« Choisissez un rôle valide pour ce collaborateur. »</td>
+<td>Rôle absent ou inconnu</td>
+</tr>
+<tr>
+<td>« Cette adresse e-mail est déjà utilisée. Choisissez-en une autre. »</td>
+<td>Compte existant</td>
+</tr>
+<tr>
+<td>« Ce collaborateur n'appartient pas à votre entreprise. »</td>
+<td>Ligne périmée : actualisez l'écran</td>
+</tr>
+<tr>
+<td>« Tapez SUPPRIMER pour confirmer la suppression. »</td>
+<td>Confirmation non saisie (suppression)</td>
+</tr>
+<tr>
+<td>« Le propriétaire de l'entreprise ne peut pas être supprimé ici. »</td>
+<td>Cible = compte propriétaire</td>
+</tr>
+<tr>
+<td>« Suppression bloquée par un historique… »</td>
+<td>Migration 174 non exécutée</td>
+</tr>
+<tr>
+<td>« Vous ne pouvez pas modifier votre propre compte ici. »</td>
+<td>Utilisez <em>Paramètres → Changer le mot de passe</em></td>
+</tr>
+<tr>
+<td>« Session expirée : reconnectez-vous. »</td>
+<td>Session terminée : se reconnecter puis recommencer</td>
+</tr>
+</tbody>
+</table>
+<h3 id="89-bonnes-pratiques-dequipe">8.9 Bonnes pratiques d'équipe</h3>
+<ul>
+<li><strong>Un compte par personne</strong> : jamais un compte partagé « caisse » — sinon
+  l'historique des ventes ne dit plus qui a vendu quoi.</li>
+<li>Le mot de passe du <strong>propriétaire ne se partage pas</strong> : créez un
+  <em>Responsable</em> pour le gérant.</li>
+<li>Créez les comptes <strong>le jour de l'embauche</strong>, désactivez-les <strong>le jour du
+  départ</strong>.</li>
+<li>Vérifiez une fois par mois la liste <strong>Mon Équipe</strong> : un ancien vendeur encore
+  actif est un risque.</li>
+<li>Chaque collaborateur doit avoir une <strong>adresse e-mail qui lui appartient</strong>
+  (numéro + nom, ou adresse personnelle).</li>
+</ul>
+<hr />
+<h2 id="9-rapports-et-exports">9. Rapports et exports</h2>
+<p><em>Rapports</em> (module <code>rapports</code>) → choisir le type :</p>
+<table>
+<thead>
+<tr>
+<th>Rapport</th>
+<th>Contenu utile en pharmacie</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Expirations (pharmacie)</strong></td>
+<td>Produits expirés ou proches de la péremption, triés par urgence, avec l'horizon en jours. Apparaît uniquement si le module <code>lots_expiration</code> est actif</td>
+</tr>
+<tr>
+<td><strong>Ventes</strong></td>
+<td>Journal des ventes de la période, par article et par vendeur</td>
+</tr>
+<tr>
+<td><strong>Stock</strong></td>
+<td>Quantités, seuils, valeur du stock</td>
+</tr>
+<tr>
+<td><strong>Finance / Dépenses</strong></td>
+<td>Recettes, dépenses, marge</td>
+</tr>
+<tr>
+<td><strong>Dettes clients</strong></td>
+<td>Restes à recouvrer et ancienneté</td>
+</tr>
+</tbody>
+</table>
+<p>Chaque rapport peut être <strong>téléchargé en PDF</strong> (mise en page prête à imprimer)
+ou en <strong>Excel</strong>, et reste consultable dans l'historique des rapports.</p>
+<hr />
+<h2 id="10-bonnes-pratiques">10. Bonnes pratiques</h2>
+<ol>
+<li><strong>Enregistrez la réception avant de mettre en rayon.</strong> Un médicament vendu
+   sans lot fausse le FEFO et l'inventaire.</li>
+<li><strong>Un lot par livraison</strong>, jamais « on ajoutera la date plus tard » — la date
+   d'un lot est immuable.</li>
+<li><strong>Réglez l'alerte à 90 jours</strong> : c'est le délai qui laisse le temps de
+   retourner un stock au fournisseur.</li>
+<li><strong>Retirez les lots périmés</strong> au lieu de les laisser en rayon : ils
+   n'apparaîtront plus comme vendables et le rapport sera propre.</li>
+<li><strong>Renseignez le prix d'achat</strong> à la réception : sans lui, la marge des
+   rapports est incomplète.</li>
+<li><strong>Créez les conditionnements</strong> (plaquette, boîte) plutôt que de bricoler des
+   prix au comptoir.</li>
+<li><strong>Un compte par vendeur</strong>, revu chaque mois.</li>
+<li><strong>Scannez le QR code</strong> de l'étiquette plutôt que de chercher à la main :
+   l'article est identifié sans ambiguïté, même entre deux espaces de la même
+   entreprise.</li>
+</ol>
+<hr />
+<h2 id="11-depannage-questions-frequentes">11. Dépannage (questions fréquentes)</h2>
+<p><strong>Je ne vois pas la section « Lot &amp; péremption » dans la fiche article.</strong>
+→ L'activité de l'espace n'est pas « Pharmacie ». Fiche de l'entreprise →
+<strong>Type d'activité</strong> → <strong>Changer le type</strong>. Puis actualisez.</p>
+<p><strong>Je ne vois pas l'icône 🗃️ « Lots &amp; péremption ».</strong>
+→ Même cause (module <code>lots_expiration</code> absent), ou votre rôle n'a pas le droit
+<code>stock</code> en lecture.</p>
+<p><strong>L'écran Expirations est vide alors que j'ai des dates.</strong>
+→ Vous êtes sur le mauvais espace (les données sont cloisonnées), ou aucune
+date de péremption n'est enregistrée sur les articles. Vérifiez la fiche
+article.</p>
+<p><strong>La caisse refuse une vente : « est expiré depuis le … ».</strong>
+→ La date de péremption de l'article est dépassée. Retirez le lot concerné,
+puis mettez à jour l'article (nouvelle réception avec un lot valide).</p>
+<p><strong>La caisse refuse une vente : « Stock valide insuffisant ».</strong>
+→ Le stock existe, mais uniquement dans des lots périmés ou retirés. Retirez
+ces lots, puis réceptionnez la nouvelle livraison.</p>
+<p><strong>J'ai enregistré une réception mais le stock n'a pas bougé.</strong>
+→ Actualisez l'écran du stock. Si rien ne change, regardez que la réception
+s'est bien terminée (message de confirmation) : un <code>LOT_DOUBLON</code> ou un
+<code>PEREMPTION_PASSEE</code> interrompt l'enregistrement.</p>
+<p><strong>Je veux corriger la date de péremption d'un lot.</strong>
+→ Impossible : c'est volontaire. Retirez le lot (motif « erreur de saisie ») et
+refaites une réception correcte.</p>
+<p><strong>Un collaborateur a oublié son mot de passe.</strong>
+→ <em>Mon Équipe → sa ligne → Modifier → nouveau mot de passe</em>. Aucun e-mail n'est
+nécessaire.</p>
+<p><strong>Je ne trouve pas le bouton pour ajouter un collaborateur.</strong>
+→ Vous n'avez pas le rôle Propriétaire/Responsable, ou vous êtes dans un autre
+espace. Le bouton est sur <strong>Mon Équipe</strong> (Accueil → <strong>Collaborateurs</strong>).</p>
+<p><strong>Puis-je vendre sans date de péremption ?</strong>
+→ Oui : un article sans date n'est jamais bloqué. Mais en pharmacie, c'est
+déconseillé — vous perdez l'alerte et le FEFO.</p>
+<hr />
+<h2 id="12-annexe-technique">12. Annexe technique</h2>
+<p><em>(Pour l'équipe technique et la plateforme.)</em></p>
+<h3 id="121-objets-en-base">12.1 Objets en base</h3>
+<table>
+<thead>
+<tr>
+<th>Objet</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>produits.lot_numero</code>, <code>produits.date_expiration</code></td>
+<td>Résumé du lot valide le plus proche (mis à jour par <code>lots_rafraichir_peremption</code>)</td>
+</tr>
+<tr>
+<td><code>produits_lots</code></td>
+<td>Un lot : <code>numero_lot</code>, <code>date_fabrication</code>, <code>date_peremption</code>, <code>quantite_recue</code>, <code>quantite_restante</code>, <code>prix_achat_unitaire</code>, <code>fournisseur</code>, <code>retire_le</code>, <code>motif_retrait</code></td>
+</tr>
+<tr>
+<td><code>produits_lots_mouvements</code></td>
+<td>Historique : <code>reception</code>, <code>vente</code>, <code>retrait</code> (avec <code>vente_id</code>)</td>
+</tr>
+<tr>
+<td><code>app_settings['ventes'].bloquer_produits_expires</code></td>
+<td>Blocage de vente des produits expirés (défaut <code>true</code>)</td>
+</tr>
+<tr>
+<td><code>app_settings['peremption']</code></td>
+<td>Délai d'alerte en jours (1–365)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="122-fonctions-serveur">12.2 Fonctions serveur</h3>
+<table>
+<thead>
+<tr>
+<th>Fonction</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rpc_lot_recevoir(produit, numero_lot, peremption, quantite, prix_achat, fournisseur, fabrication, observations)</code></td>
+<td>Réception d'un lot</td>
+</tr>
+<tr>
+<td><code>rpc_lot_retirer(lot_id, motif)</code></td>
+<td>Retrait d'un lot (quantité restante → 0)</td>
+</tr>
+<tr>
+<td><code>rpc_lots_lister(produit)</code></td>
+<td>Lots + stock valide d'un article</td>
+</tr>
+<tr>
+<td><code>rpc_lots_alertes()</code>, <code>rpc_lots_ecarts()</code></td>
+<td>Alertes et écarts de stock (outils de contrôle)</td>
+</tr>
+<tr>
+<td><code>rpc_peremption_config()</code>, <code>rpc_peremption_definir_delai(jours)</code></td>
+<td>Lecture / réglage du délai d'alerte</td>
+</tr>
+<tr>
+<td><code>rpc_rapport_entreprise(type = 'expirations', jours)</code></td>
+<td>Rapport Expirations</td>
+</tr>
+<tr>
+<td><code>rpc_collaborateurs_lister()</code>, <code>rpc_collaborateur_creer(...)</code></td>
+<td>Équipe : liste et création</td>
+</tr>
+<tr>
+<td><code>rpc_collaborateur_maj(...)</code></td>
+<td>Équipe : rôle, état, mot de passe, espace</td>
+</tr>
+<tr>
+<td><code>rpc_collaborateur_supprimer(id, 'SUPPRIMER')</code></td>
+<td>Équipe : suppression (alias <code>delete_collaborateur</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="123-triggers-de-vente">12.3 Triggers de vente</h3>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>Moment</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>trg_vente_lots_controle</code></td>
+<td><code>BEFORE INSERT</code> sur <code>ventes</code></td>
+<td>Refuse <code>PRODUIT_EXPIRE</code> et <code>STOCK_LOT_INSUFFISANT</code> (stock valide seulement)</td>
+</tr>
+<tr>
+<td><code>trg_vente_lots_fefo</code></td>
+<td><code>AFTER INSERT</code> sur <code>ventes</code></td>
+<td>Consomme les lots par <code>date_peremption ASC</code>, <code>recu_le ASC</code>, avec verrou par lot</td>
+</tr>
+<tr>
+<td><code>trg_lots_avant_insertion</code>, <code>trg_lots_date_immuable</code>, <code>trg_lots_apres_entree</code></td>
+<td>Sur <code>produits_lots</code></td>
+<td>Force <code>owner_id</code> = espace, rend la date immuable, augmente le stock</td>
+</tr>
+</tbody>
+</table>
+<h3 id="124-migrations-concernees">12.4 Migrations concernées</h3>
+<p><code>0029</code> (module 16 C1 : colonnes, blocage, rapport), <code>0163</code> (module 36 : lots,
+FEFO, RPC), <code>0164</code> (correctif <code>rpc_lots_ecarts</code>), <code>0157</code> (cohérence pharmacie),
+<code>0072</code> (délai de péremption réglable), <code>0176</code> (suppression d'un collaborateur),
+plus les migrations d'isolation <code>0165</code> → <code>0169</code> (<code>owner_id</code> = espace).</p>
+<h3 id="125-cote-application-dart">12.5 Côté application (Dart)</h3>
+<table>
+<thead>
+<tr>
+<th>Fichier</th>
+<th>Rôle</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lib/models/lot_medicament.dart</code></td>
+<td>Modèle d'un lot + mouvements</td>
+</tr>
+<tr>
+<td><code>lib/models/statut_expiration.dart</code></td>
+<td>Statuts Expiré / Expire bientôt / Valide</td>
+</tr>
+<tr>
+<td><code>lib/services/pharmacie_lots_service.dart</code></td>
+<td>Appels <code>rpc_lots_*</code></td>
+</tr>
+<tr>
+<td><code>lib/services/peremption_service.dart</code></td>
+<td>Délai d'alerte de l'entreprise</td>
+</tr>
+<tr>
+<td><code>lib/pages/lots_medicament_page.dart</code></td>
+<td>Écran <strong>Lots &amp; péremption</strong></td>
+</tr>
+<tr>
+<td><code>lib/pages/expirations_page.dart</code></td>
+<td>Écran <strong>Expirations</strong></td>
+</tr>
+<tr>
+<td><code>lib/services/equipe_service.dart</code> + <code>lib/pages/manage_users_page.dart</code></td>
+<td><strong>Mon Équipe</strong> (collaborateurs, rôles)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="126-modules-et-droits">12.6 Modules et droits</h3>
+<ul>
+<li>Code du module : <code>lots_expiration</code> (<code>ModuleCode.lotsExpiration</code>).</li>
+<li>Profil installé par le métier <code>pharmacie</code> : voir <code>types_espaces_modules</code> en
+  base (seed de la migration 0027).</li>
+<li>Écrans soumis aux permissions <code>articles</code> / <code>stock</code> (<code>PageAccess</code>) ×
+  <code>ActionAccess.voir|creer|modifier</code>.</li>
+</ul></body></html>

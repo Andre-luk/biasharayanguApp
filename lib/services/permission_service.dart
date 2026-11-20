@@ -664,12 +664,36 @@ class PermissionService {
   // ---------------------------------------------------------------------------
 
   RoleUtilisateur _roleCourant = RoleUtilisateur.inconnu;
+  bool _activitePressing = false;
+  String? _rolePressingCode;
   final Map<RoleUtilisateur, RolePermission> _surcharges =
       <RoleUtilisateur, RolePermission>{};
   bool _surchargesChargees = false;
 
   /// Rôle de la session courante.
   RoleUtilisateur get roleCourant => _roleCourant;
+
+  /// Vrai quand l'espace actif est un pressing (même si un cache ancien
+  /// contient encore des modules de boutique).
+  bool get estDansPressing => _activitePressing;
+
+  /// Métier du collaborateur dans le pressing (`accueil`, `atelier`, etc.).
+  String? get rolePressingCode => _rolePressingCode;
+
+  /// Définit l'activité et le métier métier du compte courant.
+  ///
+  /// Cette portée complète le rôle global (`VENDEUR`, `MAGASINIER`, etc.) :
+  /// celui-ci ne suffit pas pour décider des écrans d'un collaborateur de
+  /// pressing. L'activité est aussi rafraîchie quand le profil de modules
+  /// change.
+  void definirContextePressing({
+    required bool actif,
+    String? roleCode,
+  }) {
+    _activitePressing = actif;
+    final String code = (roleCode ?? '').trim().toLowerCase();
+    _rolePressingCode = code.isEmpty || code == 'aucun' ? null : code;
+  }
 
   /// `true` dès que la matrice (défauts + surcharges) est utilisable.
   bool get pret => _surchargesChargees;
@@ -820,6 +844,8 @@ class PermissionService {
   /// Vide le cache (déconnexion, changement de rôle…).
   void reinitialiser() {
     _roleCourant = RoleUtilisateur.inconnu;
+    _activitePressing = false;
+    _rolePressingCode = null;
     _surcharges.clear();
     _surchargesChargees = false;
   }
@@ -866,8 +892,50 @@ class PermissionService {
           .toList(growable: false);
 
   /// Vérification d'un droit précis.
-  bool aAcces(RoleUtilisateur role, PageAccess page, ActionAccess action) =>
-      permissionsDe(role).aAcces(page, action);
+  bool aAcces(RoleUtilisateur role, PageAccess page, ActionAccess action) {
+    final bool autorise = permissionsDe(role).aAcces(page, action);
+    if (!autorise || role != _roleCourant || !_activitePressing) {
+      return autorise;
+    }
+
+    // Un pressing n'est pas une boutique : les métiers reçoivent une liste
+    // blanche de pages (pas une matrice générique VENDEUR/MAGASINIER).
+    final String? metier = _rolePressingCode;
+    if (metier == null) {
+      // Compte historique non caractérisé : accès d'accueil minimal jusqu'à
+      // l'attribution d'un rôle métier par le responsable.
+      return page == PageAccess.dashboard && autorise;
+    }
+
+    final Set<PageAccess> pagesPermises = switch (metier) {
+      'proprietaire' || 'responsable' => <PageAccess>{
+          PageAccess.dashboard,
+          PageAccess.parametres,
+          PageAccess.collaborateurs,
+          PageAccess.finance,
+          PageAccess.rapports,
+          PageAccess.assistantIa,
+          PageAccess.pressingDepots,
+          PageAccess.pressingAtelier,
+          PageAccess.pressingRetraits,
+        },
+      'accueil' => <PageAccess>{
+          PageAccess.dashboard,
+          PageAccess.pressingDepots,
+          PageAccess.pressingRetraits,
+        },
+      'atelier' => <PageAccess>{
+          PageAccess.dashboard,
+          PageAccess.pressingAtelier,
+        },
+      'caisse' => <PageAccess>{
+          PageAccess.dashboard,
+          PageAccess.pressingRetraits,
+        },
+      _ => <PageAccess>{},
+    };
+    return pagesPermises.contains(page) && autorise;
+  }
 
   /// Vérification d'un droit pour le rôle connecté.
   bool peut(PageAccess page, ActionAccess action) =>
@@ -939,9 +1007,46 @@ class PermissionService {
 
   /// `true` si la navigation vers [location] est autorisée pour le rôle courant.
   bool routeAutorisee(String location) {
+    final String chemin = Uri.tryParse(location)?.path ?? location;
+    if (_activitePressing &&
+      (chemin == '/main/pressing/equipe' ||
+        chemin == '/main/pressing/reglages')) {
+      return (_rolePressingCode == 'proprietaire' ||
+          _rolePressingCode == 'responsable') &&
+        permissionsDe(_roleCourant)
+          .aAcces(PageAccess.pressingDepots, ActionAccess.voir);
+    }
+    if (_activitePressing && chemin == '/main/pressing/caisse') {
+      final String? metier = _rolePressingCode;
+      return (metier == 'proprietaire' ||
+              metier == 'responsable' ||
+              metier == 'accueil' ||
+              metier == 'caisse') &&
+          permissionsDe(_roleCourant).aAcces(
+            PageAccess.caisse,
+            ActionAccess.voir,
+          );
+    }
+    if (_activitePressing && _routeVenteBoutiqueInterdite(chemin)) {
+      return false;
+    }
     final ({PageAccess page, ActionAccess action})? regle = _resoudre(location);
     if (regle == null) return true;
     return peut(regle.page, regle.action);
+  }
+
+  static bool _routeVenteBoutiqueInterdite(String chemin) {
+    const List<String> routes = <String>[
+      '/main/new-sale',
+      '/main/ventes',
+      '/main/panier',
+      '/main/pesee',
+      '/scanner',
+      '/main/caisse',
+      '/main/commercial',
+    ];
+    return routes.any((String route) =>
+        chemin == route || chemin.startsWith('$route/'));
   }
 
   /// Première page accessible du rôle, pour y rediriger un accès refusé.

@@ -145,10 +145,71 @@ class _PressingEquipePageState extends State<PressingEquipePage> {
     }
   }
 
+  /// 🗑️ RETIRER UN COLLABORATEUR (20/11/2026).
+  ///
+  /// Deux étapes : confirmation écrite (« SUPPRIMER »), puis suppression du
+  /// compte de connexion et du profil. Les historiques du pressing gardent
+  /// l'identifiant (aucune donnée métier n'est perdue).
+  Future<void> _retirer(CollaborateurPressing c) async {
+    final TextEditingController saisie = TextEditingController();
+
+    final String? confirmation = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: Text('Retirer ${c.nomComplet} ?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Le collaborateur ne pourra plus se connecter. Les commandes, '
+              'paiements et historiques du pressing sont conservés.',
+            ),
+            const SizedBox(height: 12),
+            const Text('Tapez SUPPRIMER pour confirmer :'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: saisie,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: 'SUPPRIMER',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppCouleurs.danger),
+            onPressed: () => Navigator.pop(ctx, saisie.text.trim()),
+            child: const Text('Retirer'),
+          ),
+        ],
+      ),
+    );
+
+    saisie.dispose();
+    if (confirmation == null) return;
+
+    try {
+      await _service.supprimerCollaborateur(
+        id: c.id,
+        confirmation: confirmation,
+      );
+      await _charger(silencieux: true);
+      _message('${c.nomComplet} a été retiré de l\'équipe.');
+    } on PressingException catch (e) {
+      _message(e.message, erreur: true);
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // INTERFACE
   // ---------------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -303,6 +364,12 @@ class _PressingEquipePageState extends State<PressingEquipePage> {
                     tooltip: 'Modifier',
                     onPressed: () => _modifier(c),
                     icon: const Icon(Icons.edit_outlined, size: 20),
+                  ),
+                  IconButton(
+                    tooltip: 'Retirer du pressing',
+                    onPressed: () => _retirer(c),
+                    icon: const Icon(Icons.person_remove_alt_1_rounded,
+                        size: 20, color: AppCouleurs.danger),
                   ),
                   Switch(
                     value: c.actif,

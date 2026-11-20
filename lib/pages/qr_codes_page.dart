@@ -20,6 +20,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/qr_code_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
+import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 import 'package:biashara_yangu/widgets/app_dropdown_field.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
@@ -60,6 +61,9 @@ class _QrCodesPageState extends State<QrCodesPage> {
   List<Entreprise> _entreprises = const <Entreprise>[];
   String? _entrepriseId;
 
+  /// 💰 Tarif du QR code et revenus (plateforme uniquement).
+  QrTarif? _tarif;
+
   RealtimeChannel? _canalTempsReel;
   Timer? _antiRebondTempsReel;
 
@@ -70,6 +74,9 @@ class _QrCodesPageState extends State<QrCodesPage> {
     // l'écoute temps réel du patron n'a pas de sens ici.
     if (!widget.modePlateforme) {
       _demarrerEcouteTempsReel();
+    }
+    if (widget.modePlateforme) {
+      unawaited(_chargerTarif());
     }
     _charger();
   }
@@ -88,21 +95,33 @@ class _QrCodesPageState extends State<QrCodesPage> {
   // DONNÉES
   // ---------------------------------------------------------------------------
 
-  /// 🏢 Mode plateforme — patron d'une entreprise (utilisateur sans parent),
-  /// son identifiant sert à charger les articles de SA boutique.
-  Future<String?> _proprietaireDeEntreprise(String entrepriseId) async {
-    final dynamic donnees = await SupabaseService.instance.client
-        .from('utilisateurs')
-        .select('id, parent_id')
-        .eq('entreprise_id', entrepriseId);
-    final List<Map<String, dynamic>> lignes = parseMapList(donnees);
-    if (lignes.isEmpty) return null;
-    for (final Map<String, dynamic> ligne in lignes) {
-      if (parseStringOrNull(ligne['parent_id']) == null) {
-        return parseString(ligne['id']);
-      }
+  /// 💰 Charge le tarif unitaire et les revenus QR (plateforme).
+  Future<void> _chargerTarif() async {
+    try {
+      final QrTarif tarif = await _qr.tarif();
+      if (mounted) setState(() => _tarif = tarif);
+    } catch (e) {
+      // Migration 175 absente : on affiche simplement 150 CDF par défaut.
+      debugPrint('QrCodesPage._chargerTarif (ignoré) : $e');
     }
-    return parseString(lignes.first['id']);
+  }
+
+  /// 💰 Facture les QR réellement générés/téléchargés/imprimés (idempotent).
+  Future<void> _facturer(List<EtiquetteQr> etiquettes) async {
+    final List<int> ids = etiquettes
+        .map((EtiquetteQr e) => e.articleId)
+        .whereType<int>()
+        .toSet()
+        .toList(growable: false);
+    if (ids.isEmpty) return;
+
+    await _qr.enregistrerEmission(
+      ids,
+      quantite: _copiesParEtiquette,
+    );
+    if (widget.modePlateforme) {
+      await _chargerTarif();
+    }
   }
 
   void _demarrerEcouteTempsReel() {
@@ -148,12 +167,10 @@ class _QrCodesPageState extends State<QrCodesPage> {
         }
         final String? entrepriseId = _entrepriseId;
         if (entrepriseId != null) {
-          final String? proprietaire =
-              await _proprietaireDeEntreprise(entrepriseId);
-          if (proprietaire != null) {
-            articles =
-                await _articles.getArticlesPourProprietaire(proprietaire);
-          }
+          // 🎯 CORRECTIF 175 — le catalogue vient de l'ENTREPRISE (tous ses
+          // espaces), plus de la recherche par UUID du patron qui ne
+          // correspondait plus à `produits.owner_id`.
+          articles = await _articles.getArticlesPourEntreprise(entrepriseId);
         }
       } else {
         articles = await _articles.getArticles();
@@ -313,6 +330,7 @@ class _QrCodesPageState extends State<QrCodesPage> {
       '${etiquettes.length} QR codes générés (${_tailleMm.toStringAsFixed(0)} mm, '
       '${QrCodeService.dpi} DPI) — prêts à télécharger ou imprimer.',
     );
+    unawaited(_facturer(etiquettes));
   }
 
   Future<void> _telecharger() async {
@@ -335,6 +353,8 @@ class _QrCodesPageState extends State<QrCodesPage> {
     );
 
     if (!mounted || chemins == null || chemins.isEmpty) return;
+
+    unawaited(_facturer(etiquettes));
 
     final String dossier =
         chemins.first.substring(0, chemins.first.lastIndexOf('/'));
@@ -381,6 +401,7 @@ class _QrCodesPageState extends State<QrCodesPage> {
 
     if (!mounted || ok != true) return;
     _afficherMessage('Planche PDF envoyée à l\'impression.');
+    unawaited(_facturer(etiquettes));
   }
 
   void _ouvrirApercu(EtiquetteQr etiquette) {
@@ -516,10 +537,115 @@ class _QrCodesPageState extends State<QrCodesPage> {
                 _charger();
               },
             ),
+            // 💰 TARIF DE LA PLATEFORME (150 CDF par défaut, modifiable) et
+            // revenus QR réellement émis. Un QR n'est facturé qu'une fois par
+            // produit, même si l'étiquette est régénérée.
+            if (widget.modePlateforme) ...[
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              Row(
+                children: <Widget>[
+                  Icon(Icons.sell_rounded, size: 18,
+                      color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _tarif == null
+                          ? 'QR : 150 CDF par produit (tarif par défaut)'
+                          : 'QR : ${formatMontant(_tarif!.prix, devise: _tarif!.devise)} '
+                              'par produit · ${_tarif!.nbQr} facturé(s) · '
+                              '${formatMontant(_tarif!.revenusTotal, devise: _tarif!.devise)}'
+                              // 🏷️ 177 — tout ce que la boutique peut déjà
+                              // avoir produit : 1 QR par article + 1 par
+                              // emballage.
+                              '\nCodes existants dans la boutique : '
+                              '${_tarif!.codesExistants}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _modifierTarif,
+                    icon: const Icon(Icons.edit_rounded, size: 16),
+                    label: const Text('Tarif'),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  /// 💰 Fixe le prix unitaire d'un QR code (Super Admin).
+  Future<void> _modifierTarif() async {
+    final TextEditingController controleur = TextEditingController(
+      text: (_tarif?.prix ?? 150).toStringAsFixed(0),
+    );
+
+    final String? saisie = await showDialog<String>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Prix d\'un QR code'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Montant facturé à l\'entreprise pour chaque produit équipé '
+              'd\'un QR code. Le prix par défaut est de 150 CDF.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controleur,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Prix unitaire (CDF)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controleur.text.trim()),
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    );
+
+    controleur.dispose();
+    if (saisie == null || !mounted) return;
+
+    final double? prix = parseDoubleOrNull(saisie.replaceAll(',', '.'));
+    if (prix == null || prix <= 0) {
+      _afficherMessage('Indiquez un prix valide (supérieur à 0).',
+          estErreur: true);
+      return;
+    }
+
+    try {
+      await _qr.definirTarif(prix);
+      await _chargerTarif();
+      if (mounted) {
+        _afficherMessage(
+            'Tarif enregistré : ${formatMontant(prix, devise: 'CDF')} par QR code.');
+      }
+    } catch (e) {
+      if (mounted) {
+        _afficherMessage(
+          'Impossible d\'enregistrer le tarif : la migration 175 doit être '
+          'exécutée en base.',
+          estErreur: true,
+        );
+      }
+    }
   }
 
   Widget _carteOptions() {

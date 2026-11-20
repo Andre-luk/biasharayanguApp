@@ -13,7 +13,6 @@ import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/abonnement_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
-import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/contexte_distribution.dart';
 import 'package:biashara_yangu/services/type_activite_service.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
@@ -46,12 +45,10 @@ class _SetupPageState extends State<SetupPage> {
   bool _saving = false;
   bool _obscurePassword = true;
 
-  /// ⚡ MODULE 23 — MODE D'UTILISATION CHOISI À L'INSCRIPTION.
-  ///
-  /// « Rapide » (défaut) : entreprise créée et essai de 7 jours ACTIVÉ
-  /// immédiatement (pas de double validation), écran d'accueil épuré.
-  /// « Complet » : parcours historique (vérification gestionnaire → finance).
-  ModeApplication _mode = ModeApplication.rapide;
+  // ⚡ 20/11/2026 — LE CHOIX « MODE DE DÉMARRAGE » A ÉTÉ RETIRÉ.
+  //    Toute inscription suit désormais le parcours COMPLET (saisie du
+  //    catalogue, du stock et de la finance, avec vérification du compte).
+  //    Le mode « rapide » n'est plus proposé à l'utilisateur.
 
   /// Rôles proposables à la création d'un compte, selon celui qui crée.
   ///
@@ -276,18 +273,14 @@ class _SetupPageState extends State<SetupPage> {
         // 🏪 Créer l'ENTREPRISE de la boutique (c'est elle qui porte
         // l'abonnement) et la rattacher au compte.
         //
-        // ⚡ MODE SIMPLE : `rpc_entreprise_creer_simple` active un ESSAI de
-        // 7 jours immédiatement — le commerçant peut vendre dès la première
-        // seconde, sans attendre la vérification gestionnaire → finance.
-        // MODE COMPLET : parcours historique (double validation).
+        // ⚡ 20/11/2026 — plus de mode « démarrage rapide » : on passe
+        // TOUJOURS par `rpc_entreprise_creer` (parcours complet, double
+        // validation gestionnaire → finance).
         if (parentId == null) {
-          // Le mode choisi s'applique à CET appareil dans tous les cas.
-          await ModeApplicationService.instance.definir(_mode);
+          await ModeApplicationService.instance.definir(ModeApplication.complet);
           try {
             await SupabaseService.instance.client.rpc(
-              _mode == ModeApplication.rapide
-                  ? 'rpc_entreprise_creer_simple'
-                  : 'rpc_entreprise_creer',
+              'rpc_entreprise_creer',
               params: <String, dynamic>{
                 if (nomBoutique.isNotEmpty) 'p_nom': nomBoutique,
                 if (telephone.isNotEmpty) 'p_telephone': telephone,
@@ -297,35 +290,14 @@ class _SetupPageState extends State<SetupPage> {
                 'p_type': _categorieActivite,
               },
             );
-            // L'état d'accès (essai actif) est relu en arrière-plan :
-            // l'inscription ne doit jamais attendre le réseau.
+            // L'état d'accès est relu en arrière-plan : l'inscription ne
+            // doit jamais attendre le réseau.
             unawaited(AbonnementService.instance.rafraichirSilencieux());
           } catch (e) {
-            // Migration 81 pas encore exécutée : on retombe sur la création
-            // standard pour que l'inscription ne reste jamais sans entreprise.
-            final String texte = e.toString();
-            final bool fonctionAbsente = texte.contains('PGRST202') ||
-                texte.contains('Could not find the function');
-            if (_mode == ModeApplication.rapide && fonctionAbsente) {
-              try {
-                await SupabaseService.instance.client.rpc(
-                  'rpc_entreprise_creer',
-                  params: <String, dynamic>{
-                    if (nomBoutique.isNotEmpty) 'p_nom': nomBoutique,
-                    if (telephone.isNotEmpty) 'p_telephone': telephone,
-                    // ⚠️ La CATÉGORIE choisie doit survivre au repli : forcer
-                    // `boutique` créait un pressing… en boutique (et le compte
-                    // perdait ses modules métier dès la reconnexion).
-                    'p_type': _categorieActivite,
-                  },
-                );
-                unawaited(AbonnementService.instance.rafraichirSilencieux());
-              } catch (e2) {
-                debugPrint('Création de l\'entreprise (repli) ignorée : $e2');
-              }
-            } else {
-              debugPrint('Création de l\'entreprise ignorée : $e');
-            }
+            // Une migration non exécutée ne doit jamais laisser le compte
+            // sans entreprise : `assurerEntreprise()` réessaiera à la
+            // connexion suivante.
+            debugPrint('Création de l\'entreprise ignorée : $e');
           }
         }
 
@@ -487,50 +459,14 @@ class _SetupPageState extends State<SetupPage> {
                       ),
                       const SizedBox(height: 20), // AJOUT : Espacement
 
-                      // ⚡ MODULE 23 — MODE DE DÉMARRAGE.
-                      // Rapide : essai actif immédiatement, accueil épuré.
-                      // Complet : vérification par l'équipe plateforme.
-                      if (!widget.adminCreating) ...[
-                        _buildFieldTitle('Mode de démarrage'),
-                        SegmentedButton<ModeApplication>(
-                          segments: const <ButtonSegment<ModeApplication>>[
-                            ButtonSegment<ModeApplication>(
-                              value: ModeApplication.rapide,
-                              icon: Icon(Icons.bolt_rounded, size: 18),
-                              label: Text('Rapide'),
-                            ),
-                            ButtonSegment<ModeApplication>(
-                              value: ModeApplication.complet,
-                              icon: Icon(Icons.dashboard_customize_outlined,
-                                  size: 18),
-                              label: Text('Complet'),
-                            ),
-                          ],
-                          selected: <ModeApplication>{_mode},
-                          onSelectionChanged: (Set<ModeApplication> choix) {
-                            setState(() => _mode = choix.first);
-                          },
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8.0, left: 4.0),
-                          child: Text(
-                            "Rapide : nom + prix → vous vendez tout de suite "
-                            "(essai de 7 jours actif). Complet : catalogue, "
-                            "stock et finance, avec vérification du compte.",
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      ],
-
                       // 🧩 MODULE 17 — CATÉGORIE D'ACTIVITÉ : l'environnement
                       // du client (modules, tableaux de bord) suit ce choix.
-                      // ⚙️ CORRECTIF 96 — le choix d'activité ne doit pas
-                      // disparaître en « mode rapide » : c'est lui qui décide
-                      // de l'environnement (Boutique ou Distribution).
+                      // ⚙️ 20/11/2026 — le choix « mode de démarrage
+                      // (rapide / complet) » a été RETIRÉ de l'inscription :
+                      // toute entreprise suit désormais le parcours complet.
+                      // La catégorie, elle, reste indispensable : c'est elle
+                      // qui détermine l'environnement (Boutique, Hôtel,
+                      // Distribution, Pressing…).
                       if (!widget.adminCreating &&
                           (_chargementCategories ||
                               _categories.isNotEmpty)) ...[

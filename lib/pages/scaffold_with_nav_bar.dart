@@ -11,6 +11,7 @@ import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/contexte_distribution.dart';
+import 'package:biashara_yangu/services/pressing_service.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/widgets/banniere_abonnement.dart';
@@ -95,6 +96,7 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   ];
 
   bool _loading = true;
+  String? _rolePressingCode;
 
   @override
   void initState() {
@@ -106,6 +108,7 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     ModulesService.instance.modules.addListener(_onModulesChange);
     // ⚡ MODULE 23 — le mode rapide réduit la barre à l'essentiel.
     ModeApplicationService.instance.mode.addListener(_onModulesChange);
+    _actualiserContextePressing();
   }
 
   @override
@@ -116,7 +119,25 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   }
 
   void _onModulesChange() {
+    _actualiserContextePressing();
     if (mounted) setState(() {});
+  }
+
+  void _actualiserContextePressing() {
+    final bool profilPressingCharge = ModulesService.instance.charge &&
+        ModulesService.instance.modules.value.contains(ModuleCode.pressDepots);
+    final String code = (_rolePressingCode ?? '').trim().toLowerCase();
+    final bool rolePressingConnu = <String>{
+      'proprietaire',
+      'responsable',
+      'accueil',
+      'atelier',
+      'caisse',
+    }.contains(code);
+    PermissionService.instance.definirContextePressing(
+      actif: profilPressingCharge || rolePressingConnu,
+      roleCode: _rolePressingCode,
+    );
   }
 
   /// 🔐 MODULE 4 — contrôle du rôle à l'entrée de l'espace entreprise.
@@ -136,6 +157,11 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     final RoleUtilisateur role = PermissionService.roleDepuisUtilisateur(user);
 
     PermissionService.instance.definirRoleCourant(role);
+
+    if (!role.estPlateforme) {
+      _rolePressingCode = await PressingService.instance.rolePressingCode();
+      _actualiserContextePressing();
+    }
 
     // 🚚 MODULE 24 — le rôle DANS la distribution (`role_distribution`) ne
     // peut pas être déduit du rôle global : on le lit au serveur (best-effort,

@@ -26,6 +26,11 @@ class CollaborateurEntreprise {
   final String? espaceId;
   final String espaceNom;
 
+  /// 🧺 0177 — métier dans le pressing (`responsable`, `accueil`, `atelier`,
+  /// `caisse`). `null` = compte non concerné. Affiché pour que le patron
+  /// VOIE le rôle métier attribué, au lieu de le deviner.
+  final String? rolePressing;
+
   const CollaborateurEntreprise({
     required this.id,
     required this.nom,
@@ -36,6 +41,7 @@ class CollaborateurEntreprise {
     required this.actif,
     this.espaceId,
     this.espaceNom = '',
+    this.rolePressing,
   });
 
   factory CollaborateurEntreprise.depuisJson(Map<String, dynamic> json) {
@@ -49,7 +55,21 @@ class CollaborateurEntreprise {
       actif: parseBool(json['actif'], fallback: true),
       espaceId: parseStringOrNull(json['espace_id']),
       espaceNom: parseString(json['espace_nom']),
+      rolePressing: parseStringOrNull(json['role_pressing']),
     );
+  }
+
+  /// Libellé du métier pressing, ou `null` si le compte n'en a pas.
+  String? get libelleRolePressing {
+    final String? code = rolePressing?.trim().toLowerCase();
+    if (code == null || code.isEmpty) return null;
+    return switch (code) {
+      'responsable' => 'Pressing · responsable',
+      'accueil' => 'Pressing · accueil',
+      'atelier' => 'Pressing · atelier',
+      'caisse' => 'Pressing · caisse',
+      _ => 'Pressing · $code',
+    };
   }
 
   String get nomComplet {

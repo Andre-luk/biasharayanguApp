@@ -53,8 +53,12 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 82 migrations SQL idempotentes (0000 → 0081)
-test/                  → 977 tests purs (modèles, permissions, rapports, modules, devises, factures d'abonnement, quotas IA, codes de validation agent, marketplace, administration, péremption, fiche entreprise, distribution terrain, version)
+supabase/migrations/   → 175 migrations SQL idempotentes (0000 → 0177)
+test/                  → tests purs (modèles, permissions, rapports, modules,
+                          devises, factures d'abonnement, quotas IA, codes de
+                          validation agent, marketplace, administration,
+                          péremption, fiche entreprise, distribution terrain,
+                          identifiants UUID, version)
 docs/                  → documentation interne (roadmap, publication, modules)
                           · `manuel_modules_et_utilisations.html` pourra être
                             régénéré en PDF : tous les modules, mode d'emploi
@@ -171,6 +175,55 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
 0107          ABONNEMENT — toute entreprise reçoit une GRILLE TARIFAIRE
               (trigger `entreprise_grille_par_defaut` + réparation des comptes
               sans grille, montant dû des essais recalculé)
+0108 → 0173   modules 25 → 36 (abonnements, SerdiPay, marketplace, multi-
+              entreprises et isolation `owner_id` = espace, pressing,
+              pharmacie par lots, profils métier) — détail dans `docs/`
+0174          CORRECTIF 174 — CRÉATION UNIFIÉE & SUPPRESSIONS SÛRES :
+              Un seul cœur de création (Setup = Super Admin), identifiants
+              UUID tolérants (`uuid_ou_null` → plus de « invalid input syntax
+              for type uuid »), profil de modules complet par activité (25
+              codes alignés sur le Dart), métier réel exposé par
+              `rpc_entreprises_metiers`, journal d'audit SANS clé étrangère
+              (instantanés `entreprise_nom` / `utilisateur_email`), suppression
+              d'entreprise et d'utilisateur en cascade avec sauvegarde JSON
+              préalable (`sauvegardes_suppressions`) et journal en INSERT seul.
+0175          CORRECTIF 175 — ÉQUIPE, QR CODES, REVENUS SERDIPAY, ANALYSE :
+              équipe du pressing rattachée au PATRON (`mon_patron()` → plus de
+              violation `utilisateurs_parent_id_fkey`) + retrait d'un
+              collaborateur ; `rpc_scanner_resoudre` (les QR `PROD:<id>` et
+              `COND:<uuid>` générés par la plateforme sont reconnus) ; prix du
+              QR défini par la plateforme (150 CDF par défaut, modifiable) et
+              revenus QR comptés à l'émission (`qr_codes_emis`) ;
+              `rpc_admin_tableau_bord` — les revenus affichés sont UNIQUEMENT
+              les paiements confirmés par SerdiPay ; `rpc_rapport_entreprise_
+              analyse` — rapport semaine / mois téléchargeable (meilleur
+              produit, meilleur jour, meilleur moment, conseils, projection
+              +10 %) ; champ de saisie maintenu visible au-dessus du clavier
+              dans TOUS les formulaires (`ClavierChampVisible`).
+0176          CORRECTIF 176 — SUPPRESSION D'UN COLLABORATEUR :
+              l'écran « Mon Équipe » appelait `delete_collaborateur`, fonction
+              ABSENTE de toutes les migrations (le bouton échouait toujours).
+              → `rpc_collaborateur_supprimer(id, 'SUPPRIMER')` (propriétaire
+              uniquement, jamais soi-même ni le propriétaire, profil + compte
+              Auth, journal d'audit) + alias `delete_collaborateur` pour les
+              applications déjà installées. Aucune donnée métier effacée.
+0177          CORRECTIF 177 — ÉQUIPE, RÔLES MÉTIER, ANALYSE, QR PAR BOUTIQUE :
+              liste/modification/suppression d'un collaborateur filtrées sur
+              `mon_patron()` (et non sur l'espace) → équipe enfin visible pour
+              un patron multi-entreprises ; l'espace de travail d'un
+              collaborateur est celui de SON entreprise (pressing en priorité)
+              et un compte de pressing reçoit automatiquement son métier
+              (`role_pressing`) ; réparation des comptes mal rattachés ;
+              analyse des ventes réécrite (`analyse_lignes_ventes`) — lit les
+              ventes d'articles ET les prestations de pressing, classe TOUS
+              les produits par meilleure vente, sans table temporaire ; casts
+              REAL→NUMERIC pour éviter le 42804 ; permissions pressing par
+              métier (aucune vente, scanner, pesée, caisse boutique), routes
+              directes protégées, trigger qui bloque aussi l'insertion de
+              ventes boutique dans un pressing ; erreurs traduites vers le
+              dépôt pressing ; tests de permissions par métier et des routes.
+              QR codes : `codes_existants` (1 par article + 1 par emballage)
+              et répartition par boutique dans le tableau de bord.
 ```
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise

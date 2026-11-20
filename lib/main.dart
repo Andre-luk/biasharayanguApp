@@ -40,6 +40,8 @@ import 'services/devise_service.dart';
 import 'services/permission_service.dart';
 import 'services/reseau_service.dart';
 import 'db_helper.dart';
+// ⌨️ 175 — le champ en cours de saisie reste visible au-dessus du clavier.
+import 'widgets/clavier_champ_visible.dart';
 
 import 'dart:async' show TimeoutException, unawaited;
 import 'dart:ui' show PlatformDispatcher;
@@ -519,7 +521,10 @@ class _BiasharaAppState extends State<BiasharaApp> {
                 data: MediaQuery.of(context).copyWith(
                   textScaler: TextScaler.linear(echelleTexte),
                 ),
-                child: child,
+                // ⌨️ 175 — le champ en cours de saisie est ramené au-dessus
+                // du clavier : plus de saisie « à l'aveugle » dans les
+                // formulaires longs (articles, clients, dépenses, pressing…).
+                child: ClavierChampVisible(child: child),
               );
 
         if (_splashDisparu) {

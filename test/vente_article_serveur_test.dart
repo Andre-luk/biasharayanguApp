@@ -105,6 +105,15 @@ void main() {
       expect(message, contains('restaurer'));
     });
 
+    test('vente boutique interdite dans un pressing : indique le dépôt', () {
+      expect(
+        VenteService.messageErreur(
+          'VENTE_INTERDITE_PRESSING|Un pressing enregistre des dépôts.',
+        ),
+        contains('Enregistrez le vêtement comme dépôt dans le module Pressing.'),
+      );
+    });
+
     test('les autres erreurs restent inchangées', () {
       expect(
         VenteService.messageErreur(

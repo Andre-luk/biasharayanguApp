@@ -407,11 +407,15 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       );
       if (!mounted) return;
 
+      final Object? sauvegarde = resultat['sauvegarde_id'];
       _messageAdmin(
         'Purge effectuée pour ${u.fullName} : '
-        '${resultat['lignes_concernees'] ?? 0} ligne(s) supprimée(s) — '
+        '${resultat['lignes_concernees'] ?? 0} ligne(s) supprimée(s), '
+        '${resultat['entreprises_supprimees'] ?? 0} entreprise(s), '
+        '${resultat['paiements_supprimes'] ?? 0} paiement(s) — '
         'compte de connexion '
-        '${resultat['compte_auth_supprime'] == true ? 'supprimé' : 'NON supprimé (à vérifier)'}.',
+        '${resultat['compte_auth_supprime'] == true ? 'supprimé' : 'NON supprimé (à vérifier)'}.'
+        '${sauvegarde == null ? '' : ' Sauvegarde : $sauvegarde.'}',
       );
       await _loadUsers();
     } on AdminPlateformeException catch (e) {
@@ -437,11 +441,14 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             children: <Widget>[
               Text(
                 'Cette opération supprime DÉFINITIVEMENT le compte '
-                '${u.fullName} et toutes ses données : ventes, paiements, '
-                'dettes, stock, traces d\'audit. Elle est irréversible.',
+                '${u.fullName}, SES ENTREPRISES et TOUTES leurs données '
+                '(produits, stock, ventes, sorties, clients, fournisseurs, '
+                'employés, abonnements, paiements, paramètres, sessions, '
+                'modules). Elle est irréversible.',
               ),
               const SizedBox(height: 12),
-              const Text('Recopiez l\'adresse du compte pour confirmer :'),
+              const Text('Pour confirmer, tapez SUPPRIMER (ou recopiez le nom '
+                  'du compte / son adresse e-mail) :'),
               const SizedBox(height: 6),
               SelectableText(
                 email.isEmpty ? '(adresse inconnue)' : email,
@@ -452,7 +459,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 controller: controleur,
                 autocorrect: false,
                 decoration: const InputDecoration(
-                  labelText: 'Adresse e-mail du compte',
+                  labelText: 'SUPPRIMER, nom du compte ou adresse e-mail',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -476,16 +483,16 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
     controleur.dispose();
     if (saisie == null) return null;
 
-    if (saisie.toLowerCase() != email || email.isEmpty) {
+    // Le SERVEUR reste l'autorité (il exige SUPPRIMER, le nom ou l'e-mail).
+    // Ici, on évite seulement de lancer une requête pour une saisie vide.
+    final String propre = saisie.trim();
+    if (propre.isEmpty) {
       if (mounted) {
-        _messageAdmin(
-          'Adresse saisie différente de celle du compte : purge annulée.',
-          erreur: true,
-        );
+        _messageAdmin('Confirmation vide : purge annulée.', erreur: true);
       }
       return null;
     }
-    return saisie;
+    return propre;
   }
 
   /// Affiche le volume EXACT que la purge détruirait (réponse du serveur).
@@ -1097,6 +1104,28 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 child: Text('Actions pour ${user.nom}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
               const Divider(height: 1),
+              // 🗑️ SUPPRESSION — action VOLONTAIREMENT visible et rouge :
+              // elle était auparavant en bas du menu, en gris, et passait
+              // inaperçue. Deux étapes : analyse des dépendances, puis
+              // confirmation écrite (nom du compte ou SUPPRIMER).
+              ListTile(
+                leading: const Icon(Icons.delete_forever, color: Colors.red),
+                title: const Text(
+                  "Supprimer l'utilisateur",
+                  style: TextStyle(
+                      color: Colors.red, fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  'Supprime le compte ET, si c\'est un propriétaire, ses '
+                  'entreprises et toutes leurs données (avec sauvegarde).',
+                  style: TextStyle(fontSize: 11),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _retirerCompte(user);
+                },
+              ),
+              const Divider(height: 1),
               ListTile(
                 leading: const Icon(Icons.edit_note, color: Colors.blue),
                 title: const Text('Modifier le profil et le rôle'),
@@ -1134,20 +1163,6 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 onTap: () {
                   Navigator.pop(context);
                   _manageUserSubscriptions(user);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_forever, color: Colors.grey),
-                title: const Text('Retirer le compte',
-                    style: TextStyle(color: Colors.grey)),
-                subtitle: const Text(
-                  'Analyse des dépendances avant toute décision : '
-                  'désactivation, anonymisation ou suppression.',
-                  style: TextStyle(fontSize: 11),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _retirerCompte(user);
                 },
               ),
             ],

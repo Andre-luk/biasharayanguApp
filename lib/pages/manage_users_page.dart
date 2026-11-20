@@ -15,7 +15,6 @@ import 'package:biashara_yangu/models/espace.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/equipe_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
-import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
@@ -165,13 +164,43 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
     }
   }
 
+  /// 🗑️ CORRECTIF 176 — suppression d'un collaborateur.
+  ///
+  /// Avant : l'écran appelait une RPC `delete_collaborateur` qui n'existait
+  /// dans AUCUNE migration → le bouton échouait toujours. Désormais :
+  ///   • confirmation ÉCRITE (« SUPPRIMER »), comme pour les autres
+  ///     suppressions irréversibles de l'application ;
+  ///   • appel de `rpc_collaborateur_supprimer` (propriétaire uniquement,
+  ///     jamais soi-même ni le propriétaire) ;
+  ///   • message d'erreur en français, jamais un code PostgREST brut.
   Future<void> _deleteUser(CollaborateurEntreprise user) async {
+    final TextEditingController saisie = TextEditingController();
+
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) => AlertDialog(
         title: Text('Supprimer ${user.nomComplet} ?'),
-        content: const Text(
-          'Ce collaborateur perdra l\'accès à l\'entreprise immédiatement.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            const Text(
+              'Ce collaborateur perdra l\'accès à l\'entreprise '
+              'immédiatement et son compte de connexion sera supprimé. '
+              'Ses ventes et son historique restent dans la pharmacie.',
+            ),
+            const SizedBox(height: 12),
+            const Text('Écrivez SUPPRIMER pour confirmer :'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: saisie,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                hintText: 'SUPPRIMER',
+                prefixIcon: Icon(Icons.keyboard_rounded),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -186,17 +215,22 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
       ),
     );
 
+    final String texte = saisie.text.trim().toUpperCase();
+    saisie.dispose();
     if (confirm != true) return;
 
     try {
-      await SupabaseService.instance.client.rpc(
-        'delete_collaborateur',
-        params: <String, dynamic>{'target_user_id': user.id},
+      await EquipeService.instance.supprimer(
+        id: user.id,
+        confirmation: texte,
       );
-      _snack('${user.nomComplet} supprimé de votre entreprise.');
+      _snack('${user.nomComplet} supprimé : son accès est fermé.');
       await _loadCollaborateurs();
     } catch (e) {
-      _snack('Suppression impossible : $e', erreur: true);
+      _snack(
+        e is EquipeException ? e.message : 'Suppression impossible : $e',
+        erreur: true,
+      );
     }
   }
 
@@ -358,6 +392,10 @@ class _ManageUsersPageState extends State<ManageUsersPage> {
                 // 🧩 MODULE 15 — la boutique où il travaille (si plusieurs).
                 if (user.espaceNom.trim().isNotEmpty)
                   _etiquette(user.espaceNom, AppCouleurs.succes),
+                // 🧺 0177 — le métier réel dans le pressing (accueil,
+                // atelier, caisse…) : c'est lui qui ouvre ses écrans.
+                if (user.libelleRolePressing != null)
+                  _etiquette(user.libelleRolePressing!, AppCouleurs.succes),
                 if (!user.actif) _etiquette('Désactivé', AppCouleurs.danger),
                 if (user.telephone.isNotEmpty)
                   _etiquette(user.telephone, Colors.grey.shade600),

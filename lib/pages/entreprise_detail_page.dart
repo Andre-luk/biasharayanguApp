@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:biashara_yangu/models/analyse_entreprise.dart';
 import 'package:biashara_yangu/models/entreprise.dart';
 import 'package:biashara_yangu/models/espace.dart';
 import 'package:biashara_yangu/models/type_activite.dart';
@@ -11,6 +12,7 @@ import 'package:biashara_yangu/models/statut_abonnement.dart';
 import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/services/abonnement_niveaux_service.dart';
 import 'package:biashara_yangu/services/agent_service.dart';
+import 'package:biashara_yangu/services/analyse_entreprise_service.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -44,6 +46,11 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
 
   List<PaiementAbonnement> _paiements = const <PaiementAbonnement>[];
   Set<String> _utilisateursRattaches = <String>{};
+
+  // 📊 175 — dernier rapport d'analyse chargé (semaine ou mois).
+  AnalyseEntreprise? _analyse;
+  bool _analyseEnCours = false;
+  String? _analysePeriode;
 
   @override
   void initState() {
@@ -380,6 +387,11 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
           _cartePaiements(theme),
           const SizedBox(height: 16),
           _carteUtilisateurs(theme),
+          const SizedBox(height: 16),
+          //  📊 MIGRATION 175 — rapport téléchargeable (semaine / mois) :
+          //  meilleur produit, meilleur jour, meilleur moment, conseils et
+          //  projection « si ce produit progresse de 10 % ».
+          _carteAnalyse(theme, entreprise),
           const SizedBox(height: 20),
           _actions(entreprise),
           const SizedBox(height: 12),
@@ -783,12 +795,32 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
   Widget _carteTypeActivite(ThemeData theme, Entreprise entreprise) {
     final TypeActivite? type = entreprise.typeActivite;
 
+    // 🧩 174 — LE MÉTIER RÉEL (espaces.type) FAIT FOI.
+    // Afficher `type_activite` (l'axe boutique/distribution) donnait
+    // l'impression que l'ancien type revenait : on venait de choisir
+    // « Pharmacie », les modules suivaient… puis la fiche réaffichait
+    // « Boutique ».
+    final String metierCode = (entreprise.metier ?? '').trim().toLowerCase();
+    final String? metierLibelle = entreprise.metierLibelle;
+
     final String libelle;
     final String consequence;
     final Color teinte;
     final IconData icone;
 
-    if (type == TypeActivite.distribution) {
+    if (metierCode.isNotEmpty) {
+      libelle = (metierLibelle == null || metierLibelle.trim().isEmpty)
+          ? metierCode
+          : metierLibelle;
+      final String axe = type == null
+          ? 'non renseigné'
+          : (type == TypeActivite.distribution ? 'distribution' : 'boutique');
+      consequence = 'Le métier appliqué à toutes les boutiques de cette '
+          'entreprise est « $libelle ». Il détermine les modules et les '
+          'écrans réellement disponibles (axe commercial : $axe).';
+      teinte = theme.colorScheme.primary;
+      icone = iconePourTypeEspace(TypeEspace.fromCode(metierCode));
+    } else if (type == TypeActivite.distribution) {
       libelle = 'Distribution';
       consequence = 'Tournées, Ma tournée, Consignes clients, Récipients & '
           'bonus et Production sont ACTIVÉS. Le profil de modules de son '
@@ -905,6 +937,9 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
                   iconePourTypeEspace(TypeEspace.fromCode(categorie.code)),
                   size: 20),
               title: Text(categorie.libelle),
+              trailing: categorie.code == (entreprise.metier ?? '')
+                  ? const Icon(Icons.check_circle_rounded, size: 20)
+                  : null,
               onTap: () => Navigator.of(ctx).pop(categorie.code),
             ),
         ],
@@ -1152,6 +1187,172 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
             ),
           ),
         ),
+      ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 📊 MIGRATION 175 — RAPPORT D'ANALYSE (semaine / mois)
+  // ---------------------------------------------------------------------------
+
+  /// Charge et télécharge le rapport d'analyse d'une période.
+  ///
+  /// Le calcul vient de `rpc_rapport_entreprise_analyse` : meilleur produit,
+  /// meilleur jour, meilleur moment, conseils et projection. Le PDF est
+  /// enregistré dans « Téléchargements/Biashara Yangu/Rapports » (ou
+  /// téléchargé par le navigateur sur le web).
+  Future<void> _exporterAnalyse(Entreprise entreprise, bool mois) async {
+    setState(() {
+      _analyseEnCours = true;
+      _analysePeriode = mois ? 'mois' : 'semaine';
+    });
+
+    try {
+      final (DateTime debut, DateTime fin) = mois
+          ? AnalyseEntrepriseService.periodeMois()
+          : AnalyseEntrepriseService.periodeSemaine();
+
+      final AnalyseEntreprise analyse =
+          await AnalyseEntrepriseService.instance.charger(
+        entrepriseId: entreprise.id,
+        debut: debut,
+        fin: fin,
+      );
+
+      setState(() => _analyse = analyse);
+
+      final String? chemin =
+          await AnalyseEntrepriseService.instance.exporterPDF(analyse);
+
+      if (!mounted) return;
+      if (analyse.estVide) {
+        _afficherMessage(
+          'Rapport prêt, mais aucune vente sur la période : rien à analyser '
+          'pour le moment.',
+          estErreur: true,
+        );
+      } else {
+        _afficherMessage(
+          chemin == null
+              ? 'Rapport ${mois ? 'mensuel' : 'hebdomadaire'} téléchargé '
+                  '(${analyse.totaux.ventes} ventes analysées).'
+              : 'Rapport enregistré : $chemin',
+        );
+      }
+    } on AnalyseEntrepriseException catch (e) {
+      if (mounted) _afficherMessage(e.message, estErreur: true);
+    } catch (e) {
+      debugPrint('_exporterAnalyse : $e');
+      if (mounted) {
+        _afficherMessage(
+          'Impossible de produire le rapport pour le moment. Réessayez.',
+          estErreur: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _analyseEnCours = false);
+    }
+  }
+
+  Widget _carteAnalyse(ThemeData theme, Entreprise entreprise) {
+    final AnalyseEntreprise? analyse = _analyse;
+    final bool enCours = _analyseEnCours;
+
+    return _carte(
+      theme: theme,
+      titre: 'Analyse des ventes (rapport à télécharger)',
+      icone: Icons.insights_rounded,
+      enfants: <Widget>[
+        Text(
+          'Meilleur produit, meilleur jour, meilleur moment, conseils pour '
+          'faire grandir le chiffre d\'affaires et projection « si ce produit '
+          'progresse de 10 % ». Le rapport est calculé à partir des ventes '
+          'réellement enregistrées.',
+          style: TextStyle(
+            fontSize: 12.5,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: <Widget>[
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: enCours
+                    ? null
+                    : () => _exporterAnalyse(entreprise, false),
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Semaine'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.tonalIcon(
+                onPressed: enCours
+                    ? null
+                    : () => _exporterAnalyse(entreprise, true),
+                icon: const Icon(Icons.download_rounded, size: 18),
+                label: const Text('Mois'),
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (enCours)
+          const Padding(
+            padding: EdgeInsets.only(top: 10),
+            child: LinearProgressIndicator(minHeight: 3),
+          ),
+        if (analyse != null) ...<Widget>[
+          const SizedBox(height: 12),
+          Text(
+            'Dernier rapport '
+            '(${_analysePeriode == 'mois' ? 'mensuel' : 'hebdomadaire'}) — '
+            '${formatDate(analyse.debut)} → ${formatDate(analyse.fin)}',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
+          ),
+          const SizedBox(height: 6),
+          _ligneInfo('CA de la période',
+              formatMontant(analyse.totaux.ca, devise: analyse.devise)),
+          _ligneInfo('Ventes / panier moyen',
+              '${analyse.totaux.ventes} · '
+                  '${formatMontant(analyse.totaux.panierMoyen, devise: analyse.devise)}'),
+          // 📊 177 — TOUS les produits sont classés par meilleure vente, et
+          // le rapport lit aussi les prestations d'un pressing.
+          _ligneInfo('Produits classés', '${analyse.nbProduits}'),
+          _ligneInfo('Origine', analyse.libelleOrigines),
+          if (analyse.meilleurProduit != null)
+            _ligneInfo('Meilleur produit', analyse.meilleurProduit!.nom),
+          if (analyse.meilleurJour != null)
+            _ligneInfo('Meilleur jour', analyse.meilleurJour!.jour),
+          if (analyse.meilleurMoment != null)
+            _ligneInfo('Meilleur moment', analyse.meilleurMoment!.moment),
+          if (analyse.simulation != null && !analyse.simulation!.estVide)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  analyse.simulation!.message,
+                  style: const TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+        ],
       ],
     );
   }

@@ -840,14 +840,24 @@ class PressingService {
   /// `null` = patron (ou compte sans métier) : tous les droits du pressing.
   /// Sert uniquement à ADAPTER l'interface ; le serveur revérifie tout.
   Future<RolePressing?> rolePressing() async {
+    final String? code = await rolePressingCode();
+    return RolePressing.depuisCode(code);
+  }
+
+  /// Code brut renvoyé par `pressing_role()`.
+  ///
+  /// Contrairement à [rolePressing], conserve `proprietaire`/`aucun` : le
+  /// contrôle central des permissions en a besoin pour ne pas confondre un
+  /// propriétaire de pressing avec un collaborateur sans métier.
+  Future<String?> rolePressingCode() async {
     try {
       final dynamic r = await _client.rpc('pressing_role');
       final String? code = r is String
           ? r
           : parseStringOrNull((parseMap(r) ?? <String, dynamic>{})['role']);
-      return RolePressing.depuisCode(code);
+      return code?.trim().toLowerCase();
     } catch (e) {
-      debugPrint('PressingService.rolePressing : $e');
+      debugPrint('PressingService.rolePressingCode : $e');
       // En cas d'échec on n'enferme personne : les pages gardent leurs droits.
       return null;
     }
@@ -898,6 +908,34 @@ class PressingService {
       debugPrint('PressingService.creerCollaborateur : $e');
       throw const PressingException(
         'Impossible de créer ce collaborateur : vérifiez le réseau.',
+      );
+    }
+  }
+
+  /// 🗑️ Retire un collaborateur du pressing (compte de connexion + profil).
+  ///
+  /// Le serveur exige la confirmation « SUPPRIMER » et vérifie que le compte
+  /// appartient bien à l'équipe du patron connecté. Les historiques
+  /// (commandes, paiements) sont conservés : ils gardent l'identifiant.
+  Future<bool> supprimerCollaborateur({
+    required String id,
+    required String confirmation,
+  }) async {
+    try {
+      final dynamic r = await _client.rpc(
+        'press_collaborateur_supprimer',
+        params: <String, dynamic>{
+          'p_id': id,
+          'p_confirmation': confirmation,
+        },
+      );
+      return (parseMap(r) ?? <String, dynamic>{})['ok'] == true;
+    } on PostgrestException catch (e) {
+      throw PressingException(_message(e.message));
+    } catch (e) {
+      debugPrint('PressingService.supprimerCollaborateur : $e');
+      throw const PressingException(
+        'Impossible de retirer ce collaborateur : vérifiez le réseau.',
       );
     }
   }

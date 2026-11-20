@@ -1,8 +1,12 @@
 // lib/pages/admin_home_page.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
+// 💰 Migration 175 — le tableau de bord ne lit plus la base locale : il lit
+// les revenus réellement encaissés via SerdiPay (RPC `rpc_admin_tableau_bord`).
+import 'package:biashara_yangu/services/supabase_service.dart';
+import 'package:biashara_yangu/utils/format_utils.dart';
+import 'package:biashara_yangu/utils/json_parsing.dart';
 
 // 🔐 MODULE 4 — Permissions
 import 'package:biashara_yangu/models/permission.dart';
@@ -291,9 +295,16 @@ class AdminDashboardPage extends StatefulWidget {
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
   bool _loading = true;
-  double totalSystemRevenue = 0.0;
-  int totalUsers = 0;
-  int totalProducts = 0;
+
+  /// 💰 20/11/2026 — L'ARGENT DU TABLEAU DE BORD EST CELUI DE SERDIPAY.
+  ///
+  /// Avant, « CA Global » lisait la base SQLite LOCALE de l'appareil (donc
+  /// les ventes de la boutique du téléphone, pas la plateforme) et comptait
+  /// des encaissements qui n'avaient jamais été confirmés. Désormais :
+  /// total = SOMME des `paiements_serdipay` au statut « paye » ; les revenus
+  /// QR (facturés à l'émission) sont présentés séparément. Tant qu'un
+  /// paiement n'est pas passé par SerdiPay, il n'est PAS compté.
+  Map<String, dynamic>? _bord;
 
   @override
   void initState() {
@@ -303,30 +314,41 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   Future<void> _loadAdminStats() async {
     setState(() => _loading = true);
-    final db = DBHelper.instance;
-
     try {
-      final revenue = await db.getTotalVentesAmount();
-      final users = await db.getUtilisateurCount();
-      final products = await db.getProduitsCount();
-
+      final dynamic reponse =
+          await SupabaseService.instance.client.rpc('rpc_admin_tableau_bord');
+      final Map<String, dynamic>? map = parseMap(reponse);
       if (mounted) {
         setState(() {
-          totalSystemRevenue = revenue;
-          totalUsers = users;
-          totalProducts = products;
+          _bord = map;
           _loading = false;
         });
       }
     } catch (e) {
+      debugPrint('AdminDashboardPage._loadAdminStats : $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur de chargement des stats: ${e.toString()}')));
         setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tableau de bord indisponible : exécutez la migration 175 '
+              'dans Supabase, puis réessayez.',
+            ),
+          ),
+        );
       }
     }
   }
 
-  // 🚀 NOUVEAU _buildStatCard basé sur ListTile pour éviter l'overflow
+  Map<String, dynamic> _sous(String cle) {
+    final dynamic valeur = _bord?[cle];
+    return valeur is Map ? Map<String, dynamic>.from(valeur) : <String, dynamic>{};
+  }
+
+  String _montant(dynamic valeur) =>
+      formatMontant(parseDouble(valeur), devise: 'CDF');
+
+  // 🚀 _buildStatCard basé sur ListTile pour éviter l'overflow
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     // Utilisation d'un Card pleine largeur pour un design plus simple et robuste
     return Card(
@@ -386,24 +408,54 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             Column(
               children: [
                 _buildStatCard(
-                    'CA Global (Total)',
-                    '${totalSystemRevenue.toStringAsFixed(0)} CDF',
-                    Icons.monetization_on,
+                    'Revenus SerdiPay (confirmés)',
+                    _montant(_sous('serdipay')['total']),
+                    Icons.verified_rounded,
                     Colors.green.shade700
                 ),
                 _buildStatCard(
-                    'Utilisateurs Actifs',
-                    '$totalUsers',
-                    Icons.people_alt_rounded,
-                    Colors.blue.shade700
+                    'SerdiPay — ce mois',
+                    _montant(_sous('serdipay')['mois']),
+                    Icons.calendar_month_rounded,
+                    Colors.teal.shade700
                 ),
                 _buildStatCard(
-                    'Produits Catalogués',
-                    '$totalProducts',
-                    Icons.inventory_2_rounded,
-                    Colors.deepOrange.shade700
+                    'SerdiPay — aujourd\'hui',
+                    _montant(_sous('serdipay')['jour']),
+                    Icons.today_rounded,
+                    Colors.lightGreen.shade800
+                ),
+                _buildStatCard(
+                    'Paiements SerdiPay confirmés',
+                    '${parseInt(_sous('serdipay')['paiements'])}',
+                    Icons.receipt_long_rounded,
+                    Colors.green.shade900
+                ),
+                _buildStatCard(
+                    'Revenus QR codes (facturés) · '
+                    '${parseInt(_sous('qr')['nb'])} facturé(s) · '
+                    '${parseInt(_sous('qr')['existants'])} QR existants '
+                    'dans les boutiques',
+                    _montant(_sous('qr')['total']),
+                    Icons.qr_code_2_rounded,
+                    Colors.deepPurple.shade600
+                ),
+                _buildStatCard(
+                    'Entreprises / Comptes / Produits',
+                    '${parseInt(_sous('compteurs')['entreprises'])} / '
+                    '${parseInt(_sous('compteurs')['comptes'])} / '
+                    '${parseInt(_sous('compteurs')['produits'])}',
+                    Icons.insights_rounded,
+                    Colors.blue.shade700
                 ),
               ],
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Seuls les paiements confirmés par SerdiPay sont comptés dans '
+              'les revenus de la plateforme. Les QR codes sont facturés à '
+              'leur émission (prix réglable dans l\'écran QR codes).',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
             ),
             // Fin de la section Statistiques
 

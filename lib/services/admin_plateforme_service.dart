@@ -360,7 +360,16 @@ class AdminPlateformeService {
           'COMPTE_PLATEFORME' ||
           'MOT_DE_PASSE_TROP_COURT' ||
           'EMAIL_INVALIDE' ||
-          'MONTANT_INVALIDE' =>
+          'MONTANT_INVALIDE' ||
+          // Correctif 174 — suppressions (entreprise / compte)
+          'SUPPRESSION_BLOQUEE' ||
+          'ENTREPRISE_INTROUVABLE' ||
+          'ENTREPRISE_INVALIDE' ||
+          'UTILISATEUR_INVALIDE' ||
+          'DERNIER_SUPER_ADMIN' ||
+          'PROPRIETAIRE_REQUIS' ||
+          'PROPRIETAIRE_INTROUVABLE' ||
+          'NOM_REQUIS' =>
             TypeErreurAdmin.validation,
           _ => TypeErreurAdmin.inconnu,
         },

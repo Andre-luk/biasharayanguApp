@@ -19,6 +19,7 @@ import 'package:biashara_yangu/models/ville.dart';
 import 'package:biashara_yangu/services/cache_lecture.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
+import 'package:biashara_yangu/utils/uuid_utils.dart';
 
 /// Erreur métier du module « Gestion des entreprises ».
 ///
@@ -217,7 +218,8 @@ class EntrepriseService {
           return (email == null || email.isEmpty) ? null : email;
         }
 
-        return parseMapList(reponses[0]).map((Map<String, dynamic> map) {
+        final List<Entreprise> liste =
+            parseMapList(reponses[0]).map((Map<String, dynamic> map) {
           final Entreprise entreprise = Entreprise.fromMap(map);
           final GroupeTarifaire? groupe = groupes[entreprise.groupeTarifaireId];
           final Map<String, dynamic>? responsable = responsables[entreprise.id];
@@ -233,11 +235,88 @@ class EntrepriseService {
                 : parseStringOrNull(responsable['telephone']),
           );
         }).toList();
+
+        // 🧩 LE MÉTIER VIENT DES ESPACES (jamais de l'axe commercial).
+        // C'est ce qui empêchait de voir le nouveau type à la réouverture :
+        // la fiche affichait `type_activite` (« boutique ») alors que le
+        // métier choisi (« pharmacie ») vivait dans `espaces.type`.
+        final Map<String, ({String metier, String libelle})> metiers =
+            await metiersDesEntreprises(
+          liste.map((Entreprise e) => e.id).toList(),
+        );
+
+        return liste.map((Entreprise entreprise) {
+          final ({String metier, String libelle})? metier =
+              metiers[entreprise.id];
+          if (metier == null) return entreprise;
+          return entreprise.copyWith(
+            metier: metier.metier,
+            metierLibelle: metier.libelle,
+          );
+        }).toList();
       },
       actionLibelle: 'le chargement des entreprises',
       messageEchec:
           'Impossible de charger la liste des entreprises. Vérifiez votre connexion internet.',
     );
+  }
+
+  /// 🧩 LE MÉTIER RÉEL DES ENTREPRISES (source unique : `espaces.type`).
+  ///
+  /// Pourquoi une RPC dédiée plutôt qu'une colonne sur `entreprises` ?
+  /// Parce que le métier vit dans les ESPACES : dupliquer la valeur créerait
+  /// deux vérités qui finissent toujours par divergences (c'est exactement ce
+  /// qui faisait réapparaître l'ancien type après un changement).
+  ///
+  /// Renvoie `{entreprise_id: {metier, libelle, nb_espaces, types}}`.
+  /// Best-effort : si la migration 174 n'est pas installée, la carte du type
+  /// retombe sur l'axe commercial — l'écran ne casse jamais.
+  Future<Map<String, ({String metier, String libelle})>> metiersDesEntreprises(
+      List<String> entrepriseIds) async {
+    if (entrepriseIds.isEmpty) {
+      return <String, ({String metier, String libelle})>{};
+    }
+    const String cleCache = 'entreprises_metiers_v1';
+
+    List<dynamic> lignes = const <dynamic>[];
+    try {
+      final dynamic reponse = await _client.rpc('rpc_entreprises_metiers');
+      lignes = reponse is List
+          ? reponse
+          : (parseMap(reponse)?['metiers'] as List<dynamic>? ?? const []);
+      // Mis en cache : hors ligne, la fiche doit continuer d'afficher le
+      // MÉTIER réel (et non l'ancien axe commercial).
+      await CacheLecture.instance.memoriser(
+        CacheLecture.cleRpc(cleCache),
+        lignes,
+      );
+    } catch (e) {
+      final dynamic cache =
+          await CacheLecture.instance.relire(CacheLecture.cleRpc(cleCache));
+      if (cache is List) {
+        lignes = cache;
+      } else {
+        debugPrint('EntrepriseService.metiersDesEntreprises (ignoré) : $e');
+        return <String, ({String metier, String libelle})>{};
+      }
+    }
+
+    final Map<String, ({String metier, String libelle})> resultat =
+        <String, ({String metier, String libelle})>{};
+    final Set<String> demandes = entrepriseIds.toSet();
+    for (final dynamic element in lignes) {
+      final Map<String, dynamic>? map = parseMap(element);
+      if (map == null) continue;
+      final String id = parseString(map['entreprise_id']);
+      final String metier = parseString(map['metier']);
+      if (id.isEmpty || metier.isEmpty) continue;
+      if (demandes.isNotEmpty && !demandes.contains(id)) continue;
+      resultat[id] = (
+        metier: metier,
+        libelle: parseStringOrNull(map['libelle']) ?? metier,
+      );
+    }
+    return resultat;
   }
 
   /// 🏪 AUTO-RÉPARATION (correctifs 20/21) — garantit qu'un PATRON possède
@@ -292,6 +371,14 @@ class EntrepriseService {
         final DateTime dateExpiration =
             maintenant.add(Duration(days: groupeTarifaire.dureeEssaiJours));
 
+        // 🩹 Aucun identifiant vide ne doit atteindre une colonne `uuid`.
+        final String? groupeId = UuidValide.ouNull(groupeTarifaire.id);
+        if (groupeId == null) {
+          throw const EntrepriseServiceException(
+            'Choisissez une grille tarifaire valide avant d\'enregistrer.',
+          );
+        }
+
         final Map<String, dynamic> reponse = await _client
             .from('entreprises')
             .insert({
@@ -300,9 +387,9 @@ class EntrepriseService {
               // échouerait alors silencieusement.
               'id': _uuid.v4(),
               'nom': nom.trim(),
-              'ville_id': villeId,
-              'activite_id': activiteId,
-              'groupe_tarifaire_id': groupeTarifaire.id,
+              'ville_id': UuidValide.ouNull(villeId),
+              'activite_id': UuidValide.ouNull(activiteId),
+              'groupe_tarifaire_id': groupeId,
               'statut': StatutAbonnement.essai7j.code,
               'montant_total_du': montantTotalDu,
               'montant_deja_paye': 0,
@@ -340,11 +427,16 @@ class EntrepriseService {
       () async {
         final Map<String, dynamic> payload = <String, dynamic>{
           'nom': nom.trim(),
-          'ville_id': villeId,
-          'activite_id': activiteId,
-          'groupe_tarifaire_id': groupeTarifaire.id,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         };
+
+        // ⚠️ On n'écrit QUE des identifiants valides (ou `null`), jamais `''`.
+        final String? ville = UuidValide.ouNull(villeId);
+        final String? activite = UuidValide.ouNull(activiteId);
+        final String? groupeId = UuidValide.ouNull(groupeTarifaire.id);
+        payload['ville_id'] = ville;
+        payload['activite_id'] = activite;
+        if (groupeId != null) payload['groupe_tarifaire_id'] = groupeId;
 
         if (entreprise.groupeTarifaireId != groupeTarifaire.id) {
           // ⚠️ Le solde est recalculé par la BASE (colonne générée) : on ne
@@ -425,25 +517,17 @@ class EntrepriseService {
   }) {
     return _executer(
       () async {
-        // 🩹 CORRECTIF — UNE CHAÎNE VIDE N'EST PAS UN UUID.
-        //
-        // Les listes déroulantes renvoient '' quand rien n'est choisi. Envoyé
-        // tel quel à une fonction qui attend un `uuid`, PostgreSQL répondait
-        //   42883/22P02 « la valeur transmise n'est pas valide pour la base »
-        // et la création du compte échouait sans explication utile.
-        String? uuidOuNull(String? valeur) {
-          final String texte = (valeur ?? '').trim();
-          if (texte.isEmpty || texte.toLowerCase() == 'null') return null;
-          return texte;
-        }
-
+        // 🩹 UNE CHAÎNE VIDE N'EST PAS UN UUID (règle unique :
+        // `lib/utils/uuid_utils.dart`). Les listes déroulantes renvoient `''`
+        // quand rien n'est choisi : envoyé tel quel à un paramètre `uuid`,
+        // PostgreSQL répondait 22P02 et la création échouait sans explication.
         final dynamic reponse = await _client.rpc(
           'rpc_admin_entreprise_creer',
           params: <String, dynamic>{
             'p_nom': nom.trim(),
-            'p_ville_id': uuidOuNull(villeId),
-            'p_activite_id': uuidOuNull(activiteId),
-            'p_groupe_tarifaire_id': uuidOuNull(groupeTarifaireId),
+            'p_ville_id': UuidValide.ouNull(villeId),
+            'p_activite_id': UuidValide.ouNull(activiteId),
+            'p_groupe_tarifaire_id': UuidValide.ouNull(groupeTarifaireId),
             'p_type_espace': (typeEspace ?? '').trim().isEmpty
                 ? 'boutique'
                 : typeEspace.trim(),
@@ -469,6 +553,15 @@ class EntrepriseService {
             'Le serveur a r\u00e9pondu de fa\u00e7on inattendue. '
             'V\u00e9rifiez la liste des entreprises avant de recommencer.',
           );
+        }
+
+        // La nouvelle entreprise doit apparaître partout (liste admin,
+        // sélecteur d'espace, métiers) dès le prochain affichage.
+        await invaliderCachesEntreprises();
+        try {
+          await EspaceService.instance.chargerSilencieux();
+        } catch (e) {
+          debugPrint('creerEntrepriseAvecProprietaire : rafraîchissement ignoré ($e)');
         }
 
         return ResultatCreationEntreprise.depuisJson(map);
@@ -563,6 +656,28 @@ class EntrepriseService {
     );
   }
 
+  /// 🧹 Périme TOUS les caches locaux qui décrivent les entreprises.
+  ///
+  /// À appeler après toute écriture qui change ce que l'administration
+  /// affiche : création, changement de type, changement de métier,
+  /// suppression. Les clés de `CacheLecture` incluent l'utilisateur et
+  /// l'espace de travail : on purge donc la clé de la portée courante
+  /// (celle que la lecture suivante utilisera) **et** les caches dont le
+  /// contenu n'est pas paramétré par entreprise.
+  Future<void> invaliderCachesEntreprises() async {
+    const List<String> cles = <String>[
+      'entreprises_liste',
+      'entreprises_metiers_v1',
+    ];
+    for (final String cle in cles) {
+      try {
+        await CacheLecture.instance.oublier(CacheLecture.cleRpc(cle));
+      } catch (e) {
+        debugPrint('EntrepriseService.invaliderCachesEntreprises($cle) : $e');
+      }
+    }
+  }
+
   /// 🏪 Définit le TYPE D'ACTIVITÉ d'une entreprise (boutique / distribution).
   ///
   /// `null` remet le type à « non renseigné » : l'application retrouve alors
@@ -578,22 +693,16 @@ class EntrepriseService {
           },
         );
 
-        // ⚙️ CORRECTIF 96/97 — l'ENVIRONNEMENT suit immédiatement le type.
-        // Sans ce rafraîchissement, passer une entreprise en distribution
-        // n'affichait Tournées / Ma tournée / Récipients qu'après redémarrage.
+        // ⚙️ CORRECTIF 96/97/174 — l'ENVIRONNEMENT suit immédiatement le
+        // type. On ne se contente pas de rafraîchir « si c'est l'espace
+        // actif » : un Super Admin n'a pas d'espace actif, et c'est
+        // précisément à la réouverture de la fiche que l'ancien type
+        // réapparaissait (cache de liste + cache des métiers).
+        await invaliderCachesEntreprises();
         try {
-          // La liste des entreprises est mise en cache (100 % hors ligne) :
-          // on la périme pour que la fiche relise le type qu'on vient
-          // d'écrire, au lieu de réafficher « Non renseigné ».
-          await CacheLecture.instance
-              .oublier(CacheLecture.cleRpc('entreprises_liste'));
-
           await EspaceService.instance.chargerSilencieux();
-
-          if (EspaceService.instance.actif?.id == entrepriseId) {
-            await ModulesService.instance.chargerSilencieux();
-            await TypeActiviteService.instance.charger();
-          }
+          await ModulesService.instance.chargerSilencieux();
+          await TypeActiviteService.instance.charger();
         } catch (e) {
           debugPrint('definirTypeActivite : rafraîchissement ignoré ($e)');
         }
@@ -624,19 +733,14 @@ class EntrepriseService {
           },
         );
 
-        // La fiche doit relire ce qui vient d'être écrit (cache + espaces).
+        // La fiche doit relire ce qui vient d'être écrit : la liste
+        // (cache 100 % hors ligne), les métiers calculés et le contexte
+        // d'entreprise. Sans cela, rouvrir la fiche réaffichait l'ANCIEN type.
+        await invaliderCachesEntreprises();
         try {
-          await CacheLecture.instance
-              .oublier(CacheLecture.cleRpc('entreprises_liste'));
           await EspaceService.instance.chargerSilencieux();
-
-          final String? actif = EspaceService.instance.actif?.id;
-          if (actif != null) {
-            if (actif == entrepriseId) {
-              await ModulesService.instance.chargerSilencieux();
-              await TypeActiviteService.instance.charger();
-            }
-          }
+          await ModulesService.instance.chargerSilencieux();
+          await TypeActiviteService.instance.charger();
         } catch (e) {
           debugPrint('definirMetier : rafraîchissement ignoré ($e)');
         }
@@ -700,6 +804,8 @@ class EntrepriseService {
           "La suppression n'a pas été confirmée par le serveur.",
         );
       }
+      // La liste et les métiers ne doivent plus décrire cette entreprise.
+      await invaliderCachesEntreprises();
       return json;
     } on PostgrestException catch (e) {
       final String brut = e.message;
@@ -1235,10 +1341,13 @@ class EntrepriseService {
       case '23502':
         return 'Un champ obligatoire est manquant. Vérifiez le formulaire.';
       case '22P02':
-        // 🩺 On joint la précision du serveur : sans elle, impossible de
-        // savoir QUELLE valeur est refusée (identifiant, montant, type…).
-        return "La valeur transmise n'est pas valide pour la base de données "
-            "(${e.message.trim()}).";
+        // 🩺 Le détail technique reste dans les journaux ; l'utilisateur
+        // reçoit une consigne actionnable (et plus jamais le texte brut
+        // « invalid input syntax for type uuid »).
+        debugPrint('EntrepriseService 22P02 ($actionLibelle) : ${e.message}');
+        return "Une information interne est incomplète ou invalide "
+            "(identifiant manquant). Vérifiez la ville, l'activité, la grille "
+            "tarifaire et le propriétaire, puis réessayez.";
       case 'PGRST116':
         return "L'entreprise demandée est introuvable.";
     }

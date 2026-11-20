@@ -66,6 +66,12 @@ class EquipeService {
           'Ce collaborateur n\'appartient pas à votre entreprise.',
       'ACTION_INTERDITE':
           'Vous ne pouvez pas modifier votre propre compte ici.',
+      // 🗑️ CORRECTIF 176 — suppression d'un collaborateur.
+      'CONFIRMATION_REQUISE':
+          'Tapez SUPPRIMER pour confirmer la suppression.',
+      'SUPPRESSION_BLOQUEE':
+          'Suppression bloquée par un historique : exécutez la migration 174 '
+          'dans Supabase, puis réessayez.',
     };
 
     for (final MapEntry<String, String> e in complements.entries) {
@@ -172,5 +178,57 @@ class EquipeService {
           : motDePasse.trim(),
       'p_espace_id': espaceId,
     });
+  }
+
+  /// 🗑️ CORRECTIF 176 — supprime un collaborateur de l'entreprise.
+  ///
+  /// Avant, l'écran appelait `delete_collaborateur`, une RPC qui n'existait
+  /// dans aucune migration : le bouton « Supprimer » échouait toujours.
+  ///
+  /// [confirmation] doit contenir « SUPPRIMER » : le serveur refuse sans.
+  /// Le serveur refuse aussi de supprimer son propre compte ou le
+  /// propriétaire de l'entreprise.
+  ///
+  /// Repli : si la base n'a pas encore la migration 0176, on utilise l'alias
+  /// historique `delete_collaborateur` (mêmes effets), pour ne jamais bloquer
+  /// une installation ancienne.
+  Future<void> supprimer({
+    required String id,
+    required String confirmation,
+  }) async {
+    final String texte = confirmation.trim().toUpperCase();
+    try {
+      await _client.rpc(
+        'rpc_collaborateur_supprimer',
+        params: <String, dynamic>{'p_id': id, 'p_confirmation': texte},
+      );
+    } on PostgrestException catch (e) {
+      if (e.code == 'PGRST202' ||
+          e.message.contains('Could not find the function')) {
+        try {
+          await _client.rpc(
+            'delete_collaborateur',
+            params: <String, dynamic>{'target_user_id': id},
+          );
+          return;
+        } on PostgrestException catch (e2) {
+          throw EquipeException(
+            'Suppression indisponible : exécutez la migration 176 dans '
+            'Supabase, puis réessayez.',
+            code: e2.code,
+          );
+        }
+      }
+      throw EquipeException(
+        messageErreur(e.message),
+        code: (e.message.split('|').first).trim().toUpperCase(),
+      );
+    } catch (e) {
+      debugPrint('EquipeService.rpc_collaborateur_supprimer : $e');
+      throw const EquipeException(
+        'Connexion impossible : vérifiez votre réseau puis réessayez.',
+        code: 'RESEAU',
+      );
+    }
   }
 }

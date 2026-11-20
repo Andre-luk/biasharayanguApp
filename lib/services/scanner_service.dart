@@ -106,7 +106,23 @@ class ScannerService {
       return _resoudreCodeBarre(codeBrut);
     }
 
+    // ✋ 175 — LE FORMAT SE VÉRIFIE LOCALEMENT, AVANT TOUT APPEL RÉSEAU.
+    // « PROD:abc » ou « COND:pas-un-uuid » doivent être refusés comme
+    // illisibles (et non comme une panne de connexion) : c'est aussi ce qui
+    // rend le message identique avec ou sans réseau.
+    _verifierFormat(etiquette);
+
     try {
+      // 🎯 CORRECTIF 175 — RÉSOLUTION CÔTÉ SERVEUR.
+      //
+      // La lecture directe de `produits` est filtrée par la RLS : un article
+      // d'un AUTRE ESPACE de la même entreprise (ou un produit historique dont
+      // `owner_id` porte encore l'UUID du patron) ressortait « introuvable »
+      // alors que l'étiquette était valide. La RPC `rpc_scanner_resoudre`
+      // applique la bonne portée (entreprise du demandeur ou plateforme).
+      final ArticleScanne? parServeur = await _resoudreParServeur(etiquette);
+      if (parServeur != null) return parServeur;
+
       switch (etiquette.type) {
         case TypeQrCode.article:
           return await _resoudreArticle(etiquette);
@@ -120,6 +136,72 @@ class ScannerService {
       throw const ScannerException(
         'Connexion impossible : vérifiez votre réseau puis réessayez.',
         type: TypeErreurScan.reseau,
+      );
+    }
+  }
+
+  /// Contrôle le format d'une étiquette AVANT tout accès réseau.
+  ///
+  /// `PROD:` exige un identifiant numérique, `COND:` un UUID : un code
+  /// tronqué ou bricolé est donc refusé immédiatement (« QR code illisible »)
+  /// au lieu de partir en requête et de revenir en « connexion impossible ».
+  void _verifierFormat(EtiquetteQr etiquette) {
+    switch (etiquette.type) {
+      case TypeQrCode.article:
+        if (int.tryParse(etiquette.identifiant) == null) {
+          throw const ScannerException(
+            'QR code illisible : identifiant d\'article invalide.',
+            type: TypeErreurScan.formatInconnu,
+          );
+        }
+      case TypeQrCode.conditionnement:
+        if (!_uuid.hasMatch(etiquette.identifiant)) {
+          throw const ScannerException(
+            'QR code illisible : identifiant de conditionnement invalide.',
+            type: TypeErreurScan.formatInconnu,
+          );
+        }
+    }
+  }
+
+  /// Résout l'étiquette via `rpc_scanner_resoudre` (migration 175).
+  ///
+  /// Renvoie `null` si la migration n'est pas installée (repli sur l'ancienne
+  /// lecture directe). Lève une [ScannerException] si le serveur refuse.
+  Future<ArticleScanne?> _resoudreParServeur(EtiquetteQr etiquette) async {
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_scanner_resoudre',
+        params: <String, dynamic>{'p_code': etiquette.code},
+      );
+
+      final Map<String, dynamic>? map = parseMap(reponse);
+      final Map<String, dynamic>? produit = parseMap(map?['produit']);
+      if (produit == null) return null;
+
+      final Map<String, dynamic>? cond = parseMap(map?['conditionnement']);
+
+      return ArticleScanne(
+        article: Article.fromMap(produit),
+        conditionnement: cond == null ? null : Conditionnement.fromMap(cond),
+      );
+    } on PostgrestException catch (e) {
+      final String brut = e.message;
+      if (e.code == 'PGRST202' ||
+          brut.contains('Could not find the function') ||
+          brut.toLowerCase().contains('schema cache')) {
+        // Migration 175 absente : on garde l'ancien comportement.
+        return null;
+      }
+
+      // Message métier « CODE|texte » renvoyé par la fonction.
+      final int barre = brut.indexOf('|');
+      final String texte = barre >= 0 ? brut.substring(barre + 1).trim() : brut;
+      final bool format =
+          brut.contains('QR_INVALIDE') || brut.contains('CONDITIONNEMENT');
+      throw ScannerException(
+        texte,
+        type: format ? TypeErreurScan.formatInconnu : TypeErreurScan.introuvable,
       );
     }
   }

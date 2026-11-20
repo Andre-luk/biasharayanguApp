@@ -26,9 +26,12 @@ import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/conditionnement.dart';
 import 'package:biashara_yangu/models/etiquette_qr.dart';
 import 'package:biashara_yangu/services/article_service.dart';
+import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/fichiers_locaux.dart';
+import 'package:biashara_yangu/utils/json_parsing.dart';
 import 'package:biashara_yangu/utils/partage_pdf.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Erreur métier du module « QR codes ».
 ///
@@ -86,6 +89,53 @@ class QrCodeService {
   static const int etiquettesParPage = colonnesParPage * lignesParPage;
 
   final Map<String, Uint8List> _cachePng = <String, Uint8List>{};
+
+  SupabaseClient get _client => SupabaseService.instance.client;
+
+  // ---------------------------------------------------------------------------
+  // 1 bis. TARIF PLATEFORME & FACTURATION DES QR ÉMIS (correctif 175)
+  // ---------------------------------------------------------------------------
+
+  /// État du tarif QR (réservé à la plateforme) : prix unitaire et revenus.
+  Future<QrTarif> tarif() async {
+    final dynamic reponse = await _client.rpc('rpc_qr_tarif_etat');
+    return QrTarif.depuisJson(parseMap(reponse) ?? <String, dynamic>{});
+  }
+
+  /// Fixe le prix unitaire d'un QR code (Super Admin uniquement).
+  Future<bool> definirTarif(double prix) async {
+    final dynamic reponse = await _client.rpc(
+      'rpc_qr_tarif_definir',
+      params: <String, dynamic>{'p_prix': prix},
+    );
+    return (parseMap(reponse) ?? <String, dynamic>{})['ok'] == true;
+  }
+
+  /// Enregistre les QR émis pour ces produits (un seul par produit et par
+  /// entreprise : régénérer une étiquette ne double jamais la facture).
+  ///
+  /// Best-effort : ne lève jamais — la génération/impression ne doit pas
+  /// échouer parce que la migration 175 n'est pas encore appliquée.
+  Future<QrEmission?> enregistrerEmission(
+    Iterable<int> produitIds, {
+    int quantite = 1,
+  }) async {
+    final List<int> ids = produitIds.toSet().toList(growable: false);
+    if (ids.isEmpty) return null;
+    try {
+      final dynamic reponse = await _client.rpc(
+        'rpc_qr_code_emettre',
+        params: <String, dynamic>{
+          'p_produit_ids': ids,
+          'p_quantite': quantite < 1 ? 1 : quantite,
+        },
+      );
+      return QrEmission.depuisJson(parseMap(reponse) ?? <String, dynamic>{});
+    } catch (e) {
+      debugPrint('QrCodeService.enregistrerEmission (ignoré) : $e');
+      return null;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // 1. GÉNÉRATION D'UNE IMAGE QR
@@ -754,6 +804,64 @@ class _MetriquesPlanche {
       largeurCellule: largeurCellule,
       hauteurCellule: hauteurCellule,
       qrPoints: qrPoints,
+    );
+  }
+}
+
+/// Tarif du QR code et revenus (plateforme).
+class QrTarif {
+  const QrTarif({
+    this.prix = 150,
+    this.devise = 'CDF',
+    this.nbQr = 0,
+    this.revenusTotal = 0,
+    this.revenusMois = 0,
+    this.codesExistants = 0,
+  });
+
+  final double prix;
+  final String devise;
+  final int nbQr;
+  final double revenusTotal;
+  final double revenusMois;
+
+  /// 🏷️ 177 — TOUT ce que la boutique peut déjà avoir produit : un QR par
+  /// article + un QR par emballage. Ce n'est pas une facture : c'est le
+  /// nombre d'étiquettes qui existent réellement.
+  final int codesExistants;
+
+  factory QrTarif.depuisJson(Map<String, dynamic> map) {
+    return QrTarif(
+      prix: parseDouble(map['prix'], fallback: 150),
+      devise: parseStringOrNull(map['devise']) ?? 'CDF',
+      nbQr: parseInt(map['nb_qr']),
+      revenusTotal: parseDouble(map['revenus_total']),
+      revenusMois: parseDouble(map['revenus_mois']),
+      codesExistants: parseInt(map['codes_existants']),
+    );
+  }
+}
+
+/// Résultat d'une émission de QR codes (facturation).
+class QrEmission {
+  const QrEmission({
+    this.prix = 0,
+    this.devise = 'CDF',
+    this.nb = 0,
+    this.total = 0,
+  });
+
+  final double prix;
+  final String devise;
+  final int nb;
+  final double total;
+
+  factory QrEmission.depuisJson(Map<String, dynamic> map) {
+    return QrEmission(
+      prix: parseDouble(map['prix']),
+      devise: parseStringOrNull(map['devise']) ?? 'CDF',
+      nb: parseInt(map['nb']),
+      total: parseDouble(map['total']),
     );
   }
 }
