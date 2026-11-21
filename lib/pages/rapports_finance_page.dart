@@ -17,6 +17,8 @@ import 'package:flutter/material.dart';
 import 'package:biashara_yangu/models/finance_stats.dart';
 import 'package:biashara_yangu/models/rapport_finance.dart';
 import 'package:biashara_yangu/services/finance_service.dart';
+// 📅 CORRECTIF 179 — date de référence fournie par le serveur.
+import 'package:biashara_yangu/services/date_locale_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 class RapportsFinancePage extends StatefulWidget {
@@ -45,11 +47,30 @@ class _RapportsFinancePageState extends State<RapportsFinancePage>
   @override
   void initState() {
     super.initState();
-    final DateTime maintenant = DateTime.now();
+    // 📅 CORRECTIF 179 — la date de référence vient du SERVEUR : le rapport
+    // couvre donc la même période que le tableau de bord, quel que soit le
+    // téléphone. On démarre sur la date connue localement, puis on affine.
+    final DateTime maintenant = DateLocaleService.instance.dernierConnu;
     _fin = DateTime(maintenant.year, maintenant.month, maintenant.day);
     _debut = _fin.subtract(const Duration(days: 29));
     _tabs.addListener(_surChangementOnglet);
     _chargerGroupe(GroupeRapportFinance.article);
+    _synchroniserDateServeur();
+  }
+
+  /// Récupère la date du serveur puis recharge si la période change.
+  Future<void> _synchroniserDateServeur() async {
+    final DateTime jour = await DateLocaleService.instance.charger();
+    if (!mounted) return;
+    final DateTime fin = DateTime(jour.year, jour.month, jour.day);
+    if (fin.year == _fin.year && fin.month == _fin.month && fin.day == _fin.day) {
+      return;
+    }
+    setState(() {
+      _fin = fin;
+      _debut = fin.subtract(const Duration(days: 29));
+    });
+    _chargerGroupe(_groupeCourant, forcer: true);
   }
 
   @override

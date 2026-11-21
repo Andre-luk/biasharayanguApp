@@ -1,7 +1,6 @@
 // lib/pages/admin_home_page.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:biashara_yangu/utils/session_manager.dart';
 // 💰 Migration 175 — le tableau de bord ne lit plus la base locale : il lit
 // les revenus réellement encaissés via SerdiPay (RPC `rpc_admin_tableau_bord`).
 import 'package:biashara_yangu/services/supabase_service.dart';
@@ -11,10 +10,10 @@ import 'package:biashara_yangu/utils/json_parsing.dart';
 // 🔐 MODULE 4 — Permissions
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/reinitialisation_session.dart';
 import 'package:biashara_yangu/widgets/permission_gate.dart';
 
 // 🔐 MODULE 12 — Journal d'audit & sécurité (journalisation des sessions)
-import 'package:biashara_yangu/services/audit_service.dart';
 
 // Importation des pages enfants (assurez-vous que ces imports sont valides)
 import 'package:biashara_yangu/pages/admin_users_page.dart';
@@ -177,10 +176,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Future<void> _logout() async {
-    // 🔐 MODULE 12 — déconnexion tracée (best-effort, AVANT de fermer la session).
-    await AuditService.instance.deconnexion();
-    await SessionManager.clearSession();
-    PermissionService.instance.reinitialiser();
+    // 🧹 CORRECTIF 178 — nettoyage unique (rôle plateforme compris) : le
+    // compte suivant ne doit jamais hériter des permissions de l'admin.
+    await ReinitialisationSession.tout();
     if (mounted) GoRouter.of(context).go('/login');
   }
 
@@ -523,10 +521,8 @@ class AdminSettingsPage extends StatelessWidget {
   const AdminSettingsPage({super.key});
 
   Future<void> _logout(BuildContext context) async {
-    // 🔐 MODULE 12 — déconnexion tracée (best-effort, AVANT de fermer la session).
-    await AuditService.instance.deconnexion();
-    await SessionManager.clearSession();
-    PermissionService.instance.reinitialiser();
+    // 🧹 CORRECTIF 178 — même nettoyage que partout ailleurs.
+    await ReinitialisationSession.tout();
     if (context.mounted) GoRouter.of(context).go('/login');
   }
 

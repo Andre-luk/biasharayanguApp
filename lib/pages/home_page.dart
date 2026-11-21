@@ -67,11 +67,12 @@ import 'package:biashara_yangu/services/pressing_service.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 // 📊 MODULE 23 — chiffres d'accueil lus sur Supabase (vérité partagée).
 import 'package:biashara_yangu/services/tableau_bord_stats_service.dart';
+// 📅 CORRECTIF 179 — date de référence commune (calculée par le serveur).
+import 'package:biashara_yangu/services/date_locale_service.dart';
 import 'package:biashara_yangu/widgets/vente_rapide_sheet.dart';
 import 'package:biashara_yangu/widgets/selecteur_espace.dart';
-import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
-import 'package:biashara_yangu/services/scanner_service.dart';
+import 'package:biashara_yangu/services/reinitialisation_session.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 // 🧩 MODULE 16 (phase B) — registre des cartes d'accueil par module.
 import 'package:biashara_yangu/ui/accueil/cartes_accueil.dart';
@@ -640,6 +641,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       StatsAccueil? serveur;
       try {
         serveur = await TableauBordStatsService.instance.charger();
+        // 📅 CORRECTIF 179 — la date du jour vient du serveur : on la
+        // mémorise pour tous les autres écrans (rapports, stats vendeurs),
+        // qui n'ont donc plus besoin de demander l'heure au téléphone.
+        final DateTime? jourServeur = serveur?.jour;
+        if (jourServeur != null) {
+          DateLocaleService.instance.memoriser(jourServeur);
+        }
       } catch (e) {
         debugPrint('HomePage stats serveur (ignoré) : $e');
       }
@@ -683,17 +691,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _logout() async {
-    await SessionManager.clearSession();
-    AbonnementService.instance.reinitialiserAcces();
-    // 🏢 MODULE 15 — la liste des entreprises ne survit pas à la déconnexion.
-    EspaceService.instance.reinitialiser();
-    // 🪙 MODULE 18 — retour à la devise par défaut (CDF) pour le prochain
-    // utilisateur de l'appareil.
-    DeviseService.instance.reinitialiser();
-    // 🔳 MODULE 7 — la session de vente se termine : le panier partagé et
-    // l'historique du scanner ne doivent pas survivre à la déconnexion.
-    PanierService.instance.vider();
-    ScannerService.instance.viderHistorique();
+    // 🧹 CORRECTIF 178 — nettoyage unique : rôle, entreprises, modules,
+    // abonnement, devise, panier, caches. Plus aucun état du compte précédent
+    // ne peut réapparaître pour le suivant.
+    await ReinitialisationSession.tout();
     if (!mounted) return;
     context.go('/login');
   }

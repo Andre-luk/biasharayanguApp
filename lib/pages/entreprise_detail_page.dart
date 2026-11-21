@@ -13,6 +13,8 @@ import 'package:biashara_yangu/models/utilisateur_entreprise.dart';
 import 'package:biashara_yangu/services/abonnement_niveaux_service.dart';
 import 'package:biashara_yangu/services/agent_service.dart';
 import 'package:biashara_yangu/services/analyse_entreprise_service.dart';
+// 📅 CORRECTIF 179 — date de référence fournie par le serveur.
+import 'package:biashara_yangu/services/date_locale_service.dart';
 import 'package:biashara_yangu/services/entreprise_service.dart';
 import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
@@ -1208,9 +1210,13 @@ class _EntrepriseDetailPageState extends State<EntrepriseDetailPage> {
     });
 
     try {
+      // 📅 CORRECTIF 179 — la période est calée sur la date du SERVEUR
+      // (Lubumbashi) : l'analyse affiche donc exactement les mêmes chiffres
+      // que le tableau de bord, quel que soit le téléphone utilisé.
+      final DateTime reference = await DateLocaleService.instance.charger();
       final (DateTime debut, DateTime fin) = mois
-          ? AnalyseEntrepriseService.periodeMois()
-          : AnalyseEntrepriseService.periodeSemaine();
+          ? AnalyseEntrepriseService.periodeMois(reference: reference)
+          : AnalyseEntrepriseService.periodeSemaine(reference: reference);
 
       final AnalyseEntreprise analyse =
           await AnalyseEntrepriseService.instance.charger(

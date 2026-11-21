@@ -323,8 +323,7 @@ void main() {
       expect(idsDe(cartes), isNot(contains('pressing')));
     });
 
-    test('fail-open : profil non chargé, la carte du métier reste accessible',
-        () {
+    test('profil non chargé : aucune carte MÉTIER n\'est affichée', () {
       service.definirRoleCourant(RoleUtilisateur.proprietaire);
 
       final List<CarteAccueil> cartes = CarteAccueil.visibles(
@@ -333,7 +332,20 @@ void main() {
         autorise: service.peut,
       );
 
-      expect(idsDe(cartes), contains('pressing'));
+      // 🧹 CORRECTIF 178 — une carte spécialisée (pressing, hôtel…) attend la
+      // réponse du serveur : sinon la boutique du compte précédent affichait
+      // les trois menus du pressing.
+      expect(idsDe(cartes), isNot(contains('pressing')));
+
+      // Une fois le profil chargé, elle revient.
+      expect(
+        idsDe(CarteAccueil.visibles(
+          modules: modulesPressing,
+          profilCharge: true,
+          autorise: service.peut,
+        )),
+        contains('pressing'),
+      );
     });
 
     test('un agent d\'atelier voit la carte malgré l\'absence de « dépôts »',

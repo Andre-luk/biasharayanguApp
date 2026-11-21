@@ -630,6 +630,21 @@ class CarteAccueil {
         return false;
       }
 
+      // 1 bis. 🧹 CORRECTIF 178 — LES CARTES MÉTIER ATTENDENT LE SERVEUR.
+      //
+      // Les modules de BOUTIQUE restent fail-open (une panne réseau ne doit
+      // jamais vider l'accueil d'un commerçant). En revanche, une carte
+      // SPÉCIALISÉE (pressing, hôtel, restaurant, salle, boulangerie…) ne
+      // s'affiche que si le profil d'activité a réellement été lu : sinon une
+      // boutique voyait « Pressing » et ses trois écrans tant que
+      // `rpc_mes_modules()` n'avait pas répondu — et le compte suivant
+      // héritait des menus du compte précédent.
+      if (!profilCharge &&
+          module != null &&
+          _modulesMetier.contains(module)) {
+        return false;
+      }
+
       // 1 bis. Type d'activité (boutique / distribution). Fail-open : un type
       // non renseigné ne masque rien.
       if (ReglesTypeActivite.masque(typeActivite, carte.typeRequis)) {
@@ -687,5 +702,27 @@ class CarteAccueil {
     'consignes',
     'ma-tournee',
     'recipients',
+  };
+
+  /// 🧹 CORRECTIF 178 — modules SPÉCIALISÉS par métier.
+  ///
+  /// Une carte qui en dépend ne s'affiche pas avant que le serveur ait dit
+  /// quel métier est actif : c'est ce qui empêchait une boutique d'hériter des
+  /// trois menus du pressing (ou des chambres d'un hôtel).
+  static const Set<String> _modulesMetier = <String>{
+    ModuleCode.pressDepots,
+    ModuleCode.pressAtelier,
+    ModuleCode.pressRetraits,
+    ModuleCode.chambres,
+    ModuleCode.reservations,
+    ModuleCode.checkin,
+    ModuleCode.tables,
+    ModuleCode.commandes,
+    ModuleCode.cuisine,
+    ModuleCode.salles,
+    ModuleCode.evenements,
+    ModuleCode.lotsExpiration,
+    ModuleCode.production,
+    ModuleCode.distribution,
   };
 }

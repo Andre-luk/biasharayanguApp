@@ -94,13 +94,29 @@ class VenteDetail {
   final double prixTotal;
   final String? produitIdInt;
 
+  /// 🧑‍🤝‍🧑 CORRECTIF 179 — traçabilité du stock au moment de la vente.
+  ///
+  /// `stockAvant` / `stockApres` viennent du serveur (mouvements réels) :
+  /// c'est ce qui permet d'afficher « il restait 4 beignets » dans le rapport
+  /// d'un collaborateur. `null` = article supprimé, stock non reconstituable.
+  final double? stockAvant;
+  final double? stockApres;
+
+  /// Nom du vendeur de l'unité précédente du même article.
+  final String? venduAvantPar;
+
   VenteDetail({
     required this.produitNom,
     required this.quantite,
     required this.dateVente,
     required this.prixTotal,
     this.produitIdInt,
+    this.stockAvant,
+    this.stockApres,
+    this.venduAvantPar,
   });
+
+  bool get stockConnu => stockApres != null;
 }
 
 int? _asInt(dynamic value) {

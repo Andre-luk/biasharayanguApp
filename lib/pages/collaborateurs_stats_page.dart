@@ -8,8 +8,15 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:biashara_yangu/models/collaborateur_stats.dart';
+import 'package:biashara_yangu/models/rapport_vendeurs.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/models/vente.dart';
+// 🧑‍🤝‍🧑 CORRECTIF 179 — rapport serveur par collaborateur (stock au moment
+// de chaque vente, chaîne « qui a vendu avant »).
+import 'package:biashara_yangu/services/rapport_vendeurs_service.dart';
+// 📅 CORRECTIF 179 — la date de référence vient du SERVEUR (Lubumbashi) :
+// deux téléphones différents voient forcément les mêmes chiffres.
+import 'package:biashara_yangu/services/date_locale_service.dart';
 // 🪙 MODULE 18 — montants formatés dans la devise de l'entreprise.
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/partage_pdf.dart';
@@ -48,8 +55,20 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   Map<int, String> _productNames = {};
   Map<String, List<VenteDetail>> _detailsBySeller = {};
 
+  /// 🧑‍🤝‍🧑 CORRECTIF 179 — rapport serveur (stock avant/après chaque vente).
+  RapportVendeurs? _rapport;
+
+  /// Renseigné si le rapport serveur n'a pas pu être chargé : l'écran reste
+  /// utilisable avec les totaux locaux, et l'utilisateur sait pourquoi le
+  /// stock n'est pas affiché.
+  String? _stockIndisponible;
+
   StatsPeriod _selectedPeriod = StatsPeriod.today;
   DateTimeRange? _selectedRange;
+
+  /// 📅 Jour de référence : celui du SERVEUR (Lubumbashi). Tant qu'il n'est
+  /// pas chargé, on utilise l'horloge de l'appareil.
+  DateTime _jourReference = DateTime.now();
 
   Utilisateur? _ownerProfile;
 
@@ -90,6 +109,10 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   }
 
   String _sellerLabel(String sellerId) {
+    // 🧑‍🤝‍🧑 CORRECTIF 179 — le serveur nomme « proprietaire » les ventes non
+    // attribuées à un collaborateur (vente faite par le patron lui-même).
+    if (sellerId == 'proprietaire') return 'Patron';
+
     if (_ownerProfile != null && sellerId == _ownerProfile!.id) {
       return 'Patron';
     }
@@ -103,8 +126,11 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   }
 
   DateTimeRange _calculateRange(StatsPeriod period) {
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
+    // ⚠️ Plus de `DateTime.now()` ici : la référence est la date du serveur,
+    // sinon un téléphone mal réglé demanderait une autre période.
+    final DateTime maintenant = _jourReference;
+    final DateTime todayStart =
+        DateTime(maintenant.year, maintenant.month, maintenant.day);
 
     switch (period) {
       case StatsPeriod.today:
@@ -115,7 +141,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
 
       case StatsPeriod.thisWeek:
         final startOfWeek =
-            todayStart.subtract(Duration(days: now.weekday - 1));
+            todayStart.subtract(Duration(days: maintenant.weekday - 1));
         return DateTimeRange(
           start: startOfWeek,
           end: todayStart.add(const Duration(days: 1)),
@@ -123,7 +149,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
 
       case StatsPeriod.thisMonth:
         return DateTimeRange(
-          start: DateTime(now.year, now.month, 1),
+          start: DateTime(todayStart.year, todayStart.month, 1),
           end: todayStart.add(const Duration(days: 1)),
         );
 
@@ -151,6 +177,16 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
     }
   }
 
+  /// 🔁 Bornes envoyées à la lecture de secours de `ventes`.
+  ///
+  /// Le fuseau est EXPLICITE (`+02:00`, heure de Lubumbashi) : la requête ne
+  /// dépend donc ni du fuseau ni de l'heure du téléphone.
+  String _isoLubumbashi(DateTime jour) {
+    final String y = jour.year.toString().padLeft(4, '0');
+    final String m = jour.month.toString().padLeft(2, '0');
+    final String d = jour.day.toString().padLeft(2, '0');
+    return '$y-$m-${d}T00:00:00+02:00';
+  }
   Future<void> _loadInitialData() async {
     if (!mounted) return;
     setState(() {
@@ -159,6 +195,10 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
     });
 
     try {
+      // 📅 La date de référence est demandée au SERVEUR avant tout calcul de
+      // période (repli : horloge de l'appareil si le réseau manque).
+      _jourReference = await DateLocaleService.instance.charger();
+
       await Future.wait([
         _loadOwnerProfile(),
         _loadSellers(),
@@ -253,8 +293,8 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
           .select(
               'id, produit_id, quantite, prix, date, owner_id, seller_id, mode_paiement')
           .eq('owner_id', widget.ownerId)
-          .gte('date', range.start.toIso8601String())
-          .lt('date', range.end.toIso8601String())
+          .gte('date', _isoLubumbashi(range.start))
+          .lt('date', _isoLubumbashi(range.end))
           .order('date', ascending: false);
 
       final Map<String, _SellerAgg> aggBySeller = {};
@@ -301,10 +341,74 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
 
       results.sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
 
+      // 🧑‍🤝‍🧑 CORRECTIF 179 — le rapport SERVEUR apporte ce que la lecture
+      // brute de `ventes` ne peut pas donner : le stock restant AVANT et
+      // APRÈS chaque vente, et le nom du vendeur de l'unité précédente.
+      //
+      // Best-effort : si l'appel échoue (RPC pas encore déployée, réseau),
+      // l'écran continue de fonctionner avec les totaux ci-dessus et signale
+      // simplement que le stock n'est pas disponible.
+      RapportVendeurs? rapport;
+      String? stockIndisponible;
+      try {
+        rapport = await RapportVendeursService.instance.charger(
+          entrepriseId: widget.ownerId,
+          debut: range.start,
+          fin: range.end.subtract(const Duration(days: 1)),
+        );
+      } on RapportVendeursException catch (e) {
+        stockIndisponible = e.message;
+      } catch (e) {
+        stockIndisponible = 'Stock non disponible : $e';
+      }
+
+      if (rapport != null && !rapport.estVide) {
+        // Les journaux du serveur contiennent le stock : on remplace les
+        // détails locaux par ceux du serveur, vendeur par vendeur.
+        final Map<String, List<VenteDetail>> depuisServeur =
+            <String, List<VenteDetail>>{};
+        final List<CollaborateurStats> statsServeur = <CollaborateurStats>[];
+
+        for (final VendeurRapport vendeur in rapport.vendeurs) {
+          depuisServeur[vendeur.id] = vendeur.journal
+              .map((JournalVenteVendeur j) => VenteDetail(
+                    produitNom: j.produit,
+                    quantite: j.quantite,
+                    dateVente: j.date ?? DateTime.now(),
+                    prixTotal: j.prix,
+                    stockAvant: j.stockAvant,
+                    stockApres: j.stockApres,
+                    venduAvantPar: j.venduAvantPar,
+                  ))
+              .toList(growable: false);
+
+          statsServeur.add(
+            CollaborateurStats(
+              sellerId: vendeur.id,
+              ventesCount: vendeur.ventes,
+              totalAmount: vendeur.ca,
+            ),
+          );
+        }
+
+        if (depuisServeur.isNotEmpty) {
+          detailsBySeller
+            ..clear()
+            ..addAll(depuisServeur);
+        }
+        if (statsServeur.isNotEmpty) {
+          results
+            ..clear()
+            ..addAll(statsServeur);
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _stats = results;
         _detailsBySeller = detailsBySeller;
+        _rapport = rapport;
+        _stockIndisponible = stockIndisponible;
         _isLoading = false;
       });
     } catch (e) {
@@ -421,7 +525,16 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
               pw.Text('Aucun article vendu sur cette période.')
             else
               pw.Table.fromTextArray(
-                headers: const ['Produit', 'Qté', 'Heure', 'Montant'],
+                // 🧑‍🤝‍🧑 CORRECTIF 179 — le stock restant au moment de chaque
+                // vente est désormais imprimé dans le rapport du vendeur.
+                headers: const [
+                  'Produit',
+                  'Qté',
+                  'Heure',
+                  'Stock avant',
+                  'Stock après',
+                  'Montant',
+                ],
                 data: details.map((d) {
                   final localDate = d.dateVente.toLocal();
                   final time = DateFormat('HH:mm').format(localDate);
@@ -430,18 +543,22 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                     d.produitNom,
                     _formatQty(d.quantite),
                     time,
+                    d.stockConnu ? _formatQty(d.stockAvant ?? 0) : '—',
+                    d.stockConnu ? _formatQty(d.stockApres ?? 0) : '—',
                     formatMontant(d.prixTotal),
                   ];
                 }).toList(),
                 headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
                 headerDecoration:
                     const pw.BoxDecoration(color: PdfColors.grey300),
-                cellStyle: const pw.TextStyle(fontSize: 10),
+                cellStyle: const pw.TextStyle(fontSize: 9),
                 cellAlignment: pw.Alignment.centerLeft,
                 cellAlignments: {
                   1: pw.Alignment.centerRight,
                   2: pw.Alignment.center,
                   3: pw.Alignment.centerRight,
+                  4: pw.Alignment.centerRight,
+                  5: pw.Alignment.centerRight,
                 },
                 border: pw.TableBorder.all(color: PdfColors.grey400),
               ),
@@ -566,6 +683,43 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
                                         fontSize: 12,
                                       ),
                                     ),
+                                    // 🧑‍🤝‍🧑 CORRECTIF 179 — le stock au moment
+                                    // de la vente : « il restait 4 beignets ».
+                                    if (d.stockConnu)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Stock : ${_formatQty(d.stockAvant ?? 0)} '
+                                          'avant → ${_formatQty(d.stockApres ?? 0)} après',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF1565C0),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      const Padding(
+                                        padding: EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Stock inconnu (article supprimé)',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.orange,
+                                          ),
+                                        ),
+                                      ),
+                                    if (d.venduAvantPar != null &&
+                                        d.venduAvantPar!.trim().isNotEmpty)
+                                      Text(
+                                        'Vente précédente de cet article : '
+                                        '${d.venduAvantPar}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
@@ -805,13 +959,16 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   }
 
   Widget _buildSellerCard(CollaborateurStats s) {
-    final user = _sellers[s.sellerId];
-    final isOwner = s.sellerId == widget.ownerId;
-    final name = isOwner
-        ? (_ownerProfile != null ? _displayName(_ownerProfile!) : 'Patron')
-        : (user != null ? _displayName(user) : 'Inconnu');
+    final isOwner = s.sellerId == widget.ownerId ||
+        s.sellerId == 'proprietaire';
+    final name = isOwner && _ownerProfile != null
+        ? _displayName(_ownerProfile!)
+        : _sellerLabel(s.sellerId);
 
     final details = _detailsBySeller[s.sellerId] ?? const <VenteDetail>[];
+    // 🧑‍🤝‍🧑 CORRECTIF 179 — stock restant après la dernière vente connue.
+    final double? stockRestant =
+        _rapport?.vendeurParId(s.sellerId)?.stockApresDerniereVente;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
@@ -834,7 +991,12 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
           name,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: Text('${s.ventesCount} ventes enregistrées'),
+        subtitle: Text(
+          stockRestant == null
+              ? '${s.ventesCount} ventes enregistrées'
+              : '${s.ventesCount} ventes · stock restant '
+                  '${_formatQty(stockRestant)}',
+        ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -878,6 +1040,35 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
       body: Column(
         children: [
           _buildFilterBar(),
+          // 🧑‍🤝‍🧑 CORRECTIF 179 — si le rapport serveur est indisponible, on
+          // le dit clairement plutôt que d'afficher un stock inventé.
+          if (_stockIndisponible != null && !_isLoading)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(15, 0, 15, 6),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 18, color: Colors.orange.shade800),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Stock non affiché : $_stockIndisponible',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange.shade900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           _buildSummarySection(),
           Expanded(
             child: _isLoading

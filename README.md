@@ -53,7 +53,8 @@ lib/
   ui/                  → mise en page adaptative (contenu centré sur ordinateur)
   widgets/             → composants partagés (puces de statut, dialogues…)
   db_helper.dart       → base SQLite locale (repli hors ligne)
-supabase/migrations/   → 175 migrations SQL idempotentes (0000 → 0177)
+supabase/migrations/   → 177 migrations SQL idempotentes (0000 → 0177, puis 0179)
+                        (aucune 0178 : le correctif 178 est purement client)
 test/                  → tests purs (modèles, permissions, rapports, modules,
                           devises, factures d'abonnement, quotas IA, codes de
                           validation agent, marketplace, administration,
@@ -224,7 +225,34 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               dépôt pressing ; tests de permissions par métier et des routes.
               QR codes : `codes_existants` (1 par article + 1 par emballage)
               et répartition par boutique dans le tableau de bord.
+0179          CORRECTIF 179 — FINANCES, RAPPORT PAR COLLABORATEUR, COHÉRENCE :
+              fin du « operator does not exist: uuid = text » (les anciennes
+              colonnes d'identifiants restées en texte sont converties, et les
+              fonctions Finance comparent désormais les identifiants en texte —
+              elles fonctionnent quel que soit l'état de la base) ; nouveau
+              `rpc_rapport_vendeurs` : rapport par collaborateur avec le stock
+              restant AVANT et APRÈS chaque vente et le vendeur de l'unité
+              précédente (« il restait 4 beignets, c'est A qui avait vendu ») ;
+              UN SEUL périmètre et UNE SEULE journée (minuit heure de
+              Lubumbashi, date fournie par le serveur) pour le tableau de bord,
+              le rapport du patron et les rapports vendeurs → les chiffres
+              correspondent, quel que soit le téléphone.
 ```
+
+**Correctif 178** — isolation des sessions (client uniquement, aucune
+migration) : un seul service de déconnexion (`ReinitialisationSession`) vide
+rôle, permissions, espace actif, modules, abonnement, panier, scans et caches ;
+le rôle est lu **d'abord au serveur** au démarrage, à la connexion et dans la
+navigation (un super admin ne tombe plus dans `/main`) ; le routeur refuse un
+espace non autorisé ; le cache d'espace est **cloisonné par compte** ; les
+cartes métier de l'accueil attendent le profil de modules. Détails :
+`docs/correctif_178_isolation_session.md`.
+
+**Correctif 179** — finances et rapport par collaborateur : plus d'erreur
+« uuid = text », rapport par vendeur avec le stock avant/après chaque vente,
+et **un seul périmètre / une seule journée pour tous les chiffres** (tableau
+de bord, rapport du patron, rapports vendeurs). Détails :
+`docs/correctif_179_finances_et_rapport_vendeurs.md`.
 
 ⚠️ La migration **0020** doit être exécutée **seule** (PostgreSQL n'autorise
 pas d'utiliser une nouvelle valeur d'énum dans la même transaction).

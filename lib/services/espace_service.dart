@@ -25,6 +25,7 @@ import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
+import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
 /// Erreur métier du module multi-entreprises.
@@ -131,15 +132,49 @@ class EspaceService {
   ///   source de vérité : dès qu'il répond, la valeur est remplacée.
   static const String cleCache = 'espace_etat_cache_v1';
 
+  /// 🧹 CORRECTIF 178 — LE CACHE EST PROPRE À CHAQUE COMPTE.
+  ///
+  /// La clé était GLOBALE : sur le même navigateur/téléphone, la boutique qui
+  /// se connectait après un pressing restaurait l'espace du PRESSING (et ses
+  /// trois menus) avant même que le serveur ne sache qui était connecté.
+  /// La clé porte désormais l'identifiant du compte.
+  static const String prefixeCacheUtilisateur = 'espace_etat_cache_v2_';
+
+  Future<String> _cleCacheCourante({String? userId}) async {
+    String? id = userId;
+    if (id == null || id.trim().isEmpty) {
+      try {
+        id = await SessionManager.getUserId();
+      } catch (_) {
+        id = null;
+      }
+    }
+    if (id == null || id.trim().isEmpty) {
+      try {
+        id = SupabaseService.instance.auth.currentUser?.id;
+      } catch (_) {
+        id = null;
+      }
+    }
+    final String propre = (id ?? '').trim();
+    return propre.isEmpty ? cleCache : '$prefixeCacheUtilisateur$propre';
+  }
+
   /// Entreprise de travail restaurée depuis le cache (diagnostic / tests).
   bool get restaureeDepuisCache => _restaureeDepuisCache;
   bool _restaureeDepuisCache = false;
 
   /// Publie immédiatement le dernier état connu (aucun réseau).
-  Future<void> restaurerDepuisCache() async {
+  Future<void> restaurerDepuisCache({String? userId}) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? brut = prefs.getString(cleCache);
+
+      // 🧹 L'ancienne clé globale est supprimée : elle ne doit plus jamais
+      // servir un espace à un autre compte.
+      await prefs.remove(cleCache);
+
+      final String cle = await _cleCacheCourante(userId: userId);
+      final String? brut = prefs.getString(cle);
       if (brut == null || brut.isEmpty) return;
 
       final dynamic decode = jsonDecode(brut);
@@ -157,7 +192,7 @@ class EspaceService {
       _restaureeDepuisCache = true;
 
       debugPrint(
-        'EspaceService : contexte restauré du cache '
+        'EspaceService : contexte restauré du cache du compte '
         '(${resultat.espaces.length} entreprise(s), active : $actif).',
       );
     } catch (e) {
@@ -168,15 +203,22 @@ class EspaceService {
   Future<void> _ecrireCache(Map<String, dynamic> map) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString(cleCache, jsonEncode(map));
+      final String cle = await _cleCacheCourante();
+      await prefs.setString(cle, jsonEncode(map));
     } catch (e) {
       debugPrint('EspaceService._ecrireCache (ignoré) : $e');
     }
   }
 
-  Future<void> _viderCache() async {
+  Future<void> _viderCache({String? userId}) async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
+      // 🧹 CORRECTIF 178 — on efface le cache DU COMPTE et l'ancienne clé
+      // globale (héritage d'avant le cloisonnement).
+      // L'identifiant est passé explicitement par la déconnexion : au moment
+      // où cette purge s'exécute, la session locale peut déjà être effacée.
+      final String cle = await _cleCacheCourante(userId: userId);
+      await prefs.remove(cle);
       await prefs.remove(cleCache);
     } catch (e) {
       debugPrint('EspaceService._viderCache (ignoré) : $e');
@@ -191,8 +233,9 @@ class EspaceService {
   ///    cache (on garde la dernière entreprise connue).
   Future<void> initialiserContexte({
     Duration delai = const Duration(seconds: 8),
+    String? userId,
   }) async {
-    await restaurerDepuisCache();
+    await restaurerDepuisCache(userId: userId);
     try {
       await chargerSilencieux().timeout(delai);
     } catch (e) {
@@ -439,13 +482,17 @@ class EspaceService {
   }
 
   /// Vide le cache (déconnexion, changement de compte).
-  void reinitialiser() {
+  ///
+  /// [userId] doit être fourni par la déconnexion : l'identifiant du compte
+  /// sortant est capturé AVANT la fermeture de session, sinon la purge du
+  /// cache cloisonné (correctif 178) ne retrouverait plus sa clé.
+  void reinitialiser({String? userId}) {
     etat.value = null;
     // Déconnexion : plus aucune boutique active (le compte suivant ne doit
     // jamais hériter de l'espace de données du précédent).
     ScopeDonnees.reinitialiser();
     _restaureeDepuisCache = false;
-    unawaited(_viderCache());
+    unawaited(_viderCache(userId: userId));
     _reinitialiserSessionMetier();
   }
 

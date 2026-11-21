@@ -758,6 +758,63 @@ class PermissionService {
     _roleCourant = RoleUtilisateur.fromCode(code);
   }
 
+  /// 🔐 CORRECTIF 178 — LE RÔLE VIENT DU SERVEUR, PAS DU TÉLÉPHONE.
+  ///
+  /// La base locale (SQLite) peut être vide, ancienne ou appartenir au compte
+  /// précédent : un Super Admin y apparaissait alors comme propriétaire
+  /// d'entreprise, et l'application l'ouvrait sur la coquille `/main`.
+  ///
+  /// Lit `utilisateurs` pour le compte connecté (ou [userId]) et renvoie le
+  /// rôle effectif. `RoleUtilisateur.inconnu` si la ligne est absente ou si le
+  /// réseau échoue : l'appelant garde alors son repli local.
+  Future<RoleUtilisateur> resoudreRoleDepuisServeur({String? userId}) async {
+    String? id = userId;
+    if (id == null || id.trim().isEmpty) {
+      try {
+        id = SupabaseService.instance.auth.currentUser?.id;
+      } catch (_) {
+        id = null;
+      }
+    }
+    if (id == null || id.trim().isEmpty) return RoleUtilisateur.inconnu;
+
+    try {
+      final dynamic data = await _client
+          .from('utilisateurs')
+          .select('new_role,role,parent_id')
+          .eq('id', id)
+          .maybeSingle();
+      final Map<String, dynamic>? ligne = parseMap(data);
+      if (ligne == null) return RoleUtilisateur.inconnu;
+
+      return roleDepuisCodes(
+        newRole: parseStringOrNull(ligne['new_role']),
+        role: parseStringOrNull(ligne['role']),
+        parentId: parseStringOrNull(ligne['parent_id']),
+      );
+    } catch (e) {
+      debugPrint('PermissionService.resoudreRoleDepuisServeur : $e');
+      return RoleUtilisateur.inconnu;
+    }
+  }
+
+  /// 🔐 CORRECTIF 178 — un rôle PLATEFORME ne vit pas dans `/main`, et un
+  /// compte d'ENTREPRISE n'entre pas dans `/admin`.
+  ///
+  /// Fonction PURE (testable sans réseau) : elle ne regarde que le rôle et
+  /// l'URL. Les autres routes (connexion, factures, journal d'audit…) restent
+  /// libres et sont filtrées par la matrice des permissions.
+  static bool espaceAutorise(RoleUtilisateur role, String location) {
+    if (role == RoleUtilisateur.inconnu) return true;
+    final String chemin = Uri.tryParse(location)?.path ?? location;
+    final bool espaceEntreprise =
+        chemin == '/main' || chemin.startsWith('/main/');
+    final bool espacePlateforme =
+        chemin == '/admin' || chemin.startsWith('/admin/');
+    if (role.estPlateforme) return !espaceEntreprise;
+    return !espacePlateforme;
+  }
+
   // ---------------------------------------------------------------------------
   // 4. CHARGEMENT DES SURCHARGES (`app_settings`)
   // ---------------------------------------------------------------------------

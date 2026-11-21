@@ -347,6 +347,22 @@ class _BiasharaAppState extends State<BiasharaApp> {
         RoleUtilisateur roleEffectif =
             PermissionService.roleDepuisCodes(role: role);
 
+        // 🔐 CORRECTIF 178 — AU DÉMARRAGE AUSSI, LE SERVEUR FAIT FOI.
+        //
+        // Le rôle enregistré sur l'appareil peut dater d'un autre compte (ou
+        // d'une base locale vide) : un Super Admin y apparaissait comme
+        // propriétaire et la session restaurée ouvrait `/main` — tableau de
+        // bord, rapports, paramètres — au lieu de l'administration.
+        final RoleUtilisateur roleServeur = await PermissionService.instance
+            .resoudreRoleDepuisServeur(userId: uid);
+        if (roleServeur != RoleUtilisateur.inconnu) {
+          roleEffectif = roleServeur;
+        }
+        debugPrint(
+          'Démarrage — rôle effectif : ${roleEffectif.code} '
+          '(${roleServeur != RoleUtilisateur.inconnu ? "serveur" : "local"})',
+        );
+
         if (roleEffectif.estPlateforme) {
           await PermissionService.instance.initialiser(
             roleEffectif.code,
@@ -357,9 +373,14 @@ class _BiasharaAppState extends State<BiasharaApp> {
           final localUser = await _utilisateurLocal(uid);
           _checkSubscriptionInBackground(localUser?.parentId ?? uid);
 
-          final RoleUtilisateur roleProfil =
-              PermissionService.roleDepuisUtilisateur(localUser);
-          if (roleProfil != RoleUtilisateur.inconnu) roleEffectif = roleProfil;
+          // Repli local UNIQUEMENT si le serveur n'a pas répondu (hors ligne).
+          if (roleServeur == RoleUtilisateur.inconnu) {
+            final RoleUtilisateur roleProfil =
+                PermissionService.roleDepuisUtilisateur(localUser);
+            if (roleProfil != RoleUtilisateur.inconnu) {
+              roleEffectif = roleProfil;
+            }
+          }
 
           await PermissionService.instance.initialiser(
             roleEffectif.code,
@@ -378,7 +399,11 @@ class _BiasharaAppState extends State<BiasharaApp> {
           // `initialiserContexte` publie d'abord le dernier état connu (cache
           // local, aucun réseau) puis confirme avec le serveur : l'entreprise
           // active est donc correcte même si le réseau est lent ou absent.
-          await EspaceService.instance.initialiserContexte();
+          // ⚠️ `userId` est transmis explicitement : le cache d'espace est
+          // désormais cloisonné PAR COMPTE (correctif 178). Sans cet argument,
+          // une clé globale pouvait restituer l'espace d'un autre utilisateur
+          // (ex. : super admin affichant les menus du pressing).
+          await EspaceService.instance.initialiserContexte(userId: uid);
 
           // 🧩 MODULE 16 — profil de modules de l'espace actif (activité de
           // l'entreprise). En arrière-plan : l'écran s'ouvre sans attendre le

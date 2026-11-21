@@ -18,12 +18,12 @@ import 'package:biashara_yangu/services/activation_service.dart';
 import 'package:biashara_yangu/services/devise_service.dart';
 // 🏢 MODULE 15 — chargement des entreprises du compte (sélecteur).
 import 'package:biashara_yangu/services/espace_service.dart';
+import 'package:biashara_yangu/services/modules_service.dart';
 // 🏪 Correctif 21 — auto-réparation : patron sans entreprise.
 import 'package:biashara_yangu/services/entreprise_service.dart';
-import 'package:biashara_yangu/services/panier_service.dart';
-import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/reinitialisation_session.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/pages/password_recovery_page.dart';
@@ -233,33 +233,39 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _navigateAfterLogin(String userId) async {
+    // 🧹 CORRECTIF 178 — ON PART D'UN ÉTAT VIERGE.
+    // Aucun rôle, aucun module, aucune entreprise du compte PRÉCÉDENT ne doit
+    // influencer cette session (cause des menus Super Admin/pressing hérités).
+    ReinitialisationSession.viderEtats();
+
     // -------------------------------------------------------------------------
     //  🔐 MODULE 4 — RÉSOLUTION DU RÔLE
     // -------------------------------------------------------------------------
-    //  Le rôle est relu à trois sources, de la plus fiable à la plus récente :
-    //    1. `new_role` du profil local (colonne officielle du Module 4) ;
-    //    2. l'ancien rôle texte (`admin`, `vendor`, `collaborator`) ;
-    //    3. la base Supabase, consultée juste après : si la synchronisation
-    //       locale a échoué, un administrateur de plateforme se retrouverait
-    //       sinon enfermé hors de sa propre plateforme.
-    //
-    //  Les permissions sont ensuite chargées AVANT toute navigation : le
-    //  middleware du routeur s'appuie sur elles dès le premier écran.
+    //  ⚠️ CORRECTIF 178 : LE SERVEUR FAIT FOI EN PREMIER. La base locale peut
+    //  être vide ou appartenir au compte précédent ; un Super Admin y
+    //  apparaissait alors comme propriétaire d'entreprise et atterrissait
+    //  dans la coquille `/main`.
     RoleUtilisateur role = RoleUtilisateur.fromCode(
       await SessionManager.getUserRole(),
     );
 
-    Utilisateur? profilLocal;
-    try {
-      profilLocal = await _dbHelper.getUtilisateurById(userId);
-    } catch (e) {
-      // Base locale indisponible : le rôle reste celui de la session et sera
-      // confirmé juste après auprès de Supabase.
-      debugPrint('Profil local indisponible (rôle) : $e');
+    // 1. Le serveur (source de vérité).
+    final RoleUtilisateur roleServeur = await PermissionService.instance
+        .resoudreRoleDepuisServeur(userId: userId);
+    if (roleServeur != RoleUtilisateur.inconnu) role = roleServeur;
+
+    // 2. Repli local, seulement si le serveur n'a rien dit (hors ligne).
+    if (roleServeur == RoleUtilisateur.inconnu) {
+      Utilisateur? profilLocal;
+      try {
+        profilLocal = await _dbHelper.getUtilisateurById(userId);
+      } catch (e) {
+        debugPrint('Profil local indisponible (rôle) : $e');
+      }
+      final RoleUtilisateur roleProfil =
+          PermissionService.roleDepuisUtilisateur(profilLocal);
+      if (roleProfil != RoleUtilisateur.inconnu) role = roleProfil;
     }
-    final RoleUtilisateur roleProfil =
-        PermissionService.roleDepuisUtilisateur(profilLocal);
-    if (roleProfil != RoleUtilisateur.inconnu) role = roleProfil;
 
     if (!role.estPlateforme &&
         await SupabaseService.instance.estAdministrateurPlateforme(userId)) {
@@ -310,6 +316,11 @@ class _LoginPageState extends State<LoginPage> {
     // multi-entreprises). Best-effort : jamais bloquant.
     await EspaceService.instance.chargerSilencieux();
 
+    // 🧹 CORRECTIF 178 — le profil de modules est REchargé pour l'espace du
+    // compte qui vient de se connecter. Sans cela, le compte suivant pouvait
+    // hériter des écrans du précédent (boutique affichant le pressing).
+    await ModulesService.instance.chargerSilencieux();
+
     // 🪙 MODULE 18 — devise de travail de l'entreprise (CDF/USD) : appliquée
     // à l'affichage de tous les montants. Best-effort.
     await DeviseService.instance.chargerSilencieux();
@@ -332,18 +343,11 @@ class _LoginPageState extends State<LoginPage> {
             TextButton(
               onPressed: () async {
                 Navigator.of(ctx).pop();
-                // 🔐 MODULE 12 — session bloquée : déconnexion tracée.
-                await AuditService.instance.deconnexion(
+                // 🧹 CORRECTIF 178 — session bloquée : nettoyage unique
+                // (audit, Auth, rôle, espaces, modules, panier, caches).
+                await ReinitialisationSession.tout(
                   email: _emailController.text.trim().toLowerCase(),
                 );
-                await SupabaseService.instance.signOut();
-                await SessionManager.clearSession();
-                AbonnementService.instance.reinitialiserAcces();
-                // 🪙 MODULE 18 — retour à la devise par défaut (CDF).
-                DeviseService.instance.reinitialiser();
-                // 🔳 MODULE 7 — session terminée : panier et historique vidés.
-                PanierService.instance.vider();
-                ScannerService.instance.viderHistorique();
               },
               child: const Text('Se déconnecter'),
             ),

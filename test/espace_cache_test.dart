@@ -52,15 +52,22 @@ Map<String, dynamic> reponseDeuxEntreprises() => <String, dynamic>{
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // 🧹 CORRECTIF 178 — le cache d'espace est désormais PROPRE À CHAQUE COMPTE.
+  const String compte = 'compte-test-178';
+  const String autreCompte = 'compte-test-autre';
+  final String cleCompte = '${EspaceService.prefixeCacheUtilisateur}$compte';
+  final String cleAutreCompte =
+      '${EspaceService.prefixeCacheUtilisateur}$autreCompte';
+
   setUp(() {
     // Aucun cache au départ : chaque test pose son propre état.
     SharedPreferences.setMockInitialValues(<String, Object>{});
-    EspaceService.instance.reinitialiser();
+    EspaceService.instance.reinitialiser(userId: compte);
     ScopeDonnees.reinitialiser();
   });
 
   test('aucun cache → rien n\'est publié (comportement historique)', () async {
-    await EspaceService.instance.restaurerDepuisCache();
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
 
     expect(EspaceService.instance.etat.value, isNull);
     expect(EspaceService.instance.restaureeDepuisCache, isFalse);
@@ -70,10 +77,10 @@ void main() {
   test('cache présent → l\'entreprise active est connue AVANT le réseau',
       () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
-      EspaceService.cleCache: jsonEncode(reponseDeuxEntreprises()),
+      cleCompte: jsonEncode(reponseDeuxEntreprises()),
     });
 
-    await EspaceService.instance.restaurerDepuisCache();
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
 
     // 1. la liste est publiée : le sélecteur peut s'afficher ;
     expect(EspaceService.instance.etat.value, isNotNull);
@@ -96,10 +103,10 @@ void main() {
 
   test('cache illisible → ignoré, aucune exception', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
-      EspaceService.cleCache: 'pas du json',
+      cleCompte: 'pas du json',
     });
 
-    await EspaceService.instance.restaurerDepuisCache();
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
 
     expect(EspaceService.instance.etat.value, isNull);
     expect(ScopeDonnees.espaceActif, isNull);
@@ -107,14 +114,14 @@ void main() {
 
   test('cache vide (aucune entreprise) → ignoré', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
-      EspaceService.cleCache: jsonEncode(<String, dynamic>{
+      cleCompte: jsonEncode(<String, dynamic>{
         'espaces': <dynamic>[],
         'actif_id': null,
         'max_espaces': 1,
       }),
     });
 
-    await EspaceService.instance.restaurerDepuisCache();
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
 
     expect(EspaceService.instance.etat.value, isNull);
     expect(ScopeDonnees.espaceActif, isNull);
@@ -122,16 +129,81 @@ void main() {
 
   test('déconnexion → état ET portée remis à zéro', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{
-      EspaceService.cleCache: jsonEncode(reponseDeuxEntreprises()),
+      cleCompte: jsonEncode(reponseDeuxEntreprises()),
     });
 
-    await EspaceService.instance.restaurerDepuisCache();
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
     expect(ScopeDonnees.espaceActif, isNotNull);
 
-    EspaceService.instance.reinitialiser();
+    EspaceService.instance.reinitialiser(userId: compte);
 
     expect(EspaceService.instance.etat.value, isNull);
     expect(EspaceService.instance.restaureeDepuisCache, isFalse);
     expect(ScopeDonnees.espaceActif, isNull);
+
+    // 🧹 CORRECTIF 178 — le cache persisté du compte sortant est effacé :
+    // le compte suivant ne peut plus le restaurer.
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await Future<void>.delayed(Duration.zero);
+    expect(prefs.getString(cleCompte), isNull);
+  });
+
+  // -----------------------------------------------------------------------
+  // CORRECTIF 178 — CLOISONNEMENT DES CACHES PAR COMPTE
+  // -----------------------------------------------------------------------
+
+  test('l\'ancienne clé GLOBALE n\'est plus jamais utilisée', () async {
+    // Cache hérité d'une version précédente (une seule clé pour tout le
+    // monde) : il ne doit plus servir d'espace à personne.
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      EspaceService.cleCache: jsonEncode(reponseDeuxEntreprises()),
+    });
+
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
+
+    expect(EspaceService.instance.etat.value, isNull);
+    expect(ScopeDonnees.espaceActif, isNull);
+    // Et la clé héritée est supprimée du disque.
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(EspaceService.cleCache), isNull);
+  });
+
+  test('le cache d\'un AUTRE compte n\'est jamais restauré', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      cleAutreCompte: jsonEncode(reponseDeuxEntreprises()),
+    });
+
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
+
+    expect(EspaceService.instance.etat.value, isNull);
+    expect(ScopeDonnees.espaceActif, isNull);
+  });
+
+  test('deux comptes coexistent sans se contaminer', () async {
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      cleCompte: jsonEncode(reponseDeuxEntreprises()),
+      cleAutreCompte: jsonEncode(<String, dynamic>{
+        'espaces': <Map<String, dynamic>>[
+          <String, dynamic>{
+            'id': '11111111-1111-1111-1111-111111111111',
+            'nom': 'PRESSING DU MARCHE',
+            'type': 'pressing',
+            'actif': true,
+          },
+        ],
+        'actif_id': '11111111-1111-1111-1111-111111111111',
+        'max_espaces': 1,
+      }),
+    });
+
+    await EspaceService.instance.restaurerDepuisCache(userId: compte);
+    expect(EspaceService.instance.actif?.nom, 'HEKIMA PHARMA');
+
+    EspaceService.instance.reinitialiser(userId: compte);
+    ScopeDonnees.reinitialiser();
+
+    await EspaceService.instance.restaurerDepuisCache(userId: autreCompte);
+    expect(EspaceService.instance.actif?.nom, 'PRESSING DU MARCHE');
+    expect(EspaceService.instance.nombre, 1);
   });
 }

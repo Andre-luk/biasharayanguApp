@@ -154,7 +154,21 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     }
 
     final user = await DBHelper.instance.getUtilisateurById(userIdString);
-    final RoleUtilisateur role = PermissionService.roleDepuisUtilisateur(user);
+    RoleUtilisateur role = PermissionService.roleDepuisUtilisateur(user);
+
+    // 🔐 CORRECTIF 178 — LE SERVEUR D'ABORD.
+    //
+    // La base locale peut être vide ou dater du compte précédent : un Super
+    // Admin y apparaissait comme propriétaire d'entreprise et arrivait ici,
+    // sur la coquille `/main` (tableau de bord, rapports, paramètres). Le
+    // serveur tranche ; le local ne sert plus que de repli hors ligne.
+    if (!role.estPlateforme) {
+      final RoleUtilisateur roleServeur =
+          await PermissionService.instance.resoudreRoleDepuisServeur(
+        userId: userIdString,
+      );
+      if (roleServeur != RoleUtilisateur.inconnu) role = roleServeur;
+    }
 
     PermissionService.instance.definirRoleCourant(role);
 

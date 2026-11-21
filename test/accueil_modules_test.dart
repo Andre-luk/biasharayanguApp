@@ -104,42 +104,47 @@ void main() {
       ]);
     });
 
-    test('fail-open : profil NON chargé => toutes les cartes du registre', () {
+    test('profil NON chargé => aucune carte MÉTIER (correctif 178)', () {
       final List<CarteAccueil> cartes = CarteAccueil.visibles(
         modules: const <String>{},
         profilCharge: false,
         autorise: autorisationPour(toutesPages),
       );
 
-      // 🧺 MODULE 35 — la carte du pressing porte le total à 28.
-      expect(cartes.length, 28);
-      expect(idsDe(cartes).first, 'produits');
-      expect(idsDe(cartes), contains('expirations'));
-      // 🏨 MODULE 16 C2 — les cartes hôtel sont désormais codées.
-      expect(idsDe(cartes), contains('chambres'));
-      expect(idsDe(cartes), contains('reservations'));
-      expect(idsDe(cartes), contains('checkin'));
-      // 🍽️ MODULE 16 C3 — les cartes restaurant sont désormais codées.
-      expect(idsDe(cartes), contains('tables'));
-      expect(idsDe(cartes), contains('commandes'));
-      expect(idsDe(cartes), contains('cuisine'));
-      // 🎉 MODULE 16 C4 — les cartes salle des fêtes sont désormais codées.
-      expect(idsDe(cartes), contains('salles'));
-      expect(idsDe(cartes), contains('evenements'));
-      // 🥖 MODULE 16 C5 — la carte boulangerie est désormais codée.
-      expect(idsDe(cartes), contains('production'));
-      // 🛒 MODULE 19 — les cartes marketplace sont transverses.
-      expect(idsDe(cartes), contains('publications'));
-      expect(idsDe(cartes), contains('visibilite'));
-      expect(idsDe(cartes), contains('publicites'));
-      // 🚚 MODULE 23 — les cartes de distribution sont codées.
-      expect(idsDe(cartes), contains('tournees'));
-      expect(idsDe(cartes), contains('consignes'));
-      expect(idsDe(cartes), contains('ma-tournee'));
-      // 🚚 MODULE 24 — tableau de bord Distribution complet.
-      expect(idsDe(cartes), contains('distribution-pro'));
-      // 🧺 MODULE 35 — la carte pressing est désormais codée.
-      expect(idsDe(cartes), contains('pressing'));
+      // 🧹 CORRECTIF 178 — l'ancien comportement « fail-open » affichait les
+      // 28 cartes du registre : une boutique pouvait donc voir « Dépôts
+      // pressing », « Chambres », « Tables »… avant même que son profil ne
+      // soit chargé. Désormais, tant que le profil de modules n'est pas
+      // connu, seules les cartes TRANSVERSES restent visibles (vente, stock,
+      // distribution, caisse, finance, marketplace, abonnement) ; les cartes
+      // MÉTIER attendent le profil.
+      expect(idsDe(cartes), <String>[
+        'produits',
+        'stock',
+        // Distribution : transverse (une boutique livre aussi).
+        'tournees',
+        'ma-tournee',
+        'consignes',
+        'recipients',
+        'ventes',
+        'clients',
+        'publications',
+        'visibilite',
+        'publicites',
+        'caisse',
+        'finance',
+        'rapports',
+        'assistant_ia',
+        'abonnement',
+      ]);
+      // Métier : rien avant le profil.
+      expect(idsDe(cartes), isNot(contains('chambres')));
+      expect(idsDe(cartes), isNot(contains('tables')));
+      expect(idsDe(cartes), isNot(contains('salles')));
+      expect(idsDe(cartes), isNot(contains('pressing')));
+      expect(idsDe(cartes), isNot(contains('press_depots')));
+      expect(idsDe(cartes), isNot(contains('production')));
+      expect(idsDe(cartes).length, lessThan(28));
     });
 
     test('profil vide MAIS chargé => tout reste visible (fail-open)', () {

@@ -277,6 +277,17 @@ final GoRouter appRouter = GoRouter(
 
     final String location = state.uri.path;
 
+    // 🔐 CORRECTIF 178 — LES DEUX MONDES NE SE MÉLANGENT PAS.
+    // Un Super Admin n'a rien à faire dans la coquille entreprise (`/main`) et
+    // un compte d'entreprise n'entre pas dans `/admin`. Ce contrôle passe
+    // AVANT les permissions : c'est lui qui empêchait un administrateur de
+    // plateforme de retrouver son tableau de bord.
+    if (!PermissionService.espaceAutorise(role, location)) {
+      return role.estPlateforme
+          ? '/admin'
+          : (permissions.accueilPour(role) ?? '/login');
+    }
+
     // 🔒 MODULE 17 — verrou commercial : même par lien direct, un compte non
     // opérationnel n'accède pas aux écrans d'opération.
     if (location != '/main/compte-verrouille' &&

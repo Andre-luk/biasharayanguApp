@@ -5,6 +5,7 @@ import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/models/admin_plateforme.dart';
 import 'package:biashara_yangu/services/admin_plateforme_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+import 'package:biashara_yangu/services/reinitialisation_session.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/models/utilisateur.dart';
 import 'package:biashara_yangu/pages/setup_page.dart';
@@ -67,7 +68,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       // Si je désactive mon propre compte, déco
       final currentUserId = await SessionManager.getUserId();
       if (newValidState == 0 && u.id != null && u.id == currentUserId) {
-        await SessionManager.clearSession();
+        // 🧹 CORRECTIF 178 — déconnexion complète : plus aucun droit du
+        // compte désactivé ne subsiste en mémoire.
+        await ReinitialisationSession.tout();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Votre compte a été $action par un administrateur. Déconnexion...')),

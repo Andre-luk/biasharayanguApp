@@ -17,15 +17,9 @@ import 'package:biashara_yangu/pages/distribution_finance_page.dart';
 import 'package:biashara_yangu/pages/distribution_journal_page.dart';
 import 'package:biashara_yangu/pages/distribution_production_page.dart';
 import 'package:biashara_yangu/pages/distribution_stock_page.dart';
-import 'package:biashara_yangu/services/audit_service.dart';
-import 'package:biashara_yangu/services/contexte_distribution.dart';
 import 'package:biashara_yangu/services/distribution_gestion_service.dart';
-import 'package:biashara_yangu/services/panier_service.dart';
-import 'package:biashara_yangu/services/permission_service.dart';
-import 'package:biashara_yangu/services/scanner_service.dart';
-import 'package:biashara_yangu/services/ventes_commerciales_service.dart';
+import 'package:biashara_yangu/services/reinitialisation_session.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
-import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/widgets/distribution_widgets.dart';
 
 class DistributionProPage extends StatefulWidget {
@@ -293,17 +287,8 @@ class _DistributionProPageState extends State<DistributionProPage> {
     );
     if (confirme != true) return;
 
-    try {
-      await AuditService.instance.deconnexion();
-    } catch (e) {
-      debugPrint('Distribution — audit de déconnexion ignoré : $e');
-    }
-    await SessionManager.clearSession();
-    PanierService.instance.vider();
-    VentesCommercialesService.instance.reinitialiser();
-    ScannerService.instance.viderHistorique();
-    PermissionService.instance.reinitialiser();
-    ContexteDistribution.instance.reinitialiser();
+    // 🧹 CORRECTIF 178 — nettoyage unique de la session.
+    await ReinitialisationSession.tout();
     if (!mounted) return;
     context.go('/login');
   }

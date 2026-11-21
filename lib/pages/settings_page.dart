@@ -8,16 +8,13 @@ import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
-import 'package:biashara_yangu/services/audit_service.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/type_activite_service.dart';
 import 'package:biashara_yangu/ui/parametres/catalogue_parametres.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
-import 'package:biashara_yangu/services/panier_service.dart';
-import 'package:biashara_yangu/services/ventes_commerciales_service.dart';
+import 'package:biashara_yangu/services/reinitialisation_session.dart';
 import 'package:biashara_yangu/services/peremption_service.dart';
-import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/ui/theme/app_theme.dart';
 import 'package:biashara_yangu/ui/widgets/modern_loader.dart';
@@ -270,16 +267,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _logout() async {
-    // 🔐 MODULE 12 — déconnexion tracée (best-effort, AVANT de fermer la session).
-    await AuditService.instance.deconnexion();
-    await SessionManager.clearSession();
-    // 🔳 MODULE 7 — fin de la session de vente : on vide le panier partagé
-    // et l'historique du scanner.
-    PanierService.instance.vider();
-    // 🛒 MODULE 25 — les droits de négociation/réduction/cadeau appartiennent
-    // à l'utilisateur : on repart de zéro à la déconnexion.
-    VentesCommercialesService.instance.reinitialiser();
-    ScannerService.instance.viderHistorique();
+    // 🧹 CORRECTIF 178 — un seul nettoyage de session pour toute l'application.
+    await ReinitialisationSession.tout();
     if (!mounted) return;
     context.go('/login');
   }
