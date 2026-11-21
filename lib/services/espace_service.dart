@@ -25,6 +25,8 @@ import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/scanner_service.dart';
 import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
+// 🧭 CORRECTIF 180 — après une bascule, le MÉTIER (type d'activité) suit.
+import 'package:biashara_yangu/services/type_activite_service.dart';
 import 'package:biashara_yangu/utils/session_manager.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
 
@@ -344,6 +346,18 @@ class EspaceService {
         //    cours (panier, historique de scans) est abandonné, sinon un
         //    article de la pharmacie partirait dans une vente de la boutique.
         _reinitialiserSessionMetier();
+
+        // 🧭 CORRECTIF 180 — LE MÉTIER SUIT L'ESPACE.
+        //
+        // Sans ce rechargement, une boutique ouverte après un pressing
+        // gardait le profil de modules du pressing (Dépôts, Atelier,
+        // Retraits) jusqu'au prochain démarrage de l'application.
+        // On repart d'un profil VIDE le temps du chargement : l'accueil
+        // masque alors les cartes métier (correctif 178) au lieu d'afficher
+        // celles du métier précédent.
+        ModulesService.instance.reinitialiser();
+        unawaited(ModulesService.instance.chargerSilencieux());
+        unawaited(TypeActiviteService.instance.charger());
       },
       'le changement d\'entreprise',
       'Impossible de changer d\'entreprise. Vérifiez votre connexion internet.',

@@ -1065,6 +1065,18 @@ class PermissionService {
   /// `true` si la navigation vers [location] est autorisée pour le rôle courant.
   bool routeAutorisee(String location) {
     final String chemin = Uri.tryParse(location)?.path ?? location;
+
+    // 🧭 CORRECTIF 180 — LES ÉCRANS DU PRESSING N'EXISTENT QUE DANS UN
+    // PRESSING.
+    //
+    // Le métier pressing est porté par l'ESPACE de travail, pas par
+    // l'entreprise : une boutique du même groupe ne doit pas ouvrir les
+    // dépôts, l'atelier ou les retraits, même par un lien direct (le serveur
+    // les refuse aussi : `pressing_exige` → PRESSING_INACTIF).
+    if (!_activitePressing && chemin.startsWith('/main/pressing')) {
+      return false;
+    }
+
     if (_activitePressing &&
       (chemin == '/main/pressing/equipe' ||
         chemin == '/main/pressing/reglages')) {

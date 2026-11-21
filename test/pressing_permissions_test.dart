@@ -145,6 +145,9 @@ void main() {
   group('Navigation — les routes du pressing sont ouvertes', () {
     test('le propriétaire atteint les cinq écrans', () {
       service.definirRoleCourant(RoleUtilisateur.proprietaire);
+      // 🧭 CORRECTIF 180 — les écrans du pressing supposent un ESPACE pressing.
+      service.definirContextePressing(
+          actif: true, roleCode: 'proprietaire');
 
       for (final String route in const <String>[
         '/main/pressing/depots',
@@ -161,6 +164,7 @@ void main() {
     test('l\'agent d\'atelier ouvre l\'atelier mais ne remet pas un vêtement',
         () {
       service.definirRoleCourant(RoleUtilisateur.magasinier);
+      service.definirContextePressing(actif: true, roleCode: 'atelier');
 
       expect(service.routeAutorisee('/main/pressing/atelier'), isTrue);
       // La route des retraits lui est fermée (page non accordée).

@@ -9,6 +9,8 @@ import 'package:biashara_yangu/models/module_activite.dart';
 import 'package:biashara_yangu/models/permission.dart';
 import 'package:biashara_yangu/services/modules_service.dart';
 import 'package:biashara_yangu/services/mode_application_service.dart';
+// 🧭 CORRECTIF 180 — la barre suit le changement d'ESPACE (donc de métier).
+import 'package:biashara_yangu/services/espace_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
 import 'package:biashara_yangu/services/contexte_distribution.dart';
 import 'package:biashara_yangu/services/pressing_service.dart';
@@ -108,6 +110,9 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     ModulesService.instance.modules.addListener(_onModulesChange);
     // ⚡ MODULE 23 — le mode rapide réduit la barre à l'essentiel.
     ModeApplicationService.instance.mode.addListener(_onModulesChange);
+    // 🧭 CORRECTIF 180 — un changement d'ESPACE change de MÉTIER : on relit
+    // le rôle pressing à chaque bascule (pressing ↔ boutique).
+    EspaceService.instance.generation.addListener(_onEspaceChange);
     _actualiserContextePressing();
   }
 
@@ -115,7 +120,18 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   void dispose() {
     ModulesService.instance.modules.removeListener(_onModulesChange);
     ModeApplicationService.instance.mode.removeListener(_onModulesChange);
+    EspaceService.instance.generation.removeListener(_onEspaceChange);
     super.dispose();
+  }
+
+  /// Bascule d'espace : le métier pressing est relu au serveur.
+  Future<void> _onEspaceChange() async {
+    if (!mounted) return;
+    if (PermissionService.instance.roleCourant.estPlateforme) return;
+
+    _rolePressingCode = await PressingService.instance.rolePressingCode();
+    _actualiserContextePressing();
+    if (mounted) setState(() {});
   }
 
   void _onModulesChange() {

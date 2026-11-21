@@ -237,6 +237,21 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               Lubumbashi, date fournie par le serveur) pour le tableau de bord,
               le rapport du patron et les rapports vendeurs → les chiffres
               correspondent, quel que soit le téléphone.
+0180          CORRECTIF 180 — COHÉRENCE DES MÉTIERS PAR ESPACE :
+              « une boutique qui passe à la place de pressing ». Toutes les
+              décisions (écrans, métiers, blocages) reposent désormais sur le
+              TYPE DE L'ESPACE DE TRAVAIL et non sur l'entreprise :
+              `espace_type`, `espace_est_pressing`, `mon_espace_actif`,
+              `contexte_pressing`. La garde de vente ne bloque plus que
+              l'espace qui vend (une boutique du même groupe vend normalement) ;
+              un trigger efface `role_pressing` hors d'un espace pressing et
+              `pressing_role()` répond « aucun » ; `pressing_exige()` refuse
+              l'action (PRESSING_INACTIF) hors pressing ; création/modification
+              de collaborateur : l'ESPACE choisi décide du métier (plus
+              d'affectation « au pressing par défaut ») ; réparation des espaces
+              retypés par la 0153. Côté application : routes `/main/pressing/*`
+              fermées hors pressing et bascule d'espace qui recharge modules et
+              métier.
 ```
 
 **Correctif 178** — isolation des sessions (client uniquement, aucune
