@@ -1,8 +1,9 @@
 # Mise à jour v3.10.8 (build 65) — correctif 181
 
 **Date** : 27 novembre 2026
-**Migration Supabase requise** : `20260916000181_isolation_espace_equipe.sql`
-(à exécuter après la 0180).
+**Migrations Supabase requises** : `20260916000181_isolation_espace_equipe.sql`
+puis `20260916000182_fix_perimetre_ventes_patron.sql`
+(à exécuter après la 0180, dans cet ordre).
 
 ## Le problème
 
@@ -43,6 +44,12 @@ récupérait cet espace dans son périmètre — donc les mêmes ventes.
    - 4.b ventes par espace sur 30 jours ;
    - 4.c ventes sans propriétaire identifiable (aucune ligne attendue) ;
    - 4.d entreprise et périmètre de la session courante.
+5. **`perimetre_entreprise()` v3 (migration 0182)** : l'UUID du patron entrait
+   aussi par la branche « utilisateurs de l'entreprise » (à chaque bascule,
+   son `entreprise_id` suit l'entreprise active) — et cet UUID est celui du
+   premier espace. Le propriétaire et tout utilisateur dont l'ID est aussi un
+   espace sont donc **exclus du périmètre** ; leurs données restent comptées
+   par la branche « espaces », dans leur propre entreprise.
 
 ## Ce qui est concerné
 

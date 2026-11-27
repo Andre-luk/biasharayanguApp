@@ -263,6 +263,13 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               + ÉQUIPE BORNÉE À L'ESPACE ACTIF (RLS `utilisateurs` et RPC
               collaborateurs), paiements d'abonnement lisibles par la seule
               plateforme, policies restrictives sur la finance.
+0182          CORRECTIF 182 — PÉRIMÈTRE SANS L'UUID DU PATRON : l'UUID du patron
+              entrait aussi par la branche « utilisateurs de l'entreprise »
+              (`utilisateurs.entreprise_id` suit la bascule), et cet UUID est
+              celui du premier espace → `perimetre_entreprise()` exclut
+              désormais le propriétaire et tout utilisateur dont l'ID est un
+              espace. Contrôle indépendant : aucun identifiant d'espace vu
+              depuis une autre entreprise.
 ```
 
 **Correctif 178** — isolation des sessions (client uniquement, aucune
