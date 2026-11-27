@@ -17,6 +17,8 @@ import 'package:biashara_yangu/services/rapport_vendeurs_service.dart';
 // 📅 CORRECTIF 179 — la date de référence vient du SERVEUR (Lubumbashi) :
 // deux téléphones différents voient forcément les mêmes chiffres.
 import 'package:biashara_yangu/services/date_locale_service.dart';
+// 🧩 0181 — les données métier sont rattachées à l'ESPACE de travail actif.
+import 'package:biashara_yangu/services/scope_donnees.dart';
 // 🪙 MODULE 18 — montants formatés dans la devise de l'entreprise.
 import 'package:biashara_yangu/utils/format_utils.dart';
 import 'package:biashara_yangu/utils/partage_pdf.dart';
@@ -46,6 +48,14 @@ class _SellerAgg {
 
 class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   final SupabaseClient _supabase = Supabase.instance.client;
+
+  /// 🧩 0181 — l'espace de travail effectif (celui que la RLS compare à
+  /// `owner_id`). `widget.ownerId` reste l'UTILISATEUR patron (pour
+  /// `parent_id` et le nom du patron).
+  String get _ownerEspace =>
+      ScopeDonnees.proprioPourEcriture ??
+      ScopeDonnees.espaceActif ??
+      widget.ownerId;
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -232,12 +242,21 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
   }
 
   Future<void> _loadSellers() async {
-    final data = await _supabase
+    // 🧩 0181 — équipe de l'ESPACE actif uniquement (la RLS le garantit déjà,
+    //    le filtre explicite évite d'afficher d'anciens collaborateurs d'une
+    //    autre entreprise si la base n'a pas encore la migration 0181).
+    dynamic requete = _supabase
         .from('utilisateurs')
         .select(
             'id, nom, prenom, avatar, role, parent_id, email, created_at, valide')
         .eq('parent_id', widget.ownerId);
 
+    final String? espaceActif = ScopeDonnees.proprioPourEcriture;
+    if (espaceActif != null && espaceActif.isNotEmpty) {
+      requete = requete.eq('espace_actif_id', espaceActif);
+    }
+
+    final data = await requete;
     final list = (data as List)
         .map((e) => Utilisateur.fromMap(Map<String, dynamic>.from(e as Map)))
         .where((u) => u.id != null)
@@ -260,7 +279,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
     final data = await _supabase
         .from('produits')
         .select('id, nom')
-        .eq('owner_id', widget.ownerId);
+        .eq('owner_id', _ownerEspace);
 
     final map = <int, String>{};
 
@@ -292,7 +311,7 @@ class _CollaborateursStatsPageState extends State<CollaborateursStatsPage> {
           .from('ventes')
           .select(
               'id, produit_id, quantite, prix, date, owner_id, seller_id, mode_paiement')
-          .eq('owner_id', widget.ownerId)
+          .eq('owner_id', _ownerEspace)
           .gte('date', _isoLubumbashi(range.start))
           .lt('date', _isoLubumbashi(range.end))
           .order('date', ascending: false);

@@ -4,6 +4,11 @@
 **Migration :** `20260916000179_finances_uuid_text_et_rapport_vendeurs.sql`
 **Date :** 21 novembre 2026
 
+> ⚠️ **Complété par le correctif 181** (`20260916000181_…`) : le périmètre
+> d'entreprise ne contient plus l'UUID du propriétaire, qui est commun à
+> toutes ses entreprises et provoquait un mélange des ventes entre deux
+> entreprises d'un même patron.
+
 ---
 
 ## 1. « operator does not exist: uuid = text » dans les Finances

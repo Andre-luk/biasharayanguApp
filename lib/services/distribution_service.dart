@@ -114,16 +114,32 @@ class DistributionService {
   /// Agents possibles : le propriétaire lui-même et ses collaborateurs.
   Future<List<AgentDistribution>> listerAgents() async {
     try {
-      final String? proprietaire =
-          await ArticleService.instance.proprietaireCourant();
-      if (proprietaire == null || proprietaire.isEmpty) {
+      // 🧩 0181 — les agents sont les utilisateurs du PATRON (parent_id),
+      //    jamais ceux d'un espace : l'ancien `.or(id/parent_id = espace)`
+      //    renvoyait l'espace lui-même comme « agent » hors 1re entreprise.
+      final String? uid = _client.auth.currentUser?.id;
+      if (uid == null || uid.isEmpty) {
         return const <AgentDistribution>[];
+      }
+
+      String patron = uid;
+      try {
+        final dynamic moi = await _client
+            .from('utilisateurs')
+            .select('parent_id')
+            .eq('id', uid)
+            .maybeSingle();
+        final String? parent =
+            (moi is Map) ? moi['parent_id']?.toString() : null;
+        if (parent != null && parent.isNotEmpty) patron = parent;
+      } catch (e) {
+        debugPrint('DistributionService patron (ignoré) : $e');
       }
 
       final List<dynamic> reponse = await _client
           .from('utilisateurs')
           .select('id, nom, prenom, new_role, role, parent_id, valide')
-          .or('id.eq.$proprietaire,parent_id.eq.$proprietaire')
+          .or('id.eq.$patron,parent_id.eq.$patron')
           .order('nom', ascending: true);
 
       final List<AgentDistribution> agents = parseMapList(reponse)

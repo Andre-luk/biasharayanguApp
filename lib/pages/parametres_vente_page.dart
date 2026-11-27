@@ -17,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:biashara_yangu/db_helper.dart';
 import 'package:biashara_yangu/models/article.dart';
 import 'package:biashara_yangu/models/parametres_vente.dart';
 import 'package:biashara_yangu/services/article_service.dart';
@@ -110,13 +109,28 @@ class _ParametresVentePageState extends State<ParametresVentePage> {
     try {
       final String? uid = await SessionManager.getUserId();
       if (uid == null || uid.isEmpty) return const <Map<String, dynamic>>[];
-      final String owner =
-          await DBHelper.instance.resolveEffectiveOwnerId(uid) ?? uid;
+
+      // 🧩 0181 — `parent_id` porte l'UTILISATEUR patron, jamais l'espace :
+      //    l'ancien filtre `parent_id = <espace>` renvoyait une liste vide.
+      //    La RLS borne ensuite la liste à l'entreprise active.
+      String patron = uid;
+      try {
+        final dynamic moi = await _client
+            .from('utilisateurs')
+            .select('parent_id')
+            .eq('id', uid)
+            .maybeSingle();
+        final String? parent =
+            (moi is Map) ? moi['parent_id']?.toString() : null;
+        if (parent != null && parent.isNotEmpty) patron = parent;
+      } catch (e) {
+        debugPrint('ParametresVentePage patron (ignoré) : $e');
+      }
 
       final dynamic reponse = await _client
           .from('utilisateurs')
           .select('id, nom, prenom, role, valide')
-          .eq('parent_id', owner)
+          .eq('parent_id', patron)
           .order('nom', ascending: true);
 
       if (reponse is! List) return const <Map<String, dynamic>>[];

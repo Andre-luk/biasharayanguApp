@@ -481,7 +481,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final db = DBHelper.instance;
 
     try {
-      final String statsTargetId = _userId!;
+      // 🧩 0181 — isoler les chiffres par espace :
+      //    • patron → owner_id = ESPACE actif (les ventes sont par espace) ;
+      //    • collaborateur → seller_id = lui-même (comportement historique).
+      final String statsTargetId =
+          _isCollaborator ? _userId! : (_effectiveOwnerId ?? _userId!);
 
       // Une seule passe parallèle : six requêtes SQLite en même temps.
       final results = await Future.wait([

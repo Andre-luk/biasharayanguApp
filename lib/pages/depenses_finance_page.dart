@@ -12,8 +12,11 @@ import 'package:go_router/go_router.dart';
 
 import 'package:biashara_yangu/models/depense_finance.dart';
 import 'package:biashara_yangu/models/permission.dart';
+import 'package:biashara_yangu/models/rapport.dart';
 import 'package:biashara_yangu/services/finance_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+// 🧾 0181 — document des dépenses : PDF, impression et Excel.
+import 'package:biashara_yangu/services/rapport_service.dart';
 import 'package:biashara_yangu/utils/format_utils.dart';
 
 class DepensesFinancePage extends StatefulWidget {
@@ -29,6 +32,9 @@ class _DepensesFinancePageState extends State<DepensesFinancePage> {
   bool _chargement = true;
   String? _erreur;
   ResultatListeDepenses? _liste;
+
+  /// 🧾 0181 — export en cours (désactive le bouton, évite les doubles clics).
+  bool _exportEnCours = false;
 
   /// Période en jours (`null` = tout l'historique).
   int? _jours = 30;
@@ -73,6 +79,8 @@ class _DepensesFinancePageState extends State<DepensesFinancePage> {
     }
   }
 
+  bool get _peutVoir =>
+      PermissionService.instance.peutVoir(PageAccess.depenses);
   bool get _peutCreer =>
       PermissionService.instance.peut(PageAccess.depenses, ActionAccess.creer);
   bool get _peutSupprimer => PermissionService.instance
@@ -128,6 +136,111 @@ class _DepensesFinancePageState extends State<DepensesFinancePage> {
   }
 
   // ---------------------------------------------------------------------------
+  // 🧾 0181 — EXPORT PDF / IMPRESSION / EXCEL
+  // ---------------------------------------------------------------------------
+
+  /// Choix de la période au moment de l'export.
+  /// `false` = période affichée, `true` = tout l'historique, `null` = annulé.
+  Future<bool?> _choisirPeriodeExport() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => SimpleDialog(
+        title: const Text('Période du document'),
+        children: <Widget>[
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(
+              _jours == null
+                  ? 'Toute la période affichée'
+                  : 'Période affichée ($_jours derniers jours)',
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Tout l\'historique'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Annuler'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exporter(String action) async {
+    if (_exportEnCours) return;
+
+    final bool? toutHistorique = await _choisirPeriodeExport();
+    if (toutHistorique == null || !mounted) return;
+
+    setState(() => _exportEnCours = true);
+    try {
+      final DateTime fin = DateTime.now();
+      final DateTime debut = toutHistorique
+          ? DateTime(2000, 1, 1)
+          : (_debut ?? DateTime(2000, 1, 1));
+
+      final ResultatRapport resultat =
+          await RapportService.instance.genererRapportDepenses(
+        debut: debut,
+        fin: fin,
+        detail: true,
+      );
+      final String? nomEntreprise =
+          await RapportService.instance.nomEntrepriseCourante();
+
+      String message;
+      switch (action) {
+        case 'imprimer':
+          await RapportService.instance.imprimerPDF(
+            resultat,
+            nomEntreprise: nomEntreprise,
+          );
+          message = 'Impression lancée.';
+          break;
+        case 'excel':
+          final String chemin = await RapportService.instance.exporterExcel(
+            resultat,
+            nomEntreprise: nomEntreprise,
+          );
+          message = 'Excel enregistré : $chemin';
+          break;
+        case 'pdf':
+        default:
+          final String chemin = await RapportService.instance.exporterPDF(
+            resultat,
+            nomEntreprise: nomEntreprise,
+          );
+          message = 'PDF enregistré : $chemin';
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } on RapportServiceException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export impossible : $e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _exportEnCours = false);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // RENDU
   // ---------------------------------------------------------------------------
 
@@ -141,6 +254,47 @@ class _DepensesFinancePageState extends State<DepensesFinancePage> {
         ),
         centerTitle: false,
         actions: <Widget>[
+          // 🧾 0181 — document imprimable des dépenses (PDF / impression / Excel).
+          if (_peutVoir)
+            PopupMenuButton<String>(
+              tooltip: 'Exporter ou imprimer',
+              enabled: !_exportEnCours,
+              icon: _exportEnCours
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.picture_as_pdf_rounded),
+              onSelected: _exporter,
+              itemBuilder: (BuildContext context) =>
+                  const <PopupMenuEntry<String>>[
+                PopupMenuItem<String>(
+                  value: 'pdf',
+                  child: ListTile(
+                    leading: Icon(Icons.download_rounded),
+                    title: Text('Télécharger le PDF'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'imprimer',
+                  child: ListTile(
+                    leading: Icon(Icons.print_rounded),
+                    title: Text('Imprimer'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'excel',
+                  child: ListTile(
+                    leading: Icon(Icons.table_view_rounded),
+                    title: Text('Exporter en Excel'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
           IconButton(
             tooltip: 'Actualiser',
             onPressed: _charger,

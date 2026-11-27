@@ -2349,18 +2349,29 @@ CREATE TABLE approvisionnements (
   /// (produits, ventes, caisse, clients, dettes, dépenses, inventaires…) :
   /// c'est ce qui fait qu'une boutique ne voit pas le catalogue de l'autre.
   Future<String?> ownerDonneesDe(String userId) async {
+    // 🧩 0181 — la valeur VÉRIFIÉE par le serveur prime (même priorité que
+    //    `ArticleService.proprietaireCourant`) : c'est celle que la RLS
+    //    compare à `owner_id`.
+    final String? verifie = ScopeDonnees.proprietaireEffectif;
+    if (verifie != null) return verifie;
     final String? espace = ScopeDonnees.espaceActif;
     if (espace != null) return espace;
     return resolveEffectiveOwnerId(userId);
   }
 
   Future<String?> resolveEffectiveOwnerId(String userId) async {
-    // 🧩 MODULE 15 — LA BOUTIQUE AFFICHÉE PORTE SES PROPRES DONNÉES.
+    // 🧩 MODULE 15 / 0181 — LA BOUTIQUE AFFICHÉE PORTE SES PROPRES DONNÉES.
     //    `ScopeDonnees` est renseigné par `EspaceService` (liste des espaces,
     //    bascule, déconnexion). Tant qu'il est vide (démarrage à froid, hors
     //    ligne), on garde exactement le comportement historique ci-dessous :
     //    l'espace par défaut porte l'UUID du patron, donc rien ne change pour
     //    un compte à une seule boutique.
+    //
+    //    ⚠️ 0181 — la valeur VÉRIFIÉE par le serveur (`mon_proprietaire()`)
+    //    passe AVANT l'espace simplement choisi : c'est elle que la RLS
+    //    attend, sinon on lit/écrit un espace différent de celui du serveur.
+    final String? verifie = ScopeDonnees.proprietaireEffectif;
+    if (verifie != null) return verifie;
     final String? espace = ScopeDonnees.espaceActif;
     if (espace != null) return espace;
 

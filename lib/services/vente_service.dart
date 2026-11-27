@@ -32,6 +32,8 @@ import 'package:biashara_yangu/services/article_service.dart';
 import 'package:biashara_yangu/services/notification_service.dart';
 import 'package:biashara_yangu/services/panier_service.dart';
 import 'package:biashara_yangu/services/permission_service.dart';
+// 🧩 0181 — défense en profondeur : l'historique est borné à l'espace actif.
+import 'package:biashara_yangu/services/scope_donnees.dart';
 import 'package:biashara_yangu/services/supabase_service.dart';
 import 'package:biashara_yangu/services/sync_service.dart';
 import 'package:biashara_yangu/utils/json_parsing.dart';
@@ -850,6 +852,14 @@ class VenteService {
 
         if (modePaiement != null && modePaiement.isNotEmpty) {
           requete = requete.eq('mode_paiement', modePaiement);
+        }
+
+        // 🧩 0181 — une vente appartient à l'ESPACE actif : on l'exige aussi
+        //    côté requête (la RLS le garantit déjà, ceci reste lisible et
+        //    protège si une policy est modifiée plus tard).
+        final String? espaceCourant = ScopeDonnees.proprioPourEcriture;
+        if (espaceCourant != null && espaceCourant.isNotEmpty) {
+          requete = requete.eq('owner_id', espaceCourant);
         }
 
         final dynamic reponse = await requete.order('date', ascending: false);

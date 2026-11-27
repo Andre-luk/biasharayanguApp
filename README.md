@@ -252,6 +252,17 @@ L'URL et la clé publique `anon` sont déclarées dans `lib/main.dart`
               retypés par la 0153. Côté application : routes `/main/pressing/*`
               fermées hors pressing et bascule d'espace qui recharge modules et
               métier.
+0181          CORRECTIF 181 — DEUX ENTREPRISES D'UN MÊME PATRON NE PARTAGENT
+              PLUS LEURS VENTES : `perimetre_entreprise()` n'ajoute plus
+              l'UUID du patron quand l'entreprise a des espaces (cet UUID est
+              aussi l'identifiant du TOUT PREMIER espace créé à l'inscription,
+              donc il faisait entrer le premier espace dans le périmètre des
+              DEUX entreprises) ; `entreprise_courante()` suit l'ESPACE DE
+              TRAVAIL ; réparation des `espace_actif_id` incohérents ;
+              contrôle d'intersection des périmètres (doit être vide).
+              + ÉQUIPE BORNÉE À L'ESPACE ACTIF (RLS `utilisateurs` et RPC
+              collaborateurs), paiements d'abonnement lisibles par la seule
+              plateforme, policies restrictives sur la finance.
 ```
 
 **Correctif 178** — isolation des sessions (client uniquement, aucune
